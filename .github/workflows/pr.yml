@@ -1,3 +1,18 @@
+#
+# Copyright (c) 2021 Red Hat, Inc.
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
+
 name: Validate PRs
 
 on:
@@ -6,75 +21,89 @@ on:
 
 jobs:
   go:
-    name: Check go sources
+    name: Check sources
+    runs-on: ubuntu-20.04
+    env:
+      OPERATOR_SDK_VERSION: v1.12.0
+    steps:
+      - name: Set up Go 1.x
+        uses: actions/setup-go@v2
+        with:
+          go-version: 1.16
+      - name: Check out code into the Go module directory
+        uses: actions/checkout@v2
+        with:
+          fetch-depth: 0
+      - name: Cache Operator SDK ${{ env.OPERATOR_SDK_VERSION }}
+        uses: actions/cache@v2
+        id: cache-operator-sdk
+        with:
+          path: ~/cache
+          key: operator-sdk-${{ env.OPERATOR_SDK_VERSION }}
+      - name: Download Operator SDK ${{ env.OPERATOR_SDK_VERSION }}
+        if: steps.cache-operator-sdk.outputs.cache-hit != 'true'
+        run: |
+          mkdir -p ~/cache
+          wget https://github.com/operator-framework/operator-sdk/releases/download/${OPERATOR_SDK_VERSION}/operator-sdk_linux_amd64 -O ~/cache/operator-sdk-${OPERATOR_SDK_VERSION} > /dev/null -O ~/cache/operator-sdk-${OPERATOR_SDK_VERSION} > /dev/null
+          chmod +x ~/cache/operator-sdk-${OPERATOR_SDK_VERSION}
+      - name: Install Operator SDK ${{ env.OPERATOR_SDK_VERSION }}
+        run: |
+          mkdir -p ~/bin
+          cp ~/cache/operator-sdk-${OPERATOR_SDK_VERSION} ~/bin/operator-sdk
+          echo "$HOME/bin" >> $GITHUB_PATH
+      - name: Cache go modules
+        id: cache-mod
+        uses: actions/cache@v2
+        with:
+          path: ~/go/pkg/mod
+          key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
+          restore-keys: |
+            ${{ runner.os }}-go-
+      - name: Download dependencies
+        run: go mod download
+        if: steps.cache-mod.outputs.cache-hit != 'true'
+      - name: Check go mod status
+        run: |
+          go mod tidy
+          if [[ ! -z $(git status -s) ]]
+          then
+            echo "Go mod state is not clean:"
+            git --no-pager diff
+            exit 1
+          fi
+      - name: Check format
+        run: |
+          go get -u github.com/google/addlicense
+          go get -u golang.org/x/tools/cmd/goimports
+          git reset HEAD --hard
+          make check_fmt
+          if [[ $? != 0 ]]
+          then
+            echo "not well formatted sources are found:"
+            git --no-pager diff
+            exit 1
+          fi
+      - name: Check manifests
+        run: |
+          # Note: fmt is necessary after generate since generated sources will
+          #       fail format check by default.
+          make generate fmt manifests
+          if [[ ! -z $(git status -s) ]]
+          then
+            echo "generated sources are not up to date:"
+            git --no-pager diff
+            exit 1
+          fi
+      - name: Run Go Tests
+        run: |
+          make test
+  docker:
+    name: Check docker build
     runs-on: ubuntu-latest
     steps:
-    - name: Set up Go 1.x
-      uses: actions/setup-go@v2
-      with:
-        go-version: ^1.16
-    - name: Check out code into the Go module directory
-      uses: actions/checkout@v2
-    - name: Cache go modules
-      id: cache-mod
-      uses: actions/cache@v2
-      with:
-        path: ~/go/pkg/mod
-        key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
-        restore-keys: |
-          ${{ runner.os }}-go-
-    - name: Download dependencies
-      run: go mod download
-      if: steps.cache-mod.outputs.cache-hit != 'true'
-    - name: Check go mod status
-      run: |
-        go mod tidy
-        if [[ ! -z $(git status -s) ]]
-        then
-          echo "Go mod state is not clean: $(git status -s)"
-          exit 1
-        fi
-    - name: Check go mod status
-      run: |
-        go mod tidy
-        if [[ ! -z $(git status -s) ]]
-        then
-          echo "Go mod state is not clean: $(git status -s)"
-          exit 1
-        fi
-    - name: Check format
-      run: |
-        go get -u github.com/google/addlicense
-        go get -u golang.org/x/tools/cmd/goimports
-        git reset HEAD --hard
-
-        make fmt
-        if [[ ! -z $(git status -s) ]]
-        then
-          echo "not well formatted sources found during make fmt: $(git status -s)"
-          exit 1
-        fi
-
-        make fmt_license
-        if [[ ! -z $(git status -s) ]]
-        then
-          echo "not well formatted sources found during make fmt_license: $(git status -s)"
-          exit 1
-        fi
-    - name: Check gosec
-      run: |
-        go get -u github.com/securego/gosec/v2/cmd/gosec
-        make gosec
-    - name: Check code generation
-      run: make generate
-    - name: Check CRD manifest generation
-      run: make manifests
-
-  operator-build:
-    name: Check operator container image build
-    runs-on: ubuntu-latest
-    steps:
-    - name: Check out code into the Go module directory
-      uses: actions/checkout@v2
-    - name: Check if operator docker build is working
-      run: docker build -f Dockerfile .
+      - name: Check out code into the Go module directory
+        uses: actions/checkout@v2
+        with:
+          fetch-depth: 0
+      - name: Check if dockerimage build is working
+        run: docker build -f ./Dockerfile .
