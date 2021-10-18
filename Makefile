@@ -87,6 +87,15 @@ fmt: ## Run go fmt against code.
 vet: ## Run go vet against code.
 	go vet ./...
 
+gosec: 
+	# Run this command, to install gosec, if not installed:
+	# go get -u github.com/securego/gosec/v2/cmd/gosec
+	gosec ./...
+
+lint:
+	golangci-lint --version
+	GOMAXPROCS=2 golangci-lint run --fix --verbose --timeout 300s
+
 test: manifests generate fmt vet envtest ## Run tests.
 	KUBEBUILDER_ASSETS="$(shell $(ENVTEST) use $(ENVTEST_K8S_VERSION) -p path)" go test ./... -coverprofile cover.out
 
