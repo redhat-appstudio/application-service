@@ -1,0 +1,80 @@
+name: Validate PRs
+
+on:
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  go:
+    name: Check go sources
+    runs-on: ubuntu-latest
+    steps:
+    - name: Set up Go 1.x
+      uses: actions/setup-go@v2
+      with:
+        go-version: ^1.16
+    - name: Check out code into the Go module directory
+      uses: actions/checkout@v2
+    - name: Cache go modules
+      id: cache-mod
+      uses: actions/cache@v2
+      with:
+        path: ~/go/pkg/mod
+        key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
+        restore-keys: |
+          ${{ runner.os }}-go-
+    - name: Download dependencies
+      run: go mod download
+      if: steps.cache-mod.outputs.cache-hit != 'true'
+    - name: Check go mod status
+      run: |
+        go mod tidy
+        if [[ ! -z $(git status -s) ]]
+        then
+          echo "Go mod state is not clean: $(git status -s)"
+          exit 1
+        fi
+    - name: Check go mod status
+      run: |
+        go mod tidy
+        if [[ ! -z $(git status -s) ]]
+        then
+          echo "Go mod state is not clean: $(git status -s)"
+          exit 1
+        fi
+    - name: Check format
+      run: |
+        go get -u github.com/google/addlicense
+        go get -u golang.org/x/tools/cmd/goimports
+        git reset HEAD --hard
+
+        make fmt
+        if [[ ! -z $(git status -s) ]]
+        then
+          echo "not well formatted sources found during make fmt: $(git status -s)"
+          exit 1
+        fi
+
+        make fmt_license
+        if [[ ! -z $(git status -s) ]]
+        then
+          echo "not well formatted sources found during make fmt_license: $(git status -s)"
+          exit 1
+        fi
+    - name: Check gosec
+      run: |
+        go get -u github.com/securego/gosec/v2/cmd/gosec
+        make gosec
+    - name: Check code generation
+      run: make generate
+    - name: Check CRD manifest generation
+      run: make manifests
+
+  operator-build:
+    name: Check operator container image build
+    runs-on: ubuntu-latest
+    steps:
+    - name: Check out code into the Go module directory
+      uses: actions/checkout@v2
+    - name: Check if operator docker build is working
+      run: docker build -f Dockerfile .
