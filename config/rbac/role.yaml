@@ -1,0 +1,112 @@
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  creationTimestamp: null
+  name: manager-role
+rules:
+- apiGroups:
+  - appstudio.redhat.com
+  resources:
+  - hasapplications
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - appstudio.redhat.com
+  resources:
+  - hasapplications/finalizers
+  verbs:
+  - update
+- apiGroups:
+  - appstudio.redhat.com
+  resources:
+  - hasapplications/status
+  verbs:
+  - get
+  - patch
+  - update
+- apiGroups:
+  - appstudio.redhat.com
+  resources:
+  - hascomponents
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - appstudio.redhat.com
+  resources:
+  - hascomponents/finalizers
+  verbs:
+  - update
+- apiGroups:
+  - appstudio.redhat.com
+  resources:
+  - hascomponents/status
+  verbs:
+  - get
+  - patch
+  - update
+- apiGroups:
+  - appstudio.redhat.com
+  resources:
+  - haspushes
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - appstudio.redhat.com
+  resources:
+  - haspushes/finalizers
+  verbs:
+  - update
+- apiGroups:
+  - appstudio.redhat.com
+  resources:
+  - haspushes/status
+  verbs:
+  - get
+  - patch
+  - update
+- apiGroups:
+  - appstudio.redhat.com
+  resources:
+  - hasservicedetectionqueries
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - appstudio.redhat.com
+  resources:
+  - hasservicedetectionqueries/finalizers
+  verbs:
+  - update
+- apiGroups:
+  - appstudio.redhat.com
+  resources:
+  - hasservicedetectionqueries/status
+  verbs:
+  - get
+  - patch
+  - update
