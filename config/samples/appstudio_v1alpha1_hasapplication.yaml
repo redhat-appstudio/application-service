@@ -1,0 +1,7 @@
+apiVersion: appstudio.redhat.com/v1alpha1
+kind: HASApplication
+metadata:
+  name: hasapplication-sample
+spec:
+  # Add fields here
+  foo: bar
