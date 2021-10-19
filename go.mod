@@ -1,8 +1,9 @@
 module github.com/redhat-appstudio/application-service
 
-go 1.14
+go 1.16
 
 require (
-	github.com/emicklei/go-restful/v3 v3.3.3
-	github.com/json-iterator/go v1.1.12 // indirect
+	k8s.io/apimachinery v0.21.2
+	k8s.io/client-go v0.21.2
+	sigs.k8s.io/controller-runtime v0.9.2
 )

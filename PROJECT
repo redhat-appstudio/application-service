@@ -1,0 +1,9 @@
+domain: redhat.com
+layout:
+- go.kubebuilder.io/v3
+plugins:
+  manifests.sdk.operatorframework.io/v2: {}
+  scorecard.sdk.operatorframework.io/v2: {}
+projectName: application-service
+repo: github.com/redhat-appstudio/application-service
+version: "3"

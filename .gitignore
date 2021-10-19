@@ -1,1 +1,3 @@
 application-service
+controller-gen
+setup-envtest
