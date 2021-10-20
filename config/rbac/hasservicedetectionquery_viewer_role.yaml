@@ -1,0 +1,20 @@
+# permissions for end users to view hasservicedetectionqueries.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: hasservicedetectionquery-viewer-role
+rules:
+- apiGroups:
+  - appstudio.redhat.com
+  resources:
+  - hasservicedetectionqueries
+  verbs:
+  - get
+  - list
+  - watch
+- apiGroups:
+  - appstudio.redhat.com
+  resources:
+  - hasservicedetectionqueries/status
+  verbs:
+  - get

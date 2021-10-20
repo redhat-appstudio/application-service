@@ -1,0 +1,7 @@
+apiVersion: appstudio.redhat.com/v1alpha1
+kind: HASComponent
+metadata:
+  name: hascomponent-sample
+spec:
+  # Add fields here
+  foo: bar

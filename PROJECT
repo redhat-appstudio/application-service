@@ -6,4 +6,41 @@ plugins:
   scorecard.sdk.operatorframework.io/v2: {}
 projectName: application-service
 repo: github.com/redhat-appstudio/application-service
+resources:
+- api:
+    crdVersion: v1
+    namespaced: true
+  controller: true
+  domain: redhat.com
+  group: appstudio
+  kind: HASApplication
+  path: github.com/redhat-appstudio/application-service/api/v1alpha1
+  version: v1alpha1
+- api:
+    crdVersion: v1
+    namespaced: true
+  controller: true
+  domain: redhat.com
+  group: appstudio
+  kind: HASComponent
+  path: github.com/redhat-appstudio/application-service/api/v1alpha1
+  version: v1alpha1
+- api:
+    crdVersion: v1
+    namespaced: true
+  controller: true
+  domain: redhat.com
+  group: appstudio
+  kind: HASPush
+  path: github.com/redhat-appstudio/application-service/api/v1alpha1
+  version: v1alpha1
+- api:
+    crdVersion: v1
+    namespaced: true
+  controller: true
+  domain: redhat.com
+  group: appstudio
+  kind: HASServiceDetectionQuery
+  path: github.com/redhat-appstudio/application-service/api/v1alpha1
+  version: v1alpha1
 version: "3"
