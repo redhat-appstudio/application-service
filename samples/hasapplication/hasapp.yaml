@@ -3,6 +3,5 @@ kind: HASApplication
 metadata:
   name: hasapplication-sample
 spec:
-  # Add fields here
   displayName: "petclinic"
   description: "application definition for petclinic-app"
