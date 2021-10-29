@@ -14,6 +14,7 @@ COPY main.go main.go
 # ToDo: Uncomment once API added
 COPY api/ api/
 COPY controllers/ controllers/
+COPY pkg pkg/
 
 # Build
 RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -a -o manager main.go

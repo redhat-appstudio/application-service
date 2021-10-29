@@ -102,7 +102,7 @@ check_fmt:
 	  $(error "error addlicense must be installed for this rule: go get -u github.com/google/addlicense")
   endif
 
-	  if [[ $$(find . -not -path '*/\.*' -name '*.go' -exec goimports -l {} \;) != "" ]]; then \
+	  if [[ $$(find . -not -path '*/\.*' -not -name '*zz_generated*.go' -name '*.go' -exec goimports -l {} \;) != "" ]]; then \
 	    echo "Files not formatted; run 'make fmt'"; exit 1 ;\
 	  fi ;\
 	  if ! addlicense -check -f license_header.txt $$(find . -not -path '*/\.*' -name '*.go'); then \
