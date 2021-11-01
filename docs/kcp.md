@@ -32,5 +32,61 @@
 5) Run `kubectl get hasapp hasapplication-sample -o yaml`, and verify you see the following:
 
 ```
-
+apiVersion: appstudio.redhat.com/v1alpha1
+kind: HASApplication
+metadata:
+  annotations:
+    kubectl.kubernetes.io/last-applied-configuration: |
+      {"apiVersion":"appstudio.redhat.com/v1alpha1","kind":"HASApplication","metadata":{"annotations":{},"name":"hasapplication-sample","namespace":"default"},"spec":{"description":"application definition for petclinic-app","displayName":"petclinic"}}
+  clusterName: admin
+  creationTimestamp: "2021-10-29T20:22:16Z"
+  generation: 1
+  managedFields:
+  - apiVersion: appstudio.redhat.com/v1alpha1
+    fieldsType: FieldsV1
+    fieldsV1:
+      f:metadata:
+        f:annotations:
+          .: {}
+          f:kubectl.kubernetes.io/last-applied-configuration: {}
+      f:spec:
+        .: {}
+        f:description: {}
+        f:displayName: {}
+    manager: kubectl-client-side-apply
+    operation: Update
+    time: "2021-10-29T20:22:16Z"
+  - apiVersion: appstudio.redhat.com/v1alpha1
+    fieldsType: FieldsV1
+    fieldsV1:
+      f:status:
+        .: {}
+        f:conditions: {}
+        f:devfile: {}
+    manager: manager
+    operation: Update
+    subresource: status
+    time: "2021-10-29T20:22:16Z"
+  name: hasapplication-sample
+  namespace: default
+  resourceVersion: "167"
+  uid: 95e1d4f4-5876-4065-beef-b77d869fc00b
+spec:
+  description: application definition for petclinic-app
+  displayName: petclinic
+status:
+  conditions:
+  - lastTransitionTime: "2021-10-29T20:22:16Z"
+    message: HASApplication has been successfully created
+    reason: OK
+    status: "True"
+    type: Created
+  devfile: |
+    metadata:
+      attributes:
+        appModelRepository.url: https://github.com/redhat-appstudio-appdata/petclinic-choose-responsibility
+        gitOpsRepository.url: https://github.com/redhat-appstudio-appdata/petclinic-choose-responsibility
+      description: application definition for petclinic-app
+      name: petclinic
+    schemaVersion: 2.2.0
 ```
