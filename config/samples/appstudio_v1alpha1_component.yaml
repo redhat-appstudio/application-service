@@ -3,5 +3,10 @@ kind: Component
 metadata:
   name: component-sample
 spec:
-  # Add fields here
-  foo: bar
+  componentName: backend
+  application: myApp
+  replicas: 2
+  targetPort: 9999
+  source:
+    git:
+      url: https://github.com/devfile-samples/devfile-sample-java-springboot-basic
