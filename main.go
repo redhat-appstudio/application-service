@@ -80,7 +80,7 @@ func main() {
 	if err = (&controllers.HASApplicationReconciler{
 		Client: mgr.GetClient(),
 		Scheme: mgr.GetScheme(),
-		Log:    ctrl.Log.WithName("controllers").WithName("application-service"),
+		Log:    ctrl.Log.WithName("controllers").WithName("HASApplication"),
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "HASApplication")
 		os.Exit(1)
