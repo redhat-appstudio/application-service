@@ -40,6 +40,10 @@ func ParseDevfileModel(devfileModel string) (data.DevfileData, error) {
 func ConvertHASApplicationToDevfile(hasApp appstudiov1alpha1.HASApplication, gitOpsRepo string, appModelRepo string) (data.DevfileData, error) {
 	devfileVersion := string(data.APISchemaVersion220)
 	devfileData, err := data.NewDevfileData(devfileVersion)
+	if err != nil {
+		return nil, err
+	}
+
 	devfileData.SetSchemaVersion(devfileVersion)
 
 	devfileAttributes := attributes.Attributes{}.PutString("gitOpsRepository.url", gitOpsRepo).PutString("appModelRepository.url", appModelRepo)
@@ -64,5 +68,5 @@ func ConvertHASApplicationToDevfile(hasApp appstudiov1alpha1.HASApplication, git
 		Attributes:  devfileAttributes,
 	})
 
-	return devfileData, err
+	return devfileData, nil
 }

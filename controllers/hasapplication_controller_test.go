@@ -233,7 +233,8 @@ var _ = Describe("HASApplication controller", func() {
 			// Get the updated resource
 			Eventually(func() bool {
 				k8sClient.Get(context.Background(), hasAppLookupKey, fetchedHasApp)
-				return len(fetchedHasApp.Status.Conditions) > 1
+				// Return true if the most recent condition on the CR is updated
+				return fetchedHasApp.Status.Conditions[len(fetchedHasApp.Status.Conditions)-1].Type == "Updated"
 			}, timeout, interval).Should(BeTrue())
 
 			devfile, err := devfile.ParseDevfileModel(fetchedHasApp.Status.Devfile)

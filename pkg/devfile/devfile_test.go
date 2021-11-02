@@ -31,8 +31,6 @@ func TestParseDevfileModel(t *testing.T) {
 	tests := []struct {
 		name          string
 		devfileString string
-		appModelRepo  string
-		gitOpsRepo    string
 		wantDevfile   *v2.DevfileV2
 	}{
 		{
@@ -44,8 +42,6 @@ metadata:
     gitOpsRepository.url: https://github.com/testorg/petclinic-gitops
   name: petclinic
 schemaVersion: 2.2.0`,
-			appModelRepo: "https://github.com/testorg/petclinic-app",
-			gitOpsRepo:   "https://github.com/testorg/petclinic-gitops",
 			wantDevfile: &v2.DevfileV2{
 				Devfile: v1alpha2.Devfile{
 					DevfileHeader: devfile.DevfileHeader{

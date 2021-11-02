@@ -28,22 +28,17 @@ type HASApplicationSpec struct {
 	// INSERT ADDITIONAL SPEC FIELDS - desired state of cluster
 	// Important: Run "make" to regenerate code after modifying this file
 
-	// Foo is an example field of HASApplication. Edit hasapplication_types.go to remove/update
-	//Foo string `json:"foo,omitempty"`
-
 	// DisplayName refers to the name that an application will be deployed with in App Studio.
 	DisplayName string `json:"displayName,omitempty"`
 
 	// AppModelRepository refers to the git repository that will store the application model (a devfile)
 	// Can be the same as GitOps repository.
 	// A repository will be generated if this field is left blank.
-	// +optional
 	AppModelRepository HASApplicationGitRepository `json:"appModelRepository,omitempty"`
 
 	// GitOpsRepository refers to the git repository that will store the gitops resources.
 	// Can be the same as App Model Repository.
 	// A repository will be generated if this field is left blank.
-	// +optional
 	GitOpsRepository HASApplicationGitRepository `json:"gitOpsRepository,omitempty"`
 
 	// Description refers to a brief description of the application.
@@ -57,11 +52,9 @@ type HASApplicationGitRepository struct {
 	URL string `json:"url"`
 
 	// Branch corresponds to the branch in the repository that should be used
-	// +optional
 	Branch string `json:"branch,omitempty"`
 
 	// Context corresponds to the context within the repository that should be used
-	// +optional
 	Context string `json:"context,omitempty"`
 }
 
