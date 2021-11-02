@@ -24,7 +24,7 @@ jobs:
   build-imgs:
     runs-on: ubuntu-20.04
     steps:
-      - name: Checkout devworkspace-operator source code
+      - name: Checkout application-service source code
         uses: actions/checkout@v2
         with:
           fetch-depth: 0
