@@ -142,7 +142,7 @@ func (r *HASApplicationReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 			}
 
 			hasApplication.Status.Devfile = string(yamlData)
-			r.SetUpdateConditionAndUpdateCR(ctx, &hasApplication, err)
+			r.SetUpdateConditionAndUpdateCR(ctx, &hasApplication, nil)
 		}
 	}
 
