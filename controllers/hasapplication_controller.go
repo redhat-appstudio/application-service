@@ -18,6 +18,7 @@ package controllers
 
 import (
 	"context"
+	"fmt"
 
 	gofakeit "github.com/brianvoe/gofakeit/v6"
 	"github.com/go-logr/logr"
@@ -55,6 +56,9 @@ type HASApplicationReconciler struct {
 // For more details, check Reconcile and its Result here:
 // - https://pkg.go.dev/sigs.k8s.io/controller-runtime@v0.9.2/pkg/reconcile
 func (r *HASApplicationReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
+	log := r.Log.WithValues("HASApplication", req.NamespacedName)
+	log.Info(fmt.Sprintf("Starting reconcile loop for %v", req.NamespacedName))
+
 	// Get the HASApplication resource
 	var hasApplication appstudiov1alpha1.HASApplication
 	err := r.Get(ctx, req.NamespacedName, &hasApplication)
@@ -77,25 +81,26 @@ func (r *HASApplicationReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 		appModelRepo := hasApplication.Spec.AppModelRepository.URL
 		if gitOpsRepo == "" && appModelRepo == "" {
 			// If both repositories are blank, just generate a single shared repository
-			repoName := util.GenerateNewRepository(hasApplication.Spec.DisplayName)
+			repoName := util.GenerateNewRepositoryName(hasApplication.Spec.DisplayName, hasApplication.Namespace)
 			gitOpsRepo = repoName
 			appModelRepo = repoName
 		} else if gitOpsRepo == "" {
-			repoName := util.GenerateNewRepository(hasApplication.Spec.DisplayName)
+			repoName := util.GenerateNewRepositoryName(hasApplication.Spec.DisplayName, hasApplication.Namespace)
 			gitOpsRepo = repoName
 		} else if appModelRepo == "" {
-			repoName := util.GenerateNewRepository(hasApplication.Spec.DisplayName)
-			appModelRepo = repoName
+			appModelRepo = gitOpsRepo
 		}
 
 		// Convert the devfile string to a devfile object
 		devfileData, err := devfile.ConvertHASApplicationToDevfile(hasApplication, gitOpsRepo, appModelRepo)
 		if err != nil {
+			log.Error(err, fmt.Sprintf("Unable to convert HASApplication CR to devfile, exiting reconcile loop %v", req.NamespacedName))
 			r.SetCreateConditionAndUpdateCR(ctx, &hasApplication, err)
 			return reconcile.Result{}, err
 		}
 		yamlData, err := yaml.Marshal(devfileData)
 		if err != nil {
+			log.Error(err, fmt.Sprintf("Unable to marshall HASApplication devfile, exiting reconcile loop %v", req.NamespacedName))
 			r.SetCreateConditionAndUpdateCR(ctx, &hasApplication, err)
 			return reconcile.Result{}, err
 		}
@@ -108,6 +113,7 @@ func (r *HASApplicationReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 		// Get the devfile of the hasApp CR
 		devfileData, err := devfile.ParseDevfileModel(hasApplication.Status.Devfile)
 		if err != nil {
+			log.Error(err, fmt.Sprintf("Unable to parse devfile model, exiting reconcile loop %v", req.NamespacedName))
 			return ctrl.Result{}, err
 		}
 
@@ -130,6 +136,7 @@ func (r *HASApplicationReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 			// Update the hasApp CR with the new devfile
 			yamlData, err := yaml.Marshal(devfileData)
 			if err != nil {
+				log.Error(err, fmt.Sprintf("Unable to marshall HASApplication devfile, exiting reconcile loop %v", req.NamespacedName))
 				r.SetUpdateConditionAndUpdateCR(ctx, &hasApplication, err)
 				return reconcile.Result{}, err
 			}
@@ -139,6 +146,7 @@ func (r *HASApplicationReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 		}
 	}
 
+	log.Info(fmt.Sprintf("Finished reconcile loop for %v", req.NamespacedName))
 	return ctrl.Result{}, err
 }
 

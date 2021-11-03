@@ -59,23 +59,25 @@ func TestSanitizeDisplayName(t *testing.T) {
 	}
 }
 
-func TestGenerateNewRepository(t *testing.T) {
+func TestGenerateNewRepositoryName(t *testing.T) {
 	tests := []struct {
 		name        string
 		displayName string
+		namespace   string
 		want        string
 	}{
 		{
 			name:        "Simple display name, no spaces",
 			displayName: "PetClinic",
-			want:        "petclinic",
+			namespace:   "default",
+			want:        "petclinic-default",
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			sanitizedName := SanitizeDisplayName(tt.displayName)
-			generatedRepo := GenerateNewRepository(tt.displayName)
+			generatedRepo := GenerateNewRepositoryName(tt.displayName, tt.namespace)
 
 			if !strings.Contains(generatedRepo, sanitizedName) {
 				t.Errorf("TestSanitizeDisplayName() error: expected %v got %v", tt.want, sanitizedName)

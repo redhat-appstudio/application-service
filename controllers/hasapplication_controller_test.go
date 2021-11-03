@@ -91,7 +91,7 @@ var _ = Describe("HASApplication controller", func() {
 	})
 
 	Context("Create HASApplication with no appmodel repository set", func() {
-		It("Should create successfully with generated appmodel repository", func() {
+		It("Should create successfully with appmodel repository set to gitops repository", func() {
 			ctx := context.Background()
 
 			hasApp := &appstudiov1alpha1.HASApplication{
@@ -130,9 +130,9 @@ var _ = Describe("HASApplication controller", func() {
 			Expect(err).Should(Not(HaveOccurred()))
 
 			// gitOpsRepo and appModelRepo should both be set
-			Expect(string(devfile.GetMetadata().Attributes["gitOpsRepository.url"].Raw)).Should((ContainSubstring(hasApp.Spec.GitOpsRepository.URL)))
+			Expect(string(devfile.GetMetadata().Attributes["gitOpsRepository.url"].Raw)).Should(ContainSubstring(hasApp.Spec.GitOpsRepository.URL))
 			Expect(string(devfile.GetMetadata().Attributes["appModelRepository.url"].Raw)).Should(Not(Equal("")))
-			Expect(string(devfile.GetMetadata().Attributes["appModelRepository.url"].Raw)).Should(Not(ContainSubstring(hasApp.Spec.GitOpsRepository.URL)))
+			Expect(string(devfile.GetMetadata().Attributes["appModelRepository.url"].Raw)).Should(ContainSubstring(hasApp.Spec.GitOpsRepository.URL))
 
 			// Delete the specified resource
 			deleteHASAppCR(hasAppLookupKey)

@@ -31,10 +31,10 @@ func SanitizeDisplayName(displayName string) string {
 	return sanitizedName
 }
 
-func GenerateNewRepository(displayName string) string {
+func GenerateNewRepositoryName(displayName string, namespace string) string {
 	sanitizedName := SanitizeDisplayName(displayName)
 
-	repoName := sanitizedName + "-" + gofakeit.Verb() + "-" + gofakeit.Noun()
+	repoName := sanitizedName + "-" + namespace + "-" + gofakeit.Verb() + "-" + gofakeit.Noun()
 	repository := AppStudioDataOrg + repoName
 	return repository
 }

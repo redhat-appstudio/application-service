@@ -38,7 +38,7 @@ func ParseDevfileModel(devfileModel string) (data.DevfileData, error) {
 // ConvertHASApplicationToDevfile takes in a given HASApplication CR and converts it to
 // a devfile object
 func ConvertHASApplicationToDevfile(hasApp appstudiov1alpha1.HASApplication, gitOpsRepo string, appModelRepo string) (data.DevfileData, error) {
-	devfileVersion := string(data.APISchemaVersion220)
+	devfileVersion := string(data.APISchemaVersion210)
 	devfileData, err := data.NewDevfileData(devfileVersion)
 	if err != nil {
 		return nil, err
