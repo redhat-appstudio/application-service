@@ -91,7 +91,7 @@ func TestConvertHASApplicationToDevfile(t *testing.T) {
 			wantDevfile: &v2.DevfileV2{
 				Devfile: v1alpha2.Devfile{
 					DevfileHeader: devfile.DevfileHeader{
-						SchemaVersion: string(data.APISchemaVersion220),
+						SchemaVersion: string(data.APISchemaVersion210),
 						Metadata: devfile.DevfileMetadata{
 							Name:       "Petclinic",
 							Attributes: attributes.Attributes{}.PutString("gitOpsRepository.url", "https://github.com/testorg/petclinic-gitops").PutString("appModelRepository.url", "https://github.com/testorg/petclinic-app"),
@@ -120,7 +120,7 @@ func TestConvertHASApplicationToDevfile(t *testing.T) {
 			wantDevfile: &v2.DevfileV2{
 				Devfile: v1alpha2.Devfile{
 					DevfileHeader: devfile.DevfileHeader{
-						SchemaVersion: string(data.APISchemaVersion220),
+						SchemaVersion: string(data.APISchemaVersion210),
 						Metadata: devfile.DevfileMetadata{
 							Name:       "Petclinic",
 							Attributes: additionalAttributes.PutString("gitOpsRepository.url", "https://github.com/testorg/petclinic-gitops").PutString("appModelRepository.url", "https://github.com/testorg/petclinic-app"),
