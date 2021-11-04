@@ -20,20 +20,18 @@ on:
     branches: [ main ]
 
 jobs:
-
-  build-imgs:
+  build-image:
     runs-on: ubuntu-20.04
     steps:
-      - name: Checkout application-service source code
-        uses: actions/checkout@v2
-        with:
-          fetch-depth: 0
-      - name: Docker Build & Push
-        uses: docker/build-push-action@v2.7.0
-        with:
-          username: ${{ secrets.QUAY_USERNAME }}
-          password: ${{ secrets.QUAY_PASSWORD }}
-          registry: quay.io
-          repository: redhat-appstudio/application-service
-          dockerfile: ./Dockerfile
-          tag_with_sha: true
+    - name: Checkout application-service source code
+      uses: actions/checkout@v2
+    - name: Docker Build & Push - application-service Operator Image
+      uses: docker/build-push-action@v1.1.0
+      with:
+        username: ${{ secrets.QUAY_USERNAME }}
+        password: ${{ secrets.QUAY_PASSWORD }}
+        registry: quay.io
+        repository: redhat-appstudio/application-service
+        dockerfile: Dockerfile
+        tags: next
+        tag_with_sha: true
