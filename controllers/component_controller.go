@@ -28,6 +28,7 @@ import (
 
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/types"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/log"
@@ -40,10 +41,11 @@ import (
 	"github.com/devfile/library/pkg/devfile/parser/data/v2/common"
 	"github.com/go-git/go-git/v5"
 	appstudiov1alpha1 "github.com/redhat-appstudio/application-service/api/v1alpha1"
+	devfile "github.com/redhat-appstudio/application-service/pkg/devfile"
 )
 
 const (
-	devfile         = "devfile.yaml"
+	devfileName     = "devfile.yaml"
 	clonePathPrefix = "/tmp/appstudio/has"
 )
 
@@ -94,9 +96,9 @@ func (r *ComponentReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 		// append context to devfile if present
 		// context is usually set when the git repo is a multi-component repo (example - contains both frontend & backend)
 		if context == "" {
-			devfilePath = devfile
+			devfilePath = devfileName
 		} else {
-			devfilePath = path.Join(context, devfile)
+			devfilePath = path.Join(context, devfileName)
 		}
 
 		logger.Info("calculated devfile path", "devfilePath", devfilePath)
@@ -258,18 +260,78 @@ func (r *ComponentReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 
 			logger.Info("outside before getting NEW CONTENT")
 
-			yamlData, err := yaml.Marshal(devfileObj.Data)
+			// Get the HASApplication CR
+			hasApplication := appstudiov1alpha1.HASApplication{}
+			err = r.Get(ctx, types.NamespacedName{Name: hasComponent.Spec.Application, Namespace: hasComponent.Namespace}, &hasApplication)
 			if err != nil {
-				return ctrl.Result{}, err
+				logger.Info("Failed to get Application")
+				return ctrl.Result{}, nil
+			}
+			if hasApplication.Status.Devfile != "" {
+				// Get the devfile of the hasApp CR
+				hasAppDevfileData, err := devfile.ParseDevfileModel(hasApplication.Status.Devfile)
+				if err != nil {
+					logger.Info(fmt.Sprintf("Unable to parse devfile model, exiting reconcile loop %v", req.NamespacedName))
+					return ctrl.Result{}, err
+				}
+
+				newProject := devfileAPIV1.Project{
+					Name: hasComponent.Spec.ComponentName,
+					ProjectSource: devfileAPIV1.ProjectSource{
+						Git: &devfileAPIV1.GitProjectSource{
+							GitLikeProjectSource: devfileAPIV1.GitLikeProjectSource{
+								Remotes: map[string]string{
+									"origin": hasComponent.Spec.Source.GitSource.URL,
+								},
+							},
+						},
+					},
+				}
+				projects, err := hasAppDevfileData.GetProjects(common.DevfileOptions{})
+				if err != nil {
+					logger.Info(fmt.Sprintf("Unable to get projects %v", req.NamespacedName))
+					return ctrl.Result{}, err
+				}
+				for _, project := range projects {
+					if project.Name == newProject.Name {
+						return ctrl.Result{}, fmt.Errorf("HASApplication already has a project with name %s", newProject.Name)
+					}
+				}
+				err = hasAppDevfileData.AddProjects([]devfileAPIV1.Project{newProject})
+				if err != nil {
+					logger.Info(fmt.Sprintf("Unable to add projects %v", req.NamespacedName))
+					return ctrl.Result{}, err
+				}
+
+				yamlHASCompData, err := yaml.Marshal(devfileObj.Data)
+				if err != nil {
+					return ctrl.Result{}, err
+				}
+
+				logger.Info("successfully UPDATED the devfile", "string representation", string(yamlHASCompData[:]))
+
+				hasComponent.Status.Devfile = string(yamlHASCompData[:])
+				err = r.Status().Update(ctx, &hasComponent)
+				if err != nil {
+					return ctrl.Result{Requeue: true}, err
+				}
+
+				// Update the HASApp CR with the new devfile
+				yamlHASAppData, err := yaml.Marshal(hasAppDevfileData)
+				if err != nil {
+					logger.Info(fmt.Sprintf("Unable to marshall HASApplication devfile, exiting reconcile loop %v", req.NamespacedName))
+					return ctrl.Result{}, err
+				}
+				hasApplication.Status.Devfile = string(yamlHASAppData)
+				err = r.Status().Update(ctx, &hasApplication)
+				if err != nil {
+					return ctrl.Result{Requeue: true}, err
+				}
+
+			} else {
+				return ctrl.Result{}, fmt.Errorf("HASApplication devfile model is empty. Before creating a HASComponent, an instance of HASApplication should be created")
 			}
 
-			logger.Info("successfully UPDATED the devfile", "string representation", string(yamlData[:]))
-
-			hasComponent.Status.Devfile = string(yamlData[:])
-			err = r.Status().Update(ctx, &hasComponent)
-			if err != nil {
-				return ctrl.Result{Requeue: true}, err
-			}
 		} else if hasComponent.Spec.Source.ImageSource.ContainerImage != "" {
 			return ctrl.Result{}, fmt.Errorf("container image is not supported at the moment, please use github links for adding a component to an application")
 		}

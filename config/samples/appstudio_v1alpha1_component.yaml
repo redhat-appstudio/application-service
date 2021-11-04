@@ -4,7 +4,7 @@ metadata:
   name: component-sample
 spec:
   componentName: backend
-  application: myApp
+  application: hasapplication-sample
   replicas: 2
   targetPort: 9999
   env:
