@@ -192,7 +192,7 @@ func (r *ComponentReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 			}
 			logger.Info("components", "components", components)
 
-			for _, component := range components {
+			for i, component := range components {
 				updateRequired := false
 				if hasComponent.Spec.Route != "" {
 					logger.Info("hasComponent.Spec.Route", "hasComponent.Spec.Route", hasComponent.Spec.Route)
@@ -214,7 +214,7 @@ func (r *ComponentReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 					component.Attributes = component.Attributes.PutInteger("appstudio/has.replicas", hasComponent.Spec.Replicas)
 					updateRequired = true
 				}
-				if hasComponent.Spec.TargetPort > 0 {
+				if i == 0 && hasComponent.Spec.TargetPort > 0 {
 					logger.Info("hasComponent.Spec.TargetPort", "hasComponent.Spec.TargetPort", hasComponent.Spec.TargetPort)
 					for i, endpoint := range component.Container.Endpoints {
 						logger.Info("foudn endpoint", "endpoing", endpoint.Name)
@@ -222,6 +222,28 @@ func (r *ComponentReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 						updateRequired = true
 						component.Container.Endpoints[i] = endpoint
 					}
+				}
+				for _, env := range hasComponent.Spec.Env {
+					if env.ValueFrom != nil {
+						return ctrl.Result{}, fmt.Errorf("env.ValueFrom is not supported at the moment, use env.value")
+					}
+
+					name := env.Name
+					value := env.Value
+					isPresent := false
+
+					for i, devfileEnv := range component.Container.Env {
+						if devfileEnv.Name == name {
+							isPresent = true
+							devfileEnv.Value = value
+							component.Container.Env[i] = devfileEnv
+						}
+					}
+
+					if !isPresent {
+						component.Container.Env = append(component.Container.Env, devfileAPIV1.EnvVar{Name: name, Value: value})
+					}
+					updateRequired = true
 				}
 
 				if updateRequired {
@@ -248,7 +270,12 @@ func (r *ComponentReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 			if err != nil {
 				return ctrl.Result{Requeue: true}, err
 			}
+		} else if hasComponent.Spec.Source.ImageSource.ContainerImage != "" {
+			return ctrl.Result{}, fmt.Errorf("container image is not supported at the moment, please use github links for adding a component to an application")
 		}
+	} else {
+		// If the model already exists, see if fields have been updated
+		return ctrl.Result{}, fmt.Errorf("not yet implemented")
 	}
 
 	return ctrl.Result{}, nil
