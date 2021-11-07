@@ -1,0 +1,9 @@
+apiVersion: appstudio.redhat.com/v1alpha1
+kind: HASApplication
+metadata:
+  annotations:
+  name: hasapplication-sample
+  namespace: default
+spec:
+  description: application definition for petclinic-app
+  displayName: petclinic
