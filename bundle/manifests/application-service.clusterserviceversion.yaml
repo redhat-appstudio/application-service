@@ -1,0 +1,327 @@
+apiVersion: operators.coreos.com/v1alpha1
+kind: ClusterServiceVersion
+metadata:
+  annotations:
+    alm-examples: |-
+      [
+        {
+          "apiVersion": "appstudio.redhat.com/v1alpha1",
+          "kind": "HASApplication",
+          "metadata": {
+            "name": "hasapplication-sample"
+          },
+          "spec": {
+            "description": "application definition for petclinic-app",
+            "displayName": "petclinic"
+          }
+        },
+        {
+          "apiVersion": "appstudio.redhat.com/v1alpha1",
+          "kind": "HASComponent",
+          "metadata": {
+            "name": "hascomponent-sample"
+          },
+          "spec": {
+            "foo": "bar"
+          }
+        },
+        {
+          "apiVersion": "appstudio.redhat.com/v1alpha1",
+          "kind": "HASPush",
+          "metadata": {
+            "name": "haspush-sample"
+          },
+          "spec": {
+            "foo": "bar"
+          }
+        },
+        {
+          "apiVersion": "appstudio.redhat.com/v1alpha1",
+          "kind": "HASServiceDetectionQuery",
+          "metadata": {
+            "name": "hasservicedetectionquery-sample"
+          },
+          "spec": {
+            "foo": "bar"
+          }
+        }
+      ]
+    capabilities: Basic Install
+    operators.operatorframework.io/builder: operator-sdk-v1.13.0+git
+    operators.operatorframework.io/project_layout: go.kubebuilder.io/v3
+  name: application-service.v0.0.1
+  namespace: placeholder
+spec:
+  apiservicedefinitions: {}
+  customresourcedefinitions:
+    owned:
+    - description: HASApplication is the Schema for the hasapplications API
+      displayName: HASApplication
+      kind: HASApplication
+      name: hasapplications.appstudio.redhat.com
+      version: v1alpha1
+    - description: HASComponent is the Schema for the hascomponents API
+      displayName: HASComponent
+      kind: HASComponent
+      name: hascomponents.appstudio.redhat.com
+      version: v1alpha1
+    - description: HASPush is the Schema for the haspushes API
+      displayName: HASPush
+      kind: HASPush
+      name: haspushes.appstudio.redhat.com
+      version: v1alpha1
+    - description: HASServiceDetectionQuery is the Schema for the hasservicedetectionqueries
+        API
+      displayName: HASService Detection Query
+      kind: HASServiceDetectionQuery
+      name: hasservicedetectionqueries.appstudio.redhat.com
+      version: v1alpha1
+  description: Hybrid Application Service operator
+  displayName: Hybrid Application Service
+  icon:
+  - base64data: PHN2ZyBpZD0iTGF5ZXJfMSIgZGF0YS1uYW1lPSJMYXllciAxIiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxOTIgMTQ1Ij48ZGVmcz48c3R5bGU+LmNscy0xe2ZpbGw6I2UwMDt9PC9zdHlsZT48L2RlZnM+PHRpdGxlPlJlZEhhdC1Mb2dvLUhhdC1Db2xvcjwvdGl0bGU+PHBhdGggZD0iTTE1Ny43Nyw2Mi42MWExNCwxNCwwLDAsMSwuMzEsMy40MmMwLDE0Ljg4LTE4LjEsMTcuNDYtMzAuNjEsMTcuNDZDNzguODMsODMuNDksNDIuNTMsNTMuMjYsNDIuNTMsNDRhNi40Myw2LjQzLDAsMCwxLC4yMi0xLjk0bC0zLjY2LDkuMDZhMTguNDUsMTguNDUsMCwwLDAtMS41MSw3LjMzYzAsMTguMTEsNDEsNDUuNDgsODcuNzQsNDUuNDgsMjAuNjksMCwzNi40My03Ljc2LDM2LjQzLTIxLjc3LDAtMS4wOCwwLTEuOTQtMS43My0xMC4xM1oiLz48cGF0aCBjbGFzcz0iY2xzLTEiIGQ9Ik0xMjcuNDcsODMuNDljMTIuNTEsMCwzMC42MS0yLjU4LDMwLjYxLTE3LjQ2YTE0LDE0LDAsMCwwLS4zMS0zLjQybC03LjQ1LTMyLjM2Yy0xLjcyLTcuMTItMy4yMy0xMC4zNS0xNS43My0xNi42QzEyNC44OSw4LjY5LDEwMy43Ni41LDk3LjUxLjUsOTEuNjkuNSw5MCw4LDgzLjA2LDhjLTYuNjgsMC0xMS42NC01LjYtMTcuODktNS42LTYsMC05LjkxLDQuMDktMTIuOTMsMTIuNSwwLDAtOC40MSwyMy43Mi05LjQ5LDI3LjE2QTYuNDMsNi40MywwLDAsMCw0Mi41Myw0NGMwLDkuMjIsMzYuMywzOS40NSw4NC45NCwzOS40NU0xNjAsNzIuMDdjMS43Myw4LjE5LDEuNzMsOS4wNSwxLjczLDEwLjEzLDAsMTQtMTUuNzQsMjEuNzctMzYuNDMsMjEuNzdDNzguNTQsMTA0LDM3LjU4LDc2LjYsMzcuNTgsNTguNDlhMTguNDUsMTguNDUsMCwwLDEsMS41MS03LjMzQzIyLjI3LDUyLC41LDU1LC41LDc0LjIyYzAsMzEuNDgsNzQuNTksNzAuMjgsMTMzLjY1LDcwLjI4LDQ1LjI4LDAsNTYuNy0yMC40OCw1Ni43LTM2LjY1LDAtMTIuNzItMTEtMjcuMTYtMzAuODMtMzUuNzgiLz48L3N2Zz4=
+    mediatype: image/svg+xml
+  install:
+    spec:
+      clusterPermissions:
+      - rules:
+        - apiGroups:
+          - appstudio.redhat.com
+          resources:
+          - hasapplications
+          verbs:
+          - create
+          - delete
+          - get
+          - list
+          - patch
+          - update
+          - watch
+        - apiGroups:
+          - appstudio.redhat.com
+          resources:
+          - hasapplications/finalizers
+          verbs:
+          - update
+        - apiGroups:
+          - appstudio.redhat.com
+          resources:
+          - hasapplications/status
+          verbs:
+          - get
+          - patch
+          - update
+        - apiGroups:
+          - appstudio.redhat.com
+          resources:
+          - hascomponents
+          verbs:
+          - create
+          - delete
+          - get
+          - list
+          - patch
+          - update
+          - watch
+        - apiGroups:
+          - appstudio.redhat.com
+          resources:
+          - hascomponents/finalizers
+          verbs:
+          - update
+        - apiGroups:
+          - appstudio.redhat.com
+          resources:
+          - hascomponents/status
+          verbs:
+          - get
+          - patch
+          - update
+        - apiGroups:
+          - appstudio.redhat.com
+          resources:
+          - haspushes
+          verbs:
+          - create
+          - delete
+          - get
+          - list
+          - patch
+          - update
+          - watch
+        - apiGroups:
+          - appstudio.redhat.com
+          resources:
+          - haspushes/finalizers
+          verbs:
+          - update
+        - apiGroups:
+          - appstudio.redhat.com
+          resources:
+          - haspushes/status
+          verbs:
+          - get
+          - patch
+          - update
+        - apiGroups:
+          - appstudio.redhat.com
+          resources:
+          - hasservicedetectionqueries
+          verbs:
+          - create
+          - delete
+          - get
+          - list
+          - patch
+          - update
+          - watch
+        - apiGroups:
+          - appstudio.redhat.com
+          resources:
+          - hasservicedetectionqueries/finalizers
+          verbs:
+          - update
+        - apiGroups:
+          - appstudio.redhat.com
+          resources:
+          - hasservicedetectionqueries/status
+          verbs:
+          - get
+          - patch
+          - update
+        - apiGroups:
+          - authentication.k8s.io
+          resources:
+          - tokenreviews
+          verbs:
+          - create
+        - apiGroups:
+          - authorization.k8s.io
+          resources:
+          - subjectaccessreviews
+          verbs:
+          - create
+        serviceAccountName: application-service-controller-manager
+      deployments:
+      - name: application-service-controller-manager
+        spec:
+          replicas: 1
+          selector:
+            matchLabels:
+              control-plane: controller-manager
+          strategy: {}
+          template:
+            metadata:
+              labels:
+                control-plane: controller-manager
+            spec:
+              containers:
+              - args:
+                - --secure-listen-address=0.0.0.0:8443
+                - --upstream=http://127.0.0.1:8080/
+                - --logtostderr=true
+                - --v=10
+                image: gcr.io/kubebuilder/kube-rbac-proxy:v0.8.0
+                name: kube-rbac-proxy
+                ports:
+                - containerPort: 8443
+                  name: https
+                  protocol: TCP
+                resources: {}
+              - args:
+                - --health-probe-bind-address=:8081
+                - --metrics-bind-address=127.0.0.1:8080
+                - --leader-elect
+                command:
+                - /manager
+                image: quay.io/redhat-appstudio/application-service:next
+                livenessProbe:
+                  httpGet:
+                    path: /healthz
+                    port: 8081
+                  initialDelaySeconds: 15
+                  periodSeconds: 20
+                name: manager
+                readinessProbe:
+                  httpGet:
+                    path: /readyz
+                    port: 8081
+                  initialDelaySeconds: 5
+                  periodSeconds: 10
+                resources:
+                  limits:
+                    cpu: 200m
+                    memory: 100Mi
+                  requests:
+                    cpu: 100m
+                    memory: 20Mi
+                securityContext:
+                  allowPrivilegeEscalation: false
+              securityContext:
+                runAsNonRoot: true
+              serviceAccountName: application-service-controller-manager
+              terminationGracePeriodSeconds: 10
+      permissions:
+      - rules:
+        - apiGroups:
+          - ""
+          resources:
+          - configmaps
+          verbs:
+          - get
+          - list
+          - watch
+          - create
+          - update
+          - patch
+          - delete
+        - apiGroups:
+          - coordination.k8s.io
+          resources:
+          - leases
+          verbs:
+          - get
+          - list
+          - watch
+          - create
+          - update
+          - patch
+          - delete
+        - apiGroups:
+          - ""
+          resources:
+          - events
+          verbs:
+          - create
+          - patch
+        serviceAccountName: application-service-controller-manager
+    strategy: deployment
+  installModes:
+  - supported: false
+    type: OwnNamespace
+  - supported: false
+    type: SingleNamespace
+  - supported: false
+    type: MultiNamespace
+  - supported: true
+    type: AllNamespaces
+  keywords:
+  - has
+  - appstudio
+  - redhat
+  - kubernetes
+  - application-service
+  links:
+  - name: Source Repository
+    url: https://github.com/redhat-appstudio/application-service
+  maintainers:
+  - email: jcollier@redhat.com
+    name: John Collier
+  - email: mfaisal@redhat.com
+    name: Maysun Faisal
+  - email: eyuen@redhat.com
+    name: Elson Yuen
+  maturity: alpha
+  provider:
+    name: Red Hat
+  version: 0.0.1

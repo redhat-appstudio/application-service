@@ -35,3 +35,20 @@ jobs:
         dockerfile: Dockerfile
         tags: next
         tag_with_sha: true
+
+  build-bundle-images:
+    runs-on: ubuntu-20.04
+    steps:
+    - name: Checkout application-service source code
+      uses: actions/checkout@v2
+    - name: Login to quay.io
+      uses: docker/login-action@v1
+      with:
+        username: ${{ secrets.QUAY_USERNAME }}
+        password: ${{ secrets.QUAY_PASSWORD }}
+        registry: quay.io
+    - name: Docker Build & Push - application-service Operator Bundle Image
+      run: make bundle-build bundle-push
+    - name: Docker Build & Push - application-service Operator Catalog Image
+      run: make catalog-build catalog-push
+
