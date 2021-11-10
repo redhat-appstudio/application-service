@@ -3,5 +3,5 @@ resources:
 - appstudio_v1alpha1_hasapplication.yaml
 - appstudio_v1alpha1_hascomponent.yaml
 - appstudio_v1alpha1_haspush.yaml
-- appstudio_v1alpha1_hasservicedetectionquery.yaml
+- appstudio_v1alpha1_hascomponentdetectionquery.yaml
 #+kubebuilder:scaffold:manifestskustomizesamples

@@ -23,17 +23,17 @@ import (
 // EDIT THIS FILE!  THIS IS SCAFFOLDING FOR YOU TO OWN!
 // NOTE: json tags are required.  Any new fields you add must have json tags for the fields to be serialized.
 
-// HASServiceDetectionQuerySpec defines the desired state of HASServiceDetectionQuery
-type HASServiceDetectionQuerySpec struct {
+// HASComponentDetectionQuerySpec defines the desired state of HASComponentDetectionQuery
+type HASComponentDetectionQuerySpec struct {
 	// INSERT ADDITIONAL SPEC FIELDS - desired state of cluster
 	// Important: Run "make" to regenerate code after modifying this file
 
-	// Foo is an example field of HASServiceDetectionQuery. Edit hasservicedetectionquery_types.go to remove/update
+	// Foo is an example field of HASComponentDetectionQuery. Edit hascomponentdetectionquery_types.go to remove/update
 	Foo string `json:"foo,omitempty"`
 }
 
-// HASServiceDetectionQueryStatus defines the observed state of HASServiceDetectionQuery
-type HASServiceDetectionQueryStatus struct {
+// HASComponentDetectionQueryStatus defines the observed state of HASComponentDetectionQuery
+type HASComponentDetectionQueryStatus struct {
 	// INSERT ADDITIONAL STATUS FIELD - define observed state of cluster
 	// Important: Run "make" to regenerate code after modifying this file
 }
@@ -41,24 +41,24 @@ type HASServiceDetectionQueryStatus struct {
 //+kubebuilder:object:root=true
 //+kubebuilder:subresource:status
 
-// HASServiceDetectionQuery is the Schema for the hasservicedetectionqueries API
-type HASServiceDetectionQuery struct {
+// HASComponentDetectionQuery is the Schema for the hascomponentdetectionqueries API
+type HASComponentDetectionQuery struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
 
-	Spec   HASServiceDetectionQuerySpec   `json:"spec,omitempty"`
-	Status HASServiceDetectionQueryStatus `json:"status,omitempty"`
+	Spec   HASComponentDetectionQuerySpec   `json:"spec,omitempty"`
+	Status HASComponentDetectionQueryStatus `json:"status,omitempty"`
 }
 
 //+kubebuilder:object:root=true
 
-// HASServiceDetectionQueryList contains a list of HASServiceDetectionQuery
-type HASServiceDetectionQueryList struct {
+// HASComponentDetectionQueryList contains a list of HASComponentDetectionQuery
+type HASComponentDetectionQueryList struct {
 	metav1.TypeMeta `json:",inline"`
 	metav1.ListMeta `json:"metadata,omitempty"`
-	Items           []HASServiceDetectionQuery `json:"items"`
+	Items           []HASComponentDetectionQuery `json:"items"`
 }
 
 func init() {
-	SchemeBuilder.Register(&HASServiceDetectionQuery{}, &HASServiceDetectionQueryList{})
+	SchemeBuilder.Register(&HASComponentDetectionQuery{}, &HASComponentDetectionQueryList{})
 }

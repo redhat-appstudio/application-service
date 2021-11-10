@@ -99,11 +99,11 @@ func main() {
 		setupLog.Error(err, "unable to create controller", "controller", "HASPush")
 		os.Exit(1)
 	}
-	if err = (&controllers.HASServiceDetectionQueryReconciler{
+	if err = (&controllers.HASComponentDetectionQueryReconciler{
 		Client: mgr.GetClient(),
 		Scheme: mgr.GetScheme(),
 	}).SetupWithManager(mgr); err != nil {
-		setupLog.Error(err, "unable to create controller", "controller", "HASServiceDetectionQuery")
+		setupLog.Error(err, "unable to create controller", "controller", "HASComponentDetectionQuery")
 		os.Exit(1)
 	}
 	//+kubebuilder:scaffold:builder
