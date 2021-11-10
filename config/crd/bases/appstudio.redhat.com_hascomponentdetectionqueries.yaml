@@ -35,8 +35,8 @@ spec:
           metadata:
             type: object
           spec:
-            description: HASComponentDetectionQuerySpec defines the desired state of
-              HASComponentDetectionQuery
+            description: HASComponentDetectionQuerySpec defines the desired state
+              of HASComponentDetectionQuery
             properties:
               foo:
                 description: Foo is an example field of HASComponentDetectionQuery.

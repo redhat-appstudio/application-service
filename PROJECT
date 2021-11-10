@@ -40,7 +40,7 @@ resources:
   controller: true
   domain: redhat.com
   group: appstudio
-  kind: HASServiceDetectionQuery
+  kind: HASComponentDetectionQuery
   path: github.com/redhat-appstudio/application-service/api/v1alpha1
   version: v1alpha1
 version: "3"

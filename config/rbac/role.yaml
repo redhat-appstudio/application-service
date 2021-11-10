@@ -35,6 +35,32 @@ rules:
 - apiGroups:
   - appstudio.redhat.com
   resources:
+  - hascomponentdetectionqueries
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - appstudio.redhat.com
+  resources:
+  - hascomponentdetectionqueries/finalizers
+  verbs:
+  - update
+- apiGroups:
+  - appstudio.redhat.com
+  resources:
+  - hascomponentdetectionqueries/status
+  verbs:
+  - get
+  - patch
+  - update
+- apiGroups:
+  - appstudio.redhat.com
+  resources:
   - hascomponents
   verbs:
   - create
@@ -80,32 +106,6 @@ rules:
   - appstudio.redhat.com
   resources:
   - haspushes/status
-  verbs:
-  - get
-  - patch
-  - update
-- apiGroups:
-  - appstudio.redhat.com
-  resources:
-  - hasservicedetectionqueries
-  verbs:
-  - create
-  - delete
-  - get
-  - list
-  - patch
-  - update
-  - watch
-- apiGroups:
-  - appstudio.redhat.com
-  resources:
-  - hasservicedetectionqueries/finalizers
-  verbs:
-  - update
-- apiGroups:
-  - appstudio.redhat.com
-  resources:
-  - hasservicedetectionqueries/status
   verbs:
   - get
   - patch
