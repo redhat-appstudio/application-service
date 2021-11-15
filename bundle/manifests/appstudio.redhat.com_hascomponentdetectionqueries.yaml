@@ -4,20 +4,20 @@ metadata:
   annotations:
     controller-gen.kubebuilder.io/version: v0.6.1
   creationTimestamp: null
-  name: hasservicedetectionqueries.appstudio.redhat.com
+  name: hascomponentdetectionqueries.appstudio.redhat.com
 spec:
   group: appstudio.redhat.com
   names:
-    kind: HASServiceDetectionQuery
-    listKind: HASServiceDetectionQueryList
-    plural: hasservicedetectionqueries
-    singular: hasservicedetectionquery
+    kind: HASComponentDetectionQuery
+    listKind: HASComponentDetectionQueryList
+    plural: hascomponentdetectionqueries
+    singular: hascomponentdetectionquery
   scope: Namespaced
   versions:
   - name: v1alpha1
     schema:
       openAPIV3Schema:
-        description: HASServiceDetectionQuery is the Schema for the hasservicedetectionqueries
+        description: HASComponentDetectionQuery is the Schema for the hascomponentdetectionqueries
           API
         properties:
           apiVersion:
@@ -33,17 +33,17 @@ spec:
           metadata:
             type: object
           spec:
-            description: HASServiceDetectionQuerySpec defines the desired state of
-              HASServiceDetectionQuery
+            description: HASComponentDetectionQuerySpec defines the desired state
+              of HASComponentDetectionQuery
             properties:
               foo:
-                description: Foo is an example field of HASServiceDetectionQuery.
-                  Edit hasservicedetectionquery_types.go to remove/update
+                description: Foo is an example field of HASComponentDetectionQuery.
+                  Edit hascomponentdetectionquery_types.go to remove/update
                 type: string
             type: object
           status:
-            description: HASServiceDetectionQueryStatus defines the observed state
-              of HASServiceDetectionQuery
+            description: HASComponentDetectionQueryStatus defines the observed state
+              of HASComponentDetectionQuery
             type: object
         type: object
     served: true

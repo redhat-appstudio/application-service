@@ -10,10 +10,22 @@ spec:
   apiservicedefinitions: {}
   customresourcedefinitions:
     owned:
+    - description: HASServiceDetectionQuery is the Schema for the hasservicedetectionqueries
+        API
+      displayName: HASService Detection Query
+      kind: HASServiceDetectionQuery
+      name: hasservicedetectionqueries.appstudio.redhat.com
+      version: v1alpha1
     - description: HASApplication is the Schema for the hasapplications API
       displayName: HASApplication
       kind: HASApplication
       name: hasapplications.appstudio.redhat.com
+      version: v1alpha1
+    - description: HASComponentDetectionQuery is the Schema for the hascomponentdetectionqueries
+        API
+      displayName: HASComponent Detection Query
+      kind: HASComponentDetectionQuery
+      name: hascomponentdetectionqueries.appstudio.redhat.com
       version: v1alpha1
     - description: HASComponent is the Schema for the hascomponents API
       displayName: HASComponent
@@ -24,12 +36,6 @@ spec:
       displayName: HASPush
       kind: HASPush
       name: haspushes.appstudio.redhat.com
-      version: v1alpha1
-    - description: HASServiceDetectionQuery is the Schema for the hasservicedetectionqueries
-        API
-      displayName: HASService Detection Query
-      kind: HASServiceDetectionQuery
-      name: hasservicedetectionqueries.appstudio.redhat.com
       version: v1alpha1
   description: Hybrid Application Service operator
   displayName: Hybrid Application Service
