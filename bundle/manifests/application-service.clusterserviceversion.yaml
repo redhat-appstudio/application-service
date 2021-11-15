@@ -27,9 +27,9 @@ metadata:
         },
         {
           "apiVersion": "appstudio.redhat.com/v1alpha1",
-          "kind": "HASPush",
+          "kind": "HASComponentDetectionQuery",
           "metadata": {
-            "name": "haspush-sample"
+            "name": "hascomponentdetectionquery-sample"
           },
           "spec": {
             "foo": "bar"
@@ -37,9 +37,9 @@ metadata:
         },
         {
           "apiVersion": "appstudio.redhat.com/v1alpha1",
-          "kind": "HASServiceDetectionQuery",
+          "kind": "HASPush",
           "metadata": {
-            "name": "hasservicedetectionquery-sample"
+            "name": "haspush-sample"
           },
           "spec": {
             "foo": "bar"
@@ -60,6 +60,12 @@ spec:
       kind: HASApplication
       name: hasapplications.appstudio.redhat.com
       version: v1alpha1
+    - description: HASComponentDetectionQuery is the Schema for the hascomponentdetectionqueries
+        API
+      displayName: HASComponent Detection Query
+      kind: HASComponentDetectionQuery
+      name: hascomponentdetectionqueries.appstudio.redhat.com
+      version: v1alpha1
     - description: HASComponent is the Schema for the hascomponents API
       displayName: HASComponent
       kind: HASComponent
@@ -70,17 +76,11 @@ spec:
       kind: HASPush
       name: haspushes.appstudio.redhat.com
       version: v1alpha1
-    - description: HASServiceDetectionQuery is the Schema for the hasservicedetectionqueries
-        API
-      displayName: HASService Detection Query
-      kind: HASServiceDetectionQuery
-      name: hasservicedetectionqueries.appstudio.redhat.com
-      version: v1alpha1
   description: Hybrid Application Service operator
   displayName: Hybrid Application Service
   icon:
-  - base64data: PHN2ZyBpZD0iTGF5ZXJfMSIgZGF0YS1uYW1lPSJMYXllciAxIiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxOTIgMTQ1Ij48ZGVmcz48c3R5bGU+LmNscy0xe2ZpbGw6I2UwMDt9PC9zdHlsZT48L2RlZnM+PHRpdGxlPlJlZEhhdC1Mb2dvLUhhdC1Db2xvcjwvdGl0bGU+PHBhdGggZD0iTTE1Ny43Nyw2Mi42MWExNCwxNCwwLDAsMSwuMzEsMy40MmMwLDE0Ljg4LTE4LjEsMTcuNDYtMzAuNjEsMTcuNDZDNzguODMsODMuNDksNDIuNTMsNTMuMjYsNDIuNTMsNDRhNi40Myw2LjQzLDAsMCwxLC4yMi0xLjk0bC0zLjY2LDkuMDZhMTguNDUsMTguNDUsMCwwLDAtMS41MSw3LjMzYzAsMTguMTEsNDEsNDUuNDgsODcuNzQsNDUuNDgsMjAuNjksMCwzNi40My03Ljc2LDM2LjQzLTIxLjc3LDAtMS4wOCwwLTEuOTQtMS43My0xMC4xM1oiLz48cGF0aCBjbGFzcz0iY2xzLTEiIGQ9Ik0xMjcuNDcsODMuNDljMTIuNTEsMCwzMC42MS0yLjU4LDMwLjYxLTE3LjQ2YTE0LDE0LDAsMCwwLS4zMS0zLjQybC03LjQ1LTMyLjM2Yy0xLjcyLTcuMTItMy4yMy0xMC4zNS0xNS43My0xNi42QzEyNC44OSw4LjY5LDEwMy43Ni41LDk3LjUxLjUsOTEuNjkuNSw5MCw4LDgzLjA2LDhjLTYuNjgsMC0xMS42NC01LjYtMTcuODktNS42LTYsMC05LjkxLDQuMDktMTIuOTMsMTIuNSwwLDAtOC40MSwyMy43Mi05LjQ5LDI3LjE2QTYuNDMsNi40MywwLDAsMCw0Mi41Myw0NGMwLDkuMjIsMzYuMywzOS40NSw4NC45NCwzOS40NU0xNjAsNzIuMDdjMS43Myw4LjE5LDEuNzMsOS4wNSwxLjczLDEwLjEzLDAsMTQtMTUuNzQsMjEuNzctMzYuNDMsMjEuNzdDNzguNTQsMTA0LDM3LjU4LDc2LjYsMzcuNTgsNTguNDlhMTguNDUsMTguNDUsMCwwLDEsMS41MS03LjMzQzIyLjI3LDUyLC41LDU1LC41LDc0LjIyYzAsMzEuNDgsNzQuNTksNzAuMjgsMTMzLjY1LDcwLjI4LDQ1LjI4LDAsNTYuNy0yMC40OCw1Ni43LTM2LjY1LDAtMTIuNzItMTEtMjcuMTYtMzAuODMtMzUuNzgiLz48L3N2Zz4=
-    mediatype: image/svg+xml
+  - base64data: ""
+    mediatype: ""
   install:
     spec:
       clusterPermissions:
@@ -107,6 +107,32 @@ spec:
           - appstudio.redhat.com
           resources:
           - hasapplications/status
+          verbs:
+          - get
+          - patch
+          - update
+        - apiGroups:
+          - appstudio.redhat.com
+          resources:
+          - hascomponentdetectionqueries
+          verbs:
+          - create
+          - delete
+          - get
+          - list
+          - patch
+          - update
+          - watch
+        - apiGroups:
+          - appstudio.redhat.com
+          resources:
+          - hascomponentdetectionqueries/finalizers
+          verbs:
+          - update
+        - apiGroups:
+          - appstudio.redhat.com
+          resources:
+          - hascomponentdetectionqueries/status
           verbs:
           - get
           - patch
@@ -159,32 +185,6 @@ spec:
           - appstudio.redhat.com
           resources:
           - haspushes/status
-          verbs:
-          - get
-          - patch
-          - update
-        - apiGroups:
-          - appstudio.redhat.com
-          resources:
-          - hasservicedetectionqueries
-          verbs:
-          - create
-          - delete
-          - get
-          - list
-          - patch
-          - update
-          - watch
-        - apiGroups:
-          - appstudio.redhat.com
-          resources:
-          - hasservicedetectionqueries/finalizers
-          verbs:
-          - update
-        - apiGroups:
-          - appstudio.redhat.com
-          resources:
-          - hasservicedetectionqueries/status
           verbs:
           - get
           - patch
@@ -312,8 +312,8 @@ spec:
   - kubernetes
   - application-service
   links:
-  - name: Source Repository
-    url: https://github.com/redhat-appstudio/application-service
+  - name: Application Service
+    url: https://application-service.domain
   maintainers:
   - email: jcollier@redhat.com
     name: John Collier

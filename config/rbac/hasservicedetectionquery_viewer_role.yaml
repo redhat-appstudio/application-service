@@ -1,13 +1,13 @@
-# permissions for end users to view hasservicedetectionqueries.
+# permissions for end users to view hascomponentdetectionqueries.
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
 metadata:
-  name: hasservicedetectionquery-viewer-role
+  name: hascomponentdetectionquery-viewer-role
 rules:
 - apiGroups:
   - appstudio.redhat.com
   resources:
-  - hasservicedetectionqueries
+  - hascomponentdetectionqueries
   verbs:
   - get
   - list
@@ -15,6 +15,6 @@ rules:
 - apiGroups:
   - appstudio.redhat.com
   resources:
-  - hasservicedetectionqueries/status
+  - hascomponentdetectionqueries/status
   verbs:
   - get
