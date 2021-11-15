@@ -235,6 +235,7 @@ spec:
                 command:
                 - /manager
                 image: quay.io/redhat-appstudio/application-service:next
+                imagePullPolicy: Always
                 livenessProbe:
                   httpGet:
                     path: /healthz
