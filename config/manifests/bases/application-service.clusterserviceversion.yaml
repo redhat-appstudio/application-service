@@ -10,11 +10,11 @@ spec:
   apiservicedefinitions: {}
   customresourcedefinitions:
     owned:
-    - description: HASServiceDetectionQuery is the Schema for the hasservicedetectionqueries
+    - description: HASComponentDetectionQuery is the Schema for the hascomponentdetectionqueries
         API
       displayName: HASService Detection Query
-      kind: HASServiceDetectionQuery
-      name: hasservicedetectionqueries.appstudio.redhat.com
+      kind: HASComponentDetectionQuery
+      name: hascomponentdetectionqueries.appstudio.redhat.com
       version: v1alpha1
     - description: HASApplication is the Schema for the hasapplications API
       displayName: HASApplication

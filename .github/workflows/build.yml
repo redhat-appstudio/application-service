@@ -41,14 +41,27 @@ jobs:
     steps:
     - name: Checkout application-service source code
       uses: actions/checkout@v2
+    - name: Install CLI tools from GitHub
+      uses: redhat-actions/openshift-tools-installer@v1
+      with:
+        source: "github"
+        github_pat: ${{ github.token }}
+        operator-sdk: "1.13.1"
+    - name: Get the 7-digit commit sha
+      id: get_sha
+      run: echo ::set-output name=git_sha::sha-$(git rev-parse --short=7 HEAD)
     - name: Login to quay.io
       uses: docker/login-action@v1
       with:
         username: ${{ secrets.QUAY_USERNAME }}
         password: ${{ secrets.QUAY_PASSWORD }}
         registry: quay.io
-    - name: Docker Build & Push - application-service Operator Bundle Image
-      run: make bundle-build bundle-push
-    - name: Docker Build & Push - application-service Operator Catalog Image
+    - name: Docker Build & Push - application-service Operator Bundle Image - next tag
+      run: make bundle bundle-build bundle-push
+    - name: Docker Build & Push - application-service Operator Catalog Image - next tag
       run: make catalog-build catalog-push
+    - name: Docker Build & Push - application-service Operator Bundle Image - SHA tag
+      run: TAG_NAME=${{ steps.get_sha.outputs.git_sha }} make bundle bundle-build bundle-push
+    - name: Docker Build & Push - application-service Operator Catalog Image - SHA tag
+      run: TAG_NAME=${{ steps.get_sha.outputs.git_sha }} make catalog-build catalog-push
 
