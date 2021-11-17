@@ -23,17 +23,17 @@ import (
 // EDIT THIS FILE!  THIS IS SCAFFOLDING FOR YOU TO OWN!
 // NOTE: json tags are required.  Any new fields you add must have json tags for the fields to be serialized.
 
-// HASPushSpec defines the desired state of HASPush
-type HASPushSpec struct {
+// PushSpec defines the desired state of Push
+type PushSpec struct {
 	// INSERT ADDITIONAL SPEC FIELDS - desired state of cluster
 	// Important: Run "make" to regenerate code after modifying this file
 
-	// Foo is an example field of HASPush. Edit haspush_types.go to remove/update
+	// Foo is an example field of Push. Edit push_types.go to remove/update
 	Foo string `json:"foo,omitempty"`
 }
 
-// HASPushStatus defines the observed state of HASPush
-type HASPushStatus struct {
+// PushStatus defines the observed state of Push
+type PushStatus struct {
 	// INSERT ADDITIONAL STATUS FIELD - define observed state of cluster
 	// Important: Run "make" to regenerate code after modifying this file
 }
@@ -41,24 +41,24 @@ type HASPushStatus struct {
 //+kubebuilder:object:root=true
 //+kubebuilder:subresource:status
 
-// HASPush is the Schema for the haspushes API
-type HASPush struct {
+// Push is the Schema for the pushes API
+type Push struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
 
-	Spec   HASPushSpec   `json:"spec,omitempty"`
-	Status HASPushStatus `json:"status,omitempty"`
+	Spec   PushSpec   `json:"spec,omitempty"`
+	Status PushStatus `json:"status,omitempty"`
 }
 
 //+kubebuilder:object:root=true
 
-// HASPushList contains a list of HASPush
-type HASPushList struct {
+// PushList contains a list of Push
+type PushList struct {
 	metav1.TypeMeta `json:",inline"`
 	metav1.ListMeta `json:"metadata,omitempty"`
-	Items           []HASPush `json:"items"`
+	Items           []Push `json:"items"`
 }
 
 func init() {
-	SchemeBuilder.Register(&HASPush{}, &HASPushList{})
+	SchemeBuilder.Register(&Push{}, &PushList{})
 }

@@ -27,17 +27,17 @@
 
 3) `kubectl create ns default` to create a namespace to use
 
-4) Run `kubectl apply -f samples/hasapplication/hasapp.yaml` to create a simple HASApplication resource
+4) Run `kubectl apply -f samples/application/hasapp.yaml` to create a simple Application resource
 
-5) Run `kubectl get hasapp hasapplication-sample -o yaml`, and verify you see the following:
+5) Run `kubectl get hasapp application-sample -o yaml`, and verify you see the following:
 
 ```
 apiVersion: appstudio.redhat.com/v1alpha1
-kind: HASApplication
+kind: Application
 metadata:
   annotations:
     kubectl.kubernetes.io/last-applied-configuration: |
-      {"apiVersion":"appstudio.redhat.com/v1alpha1","kind":"HASApplication","metadata":{"annotations":{},"name":"hasapplication-sample","namespace":"default"},"spec":{"description":"application definition for petclinic-app","displayName":"petclinic"}}
+      {"apiVersion":"appstudio.redhat.com/v1alpha1","kind":"Application","metadata":{"annotations":{},"name":"application-sample","namespace":"default"},"spec":{"description":"application definition for petclinic-app","displayName":"petclinic"}}
   clusterName: admin
   creationTimestamp: "2021-10-29T20:22:16Z"
   generation: 1
@@ -67,7 +67,7 @@ metadata:
     operation: Update
     subresource: status
     time: "2021-10-29T20:22:16Z"
-  name: hasapplication-sample
+  name: application-sample
   namespace: default
   resourceVersion: "167"
   uid: 95e1d4f4-5876-4065-beef-b77d869fc00b
@@ -77,7 +77,7 @@ spec:
 status:
   conditions:
   - lastTransitionTime: "2021-10-29T20:22:16Z"
-    message: HASApplication has been successfully created
+    message: Application has been successfully created
     reason: OK
     status: "True"
     type: Created

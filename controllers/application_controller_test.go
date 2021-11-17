@@ -35,30 +35,30 @@ const (
 	interval = time.Millisecond * 250
 )
 
-var _ = Describe("HASApplication controller", func() {
+var _ = Describe("Application controller", func() {
 
 	// Define utility constants for object names and testing timeouts/durations and intervals.
 	const (
-		HASAppName      = "test-hasapplication"
+		HASAppName      = "test-application"
 		HASAppNamespace = "default"
 		DisplayName     = "petclinic"
 		Description     = "Simple petclinic app"
 	)
 
-	Context("Create HASApplication with no repositories set", func() {
+	Context("Create Application with no repositories set", func() {
 		It("Should create successfully with generated repositories", func() {
 			ctx := context.Background()
 
-			hasApp := &appstudiov1alpha1.HASApplication{
+			hasApp := &appstudiov1alpha1.Application{
 				TypeMeta: metav1.TypeMeta{
 					APIVersion: "appstudio.redhat.com/v1alpha1",
-					Kind:       "HASApplication",
+					Kind:       "Application",
 				},
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      HASAppName,
 					Namespace: HASAppNamespace,
 				},
-				Spec: appstudiov1alpha1.HASApplicationSpec{
+				Spec: appstudiov1alpha1.ApplicationSpec{
 					DisplayName: DisplayName,
 					Description: Description,
 				},
@@ -69,7 +69,7 @@ var _ = Describe("HASApplication controller", func() {
 			// Look up the has app resource that was created.
 			// num(conditions) may still be < 1 on the first try, so retry until at least _some_ condition is set
 			hasAppLookupKey := types.NamespacedName{Name: HASAppName, Namespace: HASAppNamespace}
-			createdHasApp := &appstudiov1alpha1.HASApplication{}
+			createdHasApp := &appstudiov1alpha1.Application{}
 			Eventually(func() bool {
 				k8sClient.Get(context.Background(), hasAppLookupKey, createdHasApp)
 				return len(createdHasApp.Status.Conditions) > 0
@@ -90,23 +90,23 @@ var _ = Describe("HASApplication controller", func() {
 		})
 	})
 
-	Context("Create HASApplication with no appmodel repository set", func() {
+	Context("Create Application with no appmodel repository set", func() {
 		It("Should create successfully with appmodel repository set to gitops repository", func() {
 			ctx := context.Background()
 
-			hasApp := &appstudiov1alpha1.HASApplication{
+			hasApp := &appstudiov1alpha1.Application{
 				TypeMeta: metav1.TypeMeta{
 					APIVersion: "appstudio.redhat.com/v1alpha1",
-					Kind:       "HASApplication",
+					Kind:       "Application",
 				},
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      HASAppName,
 					Namespace: HASAppNamespace,
 				},
-				Spec: appstudiov1alpha1.HASApplicationSpec{
+				Spec: appstudiov1alpha1.ApplicationSpec{
 					DisplayName: DisplayName,
 					Description: Description,
-					GitOpsRepository: appstudiov1alpha1.HASApplicationGitRepository{
+					GitOpsRepository: appstudiov1alpha1.ApplicationGitRepository{
 						URL: "https://github.com/testorg/petclinic-gitops",
 					},
 				},
@@ -117,7 +117,7 @@ var _ = Describe("HASApplication controller", func() {
 			// Look up the has app resource that was created.
 			// num(conditions) may still be < 1 on the first try, so retry until at least _some_ condition is set
 			hasAppLookupKey := types.NamespacedName{Name: HASAppName, Namespace: HASAppNamespace}
-			createdHasApp := &appstudiov1alpha1.HASApplication{}
+			createdHasApp := &appstudiov1alpha1.Application{}
 			Eventually(func() bool {
 				k8sClient.Get(context.Background(), hasAppLookupKey, createdHasApp)
 				return len(createdHasApp.Status.Conditions) > 0
@@ -139,23 +139,23 @@ var _ = Describe("HASApplication controller", func() {
 		})
 	})
 
-	Context("Create HASApplication with no gitops repository set", func() {
+	Context("Create Application with no gitops repository set", func() {
 		It("Should create successfully with generated gitops repository", func() {
 			ctx := context.Background()
 
-			hasApp := &appstudiov1alpha1.HASApplication{
+			hasApp := &appstudiov1alpha1.Application{
 				TypeMeta: metav1.TypeMeta{
 					APIVersion: "appstudio.redhat.com/v1alpha1",
-					Kind:       "HASApplication",
+					Kind:       "Application",
 				},
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      HASAppName,
 					Namespace: HASAppNamespace,
 				},
-				Spec: appstudiov1alpha1.HASApplicationSpec{
+				Spec: appstudiov1alpha1.ApplicationSpec{
 					DisplayName: DisplayName,
 					Description: Description,
-					AppModelRepository: appstudiov1alpha1.HASApplicationGitRepository{
+					AppModelRepository: appstudiov1alpha1.ApplicationGitRepository{
 						URL: "https://github.com/testorg/petclinic-app",
 					},
 				},
@@ -166,7 +166,7 @@ var _ = Describe("HASApplication controller", func() {
 			// Look up the has app resource that was created.
 			// num(conditions) may still be < 1 on the first try, so retry until at least _some_ condition is set
 			hasAppLookupKey := types.NamespacedName{Name: HASAppName, Namespace: HASAppNamespace}
-			createdHasApp := &appstudiov1alpha1.HASApplication{}
+			createdHasApp := &appstudiov1alpha1.Application{}
 
 			Eventually(func() bool {
 				k8sClient.Get(context.Background(), hasAppLookupKey, createdHasApp)
@@ -189,23 +189,23 @@ var _ = Describe("HASApplication controller", func() {
 		})
 	})
 
-	Context("Update HASApplication CR fields", func() {
+	Context("Update Application CR fields", func() {
 		It("Should update successfully with updated description", func() {
 			ctx := context.Background()
 
-			hasApp := &appstudiov1alpha1.HASApplication{
+			hasApp := &appstudiov1alpha1.Application{
 				TypeMeta: metav1.TypeMeta{
 					APIVersion: "appstudio.redhat.com/v1alpha1",
-					Kind:       "HASApplication",
+					Kind:       "Application",
 				},
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      HASAppName,
 					Namespace: HASAppNamespace,
 				},
-				Spec: appstudiov1alpha1.HASApplicationSpec{
+				Spec: appstudiov1alpha1.ApplicationSpec{
 					DisplayName: DisplayName,
 					Description: Description,
-					AppModelRepository: appstudiov1alpha1.HASApplicationGitRepository{
+					AppModelRepository: appstudiov1alpha1.ApplicationGitRepository{
 						URL: "https://github.com/testorg/petclinic-app",
 					},
 				},
@@ -216,7 +216,7 @@ var _ = Describe("HASApplication controller", func() {
 			// Look up the has app resource that was created.
 			// num(conditions) may still be < 1 on the first try, so retry until at least _some_ condition is set
 			hasAppLookupKey := types.NamespacedName{Name: HASAppName, Namespace: HASAppNamespace}
-			fetchedHasApp := &appstudiov1alpha1.HASApplication{}
+			fetchedHasApp := &appstudiov1alpha1.Application{}
 			Eventually(func() bool {
 				k8sClient.Get(context.Background(), hasAppLookupKey, fetchedHasApp)
 				return len(fetchedHasApp.Status.Conditions) > 0
@@ -253,14 +253,14 @@ var _ = Describe("HASApplication controller", func() {
 func deleteHASAppCR(hasAppLookupKey types.NamespacedName) {
 	// Delete
 	Eventually(func() error {
-		f := &appstudiov1alpha1.HASApplication{}
+		f := &appstudiov1alpha1.Application{}
 		k8sClient.Get(context.Background(), hasAppLookupKey, f)
 		return k8sClient.Delete(context.Background(), f)
 	}, timeout, interval).Should(Succeed())
 
 	// Wait for delete to finish
 	Eventually(func() error {
-		f := &appstudiov1alpha1.HASApplication{}
+		f := &appstudiov1alpha1.Application{}
 		return k8sClient.Get(context.Background(), hasAppLookupKey, f)
 	}, timeout, interval).ShouldNot(Succeed())
 }

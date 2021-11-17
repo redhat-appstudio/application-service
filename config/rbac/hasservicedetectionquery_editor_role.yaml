@@ -1,13 +1,13 @@
-# permissions for end users to edit hascomponentdetectionqueries.
+# permissions for end users to edit componentdetectionqueries.
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
 metadata:
-  name: hascomponentdetectionquery-editor-role
+  name: componentdetectionquery-editor-role
 rules:
 - apiGroups:
   - appstudio.redhat.com
   resources:
-  - hascomponentdetectionqueries
+  - componentdetectionqueries
   verbs:
   - create
   - delete
@@ -19,6 +19,6 @@ rules:
 - apiGroups:
   - appstudio.redhat.com
   resources:
-  - hascomponentdetectionqueries/status
+  - componentdetectionqueries/status
   verbs:
   - get

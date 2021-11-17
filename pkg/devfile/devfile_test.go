@@ -61,28 +61,28 @@ schemaVersion: 2.2.0`,
 			// Convert the hasApp resource to a devfile
 			devfile, err := ParseDevfileModel(tt.devfileString)
 			if err != nil {
-				t.Errorf("TestConvertHASApplicationToDevfile() unexpected error: %v", err)
+				t.Errorf("TestConvertApplicationToDevfile() unexpected error: %v", err)
 			} else if !reflect.DeepEqual(devfile, tt.wantDevfile) {
-				t.Errorf("TestConvertHASApplicationToDevfile() error: expected %v got %v", tt.wantDevfile, devfile)
+				t.Errorf("TestConvertApplicationToDevfile() error: expected %v got %v", tt.wantDevfile, devfile)
 			}
 		})
 	}
 }
 
-func TestConvertHASApplicationToDevfile(t *testing.T) {
+func TestConvertApplicationToDevfile(t *testing.T) {
 	additionalAttributes := attributes.Attributes{}.PutString("appModelRepository.branch", "testbranch").PutString("gitOpsRepository.branch", "testbranch").PutString("appModelRepository.context", "test/context").PutString("gitOpsRepository.context", "test/context")
 
 	tests := []struct {
 		name         string
-		hasApp       appstudiov1alpha1.HASApplication
+		hasApp       appstudiov1alpha1.Application
 		appModelRepo string
 		gitOpsRepo   string
 		wantDevfile  *v2.DevfileV2
 	}{
 		{
 			name: "Simple HASApp CR",
-			hasApp: appstudiov1alpha1.HASApplication{
-				Spec: appstudiov1alpha1.HASApplicationSpec{
+			hasApp: appstudiov1alpha1.Application{
+				Spec: appstudiov1alpha1.ApplicationSpec{
 					DisplayName: "Petclinic",
 				},
 			},
@@ -102,14 +102,14 @@ func TestConvertHASApplicationToDevfile(t *testing.T) {
 		},
 		{
 			name: "HASApp CR with branch and context fields set",
-			hasApp: appstudiov1alpha1.HASApplication{
-				Spec: appstudiov1alpha1.HASApplicationSpec{
+			hasApp: appstudiov1alpha1.Application{
+				Spec: appstudiov1alpha1.ApplicationSpec{
 					DisplayName: "Petclinic",
-					AppModelRepository: appstudiov1alpha1.HASApplicationGitRepository{
+					AppModelRepository: appstudiov1alpha1.ApplicationGitRepository{
 						Branch:  "testbranch",
 						Context: "test/context",
 					},
-					GitOpsRepository: appstudiov1alpha1.HASApplicationGitRepository{
+					GitOpsRepository: appstudiov1alpha1.ApplicationGitRepository{
 						Branch:  "testbranch",
 						Context: "test/context",
 					},
@@ -134,11 +134,11 @@ func TestConvertHASApplicationToDevfile(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			// Convert the hasApp resource to a devfile
-			convertedDevfile, err := ConvertHASApplicationToDevfile(tt.hasApp, tt.gitOpsRepo, tt.appModelRepo)
+			convertedDevfile, err := ConvertApplicationToDevfile(tt.hasApp, tt.gitOpsRepo, tt.appModelRepo)
 			if err != nil {
-				t.Errorf("TestConvertHASApplicationToDevfile() unexpected error: %v", err)
+				t.Errorf("TestConvertApplicationToDevfile() unexpected error: %v", err)
 			} else if !reflect.DeepEqual(convertedDevfile, tt.wantDevfile) {
-				t.Errorf("TestConvertHASApplicationToDevfile() error: expected %v got %v", tt.wantDevfile, convertedDevfile)
+				t.Errorf("TestConvertApplicationToDevfile() error: expected %v got %v", tt.wantDevfile, convertedDevfile)
 			}
 		})
 	}

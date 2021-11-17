@@ -35,33 +35,33 @@ import (
 	util "github.com/redhat-appstudio/application-service/pkg/util"
 )
 
-// HASApplicationReconciler reconciles a HASApplication object
-type HASApplicationReconciler struct {
+// ApplicationReconciler reconciles a Application object
+type ApplicationReconciler struct {
 	client.Client
 	Scheme *runtime.Scheme
 	Log    logr.Logger
 }
 
-//+kubebuilder:rbac:groups=appstudio.redhat.com,resources=hasapplications,verbs=get;list;watch;create;update;patch;delete
-//+kubebuilder:rbac:groups=appstudio.redhat.com,resources=hasapplications/status,verbs=get;update;patch
-//+kubebuilder:rbac:groups=appstudio.redhat.com,resources=hasapplications/finalizers,verbs=update
+//+kubebuilder:rbac:groups=appstudio.redhat.com,resources=applications,verbs=get;list;watch;create;update;patch;delete
+//+kubebuilder:rbac:groups=appstudio.redhat.com,resources=applications/status,verbs=get;update;patch
+//+kubebuilder:rbac:groups=appstudio.redhat.com,resources=applications/finalizers,verbs=update
 
 // Reconcile is part of the main kubernetes reconciliation loop which aims to
 // move the current state of the cluster closer to the desired state.
 // TODO(user): Modify the Reconcile function to compare the state specified by
-// the HASApplication object against the actual cluster state, and then
+// the Application object against the actual cluster state, and then
 // perform operations to make the cluster state reflect the state specified by
 // the user.
 //
 // For more details, check Reconcile and its Result here:
 // - https://pkg.go.dev/sigs.k8s.io/controller-runtime@v0.9.2/pkg/reconcile
-func (r *HASApplicationReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
-	log := r.Log.WithValues("HASApplication", req.NamespacedName)
+func (r *ApplicationReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
+	log := r.Log.WithValues("Application", req.NamespacedName)
 	log.Info(fmt.Sprintf("Starting reconcile loop for %v", req.NamespacedName))
 
-	// Get the HASApplication resource
-	var hasApplication appstudiov1alpha1.HASApplication
-	err := r.Get(ctx, req.NamespacedName, &hasApplication)
+	// Get the Application resource
+	var application appstudiov1alpha1.Application
+	err := r.Get(ctx, req.NamespacedName, &application)
 	if err != nil {
 		if k8sErrors.IsNotFound(err) {
 			// Request object not found, could have been deleted after reconcile request.
@@ -75,51 +75,51 @@ func (r *HASApplicationReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 
 	// If devfile hasn't been generated yet, generate it
 	// If the devfile hasn't been generated, the CR was just created.
-	if hasApplication.Status.Devfile == "" {
+	if application.Status.Devfile == "" {
 		// See if a gitops/appModel repo(s) were passed in. If not, generate them.
-		gitOpsRepo := hasApplication.Spec.GitOpsRepository.URL
-		appModelRepo := hasApplication.Spec.AppModelRepository.URL
+		gitOpsRepo := application.Spec.GitOpsRepository.URL
+		appModelRepo := application.Spec.AppModelRepository.URL
 		if gitOpsRepo == "" && appModelRepo == "" {
 			// If both repositories are blank, just generate a single shared repository
-			repoName := util.GenerateNewRepositoryName(hasApplication.Spec.DisplayName, hasApplication.Namespace)
+			repoName := util.GenerateNewRepositoryName(application.Spec.DisplayName, application.Namespace)
 			gitOpsRepo = repoName
 			appModelRepo = repoName
 		} else if gitOpsRepo == "" {
-			repoName := util.GenerateNewRepositoryName(hasApplication.Spec.DisplayName, hasApplication.Namespace)
+			repoName := util.GenerateNewRepositoryName(application.Spec.DisplayName, application.Namespace)
 			gitOpsRepo = repoName
 		} else if appModelRepo == "" {
 			appModelRepo = gitOpsRepo
 		}
 
 		// Convert the devfile string to a devfile object
-		devfileData, err := devfile.ConvertHASApplicationToDevfile(hasApplication, gitOpsRepo, appModelRepo)
+		devfileData, err := devfile.ConvertApplicationToDevfile(application, gitOpsRepo, appModelRepo)
 		if err != nil {
-			log.Error(err, fmt.Sprintf("Unable to convert HASApplication CR to devfile, exiting reconcile loop %v", req.NamespacedName))
-			r.SetCreateConditionAndUpdateCR(ctx, &hasApplication, err)
+			log.Error(err, fmt.Sprintf("Unable to convert Application CR to devfile, exiting reconcile loop %v", req.NamespacedName))
+			r.SetCreateConditionAndUpdateCR(ctx, &application, err)
 			return reconcile.Result{}, err
 		}
 		yamlData, err := yaml.Marshal(devfileData)
 		if err != nil {
-			log.Error(err, fmt.Sprintf("Unable to marshall HASApplication devfile, exiting reconcile loop %v", req.NamespacedName))
-			r.SetCreateConditionAndUpdateCR(ctx, &hasApplication, err)
+			log.Error(err, fmt.Sprintf("Unable to marshall Application devfile, exiting reconcile loop %v", req.NamespacedName))
+			r.SetCreateConditionAndUpdateCR(ctx, &application, err)
 			return reconcile.Result{}, err
 		}
 
-		hasApplication.Status.Devfile = string(yamlData)
+		application.Status.Devfile = string(yamlData)
 		// Update the status of the CR
-		r.SetCreateConditionAndUpdateCR(ctx, &hasApplication, nil)
+		r.SetCreateConditionAndUpdateCR(ctx, &application, nil)
 	} else {
 		// If the model already exists, see if either the displayname or description need updating
 		// Get the devfile of the hasApp CR
-		devfileData, err := devfile.ParseDevfileModel(hasApplication.Status.Devfile)
+		devfileData, err := devfile.ParseDevfileModel(application.Status.Devfile)
 		if err != nil {
 			log.Error(err, fmt.Sprintf("Unable to parse devfile model, exiting reconcile loop %v", req.NamespacedName))
 			return ctrl.Result{}, err
 		}
 
 		// Update any specific fields that changed
-		displayName := util.SanitizeDisplayName(hasApplication.Spec.DisplayName)
-		description := hasApplication.Spec.Description
+		displayName := util.SanitizeDisplayName(application.Spec.DisplayName)
+		description := application.Spec.Description
 		devfileMeta := devfileData.GetMetadata()
 		updateRequired := false
 		if devfileMeta.Name != displayName {
@@ -136,13 +136,13 @@ func (r *HASApplicationReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 			// Update the hasApp CR with the new devfile
 			yamlData, err := yaml.Marshal(devfileData)
 			if err != nil {
-				log.Error(err, fmt.Sprintf("Unable to marshall HASApplication devfile, exiting reconcile loop %v", req.NamespacedName))
-				r.SetUpdateConditionAndUpdateCR(ctx, &hasApplication, err)
+				log.Error(err, fmt.Sprintf("Unable to marshall Application devfile, exiting reconcile loop %v", req.NamespacedName))
+				r.SetUpdateConditionAndUpdateCR(ctx, &application, err)
 				return reconcile.Result{}, err
 			}
 
-			hasApplication.Status.Devfile = string(yamlData)
-			r.SetUpdateConditionAndUpdateCR(ctx, &hasApplication, nil)
+			application.Status.Devfile = string(yamlData)
+			r.SetUpdateConditionAndUpdateCR(ctx, &application, nil)
 		}
 	}
 
@@ -151,10 +151,10 @@ func (r *HASApplicationReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 }
 
 // SetupWithManager sets up the controller with the Manager.
-func (r *HASApplicationReconciler) SetupWithManager(mgr ctrl.Manager) error {
+func (r *ApplicationReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	gofakeit.New(0)
 
 	return ctrl.NewControllerManagedBy(mgr).
-		For(&appstudiov1alpha1.HASApplication{}).
+		For(&appstudiov1alpha1.Application{}).
 		Complete(r)
 }

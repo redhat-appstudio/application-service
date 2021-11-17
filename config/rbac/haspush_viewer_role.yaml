@@ -1,13 +1,13 @@
-# permissions for end users to view haspushes.
+# permissions for end users to view pushes.
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
 metadata:
-  name: haspush-viewer-role
+  name: push-viewer-role
 rules:
 - apiGroups:
   - appstudio.redhat.com
   resources:
-  - haspushes
+  - pushes
   verbs:
   - get
   - list
@@ -15,6 +15,6 @@ rules:
 - apiGroups:
   - appstudio.redhat.com
   resources:
-  - haspushes/status
+  - pushes/status
   verbs:
   - get

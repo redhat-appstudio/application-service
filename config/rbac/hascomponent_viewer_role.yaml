@@ -1,13 +1,13 @@
-# permissions for end users to view hascomponents.
+# permissions for end users to view components.
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
 metadata:
-  name: hascomponent-viewer-role
+  name: component-viewer-role
 rules:
 - apiGroups:
   - appstudio.redhat.com
   resources:
-  - hascomponents
+  - components
   verbs:
   - get
   - list
@@ -15,6 +15,6 @@ rules:
 - apiGroups:
   - appstudio.redhat.com
   resources:
-  - hascomponents/status
+  - components/status
   verbs:
   - get

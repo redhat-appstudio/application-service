@@ -27,26 +27,26 @@ import (
 	appstudiov1alpha1 "github.com/redhat-appstudio/application-service/api/v1alpha1"
 )
 
-// HASPushReconciler reconciles a HASPush object
-type HASPushReconciler struct {
+// PushReconciler reconciles a Push object
+type PushReconciler struct {
 	client.Client
 	Scheme *runtime.Scheme
 }
 
-//+kubebuilder:rbac:groups=appstudio.redhat.com,resources=haspushes,verbs=get;list;watch;create;update;patch;delete
-//+kubebuilder:rbac:groups=appstudio.redhat.com,resources=haspushes/status,verbs=get;update;patch
-//+kubebuilder:rbac:groups=appstudio.redhat.com,resources=haspushes/finalizers,verbs=update
+//+kubebuilder:rbac:groups=appstudio.redhat.com,resources=pushes,verbs=get;list;watch;create;update;patch;delete
+//+kubebuilder:rbac:groups=appstudio.redhat.com,resources=pushes/status,verbs=get;update;patch
+//+kubebuilder:rbac:groups=appstudio.redhat.com,resources=pushes/finalizers,verbs=update
 
 // Reconcile is part of the main kubernetes reconciliation loop which aims to
 // move the current state of the cluster closer to the desired state.
 // TODO(user): Modify the Reconcile function to compare the state specified by
-// the HASPush object against the actual cluster state, and then
+// the Push object against the actual cluster state, and then
 // perform operations to make the cluster state reflect the state specified by
 // the user.
 //
 // For more details, check Reconcile and its Result here:
 // - https://pkg.go.dev/sigs.k8s.io/controller-runtime@v0.9.2/pkg/reconcile
-func (r *HASPushReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
+func (r *PushReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
 	_ = log.FromContext(ctx)
 
 	// your logic here
@@ -55,8 +55,8 @@ func (r *HASPushReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 }
 
 // SetupWithManager sets up the controller with the Manager.
-func (r *HASPushReconciler) SetupWithManager(mgr ctrl.Manager) error {
+func (r *PushReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
-		For(&appstudiov1alpha1.HASPush{}).
+		For(&appstudiov1alpha1.Push{}).
 		Complete(r)
 }

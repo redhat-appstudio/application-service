@@ -6,9 +6,9 @@ metadata:
       [
         {
           "apiVersion": "appstudio.redhat.com/v1alpha1",
-          "kind": "HASApplication",
+          "kind": "Application",
           "metadata": {
-            "name": "hasapplication-sample"
+            "name": "application-sample"
           },
           "spec": {
             "description": "application definition for petclinic-app",
@@ -17,9 +17,9 @@ metadata:
         },
         {
           "apiVersion": "appstudio.redhat.com/v1alpha1",
-          "kind": "HASComponent",
+          "kind": "Component",
           "metadata": {
-            "name": "hascomponent-sample"
+            "name": "component-sample"
           },
           "spec": {
             "foo": "bar"
@@ -27,9 +27,9 @@ metadata:
         },
         {
           "apiVersion": "appstudio.redhat.com/v1alpha1",
-          "kind": "HASComponentDetectionQuery",
+          "kind": "ComponentDetectionQuery",
           "metadata": {
-            "name": "hascomponentdetectionquery-sample"
+            "name": "componentdetectionquery-sample"
           },
           "spec": {
             "foo": "bar"
@@ -37,9 +37,9 @@ metadata:
         },
         {
           "apiVersion": "appstudio.redhat.com/v1alpha1",
-          "kind": "HASPush",
+          "kind": "Push",
           "metadata": {
-            "name": "haspush-sample"
+            "name": "push-sample"
           },
           "spec": {
             "foo": "bar"
@@ -55,32 +55,32 @@ spec:
   apiservicedefinitions: {}
   customresourcedefinitions:
     owned:
-    - description: HASApplication is the Schema for the hasapplications API
-      displayName: HASApplication
-      kind: HASApplication
-      name: hasapplications.appstudio.redhat.com
+    - description: Application is the Schema for the applications API
+      displayName: Application
+      kind: Application
+      name: applications.appstudio.redhat.com
       version: v1alpha1
-    - description: HASComponentDetectionQuery is the Schema for the hascomponentdetectionqueries
+    - description: ComponentDetectionQuery is the Schema for the componentdetectionqueries
         API
-      displayName: HASComponent Detection Query
-      kind: HASComponentDetectionQuery
-      name: hascomponentdetectionqueries.appstudio.redhat.com
+      displayName: Component Detection Query
+      kind: ComponentDetectionQuery
+      name: componentdetectionqueries.appstudio.redhat.com
       version: v1alpha1
-    - description: HASComponent is the Schema for the hascomponents API
-      displayName: HASComponent
-      kind: HASComponent
-      name: hascomponents.appstudio.redhat.com
+    - description: Component is the Schema for the components API
+      displayName: Component
+      kind: Component
+      name: components.appstudio.redhat.com
       version: v1alpha1
-    - description: HASPush is the Schema for the haspushes API
-      displayName: HASPush
-      kind: HASPush
-      name: haspushes.appstudio.redhat.com
+    - description: Push is the Schema for the pushes API
+      displayName: Push
+      kind: Push
+      name: pushes.appstudio.redhat.com
       version: v1alpha1
   description: Hybrid Application Service operator
   displayName: Hybrid Application Service
   icon:
-  - base64data: ""
-    mediatype: ""
+  - base64data: PHN2ZyBpZD0iTGF5ZXJfMSIgZGF0YS1uYW1lPSJMYXllciAxIiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxOTIgMTQ1Ij48ZGVmcz48c3R5bGU+LmNscy0xe2ZpbGw6I2UwMDt9PC9zdHlsZT48L2RlZnM+PHRpdGxlPlJlZEhhdC1Mb2dvLUhhdC1Db2xvcjwvdGl0bGU+PHBhdGggZD0iTTE1Ny43Nyw2Mi42MWExNCwxNCwwLDAsMSwuMzEsMy40MmMwLDE0Ljg4LTE4LjEsMTcuNDYtMzAuNjEsMTcuNDZDNzguODMsODMuNDksNDIuNTMsNTMuMjYsNDIuNTMsNDRhNi40Myw2LjQzLDAsMCwxLC4yMi0xLjk0bC0zLjY2LDkuMDZhMTguNDUsMTguNDUsMCwwLDAtMS41MSw3LjMzYzAsMTguMTEsNDEsNDUuNDgsODcuNzQsNDUuNDgsMjAuNjksMCwzNi40My03Ljc2LDM2LjQzLTIxLjc3LDAtMS4wOCwwLTEuOTQtMS43My0xMC4xM1oiLz48cGF0aCBjbGFzcz0iY2xzLTEiIGQ9Ik0xMjcuNDcsODMuNDljMTIuNTEsMCwzMC42MS0yLjU4LDMwLjYxLTE3LjQ2YTE0LDE0LDAsMCwwLS4zMS0zLjQybC03LjQ1LTMyLjM2Yy0xLjcyLTcuMTItMy4yMy0xMC4zNS0xNS43My0xNi42QzEyNC44OSw4LjY5LDEwMy43Ni41LDk3LjUxLjUsOTEuNjkuNSw5MCw4LDgzLjA2LDhjLTYuNjgsMC0xMS42NC01LjYtMTcuODktNS42LTYsMC05LjkxLDQuMDktMTIuOTMsMTIuNSwwLDAtOC40MSwyMy43Mi05LjQ5LDI3LjE2QTYuNDMsNi40MywwLDAsMCw0Mi41Myw0NGMwLDkuMjIsMzYuMywzOS40NSw4NC45NCwzOS40NU0xNjAsNzIuMDdjMS43Myw4LjE5LDEuNzMsOS4wNSwxLjczLDEwLjEzLDAsMTQtMTUuNzQsMjEuNzctMzYuNDMsMjEuNzdDNzguNTQsMTA0LDM3LjU4LDc2LjYsMzcuNTgsNTguNDlhMTguNDUsMTguNDUsMCwwLDEsMS41MS03LjMzQzIyLjI3LDUyLC41LDU1LC41LDc0LjIyYzAsMzEuNDgsNzQuNTksNzAuMjgsMTMzLjY1LDcwLjI4LDQ1LjI4LDAsNTYuNy0yMC40OCw1Ni43LTM2LjY1LDAtMTIuNzItMTEtMjcuMTYtMzAuODMtMzUuNzgiLz48L3N2Zz4=
+    mediatype: image/svg+xml
   install:
     spec:
       clusterPermissions:
@@ -88,7 +88,7 @@ spec:
         - apiGroups:
           - appstudio.redhat.com
           resources:
-          - hasapplications
+          - applications
           verbs:
           - create
           - delete
@@ -100,13 +100,13 @@ spec:
         - apiGroups:
           - appstudio.redhat.com
           resources:
-          - hasapplications/finalizers
+          - applications/finalizers
           verbs:
           - update
         - apiGroups:
           - appstudio.redhat.com
           resources:
-          - hasapplications/status
+          - applications/status
           verbs:
           - get
           - patch
@@ -114,7 +114,7 @@ spec:
         - apiGroups:
           - appstudio.redhat.com
           resources:
-          - hascomponentdetectionqueries
+          - componentdetectionqueries
           verbs:
           - create
           - delete
@@ -126,13 +126,13 @@ spec:
         - apiGroups:
           - appstudio.redhat.com
           resources:
-          - hascomponentdetectionqueries/finalizers
+          - componentdetectionqueries/finalizers
           verbs:
           - update
         - apiGroups:
           - appstudio.redhat.com
           resources:
-          - hascomponentdetectionqueries/status
+          - componentdetectionqueries/status
           verbs:
           - get
           - patch
@@ -140,7 +140,7 @@ spec:
         - apiGroups:
           - appstudio.redhat.com
           resources:
-          - hascomponents
+          - components
           verbs:
           - create
           - delete
@@ -152,13 +152,13 @@ spec:
         - apiGroups:
           - appstudio.redhat.com
           resources:
-          - hascomponents/finalizers
+          - components/finalizers
           verbs:
           - update
         - apiGroups:
           - appstudio.redhat.com
           resources:
-          - hascomponents/status
+          - components/status
           verbs:
           - get
           - patch
@@ -166,7 +166,7 @@ spec:
         - apiGroups:
           - appstudio.redhat.com
           resources:
-          - haspushes
+          - pushes
           verbs:
           - create
           - delete
@@ -178,13 +178,13 @@ spec:
         - apiGroups:
           - appstudio.redhat.com
           resources:
-          - haspushes/finalizers
+          - pushes/finalizers
           verbs:
           - update
         - apiGroups:
           - appstudio.redhat.com
           resources:
-          - haspushes/status
+          - pushes/status
           verbs:
           - get
           - patch

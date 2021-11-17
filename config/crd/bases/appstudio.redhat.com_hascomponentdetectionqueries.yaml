@@ -6,20 +6,20 @@ metadata:
   annotations:
     controller-gen.kubebuilder.io/version: v0.6.1
   creationTimestamp: null
-  name: hascomponentdetectionqueries.appstudio.redhat.com
+  name: componentdetectionqueries.appstudio.redhat.com
 spec:
   group: appstudio.redhat.com
   names:
-    kind: HASComponentDetectionQuery
-    listKind: HASComponentDetectionQueryList
-    plural: hascomponentdetectionqueries
-    singular: hascomponentdetectionquery
+    kind: ComponentDetectionQuery
+    listKind: ComponentDetectionQueryList
+    plural: componentdetectionqueries
+    singular: componentdetectionquery
   scope: Namespaced
   versions:
   - name: v1alpha1
     schema:
       openAPIV3Schema:
-        description: HASComponentDetectionQuery is the Schema for the hascomponentdetectionqueries
+        description: ComponentDetectionQuery is the Schema for the componentdetectionqueries
           API
         properties:
           apiVersion:
@@ -35,17 +35,17 @@ spec:
           metadata:
             type: object
           spec:
-            description: HASComponentDetectionQuerySpec defines the desired state
-              of HASComponentDetectionQuery
+            description: ComponentDetectionQuerySpec defines the desired state
+              of ComponentDetectionQuery
             properties:
               foo:
-                description: Foo is an example field of HASComponentDetectionQuery.
-                  Edit hascomponentdetectionquery_types.go to remove/update
+                description: Foo is an example field of ComponentDetectionQuery.
+                  Edit componentdetectionquery_types.go to remove/update
                 type: string
             type: object
           status:
-            description: HASComponentDetectionQueryStatus defines the observed state
-              of HASComponentDetectionQuery
+            description: ComponentDetectionQueryStatus defines the observed state
+              of ComponentDetectionQuery
             type: object
         type: object
     served: true

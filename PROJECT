@@ -13,7 +13,7 @@ resources:
   controller: true
   domain: redhat.com
   group: appstudio
-  kind: HASApplication
+  kind: Application
   path: github.com/redhat-appstudio/application-service/api/v1alpha1
   version: v1alpha1
 - api:
@@ -22,7 +22,7 @@ resources:
   controller: true
   domain: redhat.com
   group: appstudio
-  kind: HASComponent
+  kind: Component
   path: github.com/redhat-appstudio/application-service/api/v1alpha1
   version: v1alpha1
 - api:
@@ -31,7 +31,7 @@ resources:
   controller: true
   domain: redhat.com
   group: appstudio
-  kind: HASPush
+  kind: Push
   path: github.com/redhat-appstudio/application-service/api/v1alpha1
   version: v1alpha1
 - api:
@@ -40,7 +40,7 @@ resources:
   controller: true
   domain: redhat.com
   group: appstudio
-  kind: HASComponentDetectionQuery
+  kind: ComponentDetectionQuery
   path: github.com/redhat-appstudio/application-service/api/v1alpha1
   version: v1alpha1
 version: "3"
