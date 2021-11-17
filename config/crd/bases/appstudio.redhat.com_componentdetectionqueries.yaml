@@ -6,20 +6,21 @@ metadata:
   annotations:
     controller-gen.kubebuilder.io/version: v0.6.1
   creationTimestamp: null
-  name: pushes.appstudio.redhat.com
+  name: componentdetectionqueries.appstudio.redhat.com
 spec:
   group: appstudio.redhat.com
   names:
-    kind: Push
-    listKind: PushList
-    plural: pushes
-    singular: push
+    kind: ComponentDetectionQuery
+    listKind: ComponentDetectionQueryList
+    plural: componentdetectionqueries
+    singular: componentdetectionquery
   scope: Namespaced
   versions:
   - name: v1alpha1
     schema:
       openAPIV3Schema:
-        description: Push is the Schema for the pushes API
+        description: ComponentDetectionQuery is the Schema for the componentdetectionqueries
+          API
         properties:
           apiVersion:
             description: 'APIVersion defines the versioned schema of this representation
@@ -34,15 +35,17 @@ spec:
           metadata:
             type: object
           spec:
-            description: PushSpec defines the desired state of Push
+            description: ComponentDetectionQuerySpec defines the desired state of
+              ComponentDetectionQuery
             properties:
               foo:
-                description: Foo is an example field of Push. Edit push_types.go
-                  to remove/update
+                description: Foo is an example field of ComponentDetectionQuery. Edit
+                  componentdetectionquery_types.go to remove/update
                 type: string
             type: object
           status:
-            description: PushStatus defines the observed state of Push
+            description: ComponentDetectionQueryStatus defines the observed state
+              of ComponentDetectionQuery
             type: object
         type: object
     served: true

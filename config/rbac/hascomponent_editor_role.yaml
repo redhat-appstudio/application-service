@@ -1,13 +1,13 @@
-# permissions for end users to edit hascomponents.
+# permissions for end users to edit components.
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
 metadata:
-  name: hascomponent-editor-role
+  name: component-editor-role
 rules:
 - apiGroups:
   - appstudio.redhat.com
   resources:
-  - hascomponents
+  - components
   verbs:
   - create
   - delete
@@ -19,6 +19,6 @@ rules:
 - apiGroups:
   - appstudio.redhat.com
   resources:
-  - hascomponents/status
+  - components/status
   verbs:
   - get

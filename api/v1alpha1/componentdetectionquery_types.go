@@ -23,17 +23,17 @@ import (
 // EDIT THIS FILE!  THIS IS SCAFFOLDING FOR YOU TO OWN!
 // NOTE: json tags are required.  Any new fields you add must have json tags for the fields to be serialized.
 
-// HASComponentSpec defines the desired state of HASComponent
-type HASComponentSpec struct {
+// ComponentDetectionQuerySpec defines the desired state of ComponentDetectionQuery
+type ComponentDetectionQuerySpec struct {
 	// INSERT ADDITIONAL SPEC FIELDS - desired state of cluster
 	// Important: Run "make" to regenerate code after modifying this file
 
-	// Foo is an example field of HASComponent. Edit hascomponent_types.go to remove/update
+	// Foo is an example field of ComponentDetectionQuery. Edit componentdetectionquery_types.go to remove/update
 	Foo string `json:"foo,omitempty"`
 }
 
-// HASComponentStatus defines the observed state of HASComponent
-type HASComponentStatus struct {
+// ComponentDetectionQueryStatus defines the observed state of ComponentDetectionQuery
+type ComponentDetectionQueryStatus struct {
 	// INSERT ADDITIONAL STATUS FIELD - define observed state of cluster
 	// Important: Run "make" to regenerate code after modifying this file
 }
@@ -41,24 +41,24 @@ type HASComponentStatus struct {
 //+kubebuilder:object:root=true
 //+kubebuilder:subresource:status
 
-// HASComponent is the Schema for the hascomponents API
-type HASComponent struct {
+// ComponentDetectionQuery is the Schema for the componentdetectionqueries API
+type ComponentDetectionQuery struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
 
-	Spec   HASComponentSpec   `json:"spec,omitempty"`
-	Status HASComponentStatus `json:"status,omitempty"`
+	Spec   ComponentDetectionQuerySpec   `json:"spec,omitempty"`
+	Status ComponentDetectionQueryStatus `json:"status,omitempty"`
 }
 
 //+kubebuilder:object:root=true
 
-// HASComponentList contains a list of HASComponent
-type HASComponentList struct {
+// ComponentDetectionQueryList contains a list of ComponentDetectionQuery
+type ComponentDetectionQueryList struct {
 	metav1.TypeMeta `json:",inline"`
 	metav1.ListMeta `json:"metadata,omitempty"`
-	Items           []HASComponent `json:"items"`
+	Items           []ComponentDetectionQuery `json:"items"`
 }
 
 func init() {
-	SchemeBuilder.Register(&HASComponent{}, &HASComponentList{})
+	SchemeBuilder.Register(&ComponentDetectionQuery{}, &ComponentDetectionQueryList{})
 }

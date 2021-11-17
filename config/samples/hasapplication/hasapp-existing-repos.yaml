@@ -1,7 +1,7 @@
 apiVersion: appstudio.redhat.com/v1alpha1
-kind: HASApplication
+kind: Application
 metadata:
-  name: hasapplication-sample
+  name: application-sample
 spec:
   # Add fields here
   displayName: "petclinic"

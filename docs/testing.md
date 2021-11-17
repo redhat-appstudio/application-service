@@ -10,7 +10,7 @@ make test
 
 ## Controller Tests
 
-There are tests written for each controller (e.g. HASApplication) in the operator, using the `ginkgo` BDD testing library. To run these tests (along with any unit tests), just run
+There are tests written for each controller (e.g. Application) in the operator, using the `ginkgo` BDD testing library. To run these tests (along with any unit tests), just run
 
 ```
 make test
@@ -34,7 +34,7 @@ e.g.:
 export KUBEBUILDER_ASSETS=/Users/john/Library/Application Support/io.kubebuilder.envtest/k8s/1.22.1-darwin-amd64
 ```
 
-From here, you should be good to run the controller's unit tests in VS Code. Verify this by opening `hasapplication_controller_test.go` in VS Code and running `run package tests`.
+From here, you should be good to run the controller's unit tests in VS Code. Verify this by opening `application_controller_test.go` in VS Code and running `run package tests`.
 
 ## Integration Tests
 

@@ -9,7 +9,7 @@ rules:
 - apiGroups:
   - appstudio.redhat.com
   resources:
-  - hasapplications
+  - applications
   verbs:
   - create
   - delete
@@ -21,13 +21,13 @@ rules:
 - apiGroups:
   - appstudio.redhat.com
   resources:
-  - hasapplications/finalizers
+  - applications/finalizers
   verbs:
   - update
 - apiGroups:
   - appstudio.redhat.com
   resources:
-  - hasapplications/status
+  - applications/status
   verbs:
   - get
   - patch
@@ -35,7 +35,7 @@ rules:
 - apiGroups:
   - appstudio.redhat.com
   resources:
-  - hascomponentdetectionqueries
+  - componentdetectionqueries
   verbs:
   - create
   - delete
@@ -47,13 +47,13 @@ rules:
 - apiGroups:
   - appstudio.redhat.com
   resources:
-  - hascomponentdetectionqueries/finalizers
+  - componentdetectionqueries/finalizers
   verbs:
   - update
 - apiGroups:
   - appstudio.redhat.com
   resources:
-  - hascomponentdetectionqueries/status
+  - componentdetectionqueries/status
   verbs:
   - get
   - patch
@@ -61,7 +61,7 @@ rules:
 - apiGroups:
   - appstudio.redhat.com
   resources:
-  - hascomponents
+  - components
   verbs:
   - create
   - delete
@@ -73,13 +73,13 @@ rules:
 - apiGroups:
   - appstudio.redhat.com
   resources:
-  - hascomponents/finalizers
+  - components/finalizers
   verbs:
   - update
 - apiGroups:
   - appstudio.redhat.com
   resources:
-  - hascomponents/status
+  - components/status
   verbs:
   - get
   - patch
@@ -87,7 +87,7 @@ rules:
 - apiGroups:
   - appstudio.redhat.com
   resources:
-  - haspushes
+  - pushes
   verbs:
   - create
   - delete
@@ -99,13 +99,13 @@ rules:
 - apiGroups:
   - appstudio.redhat.com
   resources:
-  - haspushes/finalizers
+  - pushes/finalizers
   verbs:
   - update
 - apiGroups:
   - appstudio.redhat.com
   resources:
-  - haspushes/status
+  - pushes/status
   verbs:
   - get
   - patch

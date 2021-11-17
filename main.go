@@ -77,33 +77,33 @@ func main() {
 		os.Exit(1)
 	}
 
-	if err = (&controllers.HASApplicationReconciler{
+	if err = (&controllers.ApplicationReconciler{
 		Client: mgr.GetClient(),
 		Scheme: mgr.GetScheme(),
-		Log:    ctrl.Log.WithName("controllers").WithName("HASApplication"),
+		Log:    ctrl.Log.WithName("controllers").WithName("Application"),
 	}).SetupWithManager(mgr); err != nil {
-		setupLog.Error(err, "unable to create controller", "controller", "HASApplication")
+		setupLog.Error(err, "unable to create controller", "controller", "Application")
 		os.Exit(1)
 	}
-	if err = (&controllers.HASComponentReconciler{
+	if err = (&controllers.ComponentReconciler{
 		Client: mgr.GetClient(),
 		Scheme: mgr.GetScheme(),
 	}).SetupWithManager(mgr); err != nil {
-		setupLog.Error(err, "unable to create controller", "controller", "HASComponent")
+		setupLog.Error(err, "unable to create controller", "controller", "Component")
 		os.Exit(1)
 	}
-	if err = (&controllers.HASPushReconciler{
+	if err = (&controllers.PushReconciler{
 		Client: mgr.GetClient(),
 		Scheme: mgr.GetScheme(),
 	}).SetupWithManager(mgr); err != nil {
-		setupLog.Error(err, "unable to create controller", "controller", "HASPush")
+		setupLog.Error(err, "unable to create controller", "controller", "Push")
 		os.Exit(1)
 	}
-	if err = (&controllers.HASComponentDetectionQueryReconciler{
+	if err = (&controllers.ComponentDetectionQueryReconciler{
 		Client: mgr.GetClient(),
 		Scheme: mgr.GetScheme(),
 	}).SetupWithManager(mgr); err != nil {
-		setupLog.Error(err, "unable to create controller", "controller", "HASComponentDetectionQuery")
+		setupLog.Error(err, "unable to create controller", "controller", "ComponentDetectionQuery")
 		os.Exit(1)
 	}
 	//+kubebuilder:scaffold:builder

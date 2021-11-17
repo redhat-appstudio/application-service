@@ -1,7 +1,7 @@
 ## Append samples you want in your CSV to this file as resources ##
 resources:
-- appstudio_v1alpha1_hasapplication.yaml
-- appstudio_v1alpha1_hascomponent.yaml
-- appstudio_v1alpha1_haspush.yaml
-- appstudio_v1alpha1_hascomponentdetectionquery.yaml
+- appstudio_v1alpha1_application.yaml
+- appstudio_v1alpha1_component.yaml
+- appstudio_v1alpha1_push.yaml
+- appstudio_v1alpha1_componentdetectionquery.yaml
 #+kubebuilder:scaffold:manifestskustomizesamples

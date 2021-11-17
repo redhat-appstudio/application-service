@@ -27,26 +27,26 @@ import (
 	appstudiov1alpha1 "github.com/redhat-appstudio/application-service/api/v1alpha1"
 )
 
-// HASComponentDetectionQueryReconciler reconciles a HASComponentDetectionQuery object
-type HASComponentDetectionQueryReconciler struct {
+// ComponentReconciler reconciles a Component object
+type ComponentReconciler struct {
 	client.Client
 	Scheme *runtime.Scheme
 }
 
-//+kubebuilder:rbac:groups=appstudio.redhat.com,resources=hascomponentdetectionqueries,verbs=get;list;watch;create;update;patch;delete
-//+kubebuilder:rbac:groups=appstudio.redhat.com,resources=hascomponentdetectionqueries/status,verbs=get;update;patch
-//+kubebuilder:rbac:groups=appstudio.redhat.com,resources=hascomponentdetectionqueries/finalizers,verbs=update
+//+kubebuilder:rbac:groups=appstudio.redhat.com,resources=components,verbs=get;list;watch;create;update;patch;delete
+//+kubebuilder:rbac:groups=appstudio.redhat.com,resources=components/status,verbs=get;update;patch
+//+kubebuilder:rbac:groups=appstudio.redhat.com,resources=components/finalizers,verbs=update
 
 // Reconcile is part of the main kubernetes reconciliation loop which aims to
 // move the current state of the cluster closer to the desired state.
 // TODO(user): Modify the Reconcile function to compare the state specified by
-// the HASComponentDetectionQuery object against the actual cluster state, and then
+// the Component object against the actual cluster state, and then
 // perform operations to make the cluster state reflect the state specified by
 // the user.
 //
 // For more details, check Reconcile and its Result here:
 // - https://pkg.go.dev/sigs.k8s.io/controller-runtime@v0.9.2/pkg/reconcile
-func (r *HASComponentDetectionQueryReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
+func (r *ComponentReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
 	_ = log.FromContext(ctx)
 
 	// your logic here
@@ -55,8 +55,8 @@ func (r *HASComponentDetectionQueryReconciler) Reconcile(ctx context.Context, re
 }
 
 // SetupWithManager sets up the controller with the Manager.
-func (r *HASComponentDetectionQueryReconciler) SetupWithManager(mgr ctrl.Manager) error {
+func (r *ComponentReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
-		For(&appstudiov1alpha1.HASComponentDetectionQuery{}).
+		For(&appstudiov1alpha1.Component{}).
 		Complete(r)
 }

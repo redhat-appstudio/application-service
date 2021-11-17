@@ -1,13 +1,13 @@
-# permissions for end users to edit haspushes.
+# permissions for end users to edit pushes.
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
 metadata:
-  name: haspush-editor-role
+  name: push-editor-role
 rules:
 - apiGroups:
   - appstudio.redhat.com
   resources:
-  - haspushes
+  - pushes
   verbs:
   - create
   - delete
@@ -19,6 +19,6 @@ rules:
 - apiGroups:
   - appstudio.redhat.com
   resources:
-  - haspushes/status
+  - pushes/status
   verbs:
   - get

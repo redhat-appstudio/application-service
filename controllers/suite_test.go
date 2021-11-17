@@ -95,10 +95,10 @@ var _ = BeforeSuite(func() {
 	Expect(err).ToNot(HaveOccurred())
 
 	// To Do: Set up reconcilers for the other controllers
-	err = (&HASApplicationReconciler{
+	err = (&ApplicationReconciler{
 		Client: k8sManager.GetClient(),
 		Scheme: k8sManager.GetScheme(),
-		Log:    ctrl.Log.WithName("controllers").WithName("HASApplication"),
+		Log:    ctrl.Log.WithName("controllers").WithName("Application"),
 	}).SetupWithManager(k8sManager)
 	Expect(err).ToNot(HaveOccurred())
 

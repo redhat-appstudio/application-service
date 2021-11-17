@@ -1,23 +1,25 @@
+
+---
 apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
   annotations:
     controller-gen.kubebuilder.io/version: v0.6.1
   creationTimestamp: null
-  name: hascomponents.appstudio.redhat.com
+  name: components.appstudio.redhat.com
 spec:
   group: appstudio.redhat.com
   names:
-    kind: HASComponent
-    listKind: HASComponentList
-    plural: hascomponents
-    singular: hascomponent
+    kind: Component
+    listKind: ComponentList
+    plural: components
+    singular: component
   scope: Namespaced
   versions:
   - name: v1alpha1
     schema:
       openAPIV3Schema:
-        description: HASComponent is the Schema for the hascomponents API
+        description: Component is the Schema for the components API
         properties:
           apiVersion:
             description: 'APIVersion defines the versioned schema of this representation
@@ -32,15 +34,15 @@ spec:
           metadata:
             type: object
           spec:
-            description: HASComponentSpec defines the desired state of HASComponent
+            description: ComponentSpec defines the desired state of Component
             properties:
               foo:
-                description: Foo is an example field of HASComponent. Edit hascomponent_types.go
+                description: Foo is an example field of Component. Edit component_types.go
                   to remove/update
                 type: string
             type: object
           status:
-            description: HASComponentStatus defines the observed state of HASComponent
+            description: ComponentStatus defines the observed state of Component
             type: object
         type: object
     served: true
