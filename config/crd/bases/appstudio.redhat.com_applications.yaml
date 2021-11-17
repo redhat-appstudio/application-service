@@ -16,6 +16,7 @@ spec:
     shortNames:
     - hasapp
     - ha
+    - app
     singular: application
   scope: Namespaced
   versions:

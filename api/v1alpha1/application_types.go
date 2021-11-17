@@ -72,7 +72,7 @@ type ApplicationStatus struct {
 //+kubebuilder:subresource:status
 
 // Application is the Schema for the applications API
-// +kubebuilder:resource:path=applications,shortName=hasapp;ha
+// +kubebuilder:resource:path=applications,shortName=hasapp;ha;app
 // +kubebuilder:subresource:status
 type Application struct {
 	metav1.TypeMeta   `json:",inline"`
