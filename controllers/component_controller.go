@@ -19,29 +19,19 @@ package controllers
 import (
 	"context"
 	"fmt"
-	"io/ioutil"
-	"net/http"
-	"net/url"
-	"os"
 	"path"
-	"strings"
 
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
-	"sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/yaml"
 
-	devfileAPIV1 "github.com/devfile/api/v2/pkg/apis/workspaces/v1alpha2"
-	"github.com/devfile/api/v2/pkg/attributes"
-	devfilePkg "github.com/devfile/library/pkg/devfile"
-	"github.com/devfile/library/pkg/devfile/parser"
-	"github.com/devfile/library/pkg/devfile/parser/data/v2/common"
-	"github.com/go-git/go-git/v5"
+	"github.com/go-logr/logr"
 	appstudiov1alpha1 "github.com/redhat-appstudio/application-service/api/v1alpha1"
 	devfile "github.com/redhat-appstudio/application-service/pkg/devfile"
+	util "github.com/redhat-appstudio/application-service/pkg/util"
 )
 
 const (
@@ -53,6 +43,7 @@ const (
 type ComponentReconciler struct {
 	client.Client
 	Scheme *runtime.Scheme
+	Log    logr.Logger
 }
 
 //+kubebuilder:rbac:groups=appstudio.redhat.com,resources=components,verbs=get;list;watch;create;update;patch;delete
@@ -69,9 +60,8 @@ type ComponentReconciler struct {
 // For more details, check Reconcile and its Result here:
 // - https://pkg.go.dev/sigs.k8s.io/controller-runtime@v0.9.2/pkg/reconcile
 func (r *ComponentReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
-	logger := log.FromContext(ctx)
-	// your logic here
-	logger.Info("HELLO from the controller")
+	log := r.Log.WithValues("HASComponent", req.NamespacedName)
+	log.Info(fmt.Sprintf("Starting reconcile loop for %v", req.NamespacedName))
 
 	// Fetch the HASComponent instance
 	var hasComponent appstudiov1alpha1.HASComponent
@@ -101,245 +91,166 @@ func (r *ComponentReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 			devfilePath = path.Join(context, devfileName)
 		}
 
-		logger.Info("calculated devfile path", "devfilePath", devfilePath)
-
 		if source.GitSource.URL != "" {
 			var devfileBytes []byte
 
 			if source.GitSource.DevfileURL == "" {
-				logger.Info("source.GitSource.URL", "source.GitSource.URL", source.GitSource.URL)
-				rawURL, err := convertGitHubURL(source.GitSource.URL)
+				rawURL, err := util.ConvertGitHubURL(source.GitSource.URL)
 				if err != nil {
+					log.Error(err, fmt.Sprintf("Unable to convert Github URL to raw format, exiting reconcile loop %v", req.NamespacedName))
+					r.SetCreateConditionAndUpdateCR(ctx, &hasComponent, err)
 					return ctrl.Result{}, err
 				}
-				logger.Info("rawURL", "rawURL", rawURL)
 
-				devfilePath = rawURL + "/" + devfilePath
-				logger.Info("devfilePath", "devfilePath", devfilePath)
-				resp, err := http.Get(devfilePath)
+				endpoint := rawURL + "/" + devfilePath
+				devfileBytes, err = util.CurlEndpoint(endpoint)
 				if err != nil {
-					return ctrl.Result{}, err
-				}
-				defer resp.Body.Close()
+					log.Error(err, fmt.Sprintf("Unable to curl %s, attempting to clone the repo and read the devfile instead %v", devfilePath, req.NamespacedName))
 
-				if resp.StatusCode == http.StatusOK {
-					logger.Info("curl succesful")
-					devfileBytes, err = ioutil.ReadAll(resp.Body)
-					if err != nil {
-						return ctrl.Result{}, err
-					}
-				} else {
-					logger.Info("intializing cloning since unable to curl")
+					// clone the repo and read the devfile
 					clonePath := path.Join(clonePathPrefix, hasComponent.Spec.Application, hasComponent.Spec.ComponentName)
-
-					// Check if the clone path is empty, if not delete it
-					isDirExist, err := IsExist(clonePath)
+					devfileBytes, err = util.CloneAndReadDevfile(clonePath, devfilePath, source.GitSource.URL)
 					if err != nil {
-						return ctrl.Result{}, err
-					}
-					if isDirExist {
-						logger.Info("clone path exists, deleting", "path", clonePath)
-						os.RemoveAll(clonePath)
-					}
-
-					// Clone the repo
-					_, err = git.PlainClone(clonePath, false, &git.CloneOptions{
-						URL: source.GitSource.URL,
-					})
-					if err != nil {
-						return ctrl.Result{}, err
-					}
-
-					// Read the devfile
-					devfileBytes, err = ioutil.ReadFile(path.Join(clonePath, devfilePath))
-					if err != nil {
+						log.Error(err, fmt.Sprintf("Unable to clone repo %s and read devfile %s in path %s, exiting reconcile loop %v", source.GitSource.URL, devfilePath, clonePath, req.NamespacedName))
+						r.SetCreateConditionAndUpdateCR(ctx, &hasComponent, err)
 						return ctrl.Result{}, err
 					}
 				}
 			} else {
-				logger.Info("Getting devfile from the DevfileURL", "DevfileURL", source.GitSource.DevfileURL)
-				resp, err := http.Get(source.GitSource.DevfileURL)
+				devfileBytes, err = util.CurlEndpoint(source.GitSource.DevfileURL)
 				if err != nil {
+					log.Error(err, fmt.Sprintf("Unable to GET %s, exiting reconcile loop %v", source.GitSource.DevfileURL, req.NamespacedName))
+					err := fmt.Errorf("unable to GET from %s", source.GitSource.DevfileURL)
+					r.SetCreateConditionAndUpdateCR(ctx, &hasComponent, err)
 					return ctrl.Result{}, err
 				}
-				defer resp.Body.Close()
-
-				if resp.StatusCode == http.StatusOK {
-					logger.Info("curl succesful")
-					devfileBytes, err = ioutil.ReadAll(resp.Body)
-					if err != nil {
-						return ctrl.Result{}, err
-					}
-				} else {
-					return ctrl.Result{}, fmt.Errorf("unable to GET from %s", source.GitSource.DevfileURL)
-				}
 			}
 
-			logger.Info("successfully read the devfile", "string representation", string(devfileBytes[:]))
-
-			devfileObj, _, err := devfilePkg.ParseDevfileAndValidate(parser.ParserArgs{
-				Data: devfileBytes,
-			})
+			// Parse the HAS Component Devfile
+			hasCompDevfileData, err := devfile.ParseDevfileModel(string(devfileBytes))
 			if err != nil {
+				log.Error(err, fmt.Sprintf("Unable to parse the devfile from HASComponent, exiting reconcile loop %v", req.NamespacedName))
+				r.SetCreateConditionAndUpdateCR(ctx, &hasComponent, err)
 				return ctrl.Result{}, err
 			}
 
-			components, err := devfileObj.Data.GetComponents(common.DevfileOptions{
-				ComponentOptions: common.ComponentOptions{
-					ComponentType: devfileAPIV1.ContainerComponentType,
-				},
-			})
+			_, err = r.updateComponentDevfileModel(hasCompDevfileData, hasComponent)
 			if err != nil {
-				return ctrl.Result{}, err
+				log.Error(err, fmt.Sprintf("Unable to update the HAS Component Devfile model %v", req.NamespacedName))
+				r.SetCreateConditionAndUpdateCR(ctx, &hasComponent, err)
+				return ctrl.Result{}, nil
 			}
-			logger.Info("components", "components", components)
-
-			for i, component := range components {
-				updateRequired := false
-				if hasComponent.Spec.Route != "" {
-					logger.Info("hasComponent.Spec.Route", "hasComponent.Spec.Route", hasComponent.Spec.Route)
-					if len(component.Attributes) == 0 {
-						logger.Info("init Attributes 1")
-						component.Attributes = attributes.Attributes{}
-					}
-					logger.Info("len(component.Attributes) 111", "len(component.Attributes) 111", len(component.Attributes))
-					component.Attributes = component.Attributes.PutString("appstudio/has.route", hasComponent.Spec.Route)
-					updateRequired = true
-				}
-				if hasComponent.Spec.Replicas > 0 {
-					logger.Info("hasComponent.Spec.Replicas", "hasComponent.Spec.Replicas", hasComponent.Spec.Replicas)
-					if len(component.Attributes) == 0 {
-						logger.Info("init Attributes 2")
-						component.Attributes = attributes.Attributes{}
-					}
-					logger.Info("len(component.Attributes) 222", "len(component.Attributes) 222", len(component.Attributes))
-					component.Attributes = component.Attributes.PutInteger("appstudio/has.replicas", hasComponent.Spec.Replicas)
-					updateRequired = true
-				}
-				if i == 0 && hasComponent.Spec.TargetPort > 0 {
-					logger.Info("hasComponent.Spec.TargetPort", "hasComponent.Spec.TargetPort", hasComponent.Spec.TargetPort)
-					for i, endpoint := range component.Container.Endpoints {
-						logger.Info("foudn endpoint", "endpoing", endpoint.Name)
-						endpoint.TargetPort = hasComponent.Spec.TargetPort
-						updateRequired = true
-						component.Container.Endpoints[i] = endpoint
-					}
-				}
-				for _, env := range hasComponent.Spec.Env {
-					if env.ValueFrom != nil {
-						return ctrl.Result{}, fmt.Errorf("env.ValueFrom is not supported at the moment, use env.value")
-					}
-
-					name := env.Name
-					value := env.Value
-					isPresent := false
-
-					for i, devfileEnv := range component.Container.Env {
-						if devfileEnv.Name == name {
-							isPresent = true
-							devfileEnv.Value = value
-							component.Container.Env[i] = devfileEnv
-						}
-					}
-
-					if !isPresent {
-						component.Container.Env = append(component.Container.Env, devfileAPIV1.EnvVar{Name: name, Value: value})
-					}
-					updateRequired = true
-				}
-
-				if updateRequired {
-					logger.Info("UPDATING COMPONENT", "component name", component.Container)
-					// Update the component once it has been updated with the HAS Component data
-					err := devfileObj.Data.UpdateComponent(component)
-					if err != nil {
-						return ctrl.Result{}, err
-					}
-				}
-			}
-
-			logger.Info("outside before getting NEW CONTENT")
 
 			// Get the HASApplication CR
 			hasApplication := appstudiov1alpha1.HASApplication{}
 			err = r.Get(ctx, types.NamespacedName{Name: hasComponent.Spec.Application, Namespace: hasComponent.Namespace}, &hasApplication)
 			if err != nil {
-				logger.Info("Failed to get Application")
+				log.Error(err, fmt.Sprintf("Unable to get the HASApplication %s, exiting reconcile loop %v", hasComponent.Spec.Application, req.NamespacedName))
+				r.SetCreateConditionAndUpdateCR(ctx, &hasComponent, err)
 				return ctrl.Result{}, nil
 			}
 			if hasApplication.Status.Devfile != "" {
 				// Get the devfile of the hasApp CR
 				hasAppDevfileData, err := devfile.ParseDevfileModel(hasApplication.Status.Devfile)
 				if err != nil {
-					logger.Info(fmt.Sprintf("Unable to parse devfile model, exiting reconcile loop %v", req.NamespacedName))
+					log.Error(err, fmt.Sprintf("Unable to parse the devfile from HASApplication, exiting reconcile loop %v", req.NamespacedName))
+					r.SetCreateConditionAndUpdateCR(ctx, &hasComponent, err)
 					return ctrl.Result{}, err
 				}
 
-				newProject := devfileAPIV1.Project{
-					Name: hasComponent.Spec.ComponentName,
-					ProjectSource: devfileAPIV1.ProjectSource{
-						Git: &devfileAPIV1.GitProjectSource{
-							GitLikeProjectSource: devfileAPIV1.GitLikeProjectSource{
-								Remotes: map[string]string{
-									"origin": hasComponent.Spec.Source.GitSource.URL,
-								},
-							},
-						},
-					},
-				}
-				projects, err := hasAppDevfileData.GetProjects(common.DevfileOptions{})
+				err = r.updateApplicationDevfileModel(hasAppDevfileData, hasComponent)
 				if err != nil {
-					logger.Info(fmt.Sprintf("Unable to get projects %v", req.NamespacedName))
-					return ctrl.Result{}, err
+					log.Error(err, fmt.Sprintf("Unable to update the HAS Application Devfile model %v", req.NamespacedName))
+					r.SetCreateConditionAndUpdateCR(ctx, &hasComponent, err)
+					return ctrl.Result{}, nil
 				}
-				for _, project := range projects {
-					if project.Name == newProject.Name {
-						return ctrl.Result{}, fmt.Errorf("HASApplication already has a project with name %s", newProject.Name)
-					}
-				}
-				err = hasAppDevfileData.AddProjects([]devfileAPIV1.Project{newProject})
+
+				yamlHASCompData, err := yaml.Marshal(hasCompDevfileData)
 				if err != nil {
-					logger.Info(fmt.Sprintf("Unable to add projects %v", req.NamespacedName))
+					log.Error(err, fmt.Sprintf("Unable to marshall the HASComponent devfile, exiting reconcile loop %v", req.NamespacedName))
+					r.SetCreateConditionAndUpdateCR(ctx, &hasComponent, err)
 					return ctrl.Result{}, err
 				}
 
-				yamlHASCompData, err := yaml.Marshal(devfileObj.Data)
-				if err != nil {
-					return ctrl.Result{}, err
-				}
-
-				logger.Info("successfully UPDATED the devfile", "string representation", string(yamlHASCompData[:]))
-
-				hasComponent.Status.Devfile = string(yamlHASCompData[:])
-				err = r.Status().Update(ctx, &hasComponent)
-				if err != nil {
-					return ctrl.Result{Requeue: true}, err
-				}
+				hasComponent.Status.Devfile = string(yamlHASCompData)
 
 				// Update the HASApp CR with the new devfile
 				yamlHASAppData, err := yaml.Marshal(hasAppDevfileData)
 				if err != nil {
-					logger.Info(fmt.Sprintf("Unable to marshall HASApplication devfile, exiting reconcile loop %v", req.NamespacedName))
+					log.Error(err, fmt.Sprintf("Unable to marshall the HASApplication devfile, exiting reconcile loop %v", req.NamespacedName))
+					r.SetCreateConditionAndUpdateCR(ctx, &hasComponent, err)
 					return ctrl.Result{}, err
 				}
 				hasApplication.Status.Devfile = string(yamlHASAppData)
 				err = r.Status().Update(ctx, &hasApplication)
 				if err != nil {
-					return ctrl.Result{Requeue: true}, err
+					log.Error(err, "Unable to update HASApplication")
+					// if we're unable to update the HASApplication CR, then  we need to err out
+					// since we need to save a reference of the HASComponent in HASApplication
+					r.SetCreateConditionAndUpdateCR(ctx, &hasComponent, err)
+					return ctrl.Result{}, err
 				}
 
+				r.SetCreateConditionAndUpdateCR(ctx, &hasComponent, nil)
+
+				log.Info(fmt.Sprintf("Updating the labels for HAS Component %v", req.NamespacedName))
+				hasComponentLabels := make(map[string]string)
+				hasComponentLabels["appstudio.has/application"] = hasComponent.Spec.Application
+				hasComponentLabels["appstudio.has/component"] = hasComponent.Spec.ComponentName
+				hasComponent.SetLabels(hasComponentLabels)
+				err = r.Client.Update(ctx, &hasComponent)
+				if err != nil {
+					log.Error(err, fmt.Sprintf("Unable to update HASComponent with the required labels %v", req.NamespacedName))
+					r.SetCreateConditionAndUpdateCR(ctx, &hasComponent, err)
+					return ctrl.Result{}, err
+				}
 			} else {
-				return ctrl.Result{}, fmt.Errorf("HASApplication devfile model is empty. Before creating a HASComponent, an instance of HASApplication should be created")
+				log.Error(err, fmt.Sprintf("HASApplication devfile model is empty. Before creating a HASComponent, an instance of HASApplication should be created, exiting reconcile loop %v", req.NamespacedName))
+				err := fmt.Errorf("HASApplication devfile model is empty. Before creating a HASComponent, an instance of HASApplication should be created")
+				r.SetCreateConditionAndUpdateCR(ctx, &hasComponent, err)
+				return ctrl.Result{}, err
 			}
 
 		} else if hasComponent.Spec.Source.ImageSource.ContainerImage != "" {
-			return ctrl.Result{}, fmt.Errorf("container image is not supported at the moment, please use github links for adding a component to an application")
+			log.Info(fmt.Sprintf("container image is not supported at the moment, please use github links for adding a component to an application for %v", req.NamespacedName))
 		}
 	} else {
 		// If the model already exists, see if fields have been updated
-		return ctrl.Result{}, fmt.Errorf("not yet implemented")
+		log.Info(fmt.Sprintf("Checking if the HAS Component has been updated %v", req.NamespacedName))
+
+		// Parse the HAS Component Devfile
+		hasCompDevfileData, err := devfile.ParseDevfileModel(hasComponent.Status.Devfile)
+		if err != nil {
+			log.Error(err, fmt.Sprintf("Unable to parse the devfile from HASComponent, exiting reconcile loop %v", req.NamespacedName))
+			r.SetUpdateConditionAndUpdateCR(ctx, &hasComponent, err)
+			return ctrl.Result{}, err
+		}
+
+		isUpdated, err := r.updateComponentDevfileModel(hasCompDevfileData, hasComponent)
+		if err != nil {
+			log.Error(err, fmt.Sprintf("Unable to update the HAS Component Devfile model %v", req.NamespacedName))
+			r.SetUpdateConditionAndUpdateCR(ctx, &hasComponent, err)
+			return ctrl.Result{}, nil
+		}
+
+		if isUpdated {
+			log.Info(fmt.Sprintf("The HAS Component devfile data was updated %v", req.NamespacedName))
+			yamlHASCompData, err := yaml.Marshal(hasCompDevfileData)
+			if err != nil {
+				log.Error(err, fmt.Sprintf("Unable to marshall the HASComponent devfile, exiting reconcile loop %v", req.NamespacedName))
+				r.SetUpdateConditionAndUpdateCR(ctx, &hasComponent, err)
+				return ctrl.Result{}, err
+			}
+
+			hasComponent.Status.Devfile = string(yamlHASCompData)
+
+			r.SetUpdateConditionAndUpdateCR(ctx, &hasComponent, nil)
+		} else {
+			log.Info(fmt.Sprintf("The HAS Component devfile data was not updated %v", req.NamespacedName))
+		}
 	}
 
+	log.Info(fmt.Sprintf("Finished reconcile loop for %v", req.NamespacedName))
 	return ctrl.Result{}, nil
 }
 
@@ -348,44 +259,4 @@ func (r *ComponentReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&appstudiov1alpha1.Component{}).
 		Complete(r)
-}
-
-// IsExist returns whether the given file or directory exists
-func IsExist(path string) (bool, error) {
-	_, err := os.Stat(path)
-	if err == nil {
-		return true, nil
-	}
-	if os.IsNotExist(err) {
-		return false, nil
-	}
-	return false, err
-}
-
-// convertGitHubURL converts a git url to its raw format
-// taken from Jingfu's odo code
-func convertGitHubURL(URL string) (string, error) {
-	url, err := url.Parse(URL)
-	if err != nil {
-		return "", err
-	}
-
-	if strings.Contains(url.Host, "github") && !strings.Contains(url.Host, "raw") {
-		// Convert path part of the URL
-		URLSlice := strings.Split(URL, "/")
-		if len(URLSlice) > 2 && URLSlice[len(URLSlice)-2] == "tree" {
-			// GitHub raw URL doesn't have "tree" structure in the URL, need to remove it
-			URL = strings.Replace(URL, "/tree", "", 1)
-		} else {
-			// Add "main" branch for GitHub raw URL by default if branch is not specified
-			URL = URL + "/main"
-		}
-
-		// Convert host part of the URL
-		if url.Host == "github.com" {
-			URL = strings.Replace(URL, "github.com", "raw.githubusercontent.com", 1)
-		}
-	}
-
-	return URL, nil
 }

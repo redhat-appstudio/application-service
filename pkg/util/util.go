@@ -16,9 +16,16 @@
 package util
 
 import (
+	"fmt"
+	"io/ioutil"
+	"net/http"
+	"net/url"
+	"os"
+	"path"
 	"strings"
 
 	gofakeit "github.com/brianvoe/gofakeit/v6"
+	"github.com/go-git/go-git/v5"
 )
 
 const AppStudioDataOrg = "https://github.com/redhat-appstudio-appdata/"
@@ -37,4 +44,89 @@ func GenerateNewRepositoryName(displayName string, namespace string) string {
 	repoName := sanitizedName + "-" + namespace + "-" + gofakeit.Verb() + "-" + gofakeit.Noun()
 	repository := AppStudioDataOrg + repoName
 	return repository
+}
+
+// IsExist returns whether the given file or directory exists
+func IsExist(path string) (bool, error) {
+	_, err := os.Stat(path)
+	if err == nil {
+		return true, nil
+	}
+	if os.IsNotExist(err) {
+		return false, nil
+	}
+	return false, err
+}
+
+// ConvertGitHubURL converts a git url to its raw format
+// taken from Jingfu's odo code
+func ConvertGitHubURL(URL string) (string, error) {
+	url, err := url.Parse(URL)
+	if err != nil {
+		return "", err
+	}
+
+	if strings.Contains(url.Host, "github") && !strings.Contains(url.Host, "raw") {
+		// Convert path part of the URL
+		URLSlice := strings.Split(URL, "/")
+		if len(URLSlice) > 2 && URLSlice[len(URLSlice)-2] == "tree" {
+			// GitHub raw URL doesn't have "tree" structure in the URL, need to remove it
+			URL = strings.Replace(URL, "/tree", "", 1)
+		} else {
+			// Add "main" branch for GitHub raw URL by default if branch is not specified
+			URL = URL + "/main"
+		}
+
+		// Convert host part of the URL
+		if url.Host == "github.com" {
+			URL = strings.Replace(URL, "github.com", "raw.githubusercontent.com", 1)
+		}
+	}
+
+	return URL, nil
+}
+
+// CurlEndpoint curls the endpoint and returns the response or an error if the response is a non-200 status
+func CurlEndpoint(endpoint string) ([]byte, error) {
+	var respBytes []byte
+	resp, err := http.Get(endpoint)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode == http.StatusOK {
+		respBytes, err = ioutil.ReadAll(resp.Body)
+		if err != nil {
+			return nil, err
+		}
+		return respBytes, nil
+	}
+
+	return nil, fmt.Errorf("received a non-200 status when curling %s", endpoint)
+}
+
+// CloneAndReadDevfile clones the repoURL to clonePath and reads the devfile from
+// the devfilePath relative to the clonePath
+func CloneAndReadDevfile(clonePath, devfilePath, repoURL string) ([]byte, error) {
+	// Check if the clone path is empty, if not delete it
+	isDirExist, err := IsExist(clonePath)
+	if err != nil {
+		return nil, err
+	}
+	if isDirExist {
+		os.RemoveAll(clonePath)
+	}
+
+	// Clone the repo
+	_, err = git.PlainClone(clonePath, false, &git.CloneOptions{
+		URL: repoURL,
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	// Read the devfile
+	devfileBytes, err := ioutil.ReadFile(path.Join(clonePath, devfilePath))
+	return devfileBytes, err
 }

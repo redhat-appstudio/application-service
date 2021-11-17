@@ -1,17 +1,29 @@
 apiVersion: appstudio.redhat.com/v1alpha1
 kind: Component
 metadata:
-  name: component-sample
+  name: hascomponent-sample-12345
 spec:
   componentName: backend
-  application: hasapplication-sample
-  replicas: 2
-  targetPort: 9999
+  application: hasapplication-sample-12345
+  replicas: 1
+  targetPort: 1111
+  route: route111
+  resources:
+    limits:
+      memory: "500Mi"
+      cpu: "2"
+      storage: "400Mi"
+      ephemeral-storage: "500Mi"
+    requests:
+      memory: "400Mi"
+      cpu: "700m"
+      storage: "200Mi"
+      ephemeral-storage: "400Mi"
   env:
-  - name: mjf
-    value: "1"
-  - name: mjf2
-    value: "2"
+  - name: FOO
+    value: "foo1"
+  - name: BAR
+    value: "bar1"
   source:
     git:
       url: https://github.com/devfile-samples/devfile-sample-java-springboot-basic
