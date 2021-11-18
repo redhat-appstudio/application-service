@@ -26,52 +26,52 @@ import (
 	appstudiov1alpha1 "github.com/redhat-appstudio/application-service/api/v1alpha1"
 )
 
-func (r *HASComponentReconciler) SetCreateConditionAndUpdateCR(ctx context.Context, hasComponent *appstudiov1alpha1.HASComponent, createError error) {
-	log := r.Log.WithValues("HASComponent", hasComponent.Name)
+func (r *ComponentReconciler) SetCreateConditionAndUpdateCR(ctx context.Context, hasComponent *appstudiov1alpha1.Component, createError error) {
+	log := r.Log.WithValues("Component", hasComponent.Name)
 
 	if createError == nil {
 		meta.SetStatusCondition(&hasComponent.Status.Conditions, metav1.Condition{
 			Type:    "Created",
 			Status:  metav1.ConditionTrue,
 			Reason:  "OK",
-			Message: "HASComponent has been successfully created",
+			Message: "Component has been successfully created",
 		})
 	} else {
 		meta.SetStatusCondition(&hasComponent.Status.Conditions, metav1.Condition{
 			Type:    "Created",
 			Status:  metav1.ConditionFalse,
 			Reason:  "Error",
-			Message: fmt.Sprintf("HASComponent create failed: %v", createError),
+			Message: fmt.Sprintf("Component create failed: %v", createError),
 		})
 	}
 
 	err := r.Client.Status().Update(ctx, hasComponent)
 	if err != nil {
-		log.Error(err, "Unable to update HASComponent")
+		log.Error(err, "Unable to update Component")
 	}
 }
 
-func (r *HASComponentReconciler) SetUpdateConditionAndUpdateCR(ctx context.Context, hasComponent *appstudiov1alpha1.HASComponent, updateError error) {
-	log := r.Log.WithValues("HASComponent", hasComponent.Name)
+func (r *ComponentReconciler) SetUpdateConditionAndUpdateCR(ctx context.Context, hasComponent *appstudiov1alpha1.Component, updateError error) {
+	log := r.Log.WithValues("Component", hasComponent.Name)
 
 	if updateError == nil {
 		meta.SetStatusCondition(&hasComponent.Status.Conditions, metav1.Condition{
 			Type:    "Updated",
 			Status:  metav1.ConditionTrue,
 			Reason:  "OK",
-			Message: "HASComponent has been successfully updated",
+			Message: "Component has been successfully updated",
 		})
 	} else {
 		meta.SetStatusCondition(&hasComponent.Status.Conditions, metav1.Condition{
 			Type:    "Updated",
 			Status:  metav1.ConditionFalse,
 			Reason:  "Error",
-			Message: fmt.Sprintf("HASComponent updated failed: %v", updateError),
+			Message: fmt.Sprintf("Component updated failed: %v", updateError),
 		})
 	}
 
 	err := r.Client.Status().Update(ctx, hasComponent)
 	if err != nil {
-		log.Error(err, "Unable to update HASComponent")
+		log.Error(err, "Unable to update Component")
 	}
 }

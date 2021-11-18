@@ -39,7 +39,7 @@ const (
 	clonePathPrefix = "/tmp/appstudio/has"
 )
 
-// ComponentReconciler reconciles a HASComponent object
+// ComponentReconciler reconciles a Component object
 type ComponentReconciler struct {
 	client.Client
 	Scheme *runtime.Scheme
@@ -60,11 +60,11 @@ type ComponentReconciler struct {
 // For more details, check Reconcile and its Result here:
 // - https://pkg.go.dev/sigs.k8s.io/controller-runtime@v0.9.2/pkg/reconcile
 func (r *ComponentReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
-	log := r.Log.WithValues("HASComponent", req.NamespacedName)
+	log := r.Log.WithValues("Component", req.NamespacedName)
 	log.Info(fmt.Sprintf("Starting reconcile loop for %v", req.NamespacedName))
 
-	// Fetch the HASComponent instance
-	var hasComponent appstudiov1alpha1.HASComponent
+	// Fetch the Component instance
+	var hasComponent appstudiov1alpha1.Component
 	err := r.Get(ctx, req.NamespacedName, &hasComponent)
 	if err != nil {
 		if errors.IsNotFound(err) {
@@ -129,7 +129,7 @@ func (r *ComponentReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 			// Parse the HAS Component Devfile
 			hasCompDevfileData, err := devfile.ParseDevfileModel(string(devfileBytes))
 			if err != nil {
-				log.Error(err, fmt.Sprintf("Unable to parse the devfile from HASComponent, exiting reconcile loop %v", req.NamespacedName))
+				log.Error(err, fmt.Sprintf("Unable to parse the devfile from Component, exiting reconcile loop %v", req.NamespacedName))
 				r.SetCreateConditionAndUpdateCR(ctx, &hasComponent, err)
 				return ctrl.Result{}, err
 			}
@@ -141,11 +141,11 @@ func (r *ComponentReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 				return ctrl.Result{}, nil
 			}
 
-			// Get the HASApplication CR
-			hasApplication := appstudiov1alpha1.HASApplication{}
+			// Get the Application CR
+			hasApplication := appstudiov1alpha1.Application{}
 			err = r.Get(ctx, types.NamespacedName{Name: hasComponent.Spec.Application, Namespace: hasComponent.Namespace}, &hasApplication)
 			if err != nil {
-				log.Error(err, fmt.Sprintf("Unable to get the HASApplication %s, exiting reconcile loop %v", hasComponent.Spec.Application, req.NamespacedName))
+				log.Error(err, fmt.Sprintf("Unable to get the Application %s, exiting reconcile loop %v", hasComponent.Spec.Application, req.NamespacedName))
 				r.SetCreateConditionAndUpdateCR(ctx, &hasComponent, err)
 				return ctrl.Result{}, nil
 			}
@@ -153,7 +153,7 @@ func (r *ComponentReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 				// Get the devfile of the hasApp CR
 				hasAppDevfileData, err := devfile.ParseDevfileModel(hasApplication.Status.Devfile)
 				if err != nil {
-					log.Error(err, fmt.Sprintf("Unable to parse the devfile from HASApplication, exiting reconcile loop %v", req.NamespacedName))
+					log.Error(err, fmt.Sprintf("Unable to parse the devfile from Application, exiting reconcile loop %v", req.NamespacedName))
 					r.SetCreateConditionAndUpdateCR(ctx, &hasComponent, err)
 					return ctrl.Result{}, err
 				}
@@ -167,7 +167,7 @@ func (r *ComponentReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 
 				yamlHASCompData, err := yaml.Marshal(hasCompDevfileData)
 				if err != nil {
-					log.Error(err, fmt.Sprintf("Unable to marshall the HASComponent devfile, exiting reconcile loop %v", req.NamespacedName))
+					log.Error(err, fmt.Sprintf("Unable to marshall the Component devfile, exiting reconcile loop %v", req.NamespacedName))
 					r.SetCreateConditionAndUpdateCR(ctx, &hasComponent, err)
 					return ctrl.Result{}, err
 				}
@@ -177,16 +177,16 @@ func (r *ComponentReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 				// Update the HASApp CR with the new devfile
 				yamlHASAppData, err := yaml.Marshal(hasAppDevfileData)
 				if err != nil {
-					log.Error(err, fmt.Sprintf("Unable to marshall the HASApplication devfile, exiting reconcile loop %v", req.NamespacedName))
+					log.Error(err, fmt.Sprintf("Unable to marshall the Application devfile, exiting reconcile loop %v", req.NamespacedName))
 					r.SetCreateConditionAndUpdateCR(ctx, &hasComponent, err)
 					return ctrl.Result{}, err
 				}
 				hasApplication.Status.Devfile = string(yamlHASAppData)
 				err = r.Status().Update(ctx, &hasApplication)
 				if err != nil {
-					log.Error(err, "Unable to update HASApplication")
-					// if we're unable to update the HASApplication CR, then  we need to err out
-					// since we need to save a reference of the HASComponent in HASApplication
+					log.Error(err, "Unable to update Application")
+					// if we're unable to update the Application CR, then  we need to err out
+					// since we need to save a reference of the Component in Application
 					r.SetCreateConditionAndUpdateCR(ctx, &hasComponent, err)
 					return ctrl.Result{}, err
 				}
@@ -200,13 +200,13 @@ func (r *ComponentReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 				hasComponent.SetLabels(hasComponentLabels)
 				err = r.Client.Update(ctx, &hasComponent)
 				if err != nil {
-					log.Error(err, fmt.Sprintf("Unable to update HASComponent with the required labels %v", req.NamespacedName))
+					log.Error(err, fmt.Sprintf("Unable to update Component with the required labels %v", req.NamespacedName))
 					r.SetCreateConditionAndUpdateCR(ctx, &hasComponent, err)
 					return ctrl.Result{}, err
 				}
 			} else {
-				log.Error(err, fmt.Sprintf("HASApplication devfile model is empty. Before creating a HASComponent, an instance of HASApplication should be created, exiting reconcile loop %v", req.NamespacedName))
-				err := fmt.Errorf("HASApplication devfile model is empty. Before creating a HASComponent, an instance of HASApplication should be created")
+				log.Error(err, fmt.Sprintf("Application devfile model is empty. Before creating a Component, an instance of Application should be created, exiting reconcile loop %v", req.NamespacedName))
+				err := fmt.Errorf("Application devfile model is empty. Before creating a Component, an instance of Application should be created")
 				r.SetCreateConditionAndUpdateCR(ctx, &hasComponent, err)
 				return ctrl.Result{}, err
 			}
@@ -221,7 +221,7 @@ func (r *ComponentReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 		// Parse the HAS Component Devfile
 		hasCompDevfileData, err := devfile.ParseDevfileModel(hasComponent.Status.Devfile)
 		if err != nil {
-			log.Error(err, fmt.Sprintf("Unable to parse the devfile from HASComponent, exiting reconcile loop %v", req.NamespacedName))
+			log.Error(err, fmt.Sprintf("Unable to parse the devfile from Component, exiting reconcile loop %v", req.NamespacedName))
 			r.SetUpdateConditionAndUpdateCR(ctx, &hasComponent, err)
 			return ctrl.Result{}, err
 		}
@@ -237,7 +237,7 @@ func (r *ComponentReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 			log.Info(fmt.Sprintf("The HAS Component devfile data was updated %v", req.NamespacedName))
 			yamlHASCompData, err := yaml.Marshal(hasCompDevfileData)
 			if err != nil {
-				log.Error(err, fmt.Sprintf("Unable to marshall the HASComponent devfile, exiting reconcile loop %v", req.NamespacedName))
+				log.Error(err, fmt.Sprintf("Unable to marshall the Component devfile, exiting reconcile loop %v", req.NamespacedName))
 				r.SetUpdateConditionAndUpdateCR(ctx, &hasComponent, err)
 				return ctrl.Result{}, err
 			}

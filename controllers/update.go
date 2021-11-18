@@ -11,9 +11,9 @@ import (
 	corev1 "k8s.io/api/core/v1"
 )
 
-func (r *HASComponentReconciler) updateComponentDevfileModel(hasCompDevfileData data.DevfileData, hasComponent appstudiov1alpha1.HASComponent) (bool, error) {
+func (r *ComponentReconciler) updateComponentDevfileModel(hasCompDevfileData data.DevfileData, hasComponent appstudiov1alpha1.Component) (bool, error) {
 
-	log := r.Log.WithValues("HASComponent", "updateComponentDevfileModel")
+	log := r.Log.WithValues("Component", "updateComponentDevfileModel")
 
 	components, err := hasCompDevfileData.GetComponents(common.DevfileOptions{
 		ComponentOptions: common.ComponentOptions{
@@ -257,7 +257,7 @@ func (r *HASComponentReconciler) updateComponentDevfileModel(hasCompDevfileData 
 	return isUpdated, nil
 }
 
-func (r *HASComponentReconciler) updateApplicationDevfileModel(hasAppDevfileData data.DevfileData, hasComponent appstudiov1alpha1.HASComponent) error {
+func (r *ComponentReconciler) updateApplicationDevfileModel(hasAppDevfileData data.DevfileData, hasComponent appstudiov1alpha1.Component) error {
 
 	newProject := devfileAPIV1.Project{
 		Name: hasComponent.Spec.ComponentName,

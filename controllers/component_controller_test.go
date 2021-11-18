@@ -34,7 +34,7 @@ import (
 	//+kubebuilder:scaffold:imports
 )
 
-var _ = Describe("HASComponent controller", func() {
+var _ = Describe("Component controller", func() {
 
 	// Define utility constants for object names and testing timeouts/durations and intervals.
 	const (
@@ -47,20 +47,20 @@ var _ = Describe("HASComponent controller", func() {
 		SampleRepoLink  = "https://github.com/devfile-samples/devfile-sample-java-springboot-basic"
 	)
 
-	Context("Create HASComponent with basic field set", func() {
-		It("Should create successfully and update the HASApplication", func() {
+	Context("Create Component with basic field set", func() {
+		It("Should create successfully and update the Application", func() {
 			ctx := context.Background()
 
-			hasApp := &appstudiov1alpha1.HASApplication{
+			hasApp := &appstudiov1alpha1.Application{
 				TypeMeta: metav1.TypeMeta{
 					APIVersion: "appstudio.redhat.com/v1alpha1",
-					Kind:       "HASApplication",
+					Kind:       "Application",
 				},
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      HASAppName,
 					Namespace: HASAppNamespace,
 				},
-				Spec: appstudiov1alpha1.HASApplicationSpec{
+				Spec: appstudiov1alpha1.ApplicationSpec{
 					DisplayName: DisplayName,
 					Description: Description,
 				},
@@ -68,16 +68,16 @@ var _ = Describe("HASComponent controller", func() {
 
 			Expect(k8sClient.Create(ctx, hasApp)).Should(Succeed())
 
-			hasComp := &appstudiov1alpha1.HASComponent{
+			hasComp := &appstudiov1alpha1.Component{
 				TypeMeta: metav1.TypeMeta{
 					APIVersion: "appstudio.redhat.com/v1alpha1",
-					Kind:       "HASComponent",
+					Kind:       "Component",
 				},
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      HASCompName,
 					Namespace: HASAppNamespace,
 				},
-				Spec: appstudiov1alpha1.HASComponentSpec{
+				Spec: appstudiov1alpha1.ComponentSpec{
 					ComponentName: ComponentName,
 					Application:   HASAppName,
 					Source: appstudiov1alpha1.ComponentSource{
@@ -94,23 +94,23 @@ var _ = Describe("HASComponent controller", func() {
 			// Look up the has app resource that was created.
 			// num(conditions) may still be < 1 on the first try, so retry until at least _some_ condition is set
 			hasCompLookupKey := types.NamespacedName{Name: HASCompName, Namespace: HASAppNamespace}
-			createdHasComp := &appstudiov1alpha1.HASComponent{}
+			createdHasComp := &appstudiov1alpha1.Component{}
 			Eventually(func() bool {
 				k8sClient.Get(context.Background(), hasCompLookupKey, createdHasComp)
 				return len(createdHasComp.Status.Conditions) > 0
 			}, timeout, interval).Should(BeTrue())
 
-			// Make sure the devfile model was properly set in HASComponent
+			// Make sure the devfile model was properly set in Component
 			Expect(createdHasComp.Status.Devfile).Should(Not(Equal("")))
 
 			hasAppLookupKey := types.NamespacedName{Name: HASAppName, Namespace: HASAppNamespace}
-			createdHasApp := &appstudiov1alpha1.HASApplication{}
+			createdHasApp := &appstudiov1alpha1.Application{}
 			Eventually(func() bool {
 				k8sClient.Get(context.Background(), hasAppLookupKey, createdHasApp)
 				return len(createdHasApp.Status.Conditions) > 0 && strings.Contains(createdHasApp.Status.Devfile, ComponentName)
 			}, timeout, interval).Should(BeTrue())
 
-			// Make sure the devfile model was properly set in HASApplication
+			// Make sure the devfile model was properly set in Application
 			Expect(createdHasApp.Status.Devfile).Should(Not(Equal("")))
 
 			// Check the HAS Component devfile
@@ -150,20 +150,20 @@ var _ = Describe("HASComponent controller", func() {
 		})
 	})
 
-	Context("Create HASComponent with other field set", func() {
-		It("Should create successfully and update the HASApplication", func() {
+	Context("Create Component with other field set", func() {
+		It("Should create successfully and update the Application", func() {
 			ctx := context.Background()
 
-			hasApp := &appstudiov1alpha1.HASApplication{
+			hasApp := &appstudiov1alpha1.Application{
 				TypeMeta: metav1.TypeMeta{
 					APIVersion: "appstudio.redhat.com/v1alpha1",
-					Kind:       "HASApplication",
+					Kind:       "Application",
 				},
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      HASAppName,
 					Namespace: HASAppNamespace,
 				},
-				Spec: appstudiov1alpha1.HASApplicationSpec{
+				Spec: appstudiov1alpha1.ApplicationSpec{
 					DisplayName: DisplayName,
 					Description: Description,
 				},
@@ -244,16 +244,16 @@ var _ = Describe("HASComponent controller", func() {
 				},
 			}
 
-			hasComp := &appstudiov1alpha1.HASComponent{
+			hasComp := &appstudiov1alpha1.Component{
 				TypeMeta: metav1.TypeMeta{
 					APIVersion: "appstudio.redhat.com/v1alpha1",
-					Kind:       "HASComponent",
+					Kind:       "Component",
 				},
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      HASCompName,
 					Namespace: HASAppNamespace,
 				},
-				Spec: appstudiov1alpha1.HASComponentSpec{
+				Spec: appstudiov1alpha1.ComponentSpec{
 					ComponentName: ComponentName,
 					Application:   HASAppName,
 					Source: appstudiov1alpha1.ComponentSource{
@@ -274,23 +274,23 @@ var _ = Describe("HASComponent controller", func() {
 
 			// Look up the has app resource that was created.
 			hasCompLookupKey := types.NamespacedName{Name: HASCompName, Namespace: HASAppNamespace}
-			createdHasComp := &appstudiov1alpha1.HASComponent{}
+			createdHasComp := &appstudiov1alpha1.Component{}
 			Eventually(func() bool {
 				k8sClient.Get(context.Background(), hasCompLookupKey, createdHasComp)
 				return len(createdHasComp.Status.Conditions) > 0
 			}, timeout, interval).Should(BeTrue())
 
-			// Make sure the devfile model was properly set in HASComponent
+			// Make sure the devfile model was properly set in Component
 			Expect(createdHasComp.Status.Devfile).Should(Not(Equal("")))
 
 			hasAppLookupKey := types.NamespacedName{Name: HASAppName, Namespace: HASAppNamespace}
-			createdHasApp := &appstudiov1alpha1.HASApplication{}
+			createdHasApp := &appstudiov1alpha1.Application{}
 			Eventually(func() bool {
 				k8sClient.Get(context.Background(), hasAppLookupKey, createdHasApp)
 				return len(createdHasApp.Status.Conditions) > 0 && strings.Contains(createdHasApp.Status.Devfile, ComponentName)
 			}, timeout, interval).Should(BeTrue())
 
-			// Make sure the devfile model was properly set in HASApplication
+			// Make sure the devfile model was properly set in Application
 			Expect(createdHasApp.Status.Devfile).Should(Not(Equal("")))
 
 			// Check the HAS Component devfile
@@ -341,13 +341,13 @@ var _ = Describe("HASComponent controller", func() {
 			createdHasComp.Spec.Resources = updatedResources
 			Expect(k8sClient.Update(ctx, createdHasComp)).Should(Succeed())
 
-			updatedHasComp := &appstudiov1alpha1.HASComponent{}
+			updatedHasComp := &appstudiov1alpha1.Component{}
 			Eventually(func() bool {
 				k8sClient.Get(context.Background(), hasCompLookupKey, updatedHasComp)
 				return updatedHasComp.Status.Conditions[len(updatedHasComp.Status.Conditions)-1].Type == "Updated"
 			}, timeout, interval).Should(BeTrue())
 
-			// Make sure the devfile model was properly set in HASComponent
+			// Make sure the devfile model was properly set in Component
 			Expect(updatedHasComp.Status.Devfile).Should(Not(Equal("")))
 
 			// Check the HAS Component updated devfile
@@ -472,14 +472,14 @@ func verifyHASComponentUpdates(devfile data.DevfileData, checklist updateCheckli
 func deleteHASCompCR(hasCompLookupKey types.NamespacedName) {
 	// Delete
 	Eventually(func() error {
-		f := &appstudiov1alpha1.HASComponent{}
+		f := &appstudiov1alpha1.Component{}
 		k8sClient.Get(context.Background(), hasCompLookupKey, f)
 		return k8sClient.Delete(context.Background(), f)
 	}, timeout, interval).Should(Succeed())
 
 	// Wait for delete to finish
 	Eventually(func() error {
-		f := &appstudiov1alpha1.HASComponent{}
+		f := &appstudiov1alpha1.Component{}
 		return k8sClient.Get(context.Background(), hasCompLookupKey, f)
 	}, timeout, interval).ShouldNot(Succeed())
 }

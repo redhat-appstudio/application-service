@@ -112,8 +112,9 @@ type ComponentStatus struct {
 
 //+kubebuilder:object:root=true
 //+kubebuilder:subresource:status
-// +kubebuilder:resource:path=hascomponents,shortName=hascmp;hc
-// Component is the Schema for the hascomponents API
+
+// Component is the Schema for the components API
+// +kubebuilder:resource:path=components,shortName=hascmp;hc;comp
 type Component struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
