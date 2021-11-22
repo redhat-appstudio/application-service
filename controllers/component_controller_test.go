@@ -19,6 +19,7 @@ package controllers
 import (
 	"context"
 	"strings"
+	"testing"
 
 	"github.com/devfile/api/v2/pkg/apis/workspaces/v1alpha2"
 	data "github.com/devfile/library/pkg/devfile/parser/data"
@@ -305,7 +306,7 @@ var _ = Describe("Component controller", func() {
 				resources: originalResources,
 			}
 
-			verifyHASComponentUpdates(hasCompDevfile, checklist)
+			verifyHASComponentUpdates(hasCompDevfile, checklist, nil)
 
 			// Check the HAS Application devfile
 			hasAppDevfile, err := devfile.ParseDevfileModel(createdHasApp.Status.Devfile)
@@ -362,7 +363,7 @@ var _ = Describe("Component controller", func() {
 				resources: updatedResources,
 			}
 
-			verifyHASComponentUpdates(hasCompUpdatedDevfile, checklist)
+			verifyHASComponentUpdates(hasCompUpdatedDevfile, checklist, nil)
 
 			// Delete the specified HASComp resource
 			deleteHASCompCR(hasCompLookupKey)
@@ -382,14 +383,18 @@ type updateChecklist struct {
 	resources corev1.ResourceRequirements
 }
 
-func verifyHASComponentUpdates(devfile data.DevfileData, checklist updateChecklist) {
+func verifyHASComponentUpdates(devfile data.DevfileData, checklist updateChecklist, goPkgTest *testing.T) {
 	// container component should be updated with the necessary hasComp properties
 	components, err := devfile.GetComponents(common.DevfileOptions{
 		ComponentOptions: common.ComponentOptions{
 			ComponentType: v1alpha2.ContainerComponentType,
 		},
 	})
-	Expect(err).Should(Not(HaveOccurred()))
+	if goPkgTest == nil {
+		Expect(err).Should(Not(HaveOccurred()))
+	} else if err != nil {
+		goPkgTest.Error(err)
+	}
 
 	requests := checklist.resources.Requests
 	limits := checklist.resources.Limits
@@ -400,58 +405,124 @@ func verifyHASComponentUpdates(devfile data.DevfileData, checklist updateCheckli
 
 		// Check the route
 		route := attributes.Get("appstudio.has/route", &err)
-		Expect(err).Should(Not(HaveOccurred()))
-		Expect(route).Should(Equal(checklist.route))
+		if goPkgTest == nil {
+			Expect(err).Should(Not(HaveOccurred()))
+			Expect(route).Should(Equal(checklist.route))
+		} else if err != nil {
+			goPkgTest.Error(err)
+		} else if route != checklist.route {
+			goPkgTest.Errorf("expected: %v, got: %v", checklist.route, route)
+		}
 
 		// Check the replica
 		replicas := attributes.Get("appstudio.has/replicas", &err)
-		Expect(err).Should(Not(HaveOccurred()))
-		Expect(replicas).Should(Equal(float64(checklist.replica)))
+		if goPkgTest == nil {
+			Expect(err).Should(Not(HaveOccurred()))
+			Expect(replicas).Should(Equal(float64(checklist.replica)))
+		} else if err != nil {
+			goPkgTest.Error(err)
+		} else if int(replicas.(float64)) != checklist.replica {
+			goPkgTest.Errorf("expected: %v, got: %v", checklist.replica, replicas)
+		}
 
 		// Check the storage limit
 		storageLimitChecklist := limits[corev1.ResourceStorage]
 		storageLimit := attributes.Get("appstudio.has/storageLimit", &err)
-		Expect(err).Should(Not(HaveOccurred()))
-		Expect(storageLimit).Should(Equal(storageLimitChecklist.String()))
+		if goPkgTest == nil {
+			Expect(err).Should(Not(HaveOccurred()))
+			Expect(storageLimit).Should(Equal(storageLimitChecklist.String()))
+		} else if err != nil {
+			goPkgTest.Error(err)
+		} else if storageLimit.(string) != storageLimitChecklist.String() {
+			goPkgTest.Errorf("expected: %v, got: %v", storageLimitChecklist.String(), storageLimit)
+		}
 
 		// Check the storage request
 		storageRequestChecklist := requests[corev1.ResourceStorage]
 		storageRequest := attributes.Get("appstudio.has/storageRequest", &err)
-		Expect(err).Should(Not(HaveOccurred()))
-		Expect(storageRequest).Should(Equal(storageRequestChecklist.String()))
+		if goPkgTest == nil {
+			Expect(err).Should(Not(HaveOccurred()))
+			Expect(storageRequest).Should(Equal(storageRequestChecklist.String()))
+		} else if err != nil {
+			goPkgTest.Error(err)
+		} else if storageRequest.(string) != storageRequestChecklist.String() {
+			goPkgTest.Errorf("expected: %v, got: %v", storageRequestChecklist.String(), storageRequest)
+		}
 
 		// Check the ephemereal storage limit
 		ephemeralStorageLimitChecklist := limits[corev1.ResourceEphemeralStorage]
 		ephemeralStorageLimit := attributes.Get("appstudio.has/ephermealStorageLimit", &err)
-		Expect(err).Should(Not(HaveOccurred()))
-		Expect(ephemeralStorageLimit).Should(Equal(ephemeralStorageLimitChecklist.String()))
+		if goPkgTest == nil {
+			Expect(err).Should(Not(HaveOccurred()))
+			Expect(ephemeralStorageLimit).Should(Equal(ephemeralStorageLimitChecklist.String()))
+		} else if err != nil {
+			goPkgTest.Error(err)
+		} else if ephemeralStorageLimit.(string) != ephemeralStorageLimitChecklist.String() {
+			goPkgTest.Errorf("expected: %v, got: %v", ephemeralStorageLimitChecklist.String(), ephemeralStorageLimit)
+		}
 
 		// Check the ephemereal storage request
 		ephemeralStorageRequestChecklist := requests[corev1.ResourceEphemeralStorage]
 		ephemeralStorageRequest := attributes.Get("appstudio.has/ephermealStorageRequest", &err)
-		Expect(err).Should(Not(HaveOccurred()))
-		Expect(ephemeralStorageRequest).Should(Equal(ephemeralStorageRequestChecklist.String()))
+		if goPkgTest == nil {
+			Expect(err).Should(Not(HaveOccurred()))
+			Expect(ephemeralStorageRequest).Should(Equal(ephemeralStorageRequestChecklist.String()))
+		} else if err != nil {
+			goPkgTest.Error(err)
+		} else if ephemeralStorageRequest.(string) != ephemeralStorageRequestChecklist.String() {
+			goPkgTest.Errorf("expected: %v, got: %v", ephemeralStorageRequestChecklist.String(), ephemeralStorageRequest)
+		}
 
 		// Check the memory limit
 		memoryLimitChecklist := limits[corev1.ResourceMemory]
-		Expect(component.Container.MemoryLimit).Should(Equal(memoryLimitChecklist.String()))
+		if goPkgTest == nil {
+			Expect(component.Container.MemoryLimit).Should(Equal(memoryLimitChecklist.String()))
+		} else if err != nil {
+			goPkgTest.Error(err)
+		} else if component.Container.MemoryLimit != memoryLimitChecklist.String() {
+			goPkgTest.Errorf("expected: %v, got: %v", memoryLimitChecklist.String(), component.Container.MemoryLimit)
+		}
 
 		// Check the memory request
 		memoryRequestChecklist := requests[corev1.ResourceMemory]
-		Expect(component.Container.MemoryRequest).Should(Equal(memoryRequestChecklist.String()))
+		if goPkgTest == nil {
+			Expect(component.Container.MemoryRequest).Should(Equal(memoryRequestChecklist.String()))
+		} else if err != nil {
+			goPkgTest.Error(err)
+		} else if component.Container.MemoryRequest != memoryRequestChecklist.String() {
+			goPkgTest.Errorf("expected: %v, got: %v", memoryRequestChecklist.String(), component.Container.MemoryRequest)
+		}
 
 		// Check the cpu limit
 		cpuLimitChecklist := limits[corev1.ResourceCPU]
-		Expect(component.Container.CpuLimit).Should(Equal(cpuLimitChecklist.String()))
+		if goPkgTest == nil {
+			Expect(component.Container.CpuLimit).Should(Equal(cpuLimitChecklist.String()))
+		} else if err != nil {
+			goPkgTest.Error(err)
+		} else if component.Container.CpuLimit != cpuLimitChecklist.String() {
+			goPkgTest.Errorf("expected: %v, got: %v", cpuLimitChecklist.String(), component.Container.CpuLimit)
+		}
 
 		// Check the cpu request
 		cpuRequestChecklist := requests[corev1.ResourceCPU]
-		Expect(component.Container.CpuRequest).Should(Equal(cpuRequestChecklist.String()))
+		if goPkgTest == nil {
+			Expect(component.Container.CpuRequest).Should(Equal(cpuRequestChecklist.String()))
+		} else if err != nil {
+			goPkgTest.Error(err)
+		} else if component.Container.CpuRequest != cpuRequestChecklist.String() {
+			goPkgTest.Errorf("expected: %v, got: %v", cpuRequestChecklist.String(), component.Container.CpuRequest)
+		}
 
 		// Check for container endpoint only for the first container
 		if i == 0 {
 			for _, endpoint := range component.Container.Endpoints {
-				Expect(endpoint.TargetPort).Should(Equal(checklist.port))
+				if goPkgTest == nil {
+					Expect(endpoint.TargetPort).Should(Equal(checklist.port))
+				} else if err != nil {
+					goPkgTest.Error(err)
+				} else if endpoint.TargetPort != checklist.port {
+					goPkgTest.Errorf("expected: %v, got: %v", checklist.port, endpoint.TargetPort)
+				}
 			}
 		}
 
@@ -463,7 +534,13 @@ func verifyHASComponentUpdates(devfile data.DevfileData, checklist updateCheckli
 					isMatched = true
 				}
 			}
-			Expect(isMatched).Should(Equal(true))
+			if goPkgTest == nil {
+				Expect(isMatched).Should(Equal(true))
+			} else if err != nil {
+				goPkgTest.Error(err)
+			} else if !isMatched {
+				goPkgTest.Errorf("expected: %v, got: %v", true, isMatched)
+			}
 		}
 	}
 }

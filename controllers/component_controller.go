@@ -91,7 +91,7 @@ func (r *ComponentReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 			devfilePath = path.Join(context, devfileName)
 		}
 
-		if source.GitSource.URL != "" {
+		if source.GitSource != nil && source.GitSource.URL != "" {
 			var devfileBytes []byte
 
 			if source.GitSource.DevfileURL == "" {
@@ -206,12 +206,12 @@ func (r *ComponentReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 				}
 			} else {
 				log.Error(err, fmt.Sprintf("Application devfile model is empty. Before creating a Component, an instance of Application should be created, exiting reconcile loop %v", req.NamespacedName))
-				err := fmt.Errorf("Application devfile model is empty. Before creating a Component, an instance of Application should be created")
+				err := fmt.Errorf("application devfile model is empty. Before creating a Component, an instance of Application should be created")
 				r.SetCreateConditionAndUpdateCR(ctx, &hasComponent, err)
 				return ctrl.Result{}, err
 			}
 
-		} else if hasComponent.Spec.Source.ImageSource.ContainerImage != "" {
+		} else if source.ImageSource != nil && source.ImageSource.ContainerImage != "" {
 			log.Info(fmt.Sprintf("container image is not supported at the moment, please use github links for adding a component to an application for %v", req.NamespacedName))
 		}
 	} else {

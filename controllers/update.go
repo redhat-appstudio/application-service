@@ -275,6 +275,10 @@ func (r *ComponentReconciler) updateComponentDevfileModel(hasCompDevfileData dat
 
 func (r *ComponentReconciler) updateApplicationDevfileModel(hasAppDevfileData data.DevfileData, hasComponent appstudiov1alpha1.Component) error {
 
+	if hasComponent.Spec.Source.GitSource == nil {
+		return fmt.Errorf("component git source is nil")
+	}
+
 	newProject := devfileAPIV1.Project{
 		Name: hasComponent.Spec.ComponentName,
 		ProjectSource: devfileAPIV1.ProjectSource{
@@ -293,7 +297,7 @@ func (r *ComponentReconciler) updateApplicationDevfileModel(hasAppDevfileData da
 	}
 	for _, project := range projects {
 		if project.Name == newProject.Name {
-			return fmt.Errorf("HASApplication already has a project with name %s", newProject.Name)
+			return fmt.Errorf("application already has a project with name %s", newProject.Name)
 		}
 	}
 	err = hasAppDevfileData.AddProjects([]devfileAPIV1.Project{newProject})
