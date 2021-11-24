@@ -1,5 +1,5 @@
 # Hybrid Application Service (HAS)
-An Kubernetes operator to create and manage applications and control the lifecycle of applications.
+An Kubernetes operator to create and manage applications and control the lifecycle of applications..
 
 
 ## Building & Testing
