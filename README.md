@@ -3,7 +3,7 @@ An Kubernetes operator to create and manage applications and control the lifecyc
 
 
 ## Building & Testing
-This operator provides a `Makefile` to run all the usual development tasks. If you simply run `make` without any arguments, you'll get a list of available "targets".
+This operator provides a `Makefile` to run all the usual development tasks. If you simply run `make` without any arguments, you'll get a list of available "targets"..
 
 To build the operator binary run:
 
