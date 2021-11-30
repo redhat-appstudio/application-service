@@ -772,21 +772,19 @@ func verifyHASComponentUpdates(devfile data.DevfileData, checklist updateCheckli
 		}
 
 		// Check for env
-		if len(checklist.env) > 0 {
-			for _, checklistEnv := range checklist.env {
-				isMatched := false
-				for _, containerEnv := range component.Container.Env {
-					if containerEnv.Name == checklistEnv.Name && containerEnv.Value == checklistEnv.Value {
-						isMatched = true
-					}
+		for _, checklistEnv := range checklist.env {
+			isMatched := false
+			for _, containerEnv := range component.Container.Env {
+				if containerEnv.Name == checklistEnv.Name && containerEnv.Value == checklistEnv.Value {
+					isMatched = true
 				}
-				if goPkgTest == nil {
-					Expect(isMatched).Should(Equal(true))
-				} else if err != nil {
-					goPkgTest.Error(err)
-				} else if !isMatched {
-					goPkgTest.Errorf("expected: %v, got: %v", true, isMatched)
-				}
+			}
+			if goPkgTest == nil {
+				Expect(isMatched).Should(Equal(true))
+			} else if err != nil {
+				goPkgTest.Error(err)
+			} else if !isMatched {
+				goPkgTest.Errorf("expected: %v, got: %v", true, isMatched)
 			}
 		}
 	}
