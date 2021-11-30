@@ -26,18 +26,18 @@ import (
 	appstudiov1alpha1 "github.com/redhat-appstudio/application-service/api/v1alpha1"
 )
 
-func (r *ComponentReconciler) SetCreateConditionAndUpdateCR(ctx context.Context, hasComponent *appstudiov1alpha1.Component, createError error) {
-	log := r.Log.WithValues("Component", hasComponent.Name)
+func (r *ComponentReconciler) SetCreateConditionAndUpdateCR(ctx context.Context, component *appstudiov1alpha1.Component, createError error) {
+	log := r.Log.WithValues("Component", component.Name)
 
 	if createError == nil {
-		meta.SetStatusCondition(&hasComponent.Status.Conditions, metav1.Condition{
+		meta.SetStatusCondition(&component.Status.Conditions, metav1.Condition{
 			Type:    "Created",
 			Status:  metav1.ConditionTrue,
 			Reason:  "OK",
 			Message: "Component has been successfully created",
 		})
 	} else {
-		meta.SetStatusCondition(&hasComponent.Status.Conditions, metav1.Condition{
+		meta.SetStatusCondition(&component.Status.Conditions, metav1.Condition{
 			Type:    "Created",
 			Status:  metav1.ConditionFalse,
 			Reason:  "Error",
@@ -45,24 +45,24 @@ func (r *ComponentReconciler) SetCreateConditionAndUpdateCR(ctx context.Context,
 		})
 	}
 
-	err := r.Client.Status().Update(ctx, hasComponent)
+	err := r.Client.Status().Update(ctx, component)
 	if err != nil {
 		log.Error(err, "Unable to update Component")
 	}
 }
 
-func (r *ComponentReconciler) SetUpdateConditionAndUpdateCR(ctx context.Context, hasComponent *appstudiov1alpha1.Component, updateError error) {
-	log := r.Log.WithValues("Component", hasComponent.Name)
+func (r *ComponentReconciler) SetUpdateConditionAndUpdateCR(ctx context.Context, component *appstudiov1alpha1.Component, updateError error) {
+	log := r.Log.WithValues("Component", component.Name)
 
 	if updateError == nil {
-		meta.SetStatusCondition(&hasComponent.Status.Conditions, metav1.Condition{
+		meta.SetStatusCondition(&component.Status.Conditions, metav1.Condition{
 			Type:    "Updated",
 			Status:  metav1.ConditionTrue,
 			Reason:  "OK",
 			Message: "Component has been successfully updated",
 		})
 	} else {
-		meta.SetStatusCondition(&hasComponent.Status.Conditions, metav1.Condition{
+		meta.SetStatusCondition(&component.Status.Conditions, metav1.Condition{
 			Type:    "Updated",
 			Status:  metav1.ConditionFalse,
 			Reason:  "Error",
@@ -70,7 +70,7 @@ func (r *ComponentReconciler) SetUpdateConditionAndUpdateCR(ctx context.Context,
 		})
 	}
 
-	err := r.Client.Status().Update(ctx, hasComponent)
+	err := r.Client.Status().Update(ctx, component)
 	if err != nil {
 		log.Error(err, "Unable to update Component")
 	}

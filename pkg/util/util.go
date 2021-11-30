@@ -21,11 +21,9 @@ import (
 	"net/http"
 	"net/url"
 	"os"
-	"path"
 	"strings"
 
 	gofakeit "github.com/brianvoe/gofakeit/v6"
-	"github.com/go-git/go-git/v5"
 )
 
 const AppStudioDataOrg = "https://github.com/redhat-appstudio-appdata/"
@@ -104,29 +102,4 @@ func CurlEndpoint(endpoint string) ([]byte, error) {
 	}
 
 	return nil, fmt.Errorf("received a non-200 status when curling %s", endpoint)
-}
-
-// CloneAndReadDevfile clones the repoURL to clonePath and reads the devfile from
-// the devfilePath relative to the clonePath
-func CloneAndReadDevfile(clonePath, devfilePath, repoURL string) ([]byte, error) {
-	// Check if the clone path is empty, if not delete it
-	isDirExist, err := IsExist(clonePath)
-	if err != nil {
-		return nil, err
-	}
-	if isDirExist {
-		os.RemoveAll(clonePath)
-	}
-
-	// Clone the repo
-	_, err = git.PlainClone(clonePath, false, &git.CloneOptions{
-		URL: repoURL,
-	})
-	if err != nil {
-		return nil, err
-	}
-
-	// Read the devfile
-	devfileBytes, err := ioutil.ReadFile(path.Join(clonePath, devfilePath))
-	return devfileBytes, err
 }

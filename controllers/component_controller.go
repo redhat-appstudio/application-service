@@ -20,6 +20,7 @@ import (
 	"context"
 	"fmt"
 	"path"
+	"reflect"
 
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -35,8 +36,7 @@ import (
 )
 
 const (
-	devfileName     = "devfile.yaml"
-	clonePathPrefix = "/tmp/appstudio/has"
+	devfileName = "devfile.yaml"
 )
 
 // ComponentReconciler reconciles a Component object
@@ -64,8 +64,8 @@ func (r *ComponentReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 	log.Info(fmt.Sprintf("Starting reconcile loop for %v", req.NamespacedName))
 
 	// Fetch the Component instance
-	var hasComponent appstudiov1alpha1.Component
-	err := r.Get(ctx, req.NamespacedName, &hasComponent)
+	var component appstudiov1alpha1.Component
+	err := r.Get(ctx, req.NamespacedName, &component)
 	if err != nil {
 		if errors.IsNotFound(err) {
 			// Request object not found, could have been deleted after reconcile request.
@@ -78,9 +78,9 @@ func (r *ComponentReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 	}
 
 	// If the devfile hasn't been populated, the CR was just created
-	if hasComponent.Status.Devfile == "" {
-		source := hasComponent.Spec.Source
-		context := hasComponent.Spec.Context
+	if component.Status.Devfile == "" {
+		source := component.Spec.Source
+		context := component.Spec.Context
 		var devfilePath string
 
 		// append context to devfile if present
@@ -98,55 +98,48 @@ func (r *ComponentReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 				rawURL, err := util.ConvertGitHubURL(source.GitSource.URL)
 				if err != nil {
 					log.Error(err, fmt.Sprintf("Unable to convert Github URL to raw format, exiting reconcile loop %v", req.NamespacedName))
-					r.SetCreateConditionAndUpdateCR(ctx, &hasComponent, err)
+					r.SetCreateConditionAndUpdateCR(ctx, &component, err)
 					return ctrl.Result{}, err
 				}
 
 				endpoint := rawURL + "/" + devfilePath
 				devfileBytes, err = util.CurlEndpoint(endpoint)
 				if err != nil {
-					log.Error(err, fmt.Sprintf("Unable to curl %s, attempting to clone the repo and read the devfile instead %v", devfilePath, req.NamespacedName))
-
-					// clone the repo and read the devfile
-					clonePath := path.Join(clonePathPrefix, hasComponent.Spec.Application, hasComponent.Spec.ComponentName)
-					devfileBytes, err = util.CloneAndReadDevfile(clonePath, devfilePath, source.GitSource.URL)
-					if err != nil {
-						log.Error(err, fmt.Sprintf("Unable to clone repo %s and read devfile %s in path %s, exiting reconcile loop %v", source.GitSource.URL, devfilePath, clonePath, req.NamespacedName))
-						r.SetCreateConditionAndUpdateCR(ctx, &hasComponent, err)
-						return ctrl.Result{}, err
-					}
+					log.Error(err, fmt.Sprintf("Unable to curl %s, to read the devfile %v", devfilePath, req.NamespacedName))
+					r.SetCreateConditionAndUpdateCR(ctx, &component, err)
+					return ctrl.Result{}, err
 				}
 			} else {
 				devfileBytes, err = util.CurlEndpoint(source.GitSource.DevfileURL)
 				if err != nil {
 					log.Error(err, fmt.Sprintf("Unable to GET %s, exiting reconcile loop %v", source.GitSource.DevfileURL, req.NamespacedName))
 					err := fmt.Errorf("unable to GET from %s", source.GitSource.DevfileURL)
-					r.SetCreateConditionAndUpdateCR(ctx, &hasComponent, err)
+					r.SetCreateConditionAndUpdateCR(ctx, &component, err)
 					return ctrl.Result{}, err
 				}
 			}
 
-			// Parse the HAS Component Devfile
+			// Parse the Component Devfile
 			hasCompDevfileData, err := devfile.ParseDevfileModel(string(devfileBytes))
 			if err != nil {
 				log.Error(err, fmt.Sprintf("Unable to parse the devfile from Component, exiting reconcile loop %v", req.NamespacedName))
-				r.SetCreateConditionAndUpdateCR(ctx, &hasComponent, err)
+				r.SetCreateConditionAndUpdateCR(ctx, &component, err)
 				return ctrl.Result{}, err
 			}
 
-			_, err = r.updateComponentDevfileModel(hasCompDevfileData, hasComponent)
+			err = r.updateComponentDevfileModel(hasCompDevfileData, component)
 			if err != nil {
-				log.Error(err, fmt.Sprintf("Unable to update the HAS Component Devfile model %v", req.NamespacedName))
-				r.SetCreateConditionAndUpdateCR(ctx, &hasComponent, err)
+				log.Error(err, fmt.Sprintf("Unable to update the Component Devfile model %v", req.NamespacedName))
+				r.SetCreateConditionAndUpdateCR(ctx, &component, err)
 				return ctrl.Result{}, nil
 			}
 
 			// Get the Application CR
 			hasApplication := appstudiov1alpha1.Application{}
-			err = r.Get(ctx, types.NamespacedName{Name: hasComponent.Spec.Application, Namespace: hasComponent.Namespace}, &hasApplication)
+			err = r.Get(ctx, types.NamespacedName{Name: component.Spec.Application, Namespace: component.Namespace}, &hasApplication)
 			if err != nil {
-				log.Error(err, fmt.Sprintf("Unable to get the Application %s, exiting reconcile loop %v", hasComponent.Spec.Application, req.NamespacedName))
-				r.SetCreateConditionAndUpdateCR(ctx, &hasComponent, err)
+				log.Error(err, fmt.Sprintf("Unable to get the Application %s, exiting reconcile loop %v", component.Spec.Application, req.NamespacedName))
+				r.SetCreateConditionAndUpdateCR(ctx, &component, err)
 				return ctrl.Result{}, nil
 			}
 			if hasApplication.Status.Devfile != "" {
@@ -154,31 +147,31 @@ func (r *ComponentReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 				hasAppDevfileData, err := devfile.ParseDevfileModel(hasApplication.Status.Devfile)
 				if err != nil {
 					log.Error(err, fmt.Sprintf("Unable to parse the devfile from Application, exiting reconcile loop %v", req.NamespacedName))
-					r.SetCreateConditionAndUpdateCR(ctx, &hasComponent, err)
+					r.SetCreateConditionAndUpdateCR(ctx, &component, err)
 					return ctrl.Result{}, err
 				}
 
-				err = r.updateApplicationDevfileModel(hasAppDevfileData, hasComponent)
+				err = r.updateApplicationDevfileModel(hasAppDevfileData, component)
 				if err != nil {
 					log.Error(err, fmt.Sprintf("Unable to update the HAS Application Devfile model %v", req.NamespacedName))
-					r.SetCreateConditionAndUpdateCR(ctx, &hasComponent, err)
+					r.SetCreateConditionAndUpdateCR(ctx, &component, err)
 					return ctrl.Result{}, nil
 				}
 
 				yamlHASCompData, err := yaml.Marshal(hasCompDevfileData)
 				if err != nil {
 					log.Error(err, fmt.Sprintf("Unable to marshall the Component devfile, exiting reconcile loop %v", req.NamespacedName))
-					r.SetCreateConditionAndUpdateCR(ctx, &hasComponent, err)
+					r.SetCreateConditionAndUpdateCR(ctx, &component, err)
 					return ctrl.Result{}, err
 				}
 
-				hasComponent.Status.Devfile = string(yamlHASCompData)
+				component.Status.Devfile = string(yamlHASCompData)
 
 				// Update the HASApp CR with the new devfile
 				yamlHASAppData, err := yaml.Marshal(hasAppDevfileData)
 				if err != nil {
 					log.Error(err, fmt.Sprintf("Unable to marshall the Application devfile, exiting reconcile loop %v", req.NamespacedName))
-					r.SetCreateConditionAndUpdateCR(ctx, &hasComponent, err)
+					r.SetCreateConditionAndUpdateCR(ctx, &component, err)
 					return ctrl.Result{}, err
 				}
 				hasApplication.Status.Devfile = string(yamlHASAppData)
@@ -187,27 +180,27 @@ func (r *ComponentReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 					log.Error(err, "Unable to update Application")
 					// if we're unable to update the Application CR, then  we need to err out
 					// since we need to save a reference of the Component in Application
-					r.SetCreateConditionAndUpdateCR(ctx, &hasComponent, err)
+					r.SetCreateConditionAndUpdateCR(ctx, &component, err)
 					return ctrl.Result{}, err
 				}
 
-				r.SetCreateConditionAndUpdateCR(ctx, &hasComponent, nil)
+				r.SetCreateConditionAndUpdateCR(ctx, &component, nil)
 
-				log.Info(fmt.Sprintf("Updating the labels for HAS Component %v", req.NamespacedName))
-				hasComponentLabels := make(map[string]string)
-				hasComponentLabels["appstudio.has/application"] = hasComponent.Spec.Application
-				hasComponentLabels["appstudio.has/component"] = hasComponent.Spec.ComponentName
-				hasComponent.SetLabels(hasComponentLabels)
-				err = r.Client.Update(ctx, &hasComponent)
+				log.Info(fmt.Sprintf("Updating the labels for Component %v", req.NamespacedName))
+				componentLabels := make(map[string]string)
+				componentLabels["appstudio.has/application"] = component.Spec.Application
+				componentLabels["appstudio.has/component"] = component.Spec.ComponentName
+				component.SetLabels(componentLabels)
+				err = r.Client.Update(ctx, &component)
 				if err != nil {
 					log.Error(err, fmt.Sprintf("Unable to update Component with the required labels %v", req.NamespacedName))
-					r.SetCreateConditionAndUpdateCR(ctx, &hasComponent, err)
+					r.SetCreateConditionAndUpdateCR(ctx, &component, err)
 					return ctrl.Result{}, err
 				}
 			} else {
 				log.Error(err, fmt.Sprintf("Application devfile model is empty. Before creating a Component, an instance of Application should be created, exiting reconcile loop %v", req.NamespacedName))
 				err := fmt.Errorf("application devfile model is empty. Before creating a Component, an instance of Application should be created")
-				r.SetCreateConditionAndUpdateCR(ctx, &hasComponent, err)
+				r.SetCreateConditionAndUpdateCR(ctx, &component, err)
 				return ctrl.Result{}, err
 			}
 
@@ -216,37 +209,47 @@ func (r *ComponentReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 		}
 	} else {
 		// If the model already exists, see if fields have been updated
-		log.Info(fmt.Sprintf("Checking if the HAS Component has been updated %v", req.NamespacedName))
+		log.Info(fmt.Sprintf("Checking if the Component has been updated %v", req.NamespacedName))
 
-		// Parse the HAS Component Devfile
-		hasCompDevfileData, err := devfile.ParseDevfileModel(hasComponent.Status.Devfile)
+		// Parse the Component Devfile
+		hasCompDevfileData, err := devfile.ParseDevfileModel(component.Status.Devfile)
 		if err != nil {
 			log.Error(err, fmt.Sprintf("Unable to parse the devfile from Component, exiting reconcile loop %v", req.NamespacedName))
-			r.SetUpdateConditionAndUpdateCR(ctx, &hasComponent, err)
+			r.SetUpdateConditionAndUpdateCR(ctx, &component, err)
 			return ctrl.Result{}, err
 		}
 
-		isUpdated, err := r.updateComponentDevfileModel(hasCompDevfileData, hasComponent)
+		err = r.updateComponentDevfileModel(hasCompDevfileData, component)
 		if err != nil {
-			log.Error(err, fmt.Sprintf("Unable to update the HAS Component Devfile model %v", req.NamespacedName))
-			r.SetUpdateConditionAndUpdateCR(ctx, &hasComponent, err)
-			return ctrl.Result{}, nil
+			log.Error(err, fmt.Sprintf("Unable to update the Component Devfile model %v", req.NamespacedName))
+			r.SetUpdateConditionAndUpdateCR(ctx, &component, err)
+			return ctrl.Result{}, err
 		}
 
+		// Read the devfile again to compare it with any updates
+		oldCompDevfileData, err := devfile.ParseDevfileModel(component.Status.Devfile)
+		if err != nil {
+			log.Error(err, fmt.Sprintf("Unable to parse the devfile from Component, exiting reconcile loop %v", req.NamespacedName))
+			r.SetUpdateConditionAndUpdateCR(ctx, &component, err)
+			return ctrl.Result{}, err
+		}
+
+		isUpdated := !reflect.DeepEqual(oldCompDevfileData, hasCompDevfileData)
+
 		if isUpdated {
-			log.Info(fmt.Sprintf("The HAS Component devfile data was updated %v", req.NamespacedName))
+			log.Info(fmt.Sprintf("The Component devfile data was updated %v", req.NamespacedName))
 			yamlHASCompData, err := yaml.Marshal(hasCompDevfileData)
 			if err != nil {
 				log.Error(err, fmt.Sprintf("Unable to marshall the Component devfile, exiting reconcile loop %v", req.NamespacedName))
-				r.SetUpdateConditionAndUpdateCR(ctx, &hasComponent, err)
+				r.SetUpdateConditionAndUpdateCR(ctx, &component, err)
 				return ctrl.Result{}, err
 			}
 
-			hasComponent.Status.Devfile = string(yamlHASCompData)
+			component.Status.Devfile = string(yamlHASCompData)
 
-			r.SetUpdateConditionAndUpdateCR(ctx, &hasComponent, nil)
+			r.SetUpdateConditionAndUpdateCR(ctx, &component, nil)
 		} else {
-			log.Info(fmt.Sprintf("The HAS Component devfile data was not updated %v", req.NamespacedName))
+			log.Info(fmt.Sprintf("The Component devfile data was not updated %v", req.NamespacedName))
 		}
 	}
 

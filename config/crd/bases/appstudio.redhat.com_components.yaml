@@ -186,10 +186,10 @@ spec:
                 description: The route to expose the component with
                 type: string
               source:
-                description: Source describes the HAS Component source
+                description: Source describes the Component source
                 properties:
                   git:
-                    description: Git Source for a HAS Component
+                    description: Git Source for a Component
                     properties:
                       devfileUrl:
                         description: If specified, the devfile at the URL will be
@@ -207,7 +207,7 @@ spec:
                     - url
                     type: object
                   image:
-                    description: Image Source for a HAS Component
+                    description: Image Source for a Component
                     properties:
                       containerImage:
                         description: If importing from git, container image to create
@@ -229,7 +229,7 @@ spec:
             description: ComponentStatus defines the observed state of Component
             properties:
               conditions:
-                description: Condition about the HAS Component CR
+                description: Condition about the Component CR
                 items:
                   description: "Condition contains details for one aspect of the current
                     state of this API Resource. --- This struct is intended for direct
@@ -299,7 +299,7 @@ spec:
                   type: object
                 type: array
               devfile:
-                description: The devfile model for the HAS Component CR
+                description: The devfile model for the Component CR
                 type: string
             type: object
         type: object

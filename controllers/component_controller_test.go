@@ -18,6 +18,7 @@ package controllers
 
 import (
 	"context"
+	"fmt"
 	"strings"
 	"testing"
 
@@ -29,6 +30,7 @@ import (
 	appstudiov1alpha1 "github.com/redhat-appstudio/application-service/api/v1alpha1"
 	devfile "github.com/redhat-appstudio/application-service/pkg/devfile"
 	corev1 "k8s.io/api/core/v1"
+
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
@@ -39,8 +41,8 @@ var _ = Describe("Component controller", func() {
 
 	// Define utility constants for object names and testing timeouts/durations and intervals.
 	const (
-		HASAppName      = "test-hasapplication-123"
-		HASCompName     = "test-hascomponent-123"
+		HASAppName      = "test-application-123"
+		HASCompName     = "test-component-123"
 		HASAppNamespace = "default"
 		DisplayName     = "petclinic"
 		Description     = "Simple petclinic app"
@@ -114,7 +116,7 @@ var _ = Describe("Component controller", func() {
 			// Make sure the devfile model was properly set in Application
 			Expect(createdHasApp.Status.Devfile).Should(Not(Equal("")))
 
-			// Check the HAS Component devfile
+			// Check the Component devfile
 			_, err := devfile.ParseDevfileModel(createdHasComp.Status.Devfile)
 			Expect(err).Should(Not(HaveOccurred()))
 
@@ -148,6 +150,229 @@ var _ = Describe("Component controller", func() {
 
 			// Delete the specified HASApp resource
 			deleteHASAppCR(hasAppLookupKey)
+		})
+	})
+
+	Context("Create Component with basic field set including devfileURL", func() {
+		It("Should create successfully on a valid url", func() {
+			ctx := context.Background()
+
+			hasApp := &appstudiov1alpha1.Application{
+				TypeMeta: metav1.TypeMeta{
+					APIVersion: "appstudio.redhat.com/v1alpha1",
+					Kind:       "Application",
+				},
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      HASAppName,
+					Namespace: HASAppNamespace,
+				},
+				Spec: appstudiov1alpha1.ApplicationSpec{
+					DisplayName: DisplayName,
+					Description: Description,
+				},
+			}
+
+			Expect(k8sClient.Create(ctx, hasApp)).Should(Succeed())
+
+			hasComp := &appstudiov1alpha1.Component{
+				TypeMeta: metav1.TypeMeta{
+					APIVersion: "appstudio.redhat.com/v1alpha1",
+					Kind:       "Component",
+				},
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      HASCompName,
+					Namespace: HASAppNamespace,
+				},
+				Spec: appstudiov1alpha1.ComponentSpec{
+					ComponentName: ComponentName,
+					Application:   HASAppName,
+					Source: appstudiov1alpha1.ComponentSource{
+						ComponentSourceUnion: appstudiov1alpha1.ComponentSourceUnion{
+							GitSource: &appstudiov1alpha1.GitSource{
+								URL:        SampleRepoLink,
+								DevfileURL: "https://raw.githubusercontent.com/devfile/registry/main/stacks/java-openliberty/devfile.yaml",
+							},
+						},
+					},
+				},
+			}
+			Expect(k8sClient.Create(ctx, hasComp)).Should(Succeed())
+
+			// Look up the has app resource that was created.
+			// num(conditions) may still be < 1 on the first try, so retry until at least _some_ condition is set
+			hasCompLookupKey := types.NamespacedName{Name: HASCompName, Namespace: HASAppNamespace}
+			createdHasComp := &appstudiov1alpha1.Component{}
+			Eventually(func() bool {
+				k8sClient.Get(context.Background(), hasCompLookupKey, createdHasComp)
+				return len(createdHasComp.Status.Conditions) > 0
+			}, timeout, interval).Should(BeTrue())
+
+			// Make sure the devfile model was properly set in Component
+			Expect(createdHasComp.Status.Devfile).Should(Not(Equal("")))
+
+			hasAppLookupKey := types.NamespacedName{Name: HASAppName, Namespace: HASAppNamespace}
+			createdHasApp := &appstudiov1alpha1.Application{}
+			Eventually(func() bool {
+				k8sClient.Get(context.Background(), hasAppLookupKey, createdHasApp)
+				return len(createdHasApp.Status.Conditions) > 0 && strings.Contains(createdHasApp.Status.Devfile, ComponentName)
+			}, timeout, interval).Should(BeTrue())
+
+			// Make sure the devfile model was properly set in Application
+			Expect(createdHasApp.Status.Devfile).Should(Not(Equal("")))
+
+			// Check the Component devfile
+			hasCompDevfile, err := devfile.ParseDevfileModel(createdHasComp.Status.Devfile)
+			Expect(err).Should(Not(HaveOccurred()))
+
+			// Check if its Liberty
+			Expect(string(hasCompDevfile.GetMetadata().DisplayName)).Should(ContainSubstring("Liberty"))
+
+			// Check the HAS Application devfile
+			hasAppDevfile, err := devfile.ParseDevfileModel(createdHasApp.Status.Devfile)
+			Expect(err).Should(Not(HaveOccurred()))
+
+			// gitOpsRepo and appModelRepo should both be set
+			Expect(string(hasAppDevfile.GetMetadata().Attributes["gitOpsRepository.url"].Raw)).Should(Not(Equal("")))
+			Expect(string(hasAppDevfile.GetMetadata().Attributes["appModelRepository.url"].Raw)).Should(Not(Equal("")))
+
+			hasProjects, err := hasAppDevfile.GetProjects(common.DevfileOptions{})
+			Expect(err).Should(Not(HaveOccurred()))
+			Expect(len(hasProjects)).ShouldNot(Equal(0))
+
+			nameMatched := false
+			repoLinkMatched := false
+			for _, project := range hasProjects {
+				if project.Name == ComponentName {
+					nameMatched = true
+				}
+				if project.Git != nil && project.Git.GitLikeProjectSource.Remotes["origin"] == SampleRepoLink {
+					repoLinkMatched = true
+				}
+			}
+			Expect(nameMatched).Should(Equal(true))
+			Expect(repoLinkMatched).Should(Equal(true))
+
+			// Delete the specified HASComp resource
+			deleteHASCompCR(hasCompLookupKey)
+
+			// Delete the specified HASApp resource
+			deleteHASAppCR(hasAppLookupKey)
+		})
+	})
+
+	Context("Create Component with basic field set including devfileURL", func() {
+		It("Should error out on a bad url", func() {
+			ctx := context.Background()
+
+			hasApp := &appstudiov1alpha1.Application{
+				TypeMeta: metav1.TypeMeta{
+					APIVersion: "appstudio.redhat.com/v1alpha1",
+					Kind:       "Application",
+				},
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      HASAppName,
+					Namespace: HASAppNamespace,
+				},
+				Spec: appstudiov1alpha1.ApplicationSpec{
+					DisplayName: DisplayName,
+					Description: Description,
+				},
+			}
+
+			Expect(k8sClient.Create(ctx, hasApp)).Should(Succeed())
+
+			hasComp := &appstudiov1alpha1.Component{
+				TypeMeta: metav1.TypeMeta{
+					APIVersion: "appstudio.redhat.com/v1alpha1",
+					Kind:       "Component",
+				},
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      HASCompName,
+					Namespace: HASAppNamespace,
+				},
+				Spec: appstudiov1alpha1.ComponentSpec{
+					ComponentName: ComponentName,
+					Application:   HASAppName,
+					Source: appstudiov1alpha1.ComponentSource{
+						ComponentSourceUnion: appstudiov1alpha1.ComponentSourceUnion{
+							GitSource: &appstudiov1alpha1.GitSource{
+								URL:        SampleRepoLink,
+								DevfileURL: "https://bad/devfile.yaml",
+							},
+						},
+					},
+				},
+			}
+			Expect(k8sClient.Create(ctx, hasComp)).Should(Succeed())
+
+			// Look up the has app resource that was created.
+			// num(conditions) may still be < 1 on the first try, so retry until at least _some_ condition is set
+			hasCompLookupKey := types.NamespacedName{Name: HASCompName, Namespace: HASAppNamespace}
+			createdHasComp := &appstudiov1alpha1.Component{}
+			Eventually(func() bool {
+				k8sClient.Get(context.Background(), hasCompLookupKey, createdHasComp)
+				return len(createdHasComp.Status.Conditions) > 0
+			}, timeout, interval).Should(BeTrue())
+
+			// Make sure the err was set
+			Expect(createdHasComp.Status.Devfile).Should(Equal(""))
+			Expect(createdHasComp.Status.Conditions[len(createdHasComp.Status.Conditions)-1].Reason).Should(Equal("Error"))
+			Expect(strings.ToLower(createdHasComp.Status.Conditions[len(createdHasComp.Status.Conditions)-1].Message)).Should(ContainSubstring("unable to get"))
+
+			hasAppLookupKey := types.NamespacedName{Name: HASAppName, Namespace: HASAppNamespace}
+
+			// Delete the specified HASComp resource
+			deleteHASCompCR(hasCompLookupKey)
+
+			// Delete the specified HASApp resource
+			deleteHASAppCR(hasAppLookupKey)
+		})
+	})
+
+	Context("Create a Component before an Application", func() {
+		It("Should error out because an Application is missing", func() {
+			ctx := context.Background()
+
+			hasComp := &appstudiov1alpha1.Component{
+				TypeMeta: metav1.TypeMeta{
+					APIVersion: "appstudio.redhat.com/v1alpha1",
+					Kind:       "Component",
+				},
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      HASCompName,
+					Namespace: HASAppNamespace,
+				},
+				Spec: appstudiov1alpha1.ComponentSpec{
+					ComponentName: ComponentName,
+					Application:   HASAppName,
+					Source: appstudiov1alpha1.ComponentSource{
+						ComponentSourceUnion: appstudiov1alpha1.ComponentSourceUnion{
+							GitSource: &appstudiov1alpha1.GitSource{
+								URL: SampleRepoLink,
+							},
+						},
+					},
+				},
+			}
+			Expect(k8sClient.Create(ctx, hasComp)).Should(Succeed())
+
+			// Look up the has app resource that was created.
+			// num(conditions) may still be < 1 on the first try, so retry until at least _some_ condition is set
+			hasCompLookupKey := types.NamespacedName{Name: HASCompName, Namespace: HASAppNamespace}
+			createdHasComp := &appstudiov1alpha1.Component{}
+			Eventually(func() bool {
+				k8sClient.Get(context.Background(), hasCompLookupKey, createdHasComp)
+				return len(createdHasComp.Status.Conditions) > 0
+			}, timeout, interval).Should(BeTrue())
+
+			// Make sure the err was set
+			Expect(createdHasComp.Status.Devfile).Should(Equal(""))
+			Expect(createdHasComp.Status.Conditions[len(createdHasComp.Status.Conditions)-1].Reason).Should(Equal("Error"))
+			Expect(createdHasComp.Status.Conditions[len(createdHasComp.Status.Conditions)-1].Message).Should(ContainSubstring(fmt.Sprintf("%q not found", hasComp.Spec.Application)))
+
+			// Delete the specified HASComp resource
+			deleteHASCompCR(hasCompLookupKey)
+
 		})
 	})
 
@@ -294,7 +519,7 @@ var _ = Describe("Component controller", func() {
 			// Make sure the devfile model was properly set in Application
 			Expect(createdHasApp.Status.Devfile).Should(Not(Equal("")))
 
-			// Check the HAS Component devfile
+			// Check the Component devfile
 			hasCompDevfile, err := devfile.ParseDevfileModel(createdHasComp.Status.Devfile)
 			Expect(err).Should(Not(HaveOccurred()))
 
@@ -351,7 +576,7 @@ var _ = Describe("Component controller", func() {
 			// Make sure the devfile model was properly set in Component
 			Expect(updatedHasComp.Status.Devfile).Should(Not(Equal("")))
 
-			// Check the HAS Component updated devfile
+			// Check the Component updated devfile
 			hasCompUpdatedDevfile, err := devfile.ParseDevfileModel(updatedHasComp.Status.Devfile)
 			Expect(err).Should(Not(HaveOccurred()))
 
@@ -404,117 +629,137 @@ func verifyHASComponentUpdates(devfile data.DevfileData, checklist updateCheckli
 		var err error
 
 		// Check the route
-		route := attributes.Get("appstudio.has/route", &err)
-		if goPkgTest == nil {
-			Expect(err).Should(Not(HaveOccurred()))
-			Expect(route).Should(Equal(checklist.route))
-		} else if err != nil {
-			goPkgTest.Error(err)
-		} else if route != checklist.route {
-			goPkgTest.Errorf("expected: %v, got: %v", checklist.route, route)
+		if checklist.route != "" {
+			route := attributes.Get("appstudio.has/route", &err)
+			if goPkgTest == nil {
+				Expect(err).Should(Not(HaveOccurred()))
+				Expect(route).Should(Equal(checklist.route))
+			} else if err != nil {
+				goPkgTest.Error(err)
+			} else if route != checklist.route {
+				goPkgTest.Errorf("expected: %v, got: %v", checklist.route, route)
+			}
 		}
 
 		// Check the replica
-		replicas := attributes.Get("appstudio.has/replicas", &err)
-		if goPkgTest == nil {
-			Expect(err).Should(Not(HaveOccurred()))
-			Expect(replicas).Should(Equal(float64(checklist.replica)))
-		} else if err != nil {
-			goPkgTest.Error(err)
-		} else if int(replicas.(float64)) != checklist.replica {
-			goPkgTest.Errorf("expected: %v, got: %v", checklist.replica, replicas)
+		if checklist.replica != 0 {
+			replicas := attributes.Get("appstudio.has/replicas", &err)
+			if goPkgTest == nil {
+				Expect(err).Should(Not(HaveOccurred()))
+				Expect(replicas).Should(Equal(float64(checklist.replica)))
+			} else if err != nil {
+				goPkgTest.Error(err)
+			} else if int(replicas.(float64)) != checklist.replica {
+				goPkgTest.Errorf("expected: %v, got: %v", checklist.replica, replicas)
+			}
 		}
 
 		// Check the storage limit
-		storageLimitChecklist := limits[corev1.ResourceStorage]
-		storageLimit := attributes.Get("appstudio.has/storageLimit", &err)
-		if goPkgTest == nil {
-			Expect(err).Should(Not(HaveOccurred()))
-			Expect(storageLimit).Should(Equal(storageLimitChecklist.String()))
-		} else if err != nil {
-			goPkgTest.Error(err)
-		} else if storageLimit.(string) != storageLimitChecklist.String() {
-			goPkgTest.Errorf("expected: %v, got: %v", storageLimitChecklist.String(), storageLimit)
+		if _, ok := limits[corev1.ResourceStorage]; ok {
+			storageLimitChecklist := limits[corev1.ResourceStorage]
+			storageLimit := attributes.Get("appstudio.has/storageLimit", &err)
+			if goPkgTest == nil {
+				Expect(err).Should(Not(HaveOccurred()))
+				Expect(storageLimit).Should(Equal(storageLimitChecklist.String()))
+			} else if err != nil {
+				goPkgTest.Error(err)
+			} else if storageLimit.(string) != storageLimitChecklist.String() {
+				goPkgTest.Errorf("expected: %v, got: %v", storageLimitChecklist.String(), storageLimit)
+			}
 		}
 
 		// Check the storage request
-		storageRequestChecklist := requests[corev1.ResourceStorage]
-		storageRequest := attributes.Get("appstudio.has/storageRequest", &err)
-		if goPkgTest == nil {
-			Expect(err).Should(Not(HaveOccurred()))
-			Expect(storageRequest).Should(Equal(storageRequestChecklist.String()))
-		} else if err != nil {
-			goPkgTest.Error(err)
-		} else if storageRequest.(string) != storageRequestChecklist.String() {
-			goPkgTest.Errorf("expected: %v, got: %v", storageRequestChecklist.String(), storageRequest)
+		if _, ok := requests[corev1.ResourceStorage]; ok {
+			storageRequestChecklist := requests[corev1.ResourceStorage]
+			storageRequest := attributes.Get("appstudio.has/storageRequest", &err)
+			if goPkgTest == nil {
+				Expect(err).Should(Not(HaveOccurred()))
+				Expect(storageRequest).Should(Equal(storageRequestChecklist.String()))
+			} else if err != nil {
+				goPkgTest.Error(err)
+			} else if storageRequest.(string) != storageRequestChecklist.String() {
+				goPkgTest.Errorf("expected: %v, got: %v", storageRequestChecklist.String(), storageRequest)
+			}
 		}
 
 		// Check the ephemereal storage limit
-		ephemeralStorageLimitChecklist := limits[corev1.ResourceEphemeralStorage]
-		ephemeralStorageLimit := attributes.Get("appstudio.has/ephermealStorageLimit", &err)
-		if goPkgTest == nil {
-			Expect(err).Should(Not(HaveOccurred()))
-			Expect(ephemeralStorageLimit).Should(Equal(ephemeralStorageLimitChecklist.String()))
-		} else if err != nil {
-			goPkgTest.Error(err)
-		} else if ephemeralStorageLimit.(string) != ephemeralStorageLimitChecklist.String() {
-			goPkgTest.Errorf("expected: %v, got: %v", ephemeralStorageLimitChecklist.String(), ephemeralStorageLimit)
+		if _, ok := limits[corev1.ResourceEphemeralStorage]; ok {
+			ephemeralStorageLimitChecklist := limits[corev1.ResourceEphemeralStorage]
+			ephemeralStorageLimit := attributes.Get("appstudio.has/ephermealStorageLimit", &err)
+			if goPkgTest == nil {
+				Expect(err).Should(Not(HaveOccurred()))
+				Expect(ephemeralStorageLimit).Should(Equal(ephemeralStorageLimitChecklist.String()))
+			} else if err != nil {
+				goPkgTest.Error(err)
+			} else if ephemeralStorageLimit.(string) != ephemeralStorageLimitChecklist.String() {
+				goPkgTest.Errorf("expected: %v, got: %v", ephemeralStorageLimitChecklist.String(), ephemeralStorageLimit)
+			}
 		}
 
 		// Check the ephemereal storage request
-		ephemeralStorageRequestChecklist := requests[corev1.ResourceEphemeralStorage]
-		ephemeralStorageRequest := attributes.Get("appstudio.has/ephermealStorageRequest", &err)
-		if goPkgTest == nil {
-			Expect(err).Should(Not(HaveOccurred()))
-			Expect(ephemeralStorageRequest).Should(Equal(ephemeralStorageRequestChecklist.String()))
-		} else if err != nil {
-			goPkgTest.Error(err)
-		} else if ephemeralStorageRequest.(string) != ephemeralStorageRequestChecklist.String() {
-			goPkgTest.Errorf("expected: %v, got: %v", ephemeralStorageRequestChecklist.String(), ephemeralStorageRequest)
+		if _, ok := requests[corev1.ResourceEphemeralStorage]; ok {
+			ephemeralStorageRequestChecklist := requests[corev1.ResourceEphemeralStorage]
+			ephemeralStorageRequest := attributes.Get("appstudio.has/ephermealStorageRequest", &err)
+			if goPkgTest == nil {
+				Expect(err).Should(Not(HaveOccurred()))
+				Expect(ephemeralStorageRequest).Should(Equal(ephemeralStorageRequestChecklist.String()))
+			} else if err != nil {
+				goPkgTest.Error(err)
+			} else if ephemeralStorageRequest.(string) != ephemeralStorageRequestChecklist.String() {
+				goPkgTest.Errorf("expected: %v, got: %v", ephemeralStorageRequestChecklist.String(), ephemeralStorageRequest)
+			}
 		}
 
 		// Check the memory limit
-		memoryLimitChecklist := limits[corev1.ResourceMemory]
-		if goPkgTest == nil {
-			Expect(component.Container.MemoryLimit).Should(Equal(memoryLimitChecklist.String()))
-		} else if err != nil {
-			goPkgTest.Error(err)
-		} else if component.Container.MemoryLimit != memoryLimitChecklist.String() {
-			goPkgTest.Errorf("expected: %v, got: %v", memoryLimitChecklist.String(), component.Container.MemoryLimit)
+		if _, ok := limits[corev1.ResourceMemory]; ok {
+			memoryLimitChecklist := limits[corev1.ResourceMemory]
+			if goPkgTest == nil {
+				Expect(component.Container.MemoryLimit).Should(Equal(memoryLimitChecklist.String()))
+			} else if err != nil {
+				goPkgTest.Error(err)
+			} else if component.Container.MemoryLimit != memoryLimitChecklist.String() {
+				goPkgTest.Errorf("expected: %v, got: %v", memoryLimitChecklist.String(), component.Container.MemoryLimit)
+			}
 		}
 
 		// Check the memory request
-		memoryRequestChecklist := requests[corev1.ResourceMemory]
-		if goPkgTest == nil {
-			Expect(component.Container.MemoryRequest).Should(Equal(memoryRequestChecklist.String()))
-		} else if err != nil {
-			goPkgTest.Error(err)
-		} else if component.Container.MemoryRequest != memoryRequestChecklist.String() {
-			goPkgTest.Errorf("expected: %v, got: %v", memoryRequestChecklist.String(), component.Container.MemoryRequest)
+		if _, ok := requests[corev1.ResourceMemory]; ok {
+			memoryRequestChecklist := requests[corev1.ResourceMemory]
+			if goPkgTest == nil {
+				Expect(component.Container.MemoryRequest).Should(Equal(memoryRequestChecklist.String()))
+			} else if err != nil {
+				goPkgTest.Error(err)
+			} else if component.Container.MemoryRequest != memoryRequestChecklist.String() {
+				goPkgTest.Errorf("expected: %v, got: %v", memoryRequestChecklist.String(), component.Container.MemoryRequest)
+			}
 		}
 
 		// Check the cpu limit
-		cpuLimitChecklist := limits[corev1.ResourceCPU]
-		if goPkgTest == nil {
-			Expect(component.Container.CpuLimit).Should(Equal(cpuLimitChecklist.String()))
-		} else if err != nil {
-			goPkgTest.Error(err)
-		} else if component.Container.CpuLimit != cpuLimitChecklist.String() {
-			goPkgTest.Errorf("expected: %v, got: %v", cpuLimitChecklist.String(), component.Container.CpuLimit)
+		if _, ok := limits[corev1.ResourceCPU]; ok {
+			cpuLimitChecklist := limits[corev1.ResourceCPU]
+			if goPkgTest == nil {
+				Expect(component.Container.CpuLimit).Should(Equal(cpuLimitChecklist.String()))
+			} else if err != nil {
+				goPkgTest.Error(err)
+			} else if component.Container.CpuLimit != cpuLimitChecklist.String() {
+				goPkgTest.Errorf("expected: %v, got: %v", cpuLimitChecklist.String(), component.Container.CpuLimit)
+			}
 		}
 
 		// Check the cpu request
-		cpuRequestChecklist := requests[corev1.ResourceCPU]
-		if goPkgTest == nil {
-			Expect(component.Container.CpuRequest).Should(Equal(cpuRequestChecklist.String()))
-		} else if err != nil {
-			goPkgTest.Error(err)
-		} else if component.Container.CpuRequest != cpuRequestChecklist.String() {
-			goPkgTest.Errorf("expected: %v, got: %v", cpuRequestChecklist.String(), component.Container.CpuRequest)
+		if _, ok := requests[corev1.ResourceCPU]; ok {
+			cpuRequestChecklist := requests[corev1.ResourceCPU]
+			if goPkgTest == nil {
+				Expect(component.Container.CpuRequest).Should(Equal(cpuRequestChecklist.String()))
+			} else if err != nil {
+				goPkgTest.Error(err)
+			} else if component.Container.CpuRequest != cpuRequestChecklist.String() {
+				goPkgTest.Errorf("expected: %v, got: %v", cpuRequestChecklist.String(), component.Container.CpuRequest)
+			}
 		}
 
 		// Check for container endpoint only for the first container
-		if i == 0 {
+		if i == 0 && checklist.port > 0 {
 			for _, endpoint := range component.Container.Endpoints {
 				if goPkgTest == nil {
 					Expect(endpoint.TargetPort).Should(Equal(checklist.port))
@@ -527,19 +772,21 @@ func verifyHASComponentUpdates(devfile data.DevfileData, checklist updateCheckli
 		}
 
 		// Check for env
-		for _, checklistEnv := range checklist.env {
-			isMatched := false
-			for _, containerEnv := range component.Container.Env {
-				if containerEnv.Name == checklistEnv.Name && containerEnv.Value == checklistEnv.Value {
-					isMatched = true
+		if len(checklist.env) > 0 {
+			for _, checklistEnv := range checklist.env {
+				isMatched := false
+				for _, containerEnv := range component.Container.Env {
+					if containerEnv.Name == checklistEnv.Name && containerEnv.Value == checklistEnv.Value {
+						isMatched = true
+					}
 				}
-			}
-			if goPkgTest == nil {
-				Expect(isMatched).Should(Equal(true))
-			} else if err != nil {
-				goPkgTest.Error(err)
-			} else if !isMatched {
-				goPkgTest.Errorf("expected: %v, got: %v", true, isMatched)
+				if goPkgTest == nil {
+					Expect(isMatched).Should(Equal(true))
+				} else if err != nil {
+					goPkgTest.Error(err)
+				} else if !isMatched {
+					goPkgTest.Errorf("expected: %v, got: %v", true, isMatched)
+				}
 			}
 		}
 	}

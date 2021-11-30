@@ -31,10 +31,10 @@ import (
 
 func TestUpdateApplicationDevfileModel(t *testing.T) {
 	tests := []struct {
-		name         string
-		projects     []devfileAPIV1.Project
-		hasComponent appstudiov1alpha1.Component
-		wantErr      bool
+		name      string
+		projects  []devfileAPIV1.Project
+		component appstudiov1alpha1.Component
+		wantErr   bool
 	}{
 		{
 			name: "Project already present",
@@ -43,7 +43,7 @@ func TestUpdateApplicationDevfileModel(t *testing.T) {
 					Name: "duplicate",
 				},
 			},
-			hasComponent: appstudiov1alpha1.Component{
+			component: appstudiov1alpha1.Component{
 				Spec: appstudiov1alpha1.ComponentSpec{
 					ComponentName: "duplicate",
 					Source: appstudiov1alpha1.ComponentSource{
@@ -62,7 +62,7 @@ func TestUpdateApplicationDevfileModel(t *testing.T) {
 					Name: "present",
 				},
 			},
-			hasComponent: appstudiov1alpha1.Component{
+			component: appstudiov1alpha1.Component{
 				Spec: appstudiov1alpha1.ComponentSpec{
 					ComponentName: "new",
 					Source: appstudiov1alpha1.ComponentSource{
@@ -89,7 +89,7 @@ func TestUpdateApplicationDevfileModel(t *testing.T) {
 				},
 			}
 			r := ComponentReconciler{}
-			err := r.updateApplicationDevfileModel(devfileData, tt.hasComponent)
+			err := r.updateApplicationDevfileModel(devfileData, tt.component)
 			if tt.wantErr && (err == nil) {
 				t.Error("wanted error but got nil")
 			} else if !tt.wantErr && err != nil {
@@ -102,13 +102,13 @@ func TestUpdateApplicationDevfileModel(t *testing.T) {
 				matched := false
 				for _, project := range projects {
 					projectGitSrc := project.ProjectSource.Git
-					if project.Name == tt.hasComponent.Spec.ComponentName && projectGitSrc != nil && projectGitSrc.Remotes["origin"] == tt.hasComponent.Spec.Source.GitSource.URL {
+					if project.Name == tt.component.Spec.ComponentName && projectGitSrc != nil && projectGitSrc.Remotes["origin"] == tt.component.Spec.Source.GitSource.URL {
 						matched = true
 					}
 				}
 
 				if !matched {
-					t.Errorf("unable to find devfile with project: %s", tt.hasComponent.Spec.ComponentName)
+					t.Errorf("unable to find devfile with project: %s", tt.component.Spec.ComponentName)
 				}
 			}
 		})
@@ -153,12 +153,11 @@ func TestUpdateComponentDevfileModel(t *testing.T) {
 	}
 
 	tests := []struct {
-		name         string
-		components   []devfileAPIV1.Component
-		hasComponent appstudiov1alpha1.Component
-		devfileData  *v2.DevfileV2
-		isUpdated    bool
-		wantErr      bool
+		name           string
+		components     []devfileAPIV1.Component
+		component      appstudiov1alpha1.Component
+		updateExpected bool
+		wantErr        bool
 	}{
 		{
 			name: "No container component",
@@ -170,7 +169,7 @@ func TestUpdateComponentDevfileModel(t *testing.T) {
 					},
 				},
 			},
-			hasComponent: appstudiov1alpha1.Component{
+			component: appstudiov1alpha1.Component{
 				Spec: appstudiov1alpha1.ComponentSpec{
 					ComponentName: "componentName",
 				},
@@ -205,7 +204,7 @@ func TestUpdateComponentDevfileModel(t *testing.T) {
 					},
 				},
 			},
-			hasComponent: appstudiov1alpha1.Component{
+			component: appstudiov1alpha1.Component{
 				Spec: appstudiov1alpha1.ComponentSpec{
 					ComponentName: "componentName",
 					Application:   "applicationName",
@@ -223,7 +222,7 @@ func TestUpdateComponentDevfileModel(t *testing.T) {
 					Resources:  originalResources,
 				},
 			},
-			isUpdated: true,
+			updateExpected: true,
 		},
 		{
 			name: "two container components",
@@ -280,7 +279,7 @@ func TestUpdateComponentDevfileModel(t *testing.T) {
 					},
 				},
 			},
-			hasComponent: appstudiov1alpha1.Component{
+			component: appstudiov1alpha1.Component{
 				Spec: appstudiov1alpha1.ComponentSpec{
 					ComponentName: "componentName",
 					Application:   "applicationName",
@@ -298,7 +297,7 @@ func TestUpdateComponentDevfileModel(t *testing.T) {
 					Resources:  originalResources,
 				},
 			},
-			isUpdated: true,
+			updateExpected: true,
 		},
 	}
 
@@ -313,29 +312,27 @@ func TestUpdateComponentDevfileModel(t *testing.T) {
 					},
 				},
 			}
+
 			ctrl.SetLogger(zap.New(zap.UseFlagOptions(&zap.Options{
 				Development: true,
 			})))
 			r := ComponentReconciler{
 				Log: ctrl.Log.WithName("TestUpdateComponentDevfileModel"),
 			}
-			isUpdated, err := r.updateComponentDevfileModel(devfileData, tt.hasComponent)
+			err := r.updateComponentDevfileModel(devfileData, tt.component)
 			if tt.wantErr && (err == nil) {
 				t.Error("wanted error but got nil")
 			} else if !tt.wantErr && err != nil {
 				t.Errorf("got unexpected error %v", err)
 			} else if err == nil {
-				if isUpdated != tt.isUpdated {
-					t.Errorf("expected to be updated: %v, actually updated: %v", tt.isUpdated, isUpdated)
-				}
-
-				if isUpdated {
+				if tt.updateExpected {
+					// it has been updated
 					checklist := updateChecklist{
-						route:     tt.hasComponent.Spec.Route,
-						replica:   tt.hasComponent.Spec.Replicas,
-						port:      tt.hasComponent.Spec.TargetPort,
-						env:       tt.hasComponent.Spec.Env,
-						resources: tt.hasComponent.Spec.Resources,
+						route:     tt.component.Spec.Route,
+						replica:   tt.component.Spec.Replicas,
+						port:      tt.component.Spec.TargetPort,
+						env:       tt.component.Spec.Env,
+						resources: tt.component.Spec.Resources,
 					}
 
 					verifyHASComponentUpdates(devfileData, checklist, t)

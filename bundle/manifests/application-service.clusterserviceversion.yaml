@@ -19,43 +19,16 @@ metadata:
           "apiVersion": "appstudio.redhat.com/v1alpha1",
           "kind": "Component",
           "metadata": {
-            "name": "hascomponent-sample-12345"
+            "name": "component-sample"
           },
           "spec": {
-            "application": "hasapplication-sample-12345",
+            "application": "application-sample",
             "componentName": "backend",
-            "env": [
-              {
-                "name": "FOO",
-                "value": "foo1"
-              },
-              {
-                "name": "BAR",
-                "value": "bar1"
-              }
-            ],
-            "replicas": 1,
-            "resources": {
-              "limits": {
-                "cpu": "2",
-                "ephemeral-storage": "500Mi",
-                "memory": "500Mi",
-                "storage": "400Mi"
-              },
-              "requests": {
-                "cpu": "700m",
-                "ephemeral-storage": "400Mi",
-                "memory": "400Mi",
-                "storage": "200Mi"
-              }
-            },
-            "route": "route111",
             "source": {
               "git": {
                 "url": "https://github.com/devfile-samples/devfile-sample-java-springboot-basic"
               }
-            },
-            "targetPort": 1111
+            }
           }
         },
         {
@@ -267,7 +240,7 @@ spec:
                 - --leader-elect
                 command:
                 - /manager
-                image: maysunfaisal/hasoperator:latest
+                image: quay.io/redhat-appstudio/application-service:next
                 imagePullPolicy: Always
                 livenessProbe:
                   httpGet:

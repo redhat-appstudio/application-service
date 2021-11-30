@@ -16,7 +16,6 @@
 package util
 
 import (
-	"os"
 	"strings"
 	"testing"
 )
@@ -205,54 +204,6 @@ func TestConvertGitHubURL(t *testing.T) {
 				t.Errorf("got unexpected error %v", err)
 			} else if convertedUrl != tt.wantUrl {
 				t.Errorf("ConvertGitHubURL; expected %v got %v", tt.wantUrl, convertedUrl)
-			}
-		})
-	}
-}
-
-func TestCloneDevfileRepo(t *testing.T) {
-	tests := []struct {
-		name        string
-		clonePath   string
-		devfilePath string
-		repo        string
-		cloneTwice  bool
-		wantErr     bool
-	}{
-		{
-			name:        "Clone Successfully",
-			clonePath:   "/tmp/testclone",
-			devfilePath: "devfile.yaml",
-			repo:        "https://github.com/devfile-samples/devfile-sample-java-springboot-basic",
-			cloneTwice:  true,
-		},
-		{
-			name:    "Invalid Repo",
-			repo:    "https://invalid.url",
-			wantErr: true,
-		},
-		{
-			name:      "Invalid Clone Path",
-			clonePath: "\000x",
-			wantErr:   true,
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			devfileBytes, err := CloneAndReadDevfile(tt.clonePath, tt.devfilePath, tt.repo)
-			if tt.wantErr && (err == nil) {
-				t.Error("wanted error but got nil")
-			} else if !tt.wantErr && err != nil {
-				t.Errorf("got unexpected error %v", err)
-			} else if err == nil {
-				if len(devfileBytes) == 0 {
-					t.Error("devfile could not be read")
-				}
-				if tt.cloneTwice {
-					CloneAndReadDevfile(tt.clonePath, tt.devfilePath, tt.repo)
-				}
-				os.RemoveAll(tt.clonePath)
 			}
 		})
 	}

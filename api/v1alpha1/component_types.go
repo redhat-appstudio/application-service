@@ -22,14 +22,14 @@ import (
 )
 
 // ComponentSrcType describes the type of
-// the src for the HAS Component.
+// the src for the Component.
 // Only one of the following location type may be specified.
 // +kubebuilder:validation:Enum=Git;Image
 type ComponentSrcType string
 
 const (
-	GitLikeComponentSrcType   ComponentSrcType = "Git"
-	ImageLikeComponentSrcType ComponentSrcType = "Image"
+	GitComponentSrcType   ComponentSrcType = "Git"
+	ImageComponentSrcType ComponentSrcType = "Image"
 )
 
 type GitSource struct {
@@ -48,17 +48,17 @@ type ImageSource struct {
 	ContainerImage string `json:"containerImage"`
 }
 
-// ComponentSource describes the HAS Component source
+// ComponentSource describes the Component source
 type ComponentSource struct {
 	ComponentSourceUnion `json:",inline"`
 }
 
 // +union
 type ComponentSourceUnion struct {
-	// Git Source for a HAS Component
+	// Git Source for a Component
 	GitSource *GitSource `json:"git,omitempty"`
 
-	// Image Source for a HAS Component
+	// Image Source for a Component
 	ImageSource *ImageSource `json:"image,omitempty"`
 }
 
@@ -76,7 +76,7 @@ type ComponentSpec struct {
 	// Application to add the component to
 	Application string `json:"application"`
 
-	// Source describes the HAS Component source
+	// Source describes the Component source
 	Source ComponentSource `json:"source"`
 
 	// A relative path inside the git repo containing the component
@@ -103,10 +103,10 @@ type ComponentStatus struct {
 	// INSERT ADDITIONAL STATUS FIELD - define observed state of cluster
 	// Important: Run "make" to regenerate code after modifying this file
 
-	// Condition about the HAS Component CR
+	// Condition about the Component CR
 	Conditions []metav1.Condition `json:"conditions,omitempty"`
 
-	// The devfile model for the HAS Component CR
+	// The devfile model for the Component CR
 	Devfile string `json:"devfile,omitempty"`
 }
 
