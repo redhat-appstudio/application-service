@@ -17,8 +17,50 @@ limitations under the License.
 package v1alpha1
 
 import (
+	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
+
+// ComponentSrcType describes the type of
+// the src for the Component.
+// Only one of the following location type may be specified.
+// +kubebuilder:validation:Enum=Git;Image
+type ComponentSrcType string
+
+const (
+	GitComponentSrcType   ComponentSrcType = "Git"
+	ImageComponentSrcType ComponentSrcType = "Image"
+)
+
+type GitSource struct {
+	// If importing from git, the repository to create the component from
+	URL string `json:"url"`
+
+	// Secret containing a Person Access Token to clone a sample, if using private repository
+	Secret string `json:"secret,omitempty"`
+
+	// If specified, the devfile at the URL will be used for the component.
+	DevfileURL string `json:"devfileUrl,omitempty"`
+}
+
+type ImageSource struct {
+	// If importing from git, container image to create the component from
+	ContainerImage string `json:"containerImage"`
+}
+
+// ComponentSource describes the Component source
+type ComponentSource struct {
+	ComponentSourceUnion `json:",inline"`
+}
+
+// +union
+type ComponentSourceUnion struct {
+	// Git Source for a Component
+	GitSource *GitSource `json:"git,omitempty"`
+
+	// Image Source for a Component
+	ImageSource *ImageSource `json:"image,omitempty"`
+}
 
 // EDIT THIS FILE!  THIS IS SCAFFOLDING FOR YOU TO OWN!
 // NOTE: json tags are required.  Any new fields you add must have json tags for the fields to be serialized.
@@ -28,20 +70,51 @@ type ComponentSpec struct {
 	// INSERT ADDITIONAL SPEC FIELDS - desired state of cluster
 	// Important: Run "make" to regenerate code after modifying this file
 
-	// Foo is an example field of Component. Edit component_types.go to remove/update
-	Foo string `json:"foo,omitempty"`
+	// ComponentName is name of the component to be added to the HASApplication
+	ComponentName string `json:"componentName"`
+
+	// Application to add the component to
+	Application string `json:"application"`
+
+	// Source describes the Component source
+	Source ComponentSource `json:"source"`
+
+	// A relative path inside the git repo containing the component
+	Context string `json:"context,omitempty"`
+
+	// Compute Resources required by this component
+	Resources corev1.ResourceRequirements `json:"resources,omitempty"`
+
+	// The number of replicas to deploy the component with
+	Replicas int `json:"replicas,omitempty"`
+
+	// The port to expose the component over
+	TargetPort int `json:"targetPort,omitempty"`
+
+	// The route to expose the component with
+	Route string `json:"route,omitempty"`
+
+	// An array of environment variables to add to the component
+	Env []corev1.EnvVar `json:"env,omitempty"`
 }
 
 // ComponentStatus defines the observed state of Component
 type ComponentStatus struct {
 	// INSERT ADDITIONAL STATUS FIELD - define observed state of cluster
 	// Important: Run "make" to regenerate code after modifying this file
+
+	// Condition about the Component CR
+	Conditions []metav1.Condition `json:"conditions,omitempty"`
+
+	// The devfile model for the Component CR
+	Devfile string `json:"devfile,omitempty"`
 }
 
 //+kubebuilder:object:root=true
 //+kubebuilder:subresource:status
 
 // Component is the Schema for the components API
+// +kubebuilder:resource:path=components,shortName=hascmp;hc;comp
 type Component struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`

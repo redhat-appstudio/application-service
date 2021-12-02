@@ -22,7 +22,13 @@ metadata:
             "name": "component-sample"
           },
           "spec": {
-            "foo": "bar"
+            "application": "application-sample",
+            "componentName": "backend",
+            "source": {
+              "git": {
+                "url": "https://github.com/devfile-samples/devfile-sample-java-springboot-basic"
+              }
+            }
           }
         },
         {
