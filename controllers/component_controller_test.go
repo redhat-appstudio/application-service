@@ -29,6 +29,7 @@ import (
 	. "github.com/onsi/gomega"
 	appstudiov1alpha1 "github.com/redhat-appstudio/application-service/api/v1alpha1"
 	devfile "github.com/redhat-appstudio/application-service/pkg/devfile"
+	triggersapi "github.com/tektoncd/triggers/pkg/apis/triggers/v1alpha1"
 	corev1 "k8s.io/api/core/v1"
 
 	"k8s.io/apimachinery/pkg/api/resource"
@@ -49,6 +50,107 @@ var _ = Describe("Component controller", func() {
 		ComponentName   = "backend"
 		SampleRepoLink  = "https://github.com/devfile-samples/devfile-sample-java-springboot-basic"
 	)
+
+	Context("Check if build objects are created if component with output image url set", func() {
+		It("should create build objects", func() {
+			ctx := context.Background()
+
+			HASAppNameForBuild := "test-application-1234"
+			HASCompNameForBuild := "test-component-1234"
+
+			hasApp := &appstudiov1alpha1.Application{
+				TypeMeta: metav1.TypeMeta{
+					APIVersion: "appstudio.redhat.com/v1alpha1",
+					Kind:       "Application",
+				},
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      HASAppNameForBuild,
+					Namespace: HASAppNamespace,
+				},
+				Spec: appstudiov1alpha1.ApplicationSpec{
+					DisplayName: DisplayName,
+					Description: Description,
+				},
+			}
+
+			Expect(k8sClient.Create(ctx, hasApp)).Should(Succeed())
+
+			hasComp := &appstudiov1alpha1.Component{
+				TypeMeta: metav1.TypeMeta{
+					APIVersion: "appstudio.redhat.com/v1alpha1",
+					Kind:       "Component",
+				},
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      HASAppNameForBuild,
+					Namespace: HASAppNamespace,
+				},
+				Spec: appstudiov1alpha1.ComponentSpec{
+					ComponentName: ComponentName,
+					Application:   HASAppNameForBuild,
+					Source: appstudiov1alpha1.ComponentSource{
+						ComponentSourceUnion: appstudiov1alpha1.ComponentSourceUnion{
+							GitSource: &appstudiov1alpha1.GitSource{
+								URL: SampleRepoLink,
+							},
+							ImageSource: &appstudiov1alpha1.ImageSource{
+								ContainerImage: "docker.io/foo/bar",
+							},
+						},
+					},
+				},
+			}
+			Expect(k8sClient.Create(ctx, hasComp)).Should(Succeed())
+
+			// Look up the has app resource that was created.
+			// num(conditions) may still be < 1 on the first try, so retry until at least _some_ condition is set
+			hasCompLookupKey := types.NamespacedName{Name: HASAppNameForBuild, Namespace: HASAppNamespace}
+			createdHasComp := &appstudiov1alpha1.Component{}
+			Eventually(func() bool {
+				k8sClient.Get(context.Background(), hasCompLookupKey, createdHasComp)
+				return len(createdHasComp.Status.Conditions) > 0
+			}, timeout, interval).Should(BeTrue())
+
+			// Make sure the devfile model was properly set in Component
+			Expect(createdHasComp.Status.Devfile).Should(Not(Equal("")))
+
+			hasAppLookupKey := types.NamespacedName{Name: HASAppNameForBuild, Namespace: HASAppNamespace}
+			createdHasApp := &appstudiov1alpha1.Application{}
+			Eventually(func() bool {
+				k8sClient.Get(context.Background(), hasAppLookupKey, createdHasApp)
+				return len(createdHasApp.Status.Conditions) > 0 && strings.Contains(createdHasApp.Status.Devfile, ComponentName)
+			}, timeout, interval).Should(BeTrue())
+
+			pvcLookupKey := types.NamespacedName{Name: "appstudio", Namespace: HASAppNamespace}
+			pvc := &corev1.PersistentVolumeClaim{}
+
+			triggerTemplateLookupKey := types.NamespacedName{Name: HASCompNameForBuild, Namespace: HASAppNamespace}
+			triggerTemplate := &triggersapi.TriggerTemplate{}
+
+			eventListenerName := types.NamespacedName{Name: HASCompNameForBuild, Namespace: HASAppNamespace}
+			eventListener := &triggersapi.EventListener{}
+
+			Eventually(func() bool {
+				k8sClient.Get(context.Background(), pvcLookupKey, pvc)
+				return pvc.Status.Phase == "Pending"
+			}, timeout, interval).Should(BeTrue())
+
+			Eventually(func() bool {
+				k8sClient.Get(context.Background(), triggerTemplateLookupKey, triggerTemplate)
+				return triggerTemplate != nil
+			}, timeout, interval).Should(BeTrue())
+
+			Eventually(func() bool {
+				k8sClient.Get(context.Background(), eventListenerName, eventListener)
+				return eventListener != nil
+			}, timeout, interval).Should(BeTrue())
+
+			// Delete the specified HASComp resource
+			deleteHASCompCR(hasCompLookupKey)
+
+			// Delete the specified HASApp resource
+			deleteHASAppCR(hasAppLookupKey)
+		})
+	})
 
 	Context("Create Component with basic field set", func() {
 		It("Should create successfully and update the Application", func() {

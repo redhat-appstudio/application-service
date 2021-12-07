@@ -253,8 +253,22 @@ func (r *ComponentReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 		}
 	}
 
+	if component.Spec.Source.ImageSource != nil {
+
+		// TODO: would move this to the user's gitops repository under /.tekton
+		webhookURL, err := r.setupWebhookTriggeredImageBuilds(ctx, log, component)
+		if err != nil {
+			log.Error(err, "Unable to setup builds")
+		}
+		component.Status.Webhook = webhookURL
+		err = r.Client.Status().Update(ctx, &component)
+		if err != nil {
+			log.Error(err, "Unable to update Component with webhook URL")
+		}
+	}
+
 	log.Info(fmt.Sprintf("Finished reconcile loop for %v", req.NamespacedName))
-	return ctrl.Result{}, nil
+	return ctrl.Result{}, err
 }
 
 // SetupWithManager sets up the controller with the Manager.

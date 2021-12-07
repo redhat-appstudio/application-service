@@ -9,11 +9,13 @@ require (
 	github.com/go-logr/logr v0.4.0
 	github.com/onsi/ginkgo v1.16.4
 	github.com/onsi/gomega v1.14.0
-	golang.org/x/crypto v0.0.0-20210421170649-83a5a9bb288b // indirect
+	github.com/openshift/api v0.0.0-20200930075302-db52bc4ef99f
+	github.com/tektoncd/pipeline v0.30.0
+	github.com/tektoncd/triggers v0.17.1
 	gopkg.in/check.v1 v1.0.0-20201130134442-10cb98267c6c // indirect
-	k8s.io/api v0.21.3
-	k8s.io/apimachinery v0.21.3
-	k8s.io/client-go v0.21.3
+	k8s.io/api v0.21.4
+	k8s.io/apimachinery v0.21.4
+	k8s.io/client-go v0.21.4
 	sigs.k8s.io/controller-runtime v0.9.5
-	sigs.k8s.io/yaml v1.2.0
+	sigs.k8s.io/yaml v1.3.0
 )
