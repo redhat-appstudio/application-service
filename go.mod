@@ -7,6 +7,7 @@ require (
 	github.com/devfile/api/v2 v2.0.0-20211018184408-84c44e563f58
 	github.com/devfile/library v1.2.0
 	github.com/go-logr/logr v0.4.0
+	github.com/google/addlicense v1.0.0 // indirect
 	github.com/onsi/ginkgo v1.16.4
 	github.com/onsi/gomega v1.14.0
 	github.com/openshift/api v0.0.0-20200930075302-db52bc4ef99f
