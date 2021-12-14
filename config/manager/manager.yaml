@@ -53,5 +53,18 @@ spec:
           requests:
             cpu: 100m
             memory: 20Mi
+        env:
+        - name: GITHUB_ORG
+          valueFrom:
+            configMapKeyRef:
+              name: github-config
+              key: GITHUB_ORG
+              optional: true
+        - name: GITHUB_AUTH_TOKEN
+          valueFrom:
+            secretKeyRef:
+              name: has-github-token
+              key: token
+              optional: true
       serviceAccountName: controller-manager
       terminationGracePeriodSeconds: 10

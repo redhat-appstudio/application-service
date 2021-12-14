@@ -22,11 +22,7 @@ import (
 	"net/url"
 	"os"
 	"strings"
-
-	gofakeit "github.com/brianvoe/gofakeit/v6"
 )
-
-const AppStudioDataOrg = "https://github.com/redhat-appstudio-appdata/"
 
 func SanitizeDisplayName(displayName string) string {
 	sanitizedName := strings.ToLower(strings.Replace(displayName, " ", "-", -1))
@@ -34,14 +30,6 @@ func SanitizeDisplayName(displayName string) string {
 		sanitizedName = sanitizedName[0:50]
 	}
 	return sanitizedName
-}
-
-func GenerateNewRepositoryName(displayName string, namespace string) string {
-	sanitizedName := SanitizeDisplayName(displayName)
-
-	repoName := sanitizedName + "-" + namespace + "-" + gofakeit.Verb() + "-" + gofakeit.Noun()
-	repository := AppStudioDataOrg + repoName
-	return repository
 }
 
 // IsExist returns whether the given file or directory exists
