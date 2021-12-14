@@ -81,10 +81,13 @@ func main() {
 		os.Exit(1)
 	}
 
+	// Retrieve the GitHub Auth Token to use, error out if not found
 	ghToken := os.Getenv("GITHUB_AUTH_TOKEN")
 	if ghToken == "" {
-		log.Fatal("Unauthorized: No token present")
+		log.Fatal("Unauthorized: No GitHub token present")
 	}
+
+	// Retrieve the name of the GitHub org to use
 	ghOrg := os.Getenv("GITHUB_ORG")
 	if ghOrg == "" {
 		ghOrg = "redhat-appstudio-appdata"
