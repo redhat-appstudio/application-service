@@ -17,11 +17,14 @@ limitations under the License.
 package main
 
 import (
+	"context"
 	"flag"
+	"log"
 	"os"
 
 	// Import all Kubernetes client auth plugins (e.g. Azure, GCP, OIDC, etc.)
 	// to ensure that exec-entrypoint and run can make use of them.
+	"golang.org/x/oauth2"
 	_ "k8s.io/client-go/plugin/pkg/client/auth"
 
 	"k8s.io/apimachinery/pkg/runtime"
@@ -31,6 +34,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/healthz"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 
+	"github.com/google/go-github/v41/github"
 	appstudiov1alpha1 "github.com/redhat-appstudio/application-service/api/v1alpha1"
 	"github.com/redhat-appstudio/application-service/controllers"
 	//+kubebuilder:scaffold:imports
@@ -77,10 +81,29 @@ func main() {
 		os.Exit(1)
 	}
 
+	// Retrieve the GitHub Auth Token to use, error out if not found
+	ghToken := os.Getenv("GITHUB_AUTH_TOKEN")
+	if ghToken == "" {
+		log.Fatal("Unauthorized: No GitHub token present")
+	}
+
+	// Retrieve the name of the GitHub org to use
+	ghOrg := os.Getenv("GITHUB_ORG")
+	if ghOrg == "" {
+		ghOrg = "redhat-appstudio-appdata"
+	}
+
+	ctx := context.Background()
+	ts := oauth2.StaticTokenSource(&oauth2.Token{AccessToken: ghToken})
+	tc := oauth2.NewClient(ctx, ts)
+	client := github.NewClient(tc)
+
 	if err = (&controllers.ApplicationReconciler{
-		Client: mgr.GetClient(),
-		Scheme: mgr.GetScheme(),
-		Log:    ctrl.Log.WithName("controllers").WithName("Application"),
+		Client:       mgr.GetClient(),
+		Scheme:       mgr.GetScheme(),
+		Log:          ctrl.Log.WithName("controllers").WithName("Application"),
+		GitHubClient: client,
+		GitHubOrg:    ghOrg,
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "Application")
 		os.Exit(1)

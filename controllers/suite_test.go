@@ -34,6 +34,7 @@ import (
 	ctrl "sigs.k8s.io/controller-runtime"
 
 	appstudiov1alpha1 "github.com/redhat-appstudio/application-service/api/v1alpha1"
+	github "github.com/redhat-appstudio/application-service/pkg/github"
 	//+kubebuilder:scaffold:imports
 )
 
@@ -96,9 +97,11 @@ var _ = BeforeSuite(func() {
 
 	// To Do: Set up reconcilers for the other controllers
 	err = (&ApplicationReconciler{
-		Client: k8sManager.GetClient(),
-		Scheme: k8sManager.GetScheme(),
-		Log:    ctrl.Log.WithName("controllers").WithName("Application"),
+		Client:       k8sManager.GetClient(),
+		Scheme:       k8sManager.GetScheme(),
+		Log:          ctrl.Log.WithName("controllers").WithName("Application"),
+		GitHubClient: github.GetMockedClient(),
+		GitHubOrg:    github.AppStudioAppDataOrg,
 	}).SetupWithManager(k8sManager)
 	Expect(err).ToNot(HaveOccurred())
 
