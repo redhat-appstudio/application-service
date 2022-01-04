@@ -50,7 +50,10 @@ func (r *ApplicationReconciler) Finalize(application *appstudiov1alpha1.Applicat
 	if err != nil {
 		return err
 	}
-	devfileGitOps := devfileObj.GetMetadata().Attributes.Get("gitOpsRepository.url", nil)
+	devfileGitOps := devfileObj.GetMetadata().Attributes.Get("gitOpsRepository.url", &err)
+	if err != nil {
+		return err
+	}
 	gitOpsURL := devfileGitOps.(string)
 
 	// Only delete the GitOps repo if we created it.
@@ -76,11 +79,17 @@ func containsString(slice []string, s string) bool {
 
 func getFinalizeCount(application *appstudiov1alpha1.Application) (int, error) {
 	applicationAnnotations := application.GetAnnotations()
+	if applicationAnnotations == nil {
+		applicationAnnotations = make(map[string]string)
+	}
 	finalizeCountAnnotation := applicationAnnotations[finalizeCount]
 	return strconv.Atoi(finalizeCountAnnotation)
 }
 
 func setFinalizeCount(application *appstudiov1alpha1.Application, count int) {
 	applicationAnnotations := application.GetAnnotations()
+	if applicationAnnotations == nil {
+		applicationAnnotations = make(map[string]string)
+	}
 	applicationAnnotations[finalizeCount] = strconv.Itoa(count)
 }

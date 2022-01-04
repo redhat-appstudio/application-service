@@ -121,12 +121,12 @@ func (r *ApplicationReconciler) Reconcile(ctx context.Context, req ctrl.Request)
 		// See if a gitops/appModel repo(s) were passed in. If not, generate them.
 		gitOpsRepo := application.Spec.GitOpsRepository.URL
 		appModelRepo := application.Spec.AppModelRepository.URL
-		if gitOpsRepo == "" && appModelRepo == "" {
+		if gitOpsRepo == "" {
 			// If both repositories are blank, just generate a single shared repository
 			repoName := github.GenerateNewRepositoryName(application.Spec.DisplayName, application.Namespace)
 
 			// Generate the git repo in the redhat-appstudio-appdata org
-			repoUrl, err := github.GenerateNewRepository(r.GitHubClient, ctx, repoName, "GitOps Repository")
+			repoUrl, err := github.GenerateNewRepository(r.GitHubClient, ctx, r.GitHubOrg, repoName, "GitOps Repository")
 			if err != nil {
 				log.Error(err, fmt.Sprintf("Unable to create repository %v", repoUrl))
 				r.SetCreateConditionAndUpdateCR(ctx, &application, err)
@@ -134,20 +134,9 @@ func (r *ApplicationReconciler) Reconcile(ctx context.Context, req ctrl.Request)
 			}
 
 			gitOpsRepo = repoUrl
-			appModelRepo = repoUrl
-		} else if gitOpsRepo == "" {
-			repoName := github.GenerateNewRepositoryName(application.Spec.DisplayName, application.Namespace)
-
-			// Generate the git repo in the redhat-appstudio-appdata org
-			repoUrl, err := github.GenerateNewRepository(r.GitHubClient, ctx, repoName, "GitOps Repository")
-			if err != nil {
-				log.Error(err, fmt.Sprintf("Unable to create repository %v", repoUrl))
-				r.SetCreateConditionAndUpdateCR(ctx, &application, err)
-				return reconcile.Result{}, err
-			}
-
-			gitOpsRepo = repoUrl
-		} else if appModelRepo == "" {
+		}
+		if appModelRepo == "" {
+			// If the appModelRepo is unset, just set it to the gitops repo
 			appModelRepo = gitOpsRepo
 		}
 

@@ -39,12 +39,14 @@ func TestGenerateNewRepository(t *testing.T) {
 	tests := []struct {
 		name     string
 		repoName string
+		orgName  string
 		want     string
 		wantErr  error
 	}{
 		{
 			name:     "Simple repo name",
 			repoName: "test-repo-1",
+			orgName:  "redhat-appstudio-appdata",
 			want:     "https://github.com/redhat-appstudio-appdata/test-repo-1",
 			wantErr:  nil,
 		},
@@ -54,7 +56,7 @@ func TestGenerateNewRepository(t *testing.T) {
 		mockedClient := GetMockedClient()
 
 		t.Run(tt.name, func(t *testing.T) {
-			repoURL, err := GenerateNewRepository(mockedClient, context.Background(), tt.repoName, "")
+			repoURL, err := GenerateNewRepository(mockedClient, context.Background(), tt.orgName, tt.repoName, "")
 
 			if err != tt.wantErr {
 				t.Errorf("TestGenerateNewRepository() error: expected %v got %v", tt.wantErr, err)
