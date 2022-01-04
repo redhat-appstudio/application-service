@@ -46,7 +46,7 @@ The following section outlines the steps to deploy HAS on a physical Kubernetes 
 
 ### Creating a GitHub Secret for HAS
 
-Before deploying the operator, you must ensure that a secret, `has-github-token`, exists in the namespace where HAS will be deployed. This secret must contain a key-value pair, where the key is `GITHUB_AUTH_TOKEN` and where the value points to a valid GitHub Personal Access Token.
+Before deploying the operator, you must ensure that a secret, `has-github-token`, exists in the namespace where HAS will be deployed. This secret must contain a key-value pair, where the key is `token` and where the value points to a valid GitHub Personal Access Token.
 
 The token that is used here must have the following permissions set:
 - `repo`
