@@ -1,0 +1,62 @@
+//
+// Copyright 2021 Red Hat, Inc.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+package github
+
+import (
+	"net/http"
+
+	"github.com/google/go-github/v41/github"
+	"github.com/migueleliasweb/go-github-mock/src/mock"
+)
+
+// GetMockedClient returns a simple mocked go-github client
+func GetMockedClient() *github.Client {
+	mockedHTTPClient := mock.NewMockedHTTPClient(
+		mock.WithRequestMatch(
+			mock.GetUsersByUsername,
+			github.User{
+				Name: github.String("testuser"),
+			},
+		),
+		mock.WithRequestMatch(
+			mock.GetUsersOrgsByUsername,
+			[]github.Organization{
+				{
+					Name: github.String("redhat-appstudio-appdata"),
+				},
+			},
+		),
+		mock.WithRequestMatchHandler(
+			mock.PostOrgsReposByOrg,
+			http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+				w.Write(mock.MustMarshal(github.Repository{
+					Name: github.String("test-repo-1"),
+				}))
+			}),
+		),
+		mock.WithRequestMatchHandler(
+			mock.DeleteReposByOwnerByRepo,
+			http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+				w.Write(mock.MustMarshal(github.Repository{
+					Name: github.String("test-repo-1"),
+				}))
+			}),
+		),
+	)
+
+	return github.NewClient(mockedHTTPClient)
+
+}
