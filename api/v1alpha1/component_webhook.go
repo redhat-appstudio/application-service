@@ -81,7 +81,7 @@ func (r *Component) ValidateUpdate(old runtime.Object) error {
 			return fmt.Errorf("context cannot be updated to %s", r.Spec.Context)
 		}
 
-		if !reflect.DeepEqual(*(r.Spec.Source.GitSource), *(oldComponent.Spec.Source.GitSource)) {
+		if r.Spec.Source.GitSource != nil && oldComponent.Spec.Source.GitSource != nil && !reflect.DeepEqual(*(r.Spec.Source.GitSource), *(oldComponent.Spec.Source.GitSource)) {
 			return fmt.Errorf("git source cannot be updated to %+v", *(r.Spec.Source.GitSource))
 		}
 	default:
