@@ -81,6 +81,7 @@ func getFinalizeCount(application *appstudiov1alpha1.Application) (int, error) {
 	applicationAnnotations := application.GetAnnotations()
 	if applicationAnnotations == nil {
 		applicationAnnotations = make(map[string]string)
+		applicationAnnotations[finalizeCount] = "0"
 	}
 	finalizeCountAnnotation := applicationAnnotations[finalizeCount]
 	return strconv.Atoi(finalizeCountAnnotation)
