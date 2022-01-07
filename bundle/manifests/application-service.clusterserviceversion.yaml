@@ -322,13 +322,35 @@ spec:
     - v1
     containerPort: 443
     conversionCRDs:
+    - applications.appstudio.redhat.com
     - components.appstudio.redhat.com
     deploymentName: application-service-controller-manager
-    generateName: ccomponents.kb.io
+    generateName: capplicationscomponents.kb.io
     sideEffects: None
     targetPort: 9443
     type: ConversionWebhook
     webhookPath: /convert
+  - admissionReviewVersions:
+    - v1
+    - v1beta1
+    containerPort: 443
+    deploymentName: application-service-controller-manager
+    failurePolicy: Fail
+    generateName: mapplication.kb.io
+    rules:
+    - apiGroups:
+      - appstudio.redhat.com
+      apiVersions:
+      - v1alpha1
+      operations:
+      - CREATE
+      - UPDATE
+      resources:
+      - applications
+    sideEffects: None
+    targetPort: 9443
+    type: MutatingAdmissionWebhook
+    webhookPath: /mutate-appstudio-redhat-com-v1alpha1-application
   - admissionReviewVersions:
     - v1
     - v1beta1
@@ -350,6 +372,27 @@ spec:
     targetPort: 9443
     type: MutatingAdmissionWebhook
     webhookPath: /mutate-appstudio-redhat-com-v1alpha1-component
+  - admissionReviewVersions:
+    - v1
+    - v1beta1
+    containerPort: 443
+    deploymentName: application-service-controller-manager
+    failurePolicy: Fail
+    generateName: vapplication.kb.io
+    rules:
+    - apiGroups:
+      - appstudio.redhat.com
+      apiVersions:
+      - v1alpha1
+      operations:
+      - CREATE
+      - UPDATE
+      resources:
+      - applications
+    sideEffects: None
+    targetPort: 9443
+    type: ValidatingAdmissionWebhook
+    webhookPath: /validate-appstudio-redhat-com-v1alpha1-application
   - admissionReviewVersions:
     - v1
     - v1beta1
