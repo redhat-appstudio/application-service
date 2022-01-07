@@ -108,6 +108,15 @@ func TestComponentValidatingWebhook(t *testing.T) {
 				},
 			},
 		},
+		{
+			name: "not component",
+			err:  "runtime object is not of type Component",
+			updateComp: Component{
+				Spec: ComponentSpec{
+					ComponentName: "component1",
+				},
+			},
+		},
 	}
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
@@ -127,7 +136,18 @@ func TestComponentValidatingWebhook(t *testing.T) {
 					},
 				}
 			}
-			err := test.updateComp.ValidateUpdate(&originalComponent)
+			var err error
+			if test.name == "not component" {
+				originalApplication := Application{
+					Spec: ApplicationSpec{
+						DisplayName: "My App",
+					},
+				}
+				err = test.updateComp.ValidateUpdate(&originalApplication)
+			} else {
+				err = test.updateComp.ValidateUpdate(&originalComponent)
+			}
+
 			if test.err == "" {
 				assert.Nil(t, err)
 			} else {

@@ -84,10 +84,31 @@ func TestApplicationValidatingWebhook(t *testing.T) {
 				},
 			},
 		},
+		{
+			name: "not application",
+			err:  "runtime object is not of type Application",
+			updateApp: Application{
+				Spec: ApplicationSpec{
+					DisplayName: "My App",
+				},
+			},
+		},
 	}
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			err := test.updateApp.ValidateUpdate(&originalApplication)
+			var err error
+			if test.name == "not application" {
+				originalComponent := Component{
+					Spec: ComponentSpec{
+						ComponentName: "component",
+						Application:   "application",
+					},
+				}
+				err = test.updateApp.ValidateUpdate(&originalComponent)
+			} else {
+				err = test.updateApp.ValidateUpdate(&originalApplication)
+			}
+
 			if test.err == "" {
 				assert.Nil(t, err)
 			} else {
