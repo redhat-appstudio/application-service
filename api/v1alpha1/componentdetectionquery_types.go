@@ -25,23 +25,50 @@ import (
 
 // ComponentDetectionQuerySpec defines the desired state of ComponentDetectionQuery
 type ComponentDetectionQuerySpec struct {
-	// INSERT ADDITIONAL SPEC FIELDS - desired state of cluster
-	// Important: Run "make" to regenerate code after modifying this file
 
-	// Foo is an example field of ComponentDetectionQuery. Edit componentdetectionquery_types.go to remove/update
-	Foo string `json:"foo,omitempty"`
+	// Git Source for a Component
+	GitSource GitSource `json:"git"`
+
+	// IsMultiComponent specifies if the component specified has multiple services
+	IsMultiComponent bool `json:"isMultiComponent,omitempty"`
 }
+
+// ComponentDetectionDescription holds all the information about the component being detected
+type ComponentDetectionDescription struct {
+
+	// DevfileFound tells if a devfile is found in the component
+	DevfileFound bool `json:"devfileFound,omitempty"`
+
+	// Language specifies the language of the component detected
+	Language string `json:"language,omitempty"`
+
+	// ProjectType specifies the type of project for the component detected
+	ProjectType string `json:"projectType,omitempty"`
+
+	// ComponentStub is a stub of the component detected with all the info gathered from the devfile or service detection
+	ComponentStub ComponentSpec `json:"componentStub,omitempty"`
+}
+
+// ComponentDetectionMap is a map containing all the components and their detected information
+type ComponentDetectionMap map[string]ComponentDetectionDescription
 
 // ComponentDetectionQueryStatus defines the observed state of ComponentDetectionQuery
 type ComponentDetectionQueryStatus struct {
 	// INSERT ADDITIONAL STATUS FIELD - define observed state of cluster
 	// Important: Run "make" to regenerate code after modifying this file
+
+	// Condition about the Component CR
+	Conditions []metav1.Condition `json:"conditions,omitempty"`
+
+	// ComponentDetected gives a list of components and the info from detection
+	ComponentDetected ComponentDetectionMap `json:"componentDetected,omitempty"`
 }
 
 //+kubebuilder:object:root=true
 //+kubebuilder:subresource:status
 
 // ComponentDetectionQuery is the Schema for the componentdetectionqueries API
+// +kubebuilder:resource:path=componentdetectionqueries,shortName=hcdq;compdetection
 type ComponentDetectionQuery struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`

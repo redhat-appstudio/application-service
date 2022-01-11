@@ -21,7 +21,16 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"path"
+	"path/filepath"
 	"strings"
+
+	"github.com/go-git/go-git/v5"
+)
+
+const (
+	devfileName       = "devfile.yaml"
+	hiddenDevfileName = ".devfile.yaml"
 )
 
 func SanitizeDisplayName(displayName string) string {
@@ -90,4 +99,72 @@ func CurlEndpoint(endpoint string) ([]byte, error) {
 	}
 
 	return nil, fmt.Errorf("received a non-200 status when curling %s", endpoint)
+}
+
+// CloneRepo clones the repoURL to clonePath
+func CloneRepo(clonePath, repoURL string) error {
+	// Check if the clone path is empty, if not delete it
+	isDirExist, err := IsExist(clonePath)
+	if err != nil {
+		return err
+	}
+	fmt.Printf("isDirExist %v\n", isDirExist)
+	if isDirExist {
+		fmt.Printf("removing %v\n", isDirExist)
+		os.RemoveAll(clonePath)
+	}
+
+	// Clone the repo
+	_, err = git.PlainClone(clonePath, false, &git.CloneOptions{
+		URL: repoURL,
+	})
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func ReadDevfilesFromRepo(localpath string, depth int) (map[string][]byte, error) {
+	return searchDevfiles(localpath, 0, depth)
+}
+
+func searchDevfiles(localpath string, currentLevel, depth int) (map[string][]byte, error) {
+
+	var devfileBytes []byte
+	devfileMapFromRepo := make(map[string][]byte)
+
+	files, err := ioutil.ReadDir(localpath)
+	if err != nil {
+		return nil, err
+	}
+
+	for _, f := range files {
+		if (f.Name() == devfileName || f.Name() == hiddenDevfileName) && currentLevel != 0 {
+			devfileBytes, err = ioutil.ReadFile(path.Join(localpath, f.Name()))
+			if err != nil {
+				return nil, err
+			}
+
+			var context string
+			currentPath := localpath
+			for i := 0; i < currentLevel; i++ {
+				context = path.Join(filepath.Base(currentPath), context)
+				currentPath = filepath.Dir(currentPath)
+			}
+			devfileMapFromRepo[context] = devfileBytes
+		} else if f.IsDir() {
+			if currentLevel+1 <= depth {
+				recursiveMap, err := searchDevfiles(path.Join(localpath, f.Name()), currentLevel+1, depth)
+				if err != nil {
+					return nil, err
+				}
+				for context, devfile := range recursiveMap {
+					devfileMapFromRepo[context] = devfile
+				}
+			}
+		}
+	}
+
+	return devfileMapFromRepo, nil
 }

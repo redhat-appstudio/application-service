@@ -1,0 +1,8 @@
+apiVersion: appstudio.redhat.com/v1alpha1
+kind: ComponentDetectionQuery
+metadata:
+  name: componentdetectionquery-sample
+spec:
+  git:
+    url: https://github.com/devfile-samples/devfile-sample-java-springboot-basic
+    # devfileUrl: https://raw.githubusercontent.com/devfile-samples/devfile-sample-java-springboot-basic/main/devfile.yaml

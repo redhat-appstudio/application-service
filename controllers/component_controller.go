@@ -36,7 +36,8 @@ import (
 )
 
 const (
-	devfileName = "devfile.yaml"
+	devfileName       = "devfile.yaml"
+	hiddenDevfileName = ".devfile.yaml"
 )
 
 // ComponentReconciler reconciles a Component object

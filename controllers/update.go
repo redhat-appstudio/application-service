@@ -24,7 +24,9 @@ import (
 	data "github.com/devfile/library/pkg/devfile/parser/data"
 	"github.com/devfile/library/pkg/devfile/parser/data/v2/common"
 	appstudiov1alpha1 "github.com/redhat-appstudio/application-service/api/v1alpha1"
+	devfile "github.com/redhat-appstudio/application-service/pkg/devfile"
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/resource"
 )
 
 func (r *ComponentReconciler) updateComponentDevfileModel(hasCompDevfileData data.DevfileData, component appstudiov1alpha1.Component) error {
@@ -239,6 +241,199 @@ func (r *ComponentReconciler) updateApplicationDevfileModel(hasAppDevfileData da
 	err = hasAppDevfileData.AddProjects([]devfileAPIV1.Project{newProject})
 	if err != nil {
 		return err
+	}
+
+	return nil
+}
+
+func (r *ComponentDetectionQueryReconciler) updateComponentStub(componentDetectionQuery *appstudiov1alpha1.ComponentDetectionQuery, devfilesMap map[string][]byte) error {
+
+	log := r.Log.WithValues("ComponentDetectionQuery", "updateComponentStub")
+
+	if len(componentDetectionQuery.Status.ComponentDetected) == 0 {
+		componentDetectionQuery.Status.ComponentDetected = make(appstudiov1alpha1.ComponentDetectionMap)
+	}
+
+	log.Info(fmt.Sprintf("Devfiles detected: %v", len(devfilesMap)))
+
+	for context, devfileBytes := range devfilesMap {
+		log.Info(fmt.Sprintf("Currently reading the devfile from context %v", context))
+
+		// Parse the Component Devfile
+		compDevfileData, err := devfile.ParseDevfileModel(string(devfileBytes))
+		if err != nil {
+			return err
+		}
+
+		devfileMetadata := compDevfileData.GetMetadata()
+		devfileContainerComponents, err := compDevfileData.GetComponents(common.DevfileOptions{
+			ComponentOptions: common.ComponentOptions{
+				ComponentType: devfileAPIV1.ContainerComponentType,
+			},
+		})
+		if err != nil {
+			return err
+		}
+
+		componentStub := appstudiov1alpha1.ComponentSpec{
+			ComponentName: devfileMetadata.Name,
+			Context:       context,
+			Source: appstudiov1alpha1.ComponentSource{
+				ComponentSourceUnion: appstudiov1alpha1.ComponentSourceUnion{
+					GitSource: &componentDetectionQuery.Spec.GitSource,
+				},
+			},
+		}
+
+		// Since a devfile can have N container components, we only try to populate the stub with the first container component
+		if len(devfileContainerComponents) != 0 {
+			// Devfile Env
+			for _, devfileEnv := range devfileContainerComponents[0].Container.Env {
+				componentStub.Env = append(componentStub.Env, corev1.EnvVar{
+					Name:  devfileEnv.Name,
+					Value: devfileEnv.Value,
+				})
+			}
+
+			// Devfile Port
+			for i, endpoint := range devfileContainerComponents[0].Container.Endpoints {
+				if i == 0 {
+					componentStub.TargetPort = endpoint.TargetPort
+					break
+				}
+			}
+
+			// Devfile Route
+			componentStub.Route = devfileContainerComponents[0].Attributes.GetString("appstudio.has/route", &err)
+			if err != nil {
+				if _, ok := err.(*attributes.KeyNotFoundError); !ok {
+					return err
+				}
+			}
+
+			// Devfile Replica
+			componentStub.Replicas = int(devfileContainerComponents[0].Attributes.GetNumber("appstudio.has/replicas", &err))
+			if err != nil {
+				if _, ok := err.(*attributes.KeyNotFoundError); !ok {
+					return err
+				}
+			}
+
+			// Devfile Limits
+			if len(componentStub.Resources.Limits) == 0 {
+				componentStub.Resources.Limits = make(corev1.ResourceList)
+			}
+			limits := componentStub.Resources.Limits
+
+			// CPU Limit
+			if devfileContainerComponents[0].Container.CpuLimit != "" {
+				cpuLimit, err := resource.ParseQuantity(devfileContainerComponents[0].Container.CpuLimit)
+				if err != nil {
+					return err
+				}
+				limits[corev1.ResourceCPU] = cpuLimit
+			}
+
+			// Memory Limit
+			if devfileContainerComponents[0].Container.MemoryLimit != "" {
+				memoryLimit, err := resource.ParseQuantity(devfileContainerComponents[0].Container.MemoryLimit)
+				if err != nil {
+					return err
+				}
+				limits[corev1.ResourceMemory] = memoryLimit
+			}
+
+			// Storage Limit
+			storageLimitString := devfileContainerComponents[0].Attributes.GetString("appstudio.has/storageLimit", &err)
+			if err != nil {
+				if _, ok := err.(*attributes.KeyNotFoundError); !ok {
+					return err
+				}
+			}
+			if storageLimitString != "" {
+				storageLimit, err := resource.ParseQuantity(storageLimitString)
+				if err != nil {
+					return err
+				}
+				limits[corev1.ResourceStorage] = storageLimit
+			}
+
+			// Ephemeral Storage Limit
+			ephemeralStorageLimitString := devfileContainerComponents[0].Attributes.GetString("appstudio.has/ephermealStorageLimit", &err)
+			if err != nil {
+				if _, ok := err.(*attributes.KeyNotFoundError); !ok {
+					return err
+				}
+			}
+			if ephemeralStorageLimitString != "" {
+				ephemeralStorageLimit, err := resource.ParseQuantity(ephemeralStorageLimitString)
+				if err != nil {
+					return err
+				}
+				limits[corev1.ResourceEphemeralStorage] = ephemeralStorageLimit
+			}
+
+			// Devfile Request
+			if len(componentStub.Resources.Requests) == 0 {
+				componentStub.Resources.Requests = make(corev1.ResourceList)
+			}
+			requests := componentStub.Resources.Requests
+
+			// CPU Request
+			if devfileContainerComponents[0].Container.CpuRequest != "" {
+				CpuRequest, err := resource.ParseQuantity(devfileContainerComponents[0].Container.CpuRequest)
+				if err != nil {
+					return err
+				}
+				requests[corev1.ResourceCPU] = CpuRequest
+			}
+
+			// Memory Request
+			if devfileContainerComponents[0].Container.MemoryRequest != "" {
+				memoryRequest, err := resource.ParseQuantity(devfileContainerComponents[0].Container.MemoryRequest)
+				if err != nil {
+					return err
+				}
+				requests[corev1.ResourceMemory] = memoryRequest
+			}
+
+			// Storage Request
+			storageRequestString := devfileContainerComponents[0].Attributes.GetString("appstudio.has/storageRequest", &err)
+			if err != nil {
+				if _, ok := err.(*attributes.KeyNotFoundError); !ok {
+					return err
+				}
+			}
+			if storageRequestString != "" {
+				storageRequest, err := resource.ParseQuantity(storageRequestString)
+				if err != nil {
+					return err
+				}
+				requests[corev1.ResourceStorage] = storageRequest
+			}
+
+			// Ephemeral Storage Request
+			ephemeralStorageRequestString := devfileContainerComponents[0].Attributes.GetString("appstudio.has/ephermealStorageRequest", &err)
+			if err != nil {
+				if _, ok := err.(*attributes.KeyNotFoundError); !ok {
+					return err
+				}
+			}
+			if ephemeralStorageRequestString != "" {
+				ephemeralStorageRequest, err := resource.ParseQuantity(ephemeralStorageRequestString)
+				if err != nil {
+					return err
+				}
+				requests[corev1.ResourceEphemeralStorage] = ephemeralStorageRequest
+			}
+		}
+
+		componentDetectionQuery.Status.ComponentDetected[devfileMetadata.Name] = appstudiov1alpha1.ComponentDetectionDescription{
+			DevfileFound:  true,
+			Language:      devfileMetadata.Language,
+			ProjectType:   devfileMetadata.ProjectType,
+			ComponentStub: componentStub,
+		}
 	}
 
 	return nil
