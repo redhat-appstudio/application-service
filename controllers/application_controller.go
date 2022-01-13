@@ -81,9 +81,9 @@ func (r *ApplicationReconciler) Reconcile(ctx context.Context, req ctrl.Request)
 	// If so: Remove the GitOps repo (if generated) and remove the finalizer.
 	if application.ObjectMeta.DeletionTimestamp.IsZero() {
 		if !containsString(application.GetFinalizers(), appFinalizerName) {
-			if err := r.AddFinalizer(ctx, &application); err != nil {
-				return ctrl.Result{}, err
-			}
+			// Attach the finalizer and return to reset the reconciler loop
+			err := r.AddFinalizer(ctx, &application)
+			return ctrl.Result{}, err
 		}
 	} else {
 		if containsString(application.GetFinalizers(), appFinalizerName) {
