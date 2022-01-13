@@ -57,22 +57,25 @@ In addition to this, the GitHub token must be associated with an account that ha
 For example, on OpenShift:
 <img width="862" alt="Screen Shot 2021-12-14 at 1 08 43 AM" src="https://user-images.githubusercontent.com/6880023/145942734-63422532-6fad-4017-9d26-79436fe241b8.png">
 
+### Specifying Alternate GitHub org
+
+By default, HAS will use the `redhat-appstudio-appdata` GitHub org for the creation of GitOps repositories. If you wish to use a different org, you can create a ConfigMap, `github-config`, in the same namespace as HAS before deploying, that references the org you wish to create GitOps repositories in. There should be a single key-value pair in the ConfigMap, where the key is `GITHUB_ORG`, and the value is the name of the GitHub organization you wish to use.
+
+For example:
+
+`kubectl create configmap github-config --from-literal=GITHUB_ORG=test-org` would create a ConfigMap that tells HAS to use the `test-org`.
+
+**Note:** If you specify a custom GitHub organization for HAS, you must ensure that the GitHub token created for HAS has the proper permissions to access the org.
+
+**Note:** You must specify a GitHub organization, if overriding the default value. GitHub accounts are not supported in lieu of organizations at this time.
+
 ### Deploying HAS
 
-Once a secret has been created, simply run the following commands to deploy HAS:
+Once the GitHub secret has been created, simply run the following commands to deploy HAS:
 ```
 make install
 make deploy
 ```
-
-### Specifying Alternate GitHub org
-
-By default, HAS will use the `redhat-appstudio-appdata` org for the creation of GitOps repositories. If you wish to use your own account, or a different GitHub org, setting `GITHUB_ORG=<org>` before deploying will ensure that an alternate location is used.
-
-For example:
-
-`GITHUB_ORG=fake-organization make deploy` would deploy HAS configured to use github.com/fake-organization.
-
 
 Useful links:
 * [HAS Project information page](https://docs.google.com/document/d/1axzNOhRBSkly3M2Y32Pxr1MBpBif2ljb-ufj0_aEt74/edit?usp=sharing)
