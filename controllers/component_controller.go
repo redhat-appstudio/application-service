@@ -82,15 +82,6 @@ func (r *ComponentReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 	if component.Status.Devfile == "" {
 		source := component.Spec.Source
 		context := component.Spec.Context
-		var devfilePath string
-
-		// append context to devfile if present
-		// context is usually set when the git repo is a multi-component repo (example - contains both frontend & backend)
-		if context == "" {
-			devfilePath = devfileName
-		} else {
-			devfilePath = path.Join(context, devfileName)
-		}
 
 		if source.GitSource != nil && source.GitSource.URL != "" {
 			var devfileBytes []byte
@@ -103,10 +94,18 @@ func (r *ComponentReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 					return ctrl.Result{}, err
 				}
 
-				endpoint := rawURL + "/" + devfilePath
-				devfileBytes, err = util.CurlEndpoint(endpoint)
+				// append context to the path if present
+				// context is usually set when the git repo is a multi-component repo (example - contains both frontend & backend)
+				var devfileDir string
+				if context == "" {
+					devfileDir = rawURL
+				} else {
+					devfileDir = path.Join(rawURL, context)
+				}
+
+				devfileBytes, err = util.CurlForDevfiles(devfileDir)
 				if err != nil {
-					log.Error(err, fmt.Sprintf("Unable to curl %s, to read the devfile %v", devfilePath, req.NamespacedName))
+					log.Error(err, fmt.Sprintf("Unable to read the devfile from dir %s %v", devfileDir, req.NamespacedName))
 					r.SetCreateConditionAndUpdateCR(ctx, &component, err)
 					return ctrl.Result{}, err
 				}

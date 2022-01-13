@@ -1,5 +1,5 @@
 //
-// Copyright 2021 Red Hat, Inc.
+// Copyright 2021-2022 Red Hat, Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -92,6 +92,49 @@ func TestISExist(t *testing.T) {
 				t.Errorf("got unexpected error %v", err)
 			} else if isExist != tt.exist {
 				t.Errorf("IsExist; expected %v got %v", tt.exist, isExist)
+			}
+		})
+	}
+}
+
+func TestCurlForDevfiles(t *testing.T) {
+	tests := []struct {
+		name    string
+		url     string
+		wantErr bool
+	}{
+		{
+			name: "Curl devfile.yaml",
+			url:  "https://raw.githubusercontent.com/devfile-samples/devfile-sample-java-springboot-basic/main",
+		},
+		{
+			name: "Curl .devfile.yaml",
+			url:  "https://raw.githubusercontent.com/maysunfaisal/hiddendevfile/main",
+		},
+		{
+			name: "Curl .devfile/devfile.yaml",
+			url:  "https://raw.githubusercontent.com/maysunfaisal/hiddendirdevfile/main",
+		},
+		{
+			name: "Curl .devfile/.devfile.yaml",
+			url:  "https://raw.githubusercontent.com/maysunfaisal/hiddendirhiddendevfile/main",
+		},
+		{
+			name:    "Cannot curl for a devfile",
+			url:     "https://github.com/octocat/Hello-World",
+			wantErr: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			contents, err := CurlForDevfiles(tt.url)
+			if tt.wantErr && (err == nil) {
+				t.Error("wanted error but got nil")
+			} else if !tt.wantErr && err != nil {
+				t.Errorf("got unexpected error %v", err)
+			} else if err == nil && contents == nil {
+				t.Errorf("unable to read body")
 			}
 		})
 	}

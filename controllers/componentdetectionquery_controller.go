@@ -112,17 +112,11 @@ func (r *ComponentDetectionQueryReconciler) Reconcile(ctx context.Context, req c
 					return ctrl.Result{}, err
 				}
 
-				devfileEndpoint := rawURL + "/" + devfileName
-				devfileBytes, err = util.CurlEndpoint(devfileEndpoint)
+				devfileBytes, err = util.CurlForDevfiles(rawURL)
 				if err != nil {
-					log.Error(err, fmt.Sprintf("Unable to curl %s, to read the devfile %v", devfileEndpoint, req.NamespacedName))
-					hiddenDevfileEndpoint := rawURL + "/" + hiddenDevfileName
-					devfileBytes, err = util.CurlEndpoint(hiddenDevfileEndpoint)
-					if err != nil {
-						log.Error(err, fmt.Sprintf("Unable to curl %s & %s, to read the devfile %v", devfileEndpoint, hiddenDevfileEndpoint, req.NamespacedName))
-						r.SetCreateConditionAndUpdateCR(ctx, &componentDetectionQuery, err)
-						return ctrl.Result{}, err
-					}
+					log.Error(err, fmt.Sprintf("Unable to curl for any known devfile locations from %s %v", source.URL, req.NamespacedName))
+					r.SetCreateConditionAndUpdateCR(ctx, &componentDetectionQuery, err)
+					return ctrl.Result{}, err
 				}
 				devfilesMap["./"] = devfileBytes
 			}
