@@ -1,5 +1,5 @@
 /*
-Copyright 2021 Red Hat, Inc.
+Copyright 2021-2022 Red Hat, Inc.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -34,6 +34,8 @@ import (
 	ctrl "sigs.k8s.io/controller-runtime"
 
 	appstudiov1alpha1 "github.com/redhat-appstudio/application-service/api/v1alpha1"
+	"github.com/redhat-appstudio/application-service/gitops/ioutils"
+	"github.com/redhat-appstudio/application-service/gitops/testutils"
 	github "github.com/redhat-appstudio/application-service/pkg/github"
 	//+kubebuilder:scaffold:imports
 )
@@ -106,9 +108,11 @@ var _ = BeforeSuite(func() {
 	Expect(err).ToNot(HaveOccurred())
 
 	err = (&ComponentReconciler{
-		Client: k8sManager.GetClient(),
-		Scheme: k8sManager.GetScheme(),
-		Log:    ctrl.Log.WithName("controllers").WithName("Component"),
+		Client:   k8sManager.GetClient(),
+		Scheme:   k8sManager.GetScheme(),
+		Log:      ctrl.Log.WithName("controllers").WithName("Component"),
+		Executor: testutils.NewMockExecutor(),
+		AppFS:    ioutils.NewMemoryFilesystem(),
 	}).SetupWithManager(k8sManager)
 	Expect(err).ToNot(HaveOccurred())
 

@@ -1,5 +1,5 @@
 /*
-Copyright 2021.
+Copyright 2021-2022.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -19,6 +19,8 @@ package main
 import (
 	"context"
 	"flag"
+	"fmt"
+	"io/ioutil"
 	"log"
 	"os"
 
@@ -26,6 +28,7 @@ import (
 	// to ensure that exec-entrypoint and run can make use of them.
 	"golang.org/x/oauth2"
 	_ "k8s.io/client-go/plugin/pkg/client/auth"
+	"sigs.k8s.io/yaml"
 
 	"k8s.io/apimachinery/pkg/runtime"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
@@ -37,6 +40,8 @@ import (
 	"github.com/google/go-github/v41/github"
 	appstudiov1alpha1 "github.com/redhat-appstudio/application-service/api/v1alpha1"
 	"github.com/redhat-appstudio/application-service/controllers"
+	"github.com/redhat-appstudio/application-service/gitops"
+	"github.com/redhat-appstudio/application-service/gitops/ioutils"
 	//+kubebuilder:scaffold:imports
 )
 
@@ -53,6 +58,45 @@ func init() {
 }
 
 func main() {
+	// TODO: Remove before merging, just for testing
+	testgitops := os.Getenv("GITOPS")
+	if testgitops != "" {
+		if len(os.Args) < 3 {
+			log.Fatal("usage: ./manager <path-to-component-cr-yaml> <repo>")
+		}
+		componentCRFile := os.Args[1]
+		//outputDir := os.Args[2]
+		repo := os.Args[2]
+
+		gitToken := os.Getenv("GITHUB_AUTH_TOKEN")
+		if gitToken == "" {
+			log.Fatal("GITHUB_AUTH_TOKEN env variable must be set")
+		}
+
+		// Parse the Component CR file
+		yamlFile, err := ioutil.ReadFile(componentCRFile)
+		if err != nil {
+			log.Printf("File read err %v ", err)
+		}
+
+		component := appstudiov1alpha1.Component{}
+		err = yaml.Unmarshal(yamlFile, &component)
+		if err != nil {
+			log.Fatalf("Unmarshal: %v", err)
+		}
+		fmt.Println()
+
+		appFs := ioutils.NewFilesystem()
+		remote := "https://" + gitToken + "@github.com/redhat-appstudio-appdata/" + repo
+		executor := gitops.NewCmdExecutor()
+		tempdir, _ := ioutil.TempDir(os.TempDir(), component.Name)
+		err = gitops.GenerateAndPush(tempdir, remote, component, executor, appFs, "main", "/")
+		if err != nil {
+			fmt.Println(err.Error())
+		}
+		appFs.RemoveAll(tempdir)
+		return
+	}
 	var metricsAddr string
 	var enableLeaderElection bool
 	var probeAddr string
@@ -109,9 +153,12 @@ func main() {
 		os.Exit(1)
 	}
 	if err = (&controllers.ComponentReconciler{
-		Client: mgr.GetClient(),
-		Scheme: mgr.GetScheme(),
-		Log:    ctrl.Log.WithName("controllers").WithName("Component"),
+		Client:   mgr.GetClient(),
+		Scheme:   mgr.GetScheme(),
+		Log:      ctrl.Log.WithName("controllers").WithName("Component"),
+		Executor: gitops.NewCmdExecutor(),
+		AppFS:    ioutils.NewFilesystem(),
+		GitToken: ghToken,
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "Component")
 		os.Exit(1)

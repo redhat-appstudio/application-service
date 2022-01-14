@@ -1,5 +1,5 @@
 /*
-Copyright 2021 Red Hat, Inc.
+Copyright 2021-2022 Red Hat, Inc.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -19,6 +19,8 @@ package controllers
 import (
 	"context"
 	"fmt"
+	"net/url"
+	"os"
 	"path"
 	"reflect"
 
@@ -29,10 +31,13 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/yaml"
 
+	data "github.com/devfile/library/pkg/devfile/parser/data"
 	"github.com/go-logr/logr"
 	appstudiov1alpha1 "github.com/redhat-appstudio/application-service/api/v1alpha1"
+	"github.com/redhat-appstudio/application-service/gitops"
 	devfile "github.com/redhat-appstudio/application-service/pkg/devfile"
 	util "github.com/redhat-appstudio/application-service/pkg/util"
+	"github.com/spf13/afero"
 )
 
 const (
@@ -42,8 +47,12 @@ const (
 // ComponentReconciler reconciles a Component object
 type ComponentReconciler struct {
 	client.Client
-	Scheme *runtime.Scheme
-	Log    logr.Logger
+	Scheme    *runtime.Scheme
+	Log       logr.Logger
+	GitToken  string
+	GitHubOrg string
+	Executor  gitops.Executor
+	AppFS     afero.Afero
 }
 
 //+kubebuilder:rbac:groups=appstudio.redhat.com,resources=components,verbs=get;list;watch;create;update;patch;delete
@@ -190,10 +199,25 @@ func (r *ComponentReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 				componentLabels := make(map[string]string)
 				componentLabels["appstudio.has/application"] = component.Spec.Application
 				componentLabels["appstudio.has/component"] = component.Spec.ComponentName
+
 				component.SetLabels(componentLabels)
+				err = setGitopsLabels(&component, hasAppDevfileData)
+				if err != nil {
+					log.Error(err, fmt.Sprintf("Unable to retrieve gitops repository information for resource %v", req.NamespacedName))
+					r.SetCreateConditionAndUpdateCR(ctx, &component, err)
+					return ctrl.Result{}, err
+				}
 				err = r.Client.Update(ctx, &component)
 				if err != nil {
 					log.Error(err, fmt.Sprintf("Unable to update Component with the required labels %v", req.NamespacedName))
+					r.SetCreateConditionAndUpdateCR(ctx, &component, err)
+					return ctrl.Result{}, err
+				}
+
+				// Generate and push the gitops resources
+				err = r.generateGitops(&component)
+				if err != nil {
+					log.Error(err, fmt.Sprintf("Unable to generate gitops resources for component %v", req.NamespacedName))
 					r.SetCreateConditionAndUpdateCR(ctx, &component, err)
 					return ctrl.Result{}, err
 				}
@@ -257,9 +281,93 @@ func (r *ComponentReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 	return ctrl.Result{}, nil
 }
 
+func (r *ComponentReconciler) generateGitops(component *appstudiov1alpha1.Component) error {
+	log := r.Log.WithValues("Component", component.Name)
+
+	componentAnnotations := component.GetAnnotations()
+	if componentAnnotations == nil {
+		return fmt.Errorf("unable to create gitops resource, component gitops labels are not set")
+	}
+
+	// Get the information about the gitops repository from the Component resource
+	var gitOpsURL, gitOpsBranch, gitOpsContext string
+	gitOpsURL = componentAnnotations["gitOpsRepository.url"]
+	if gitOpsURL == "" {
+		err := fmt.Errorf("unable to create gitops resource, gitOpsRepository.url label not set on component")
+		log.Error(err, "")
+		return err
+	}
+	if componentAnnotations["gitOpsRepository.branch"] != "" {
+		gitOpsBranch = componentAnnotations["gitOpsRepository.branch"]
+	} else {
+		gitOpsBranch = "main"
+	}
+	if componentAnnotations["gitOpsRepository.context"] != "" {
+		gitOpsContext = componentAnnotations["gitOpsRepository.context"]
+	} else {
+		gitOpsContext = "/"
+	}
+
+	// Construct the remote URL for the gitops repository
+	parsedURL, err := url.Parse(gitOpsURL)
+	if err != nil {
+		log.Error(err, "unable to parse gitops URL due to error")
+		return err
+	}
+	parsedURL.User = url.User(r.GitToken)
+	remoteURL := parsedURL.String()
+
+	// Create a temp folder to create the gitops resources in
+	tempDir, err := r.AppFS.TempDir(os.TempDir(), component.Name)
+	if err != nil {
+		log.Error(err, "unable to create temp directory for gitops resources due to error")
+		return fmt.Errorf("unable to create temp directory for gitops resources due to error: %v", err)
+	}
+
+	// Generate and push the gitops resources
+	err = gitops.GenerateAndPush(tempDir, remoteURL, *component, r.Executor, r.AppFS, gitOpsBranch, gitOpsContext)
+	if err != nil {
+		log.Error(err, "unable to generate gitops resources due to error")
+		return err
+	}
+
+	// Remove the temp folder that was created
+	return r.AppFS.RemoveAll(tempDir)
+}
+
 // SetupWithManager sets up the controller with the Manager.
 func (r *ComponentReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&appstudiov1alpha1.Component{}).
 		Complete(r)
+}
+
+func setGitopsLabels(component *appstudiov1alpha1.Component, devfileData data.DevfileData) error {
+	var err error
+	devfileAttributes := devfileData.GetMetadata().Attributes
+	componentAnnotations := component.GetAnnotations()
+	if componentAnnotations == nil {
+		componentAnnotations = make(map[string]string)
+	}
+	// Get the GitOps repository URL
+	gitOpsURL := devfileAttributes.GetString("gitOpsRepository.url", &err)
+	if err != nil {
+		return fmt.Errorf("unable to retrieve GitOps repository from Application CR devfile: %v", err)
+	}
+	componentAnnotations["gitOpsRepository.url"] = gitOpsURL
+
+	// Get the GitOps repository branch
+	gitOpsBranch := devfileAttributes.GetString("gitOpsRepository.branch", nil)
+	if gitOpsBranch != "" {
+		componentAnnotations["gitOpsRepository.branch"] = gitOpsBranch
+	}
+
+	// Get the GitOps repository context
+	gitOpsContext := devfileAttributes.GetString("gitOpsRepository.context", nil)
+	if gitOpsContext != "" {
+		componentAnnotations["gitOpsRepository.context"] = gitOpsContext
+	}
+
+	component.SetAnnotations(componentAnnotations)
+	return nil
 }
