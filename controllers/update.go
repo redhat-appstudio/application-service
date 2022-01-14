@@ -248,6 +248,10 @@ func (r *ComponentReconciler) updateApplicationDevfileModel(hasAppDevfileData da
 
 func (r *ComponentDetectionQueryReconciler) updateComponentStub(componentDetectionQuery *appstudiov1alpha1.ComponentDetectionQuery, devfilesMap map[string][]byte) error {
 
+	if componentDetectionQuery == nil {
+		return fmt.Errorf("componentDetectionQuery is nil")
+	}
+
 	log := r.Log.WithValues("ComponentDetectionQuery", "updateComponentStub")
 
 	if len(componentDetectionQuery.Status.ComponentDetected) == 0 {

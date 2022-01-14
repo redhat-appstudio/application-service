@@ -623,6 +623,7 @@ type updateChecklist struct {
 	resources corev1.ResourceRequirements
 }
 
+// verifyHASComponentUpdates verifies if the devfile data has been properly updated with the Component CR values
 func verifyHASComponentUpdates(devfile data.DevfileData, checklist updateChecklist, goPkgTest *testing.T) {
 	// container component should be updated with the necessary hasComp properties
 	components, err := devfile.GetComponents(common.DevfileOptions{

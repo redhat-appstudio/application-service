@@ -16,6 +16,7 @@
 package util
 
 import (
+	"os"
 	"testing"
 )
 
@@ -176,6 +177,44 @@ func TestCurlEndpoint(t *testing.T) {
 	}
 }
 
+func TestCloneRepo(t *testing.T) {
+	tests := []struct {
+		name      string
+		clonePath string
+		repo      string
+		wantErr   bool
+	}{
+		{
+			name:      "Clone Successfully",
+			clonePath: "/tmp/testclone",
+			repo:      "https://github.com/devfile-samples/devfile-sample-java-springboot-basic",
+		},
+		{
+			name:      "Invalid Repo",
+			clonePath: "/tmp/testclone",
+			repo:      "https://invalid.url",
+			wantErr:   true,
+		},
+		{
+			name:      "Invalid Clone Path",
+			clonePath: "\000x",
+			wantErr:   true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			err := CloneRepo(tt.clonePath, tt.repo)
+			if tt.wantErr && (err == nil) {
+				t.Error("wanted error but got nil")
+			} else if !tt.wantErr && err != nil {
+				t.Errorf("got unexpected error %v", err)
+			}
+			os.RemoveAll(tt.clonePath)
+		})
+	}
+}
+
 func TestConvertGitHubURL(t *testing.T) {
 	tests := []struct {
 		name    string
@@ -220,6 +259,69 @@ func TestConvertGitHubURL(t *testing.T) {
 			} else if convertedUrl != tt.wantUrl {
 				t.Errorf("ConvertGitHubURL; expected %v got %v", tt.wantUrl, convertedUrl)
 			}
+		})
+	}
+}
+
+func TestReadDevfilesFromRepo(t *testing.T) {
+	tests := []struct {
+		name                   string
+		clonePath              string
+		depth                  int
+		repo                   string
+		wantErr                bool
+		expectedDevfileContext []string
+	}{
+		{
+			name:      "Should return 0 devfiles as this is not a multi comp devfile",
+			clonePath: "/tmp/testclone",
+			depth:     1,
+			repo:      "https://github.com/devfile-samples/devfile-sample-java-springboot-basic",
+			wantErr:   true,
+		},
+		{
+			name:                   "Should return 1 devfiles as this is a multi comp devfile",
+			clonePath:              "/tmp/testclone",
+			depth:                  1,
+			repo:                   "https://github.com/maysunfaisal/multi-components-deep",
+			expectedDevfileContext: []string{"devfile-sample-java-springboot-basic"},
+		},
+		{
+			name:                   "Should return 2 devfiles as this is a multi comp devfile",
+			clonePath:              "/tmp/testclone",
+			depth:                  2,
+			repo:                   "https://github.com/maysunfaisal/multi-components-deep",
+			expectedDevfileContext: []string{"devfile-sample-java-springboot-basic", "python/devfile-sample-python-basic"},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			err := CloneRepo(tt.clonePath, tt.repo)
+			if err != nil {
+				t.Errorf("got unexpected error %v", err)
+			} else {
+				devfileMap, err := ReadDevfilesFromRepo(tt.clonePath, tt.depth)
+				if tt.wantErr && (err == nil) {
+					t.Error("wanted error but got nil")
+				} else if !tt.wantErr && err != nil {
+					t.Errorf("got unexpected error %v", err)
+				} else {
+					for actualContext := range devfileMap {
+						matched := false
+						for _, context := range tt.expectedDevfileContext {
+							if context == actualContext {
+								matched = true
+							}
+						}
+
+						if !matched {
+							t.Errorf("found devfile at context %v but expected none", actualContext)
+						}
+					}
+				}
+			}
+			os.RemoveAll(tt.clonePath)
 		})
 	}
 }
