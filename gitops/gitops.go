@@ -34,6 +34,9 @@ type Executor interface {
 // 2. component: A component struct corresponding to a single Component in an Application in AS
 // 4. The executor to use to execute the git commands (either gitops.executor or gitops.mockExecutor)
 // 5. The filesystem object used to create (either ioutils.NewFilesystem() or ioutils.NewMemoryFilesystem())
+// 6. The branch to push to
+// 7. The path within the repository to generate the resources in
+// Adapted from https://github.com/redhat-developer/kam/blob/master/pkg/pipelines/utils.go#L79
 func GenerateAndPush(outputPath string, remote string, component appstudiov1alpha1.Component, e Executor, appFs afero.Fs, branch string, context string) error {
 	componentName := component.Name
 	if out, err := e.Execute(outputPath, "git", "clone", remote, componentName); err != nil {

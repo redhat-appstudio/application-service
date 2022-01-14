@@ -13,6 +13,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+// Originally from https://github.com/redhat-developer/kam/blob/master/pkg/pipelines/ioutils/file_utils.go
+
 package ioutils
 
 import (

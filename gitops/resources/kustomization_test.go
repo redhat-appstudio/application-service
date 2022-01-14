@@ -13,6 +13,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+// From https://github.com/redhat-developer/kam/tree/master/pkg/pipelines/resources
 package resources
 
 import (
