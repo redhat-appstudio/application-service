@@ -62,6 +62,12 @@ type ComponentSourceUnion struct {
 	ImageSource *ImageSource `json:"image,omitempty"`
 }
 
+// Build describes the various build artifacts associated with a given component
+type Build struct {
+	// The container image that is created during the component build.
+	ContainerImage string `json:"containerImage"`
+}
+
 // EDIT THIS FILE!  THIS IS SCAFFOLDING FOR YOU TO OWN!
 // NOTE: json tags are required.  Any new fields you add must have json tags for the fields to be serialized.
 
@@ -96,6 +102,9 @@ type ComponentSpec struct {
 
 	// An array of environment variables to add to the component
 	Env []corev1.EnvVar `json:"env,omitempty"`
+
+	// The build artifacts associated with the component
+	Build Build `json:"build,omitempty"`
 }
 
 // ComponentStatus defines the observed state of Component

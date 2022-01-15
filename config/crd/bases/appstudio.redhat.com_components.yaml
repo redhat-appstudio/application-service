@@ -43,6 +43,16 @@ spec:
               application:
                 description: Application to add the component to
                 type: string
+              build:
+                description: The build artifacts associated with the component
+                properties:
+                  containerImage:
+                    description: The container image that is created during the component
+                      build.
+                    type: string
+                required:
+                - containerImage
+                type: object
               componentName:
                 description: ComponentName is name of the component to be added to
                   the HASApplication

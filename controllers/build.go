@@ -28,9 +28,10 @@ func determineBuildDefinition(component appstudiov1alpha1.Component) string {
 func determineBuildCatalog(namespace string) string {
 	// TODO: If there's a namespace/workspace specific catalog, we got
 	// to respect that.
-	return "quay.io/redhat-appstudio/build-templates-bundle:v0.1"
+	return "quay.io/redhat-appstudio/build-templates-bundle:v0.1.2"
 }
 
+// determineBuildExecution returns the pipelineRun spec
 func determineBuildExecution(component appstudiov1alpha1.Component, params []tektonapi.Param, workspaceSubPath string) tektonapi.PipelineRunSpec {
 
 	pipelineRunSpec := tektonapi.PipelineRunSpec{

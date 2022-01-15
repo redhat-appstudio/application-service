@@ -16,7 +16,6 @@
 package util
 
 import (
-	"strings"
 	"testing"
 )
 
@@ -53,33 +52,6 @@ func TestSanitizeDisplayName(t *testing.T) {
 			sanitizedName := SanitizeDisplayName(tt.displayName)
 			// Unexpected error
 			if sanitizedName != tt.want {
-				t.Errorf("TestSanitizeDisplayName() error: expected %v got %v", tt.want, sanitizedName)
-			}
-		})
-	}
-}
-
-func TestGenerateNewRepositoryName(t *testing.T) {
-	tests := []struct {
-		name        string
-		displayName string
-		namespace   string
-		want        string
-	}{
-		{
-			name:        "Simple display name, no spaces",
-			displayName: "PetClinic",
-			namespace:   "default",
-			want:        "petclinic-default",
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			sanitizedName := SanitizeDisplayName(tt.displayName)
-			generatedRepo := GenerateNewRepositoryName(tt.displayName, tt.namespace)
-
-			if !strings.Contains(generatedRepo, sanitizedName) {
 				t.Errorf("TestSanitizeDisplayName() error: expected %v got %v", tt.want, sanitizedName)
 			}
 		})

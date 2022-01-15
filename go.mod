@@ -7,12 +7,14 @@ require (
 	github.com/devfile/api/v2 v2.0.0-20211018184408-84c44e563f58
 	github.com/devfile/library v1.2.0
 	github.com/go-logr/logr v0.4.0
-	github.com/google/addlicense v1.0.0 // indirect
+	github.com/google/go-github/v41 v41.0.0
+	github.com/migueleliasweb/go-github-mock v0.0.5
 	github.com/onsi/ginkgo v1.16.4
 	github.com/onsi/gomega v1.14.0
 	github.com/openshift/api v0.0.0-20200930075302-db52bc4ef99f
 	github.com/tektoncd/pipeline v0.30.0
 	github.com/tektoncd/triggers v0.17.1
+	golang.org/x/oauth2 v0.0.0-20211005180243-6b3c2da341f1
 	gopkg.in/check.v1 v1.0.0-20201130134442-10cb98267c6c // indirect
 	k8s.io/api v0.21.4
 	k8s.io/apimachinery v0.21.4

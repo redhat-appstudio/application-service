@@ -6,17 +6,23 @@
 
 2) In a terminal window, run `go run ./cmd/kcp start`
 
-## Installing the Operator
+## Running the Operator
 
-1) Open a terminal window in the root of this repository
+Before running the following commands, ensure that you have the following environment variables exported:
 
-2) Run `export KUBECONFIG=<path-to-kcp>/.kcp/data/admin.kubeconfig` to set your Kubeconfig to KCP
+1. `KUBECONFIG=<path-to-kcp>/.kcp/data/admin.kubeconfig` Set to the path of KCP's kubeconfig
 
-3) Run `make build` to build the HAS operator binary
+2. `GITHUB_AUTH_TOKEN=<github-token>` Set to a GitHub Personal Access Token with `repo` and `delete_repo` permissions.
 
-4) Run `make install` to install the HAS CRDs onto the KCP instance
+3. (Optional) `GITHUB_ORG=<github-org>` Set to a GitHub org (or account) if you do not have write access to `redhat-appstudio-appdata`.
 
-5) Run `./bin/manager` to run the operator
+Once the above prerequisites have been met, run the following commands:
+
+1. `make build` to build the HAS operator binary
+
+2. `make install` to install the HAS CRDs onto the KCP instance
+
+3. `./bin/manager` to run the operator
 
 
 ## Testing HAS
