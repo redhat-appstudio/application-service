@@ -23,9 +23,14 @@ RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -a -o manager main.go
 
 FROM registry.access.redhat.com/ubi8/ubi-minimal:8.4-210
 RUN microdnf update -y && microdnf install git
+
+# Set the Git config for the AppData bot
 WORKDIR /
 COPY --from=builder /workspace/manager .
 
-USER 65532:65532
+COPY appdata.gitconfig /.gitconfig
+RUN chgrp -R 0 /.gitconfig && chmod -R g=u /.gitconfig
+
+USER 1001
 
 ENTRYPOINT ["/manager"]
