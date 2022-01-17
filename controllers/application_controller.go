@@ -169,7 +169,7 @@ func (r *ApplicationReconciler) Reconcile(ctx context.Context, req ctrl.Request)
 		}
 
 		// Update any specific fields that changed
-		displayName := util.SanitizeDisplayName(application.Spec.DisplayName)
+		displayName := util.SanitizeName(application.Spec.DisplayName)
 		description := application.Spec.Description
 		devfileMeta := devfileData.GetMetadata()
 		updateRequired := false
