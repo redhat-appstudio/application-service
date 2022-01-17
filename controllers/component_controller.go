@@ -214,13 +214,16 @@ func (r *ComponentReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 					return ctrl.Result{}, err
 				}
 
-				// Generate and push the gitops resources
-				err = r.generateGitops(&component)
-				if err != nil {
-					log.Error(err, fmt.Sprintf("Unable to generate gitops resources for component %v", req.NamespacedName))
-					r.SetCreateConditionAndUpdateCR(ctx, &component, err)
-					return ctrl.Result{}, err
+				// Generate and push the gitops resources if spec.containerImage is set
+				if component.Spec.Build.ContainerImage != "" {
+					err = r.generateGitops(&component)
+					if err != nil {
+						log.Error(err, fmt.Sprintf("Unable to generate gitops resources for component %v", req.NamespacedName))
+						r.SetCreateConditionAndUpdateCR(ctx, &component, err)
+						return ctrl.Result{}, err
+					}
 				}
+
 			} else {
 				log.Error(err, fmt.Sprintf("Application devfile model is empty. Before creating a Component, an instance of Application should be created, exiting reconcile loop %v", req.NamespacedName))
 				err := fmt.Errorf("application devfile model is empty. Before creating a Component, an instance of Application should be created")
@@ -269,8 +272,17 @@ func (r *ComponentReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 				return ctrl.Result{}, err
 			}
 
-			component.Status.Devfile = string(yamlHASCompData)
+			// Generate and push the gitops resources if spec.containerImage is set
+			if component.Spec.Build.ContainerImage != "" {
+				err = r.generateGitops(&component)
+				if err != nil {
+					log.Error(err, fmt.Sprintf("Unable to generate gitops resources for component %v", req.NamespacedName))
+					r.SetCreateConditionAndUpdateCR(ctx, &component, err)
+					return ctrl.Result{}, err
+				}
+			}
 
+			component.Status.Devfile = string(yamlHASCompData)
 			r.SetUpdateConditionAndUpdateCR(ctx, &component, nil)
 		} else {
 			log.Info(fmt.Sprintf("The Component devfile data was not updated %v", req.NamespacedName))

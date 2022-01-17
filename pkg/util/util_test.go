@@ -49,10 +49,10 @@ func TestSanitizeDisplayName(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			sanitizedName := SanitizeDisplayName(tt.displayName)
+			sanitizedName := SanitizeName(tt.displayName)
 			// Unexpected error
 			if sanitizedName != tt.want {
-				t.Errorf("TestSanitizeDisplayName() error: expected %v got %v", tt.want, sanitizedName)
+				t.Errorf("SanitizeName() error: expected %v got %v", tt.want, sanitizedName)
 			}
 		})
 	}

@@ -29,9 +29,9 @@ import (
 )
 
 const (
-	deploymentFileName = "100-deployment.yaml"
-	serviceFileName    = "200-service.yaml"
-	routeFileName      = "300-route.yaml"
+	deploymentFileName = "deployment.yaml"
+	serviceFileName    = "service.yaml"
+	routeFileName      = "route.yaml"
 )
 
 // Generate takes in a given Component CR and
@@ -42,8 +42,7 @@ func generate(fs afero.Fs, outputFolder string, component appstudiov1alpha1.Comp
 	k := resources.Kustomization{}
 	k.AddResources(deploymentFileName)
 	resources := map[string]interface{}{
-		deploymentFileName:   deployment,
-		"kustomization.yaml": k,
+		deploymentFileName: deployment,
 	}
 
 	// If a targetPort was specified, also generate a service and route
@@ -54,6 +53,7 @@ func generate(fs afero.Fs, outputFolder string, component appstudiov1alpha1.Comp
 		resources[serviceFileName] = service
 		resources[routeFileName] = route
 	}
+	resources["kustomization.yaml"] = k
 
 	yaml.WriteResources(fs, outputFolder, resources)
 }

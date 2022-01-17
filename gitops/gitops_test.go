@@ -25,90 +25,6 @@ import (
 	"github.com/redhat-appstudio/application-service/gitops/testutils"
 )
 
-/*
-func TestPushRepository(t *testing.T) {
-	repo := "git@github.com:testing/testing.git"
-	outputPath := "/fake/path"
-	e := testutils.NewMockExecutor([][]byte{}...)
-	component := appstudiov1alpha1.Component{
-		Spec: appstudiov1alpha1.ComponentSpec{
-			Build: appstudiov1alpha1.Build{
-				ContainerImage: "testimage:latest",
-			},
-			TargetPort: 5000,
-		},
-	}
-	component.Name = "test-component"
-	componentName := component.Name
-	componentDir := filepath.Join(outputPath, componentName)
-	err := GenerateAndPush(outputPath, repo, component, e, ioutils.NewMemoryFilesystem(), "main", "/")
-	testutils.AssertNoError(t, err)
-
-	want := []testutils.Execution{
-		{
-			BaseDir: outputPath,
-			Command: "git",
-			Args:    []string{"clone", repo, component.Name},
-		},
-		{
-			BaseDir: componentDir,
-			Command: "git",
-			Args:    []string{"switch", "main"},
-		},
-		{
-			BaseDir: componentDir,
-			Command: "rm",
-			Args:    []string{"-rf", filepath.Join("components", componentName)},
-		},
-		{
-			BaseDir: componentDir,
-			Command: "git",
-			Args:    []string{"add", "."},
-		},
-		{
-			BaseDir: componentDir,
-			Command: "git",
-			Args:    []string{"commit", "-m", "Generate GitOps resources"},
-		},
-		{
-			BaseDir: componentDir,
-			Command: "git",
-			Args:    []string{"push", "origin", "main"},
-		},
-	}
-	e.AssertCommandsExecuted(t, want)
-}
-
-func TestPushRepository_handle_errors(t *testing.T) {
-	repo := "git@github.com:testing/testing.git"
-	outputPath := "/fake/path"
-	component := appstudiov1alpha1.Component{
-		Spec: appstudiov1alpha1.ComponentSpec{
-			Build: appstudiov1alpha1.Build{
-				ContainerImage: "testimage:latest",
-			},
-			TargetPort: 5000,
-		},
-	}
-	component.Name = "test-component"
-	testErr := errors.New("test error")
-	e := testutils.NewMockExecutor([][]byte{}...)
-	e.Errors.Push(nil)
-	e.Errors.Push(testErr)
-	err := GenerateAndPush(outputPath, repo, component, e, ioutils.NewMemoryFilesystem(), "main", "/")
-	testutils.AssertErrorMatch(t, "test error", err)
-
-	want := []testutils.Execution{
-		{
-			BaseDir: outputPath,
-			Command: "git",
-			Args:    []string{"clone", repo, component.Name},
-		},
-	}
-	e.AssertCommandsExecuted(t, want)
-}
-*/
-
 func TestGenerateAndPush(t *testing.T) {
 	repo := "git@github.com:testing/testing.git"
 	outputPath := "/fake/path"
@@ -155,6 +71,11 @@ func TestGenerateAndPush(t *testing.T) {
 					BaseDir: componentDir,
 					Command: "git",
 					Args:    []string{"add", "."},
+				},
+				{
+					BaseDir: outputPath,
+					Command: "git",
+					Args:    []string{"--no-pager", "diff", "--cached"},
 				},
 				{
 					BaseDir: componentDir,
@@ -302,7 +223,7 @@ func TestGenerateAndPush(t *testing.T) {
 				[]byte("test output1"),
 				[]byte("test output2"),
 				[]byte("test output3"),
-				[]byte("test output3"),
+				[]byte("test output4"),
 			},
 			want: []testutils.Execution{
 				{
@@ -329,10 +250,10 @@ func TestGenerateAndPush(t *testing.T) {
 			wantErrString: "failed to add pipelines.yaml to repository in \"/fake/path/test-component\" \"test output1\": Fatal error",
 		},
 		{
-			name: "git commit failure",
+			name: "git diff failure",
 			errors: &testutils.ErrorStack{
 				Errors: []error{
-					errors.New("Fatal error"),
+					errors.New("Permission Denied"),
 					nil,
 					nil,
 					nil,
@@ -361,6 +282,60 @@ func TestGenerateAndPush(t *testing.T) {
 					BaseDir: outputPath,
 					Command: "rm",
 					Args:    []string{"-rf", "components/test-component"},
+				},
+				{
+					BaseDir: outputPath,
+					Command: "git",
+					Args:    []string{"--no-pager", "diff"},
+				},
+				{
+					BaseDir: outputPath,
+					Command: "git",
+					Args:    []string{"add", "."},
+				},
+			},
+			wantErrString: "failed to check git diff in repository \"/fake/path/test-component\" \"test output1\": Permission Denied",
+		},
+		{
+			name: "git commit failure",
+			errors: &testutils.ErrorStack{
+				Errors: []error{
+					errors.New("Fatal error"),
+					nil,
+					nil,
+					nil,
+					nil,
+					nil,
+				},
+			},
+			outputs: [][]byte{
+				[]byte("test output1"),
+				[]byte("test output2"),
+				[]byte("test output3"),
+				[]byte("test output4"),
+				[]byte("test output5"),
+				[]byte("test output6"),
+			},
+			want: []testutils.Execution{
+				{
+					BaseDir: outputPath,
+					Command: "git",
+					Args:    []string{"clone", repo, component.Name},
+				},
+				{
+					BaseDir: outputPath,
+					Command: "git",
+					Args:    []string{"switch", "main"},
+				},
+				{
+					BaseDir: outputPath,
+					Command: "rm",
+					Args:    []string{"-rf", "components/test-component"},
+				},
+				{
+					BaseDir: outputPath,
+					Command: "git",
+					Args:    []string{"--no-pager", "diff"},
 				},
 				{
 					BaseDir: outputPath,
@@ -385,6 +360,7 @@ func TestGenerateAndPush(t *testing.T) {
 					nil,
 					nil,
 					nil,
+					nil,
 				},
 			},
 			outputs: [][]byte{
@@ -393,6 +369,7 @@ func TestGenerateAndPush(t *testing.T) {
 				[]byte("test output3"),
 				[]byte("test output4"),
 				[]byte("test output5"),
+				[]byte("test output6"),
 			},
 			want: []testutils.Execution{
 				{
@@ -413,6 +390,11 @@ func TestGenerateAndPush(t *testing.T) {
 				{
 					BaseDir: outputPath,
 					Command: "git",
+					Args:    []string{"--no-pager", "diff"},
+				},
+				{
+					BaseDir: outputPath,
+					Command: "git",
 					Args:    []string{"add", "."},
 				},
 				{
@@ -428,9 +410,7 @@ func TestGenerateAndPush(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			e := testutils.NewMockExecutor(tt.outputs...)
-			for _, v := range tt.errors.Errors {
-				e.Errors.Push(v)
-			}
+			e.Errors = tt.errors
 			err := GenerateAndPush(outputPath, repo, component, e, ioutils.NewMemoryFilesystem(), "main", "/")
 
 			if tt.wantErrString != "" {

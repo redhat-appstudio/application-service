@@ -60,16 +60,23 @@ func GenerateAndPush(outputPath string, remote string, component appstudiov1alph
 	componentPath := filepath.Join(repoPath, context, "components", componentName, "base")
 	generate(appFs, componentPath, component)
 
-	// Add the files to git and push
 	if out, err := e.Execute(repoPath, "git", "add", "."); err != nil {
 		return fmt.Errorf("failed to add pipelines.yaml to repository in %q %q: %s", repoPath, string(out), err)
 	}
-	if out, err := e.Execute(repoPath, "git", "commit", "-m", "Generate GitOps resources"); err != nil {
-		return fmt.Errorf("failed to commit files to repository in %q %q: %s", repoPath, string(out), err)
+
+	// See if any files changed, and if so, commit and push them up to the repository
+	if out, err := e.Execute(repoPath, "git", "--no-pager", "diff", "--cached"); err != nil {
+		return fmt.Errorf("failed to check git diff in repository %q %q: %s", repoPath, string(out), err)
+	} else if string(out) != "" {
+		// Commit the changes and push
+		if out, err := e.Execute(repoPath, "git", "commit", "-m", "Generate GitOps resources"); err != nil {
+			return fmt.Errorf("failed to commit files to repository in %q %q: %s", repoPath, string(out), err)
+		}
+		if out, err := e.Execute(repoPath, "git", "push", "origin", "main"); err != nil {
+			return fmt.Errorf("failed push remote to repository %q %q: %s", remote, string(out), err)
+		}
 	}
-	if out, err := e.Execute(repoPath, "git", "push", "origin", "main"); err != nil {
-		return fmt.Errorf("failed push remote to repository %q %q: %s", remote, string(out), err)
-	}
+
 	return nil
 }
 
