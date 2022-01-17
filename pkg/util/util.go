@@ -24,11 +24,12 @@ import (
 	"strings"
 )
 
-func SanitizeDisplayName(displayName string) string {
-	sanitizedName := strings.ToLower(strings.Replace(displayName, " ", "-", -1))
+func SanitizeName(name string) string {
+	sanitizedName := strings.ToLower(strings.Replace(strings.Replace(name, " ", "-", -1), "'", "", -1))
 	if len(sanitizedName) > 50 {
 		sanitizedName = sanitizedName[0:50]
 	}
+
 	return sanitizedName
 }
 

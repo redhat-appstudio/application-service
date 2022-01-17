@@ -28,9 +28,9 @@ import (
 const AppStudioAppDataOrg = "redhat-appstudio-appdata"
 
 func GenerateNewRepositoryName(displayName string, namespace string) string {
-	sanitizedName := util.SanitizeDisplayName(displayName)
+	sanitizedName := util.SanitizeName(displayName)
 
-	repoName := sanitizedName + "-" + namespace + "-" + gofakeit.Verb() + "-" + gofakeit.Noun()
+	repoName := sanitizedName + "-" + namespace + "-" + util.SanitizeName(gofakeit.Verb()) + "-" + util.SanitizeName(gofakeit.Noun())
 	return repoName
 }
 
