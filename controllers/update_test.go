@@ -18,7 +18,6 @@ package controllers
 import (
 	"testing"
 
-	"github.com/devfile/api/v2/pkg/apis/workspaces/v1alpha2"
 	devfileAPIV1 "github.com/devfile/api/v2/pkg/apis/workspaces/v1alpha2"
 	"github.com/devfile/api/v2/pkg/attributes"
 	"github.com/devfile/api/v2/pkg/devfile"
@@ -84,9 +83,9 @@ func TestUpdateApplicationDevfileModel(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			devfileData := &v2.DevfileV2{
-				Devfile: v1alpha2.Devfile{
-					DevWorkspaceTemplateSpec: v1alpha2.DevWorkspaceTemplateSpec{
-						DevWorkspaceTemplateSpecContent: v1alpha2.DevWorkspaceTemplateSpecContent{
+				Devfile: devfileAPIV1.Devfile{
+					DevWorkspaceTemplateSpec: devfileAPIV1.DevWorkspaceTemplateSpec{
+						DevWorkspaceTemplateSpecContent: devfileAPIV1.DevWorkspaceTemplateSpecContent{
 							Projects: tt.projects,
 						},
 					},
@@ -308,9 +307,9 @@ func TestUpdateComponentDevfileModel(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			devfileData := &v2.DevfileV2{
-				Devfile: v1alpha2.Devfile{
-					DevWorkspaceTemplateSpec: v1alpha2.DevWorkspaceTemplateSpec{
-						DevWorkspaceTemplateSpecContent: v1alpha2.DevWorkspaceTemplateSpecContent{
+				Devfile: devfileAPIV1.Devfile{
+					DevWorkspaceTemplateSpec: devfileAPIV1.DevWorkspaceTemplateSpec{
+						DevWorkspaceTemplateSpecContent: devfileAPIV1.DevWorkspaceTemplateSpecContent{
 							Components: tt.components,
 						},
 					},
@@ -408,7 +407,7 @@ func TestUpdateComponentStub(t *testing.T) {
 			name: "Container Components present",
 			devfilesDataMap: map[string]*v2.DevfileV2{
 				"./": {
-					Devfile: v1alpha2.Devfile{
+					Devfile: devfileAPIV1.Devfile{
 						DevfileHeader: devfile.DevfileHeader{
 							SchemaVersion: "2.1.0",
 							Metadata: devfile.DevfileMetadata{
@@ -417,8 +416,8 @@ func TestUpdateComponentStub(t *testing.T) {
 								ProjectType: "project",
 							},
 						},
-						DevWorkspaceTemplateSpec: v1alpha2.DevWorkspaceTemplateSpec{
-							DevWorkspaceTemplateSpecContent: v1alpha2.DevWorkspaceTemplateSpecContent{
+						DevWorkspaceTemplateSpec: devfileAPIV1.DevWorkspaceTemplateSpec{
+							DevWorkspaceTemplateSpecContent: devfileAPIV1.DevWorkspaceTemplateSpecContent{
 								Components: components,
 							},
 						},
@@ -430,7 +429,7 @@ func TestUpdateComponentStub(t *testing.T) {
 			name: "No Container Components present",
 			devfilesDataMap: map[string]*v2.DevfileV2{
 				"./": {
-					Devfile: v1alpha2.Devfile{
+					Devfile: devfileAPIV1.Devfile{
 						DevfileHeader: devfile.DevfileHeader{
 							SchemaVersion: "2.1.0",
 							Metadata: devfile.DevfileMetadata{
@@ -439,8 +438,8 @@ func TestUpdateComponentStub(t *testing.T) {
 								ProjectType: "project",
 							},
 						},
-						DevWorkspaceTemplateSpec: v1alpha2.DevWorkspaceTemplateSpec{
-							DevWorkspaceTemplateSpecContent: v1alpha2.DevWorkspaceTemplateSpecContent{},
+						DevWorkspaceTemplateSpec: devfileAPIV1.DevWorkspaceTemplateSpec{
+							DevWorkspaceTemplateSpecContent: devfileAPIV1.DevWorkspaceTemplateSpecContent{},
 						},
 					},
 				},
@@ -450,7 +449,7 @@ func TestUpdateComponentStub(t *testing.T) {
 			name: "Check err condition",
 			devfilesDataMap: map[string]*v2.DevfileV2{
 				"./": {
-					Devfile: v1alpha2.Devfile{
+					Devfile: devfileAPIV1.Devfile{
 						DevfileHeader: devfile.DevfileHeader{
 							SchemaVersion: "2.1.0",
 							Metadata: devfile.DevfileMetadata{
@@ -459,8 +458,8 @@ func TestUpdateComponentStub(t *testing.T) {
 								ProjectType: "project",
 							},
 						},
-						DevWorkspaceTemplateSpec: v1alpha2.DevWorkspaceTemplateSpec{
-							DevWorkspaceTemplateSpecContent: v1alpha2.DevWorkspaceTemplateSpecContent{},
+						DevWorkspaceTemplateSpec: devfileAPIV1.DevWorkspaceTemplateSpec{
+							DevWorkspaceTemplateSpecContent: devfileAPIV1.DevWorkspaceTemplateSpecContent{},
 						},
 					},
 				},
