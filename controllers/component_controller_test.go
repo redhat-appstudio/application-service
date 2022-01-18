@@ -103,7 +103,7 @@ var _ = Describe("Component controller", func() {
 			createdHasComp := &appstudiov1alpha1.Component{}
 			Eventually(func() bool {
 				k8sClient.Get(context.Background(), hasCompLookupKey, createdHasComp)
-				return len(createdHasComp.Status.Conditions) > 0
+				return len(createdHasComp.Status.Conditions) > 0 && createdHasComp.GetAnnotations()["gitOpsRepository.url"] != ""
 			}, timeout, interval).Should(BeTrue())
 
 			// Make sure the devfile model was properly set in Component
@@ -130,6 +130,11 @@ var _ = Describe("Component controller", func() {
 			// gitOpsRepo and appModelRepo should both be set
 			Expect(string(hasAppDevfile.GetMetadata().Attributes["gitOpsRepository.url"].Raw)).Should(Not(Equal("")))
 			Expect(string(hasAppDevfile.GetMetadata().Attributes["appModelRepository.url"].Raw)).Should(Not(Equal("")))
+
+			// gitOpsRepo set in the component equal the repository in the app cr's devfile
+			gitopsRepo := hasAppDevfile.GetMetadata().Attributes.GetString("gitOpsRepository.url", &err)
+			Expect(err).Should(Not(HaveOccurred()))
+			Expect(string(createdHasComp.GetObjectMeta().GetAnnotations()["gitOpsRepository.url"])).Should(Equal(gitopsRepo))
 
 			hasProjects, err := hasAppDevfile.GetProjects(common.DevfileOptions{})
 			Expect(err).Should(Not(HaveOccurred()))
@@ -504,6 +509,9 @@ var _ = Describe("Component controller", func() {
 							},
 						},
 					},
+					Build: appstudiov1alpha1.Build{
+						ContainerImage: "quay.io/test/test-image:latest",
+					},
 					Replicas:   originalReplica,
 					TargetPort: originalPort,
 					Route:      originalRoute,
@@ -518,8 +526,11 @@ var _ = Describe("Component controller", func() {
 			createdHasComp := &appstudiov1alpha1.Component{}
 			Eventually(func() bool {
 				k8sClient.Get(context.Background(), hasCompLookupKey, createdHasComp)
-				return len(createdHasComp.Status.Conditions) > 0
+				return len(createdHasComp.Status.Conditions) > 0 && createdHasComp.GetLabels()["appstudio.has/component"] != ""
 			}, timeout, interval).Should(BeTrue())
+
+			// Validate that the built container image was set in the status
+			Expect(createdHasComp.Status.ContainerImage).Should(Equal("quay.io/test/test-image:latest"))
 
 			// Make sure the devfile model was properly set in Component
 			Expect(createdHasComp.Status.Devfile).Should(Not(Equal("")))
@@ -580,6 +591,8 @@ var _ = Describe("Component controller", func() {
 			createdHasComp.Spec.TargetPort = updatedPort
 			createdHasComp.Spec.Env = updatedEnv
 			createdHasComp.Spec.Resources = updatedResources
+			createdHasComp.Spec.Build.ContainerImage = "quay.io/newimage/newimage:latest"
+
 			Expect(k8sClient.Update(ctx, createdHasComp)).Should(Succeed())
 
 			updatedHasComp := &appstudiov1alpha1.Component{}
@@ -587,6 +600,9 @@ var _ = Describe("Component controller", func() {
 				k8sClient.Get(context.Background(), hasCompLookupKey, updatedHasComp)
 				return updatedHasComp.Status.Conditions[len(updatedHasComp.Status.Conditions)-1].Type == "Updated"
 			}, timeout, interval).Should(BeTrue())
+
+			// Make sure the devfile model was properly set in Component
+			Expect(updatedHasComp.Status.ContainerImage).Should(Equal("quay.io/newimage/newimage:latest"))
 
 			// Make sure the devfile model was properly set in Component
 			Expect(updatedHasComp.Status.Devfile).Should(Not(Equal("")))
@@ -609,6 +625,340 @@ var _ = Describe("Component controller", func() {
 			deleteHASCompCR(hasCompLookupKey)
 
 			// Delete the specified HASApp resource
+			deleteHASAppCR(hasAppLookupKey)
+		})
+	})
+
+	Context("Create Component with built container image set", func() {
+		It("Should create successfully", func() {
+			ctx := context.Background()
+
+			applicationName := HASAppName + "6"
+			componentName := HASCompName + "6"
+
+			hasApp := &appstudiov1alpha1.Application{
+				TypeMeta: metav1.TypeMeta{
+					APIVersion: "appstudio.redhat.com/v1alpha1",
+					Kind:       "Application",
+				},
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      applicationName,
+					Namespace: HASAppNamespace,
+				},
+				Spec: appstudiov1alpha1.ApplicationSpec{
+					DisplayName: DisplayName,
+					Description: Description,
+				},
+			}
+
+			Expect(k8sClient.Create(ctx, hasApp)).Should(Succeed())
+
+			hasComp := &appstudiov1alpha1.Component{
+				TypeMeta: metav1.TypeMeta{
+					APIVersion: "appstudio.redhat.com/v1alpha1",
+					Kind:       "Component",
+				},
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      componentName,
+					Namespace: HASAppNamespace,
+				},
+				Spec: appstudiov1alpha1.ComponentSpec{
+					ComponentName: ComponentName,
+					Application:   applicationName,
+					Source: appstudiov1alpha1.ComponentSource{
+						ComponentSourceUnion: appstudiov1alpha1.ComponentSourceUnion{
+							GitSource: &appstudiov1alpha1.GitSource{
+								URL: SampleRepoLink,
+							},
+						},
+					},
+					Build: appstudiov1alpha1.Build{
+						ContainerImage: "quay.io/test/testimage:latest",
+					},
+				},
+			}
+			Expect(k8sClient.Create(ctx, hasComp)).Should(Succeed())
+
+			// Look up the has app resource that was created.
+			// num(conditions) may still be < 1 on the first try, so retry until at least _some_ condition is set
+			hasCompLookupKey := types.NamespacedName{Name: componentName, Namespace: HASAppNamespace}
+			createdHasComp := &appstudiov1alpha1.Component{}
+			Eventually(func() bool {
+				k8sClient.Get(context.Background(), hasCompLookupKey, createdHasComp)
+				return len(createdHasComp.Status.Conditions) > 0 && createdHasComp.Status.ContainerImage != ""
+			}, timeout, interval).Should(BeTrue())
+
+			// Make sure the devfile model was properly set in Component
+			Expect(createdHasComp.Status.Devfile).Should(Not(Equal("")))
+
+			hasAppLookupKey := types.NamespacedName{Name: applicationName, Namespace: HASAppNamespace}
+			createdHasApp := &appstudiov1alpha1.Application{}
+			Eventually(func() bool {
+				k8sClient.Get(context.Background(), hasAppLookupKey, createdHasApp)
+				return len(createdHasApp.Status.Conditions) > 0 && strings.Contains(createdHasApp.Status.Devfile, ComponentName)
+			}, timeout, interval).Should(BeTrue())
+
+			// Make sure the devfile model was properly set in Application
+			Expect(createdHasApp.Status.Devfile).Should(Not(Equal("")))
+
+			// Check the Component devfile
+			_, err := devfile.ParseDevfileModel(createdHasComp.Status.Devfile)
+			Expect(err).Should(Not(HaveOccurred()))
+
+			// Make sure the component's built image is included in the status
+			Expect(createdHasComp.Status.ContainerImage).Should(Equal("quay.io/test/testimage:latest"))
+
+			// Delete the specified HASComp resource
+			deleteHASCompCR(hasCompLookupKey)
+
+			// Delete the specified HASApp resource
+			deleteHASAppCR(hasAppLookupKey)
+		})
+	})
+
+	Context("Component with invalid devfile", func() {
+		It("Should fail and have proper failure condition set", func() {
+			ctx := context.Background()
+
+			applicationName := HASAppName + "7"
+			componentName := HASCompName + "7"
+
+			hasApp := &appstudiov1alpha1.Application{
+				TypeMeta: metav1.TypeMeta{
+					APIVersion: "appstudio.redhat.com/v1alpha1",
+					Kind:       "Application",
+				},
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      applicationName,
+					Namespace: HASAppNamespace,
+				},
+				Spec: appstudiov1alpha1.ApplicationSpec{
+					DisplayName: DisplayName,
+					Description: Description,
+				},
+			}
+
+			Expect(k8sClient.Create(ctx, hasApp)).Should(Succeed())
+
+			hasComp := &appstudiov1alpha1.Component{
+				TypeMeta: metav1.TypeMeta{
+					APIVersion: "appstudio.redhat.com/v1alpha1",
+					Kind:       "Component",
+				},
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      componentName,
+					Namespace: HASAppNamespace,
+				},
+				Spec: appstudiov1alpha1.ComponentSpec{
+					ComponentName: ComponentName,
+					Application:   applicationName,
+					Source: appstudiov1alpha1.ComponentSource{
+						ComponentSourceUnion: appstudiov1alpha1.ComponentSourceUnion{
+							GitSource: &appstudiov1alpha1.GitSource{
+								URL: SampleRepoLink,
+							},
+						},
+					},
+					Build: appstudiov1alpha1.Build{
+						ContainerImage: "quay.io/test/testimage:latest",
+					},
+				},
+			}
+			Expect(k8sClient.Create(ctx, hasComp)).Should(Succeed())
+
+			// Look up the component resource that was created.
+			// num(conditions) may still be < 1 on the first try, so retry until at least _some_ condition is set
+			hasCompLookupKey := types.NamespacedName{Name: componentName, Namespace: HASAppNamespace}
+			createdHasComp := &appstudiov1alpha1.Component{}
+			Eventually(func() bool {
+				k8sClient.Get(context.Background(), hasCompLookupKey, createdHasComp)
+				return len(createdHasComp.Status.Conditions) > 0 && createdHasComp.GetLabels()["appstudio.has/component"] != ""
+			}, timeout, interval).Should(BeTrue())
+
+			// Remove the component's devfile
+			createdHasComp.Status.Devfile = "a"
+
+			Expect(k8sClient.Status().Update(ctx, createdHasComp)).Should(Succeed())
+
+			updatedHasComp := &appstudiov1alpha1.Component{}
+			Eventually(func() bool {
+				k8sClient.Get(context.Background(), hasCompLookupKey, updatedHasComp)
+				return updatedHasComp.Status.Conditions[len(updatedHasComp.Status.Conditions)-1].Type == "Updated"
+			}, timeout, interval).Should(BeTrue())
+
+			errCondition := updatedHasComp.Status.Conditions[len(updatedHasComp.Status.Conditions)-1]
+			Expect(errCondition.Status).Should(Equal(metav1.ConditionFalse))
+			Expect(errCondition.Message).Should(ContainSubstring("failed to decode devfile json"))
+
+			// Delete the specified HASComp resource
+			deleteHASCompCR(hasCompLookupKey)
+
+			// Delete the specified HASApp resource
+			hasAppLookupKey := types.NamespacedName{Name: applicationName, Namespace: HASAppNamespace}
+			deleteHASAppCR(hasAppLookupKey)
+		})
+	})
+
+	// The following two tests test that we properly return an error when the gitops resource generation errors out for some reason
+	// To trigger a gitops generation failure we can:
+	// 1. Use an invalid gitops repo url,
+	// 2. Remove the gitops repository annotations, or
+	// 3. Create a mock executor to emulate exec failures (difficult to do with current test setup)
+	// This first test will just use an invalid gitops repository url for the component
+	Context("Component with gitops resource generation failure", func() {
+		It("Should have proper failure condition set", func() {
+			ctx := context.Background()
+
+			applicationName := HASAppName + "8"
+			componentName := HASCompName + "8"
+
+			hasApp := &appstudiov1alpha1.Application{
+				TypeMeta: metav1.TypeMeta{
+					APIVersion: "appstudio.redhat.com/v1alpha1",
+					Kind:       "Application",
+				},
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      applicationName,
+					Namespace: HASAppNamespace,
+				},
+				Spec: appstudiov1alpha1.ApplicationSpec{
+					DisplayName: DisplayName,
+					Description: Description,
+					GitOpsRepository: appstudiov1alpha1.ApplicationGitRepository{
+						URL: "https://github.com/redhat-appstudio-appdata/!@#$%U%I$F    DFDN##",
+					},
+				},
+			}
+
+			Expect(k8sClient.Create(ctx, hasApp)).Should(Succeed())
+
+			hasComp := &appstudiov1alpha1.Component{
+				TypeMeta: metav1.TypeMeta{
+					APIVersion: "appstudio.redhat.com/v1alpha1",
+					Kind:       "Component",
+				},
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      componentName,
+					Namespace: HASAppNamespace,
+				},
+				Spec: appstudiov1alpha1.ComponentSpec{
+					ComponentName: ComponentName,
+					Application:   applicationName,
+					Source: appstudiov1alpha1.ComponentSource{
+						ComponentSourceUnion: appstudiov1alpha1.ComponentSourceUnion{
+							GitSource: &appstudiov1alpha1.GitSource{
+								URL: SampleRepoLink,
+							},
+						},
+					},
+					Build: appstudiov1alpha1.Build{
+						ContainerImage: "quay.io/test/testimage:latest",
+					},
+				},
+			}
+			Expect(k8sClient.Create(ctx, hasComp)).Should(Succeed())
+
+			// Look up the component resource that was created.
+			// num(conditions) may still be < 1 on the first try, so retry until at least _some_ condition is set
+			hasCompLookupKey := types.NamespacedName{Name: componentName, Namespace: HASAppNamespace}
+			createdHasComp := &appstudiov1alpha1.Component{}
+			Eventually(func() bool {
+				k8sClient.Get(context.Background(), hasCompLookupKey, createdHasComp)
+				return len(createdHasComp.Status.Conditions) > 0 && createdHasComp.Status.Conditions[len(createdHasComp.Status.Conditions)-1].Status == metav1.ConditionFalse
+			}, timeout, interval).Should(BeTrue())
+
+			errCondition := createdHasComp.Status.Conditions[len(createdHasComp.Status.Conditions)-1]
+			Expect(errCondition.Status).Should(Equal(metav1.ConditionFalse))
+			Expect(errCondition.Message).Should(ContainSubstring("Unable to generate gitops resources"))
+			// Delete the specified HASComp resource
+			deleteHASCompCR(hasCompLookupKey)
+
+			// Delete the specified HASApp resource
+			hasAppLookupKey := types.NamespacedName{Name: applicationName, Namespace: HASAppNamespace}
+			deleteHASAppCR(hasAppLookupKey)
+		})
+	})
+
+	// This test will create an Application and a Component, then remove the gitops repository annotation from the component and update it
+	// The gitops generation should fail due to the gitops repository annotation missing
+	Context("Component updated with missing gitops annotation", func() {
+		It("Should have gitops generation failure and set proper error condition", func() {
+			ctx := context.Background()
+
+			applicationName := HASAppName + "9"
+			componentName := HASCompName + "9"
+
+			hasApp := &appstudiov1alpha1.Application{
+				TypeMeta: metav1.TypeMeta{
+					APIVersion: "appstudio.redhat.com/v1alpha1",
+					Kind:       "Application",
+				},
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      applicationName,
+					Namespace: HASAppNamespace,
+				},
+				Spec: appstudiov1alpha1.ApplicationSpec{
+					DisplayName: DisplayName,
+					Description: Description,
+				},
+			}
+
+			Expect(k8sClient.Create(ctx, hasApp)).Should(Succeed())
+
+			hasComp := &appstudiov1alpha1.Component{
+				TypeMeta: metav1.TypeMeta{
+					APIVersion: "appstudio.redhat.com/v1alpha1",
+					Kind:       "Component",
+				},
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      componentName,
+					Namespace: HASAppNamespace,
+				},
+				Spec: appstudiov1alpha1.ComponentSpec{
+					ComponentName: ComponentName,
+					Application:   applicationName,
+					Source: appstudiov1alpha1.ComponentSource{
+						ComponentSourceUnion: appstudiov1alpha1.ComponentSourceUnion{
+							GitSource: &appstudiov1alpha1.GitSource{
+								URL: SampleRepoLink,
+							},
+						},
+					},
+					Build: appstudiov1alpha1.Build{
+						ContainerImage: "quay.io/test/testimage:latest",
+					},
+				},
+			}
+			Expect(k8sClient.Create(ctx, hasComp)).Should(Succeed())
+
+			// Look up the component resource that was created.
+			// num(conditions) may still be < 1 on the first try, so retry until at least _some_ condition is set
+			hasCompLookupKey := types.NamespacedName{Name: componentName, Namespace: HASAppNamespace}
+			createdHasComp := &appstudiov1alpha1.Component{}
+			Eventually(func() bool {
+				k8sClient.Get(context.Background(), hasCompLookupKey, createdHasComp)
+				return len(createdHasComp.Status.Conditions) > 0 && createdHasComp.GetLabels()["appstudio.has/component"] != ""
+			}, timeout, interval).Should(BeTrue())
+
+			// Remove the gitops notifications
+			createdHasComp.Spec.Build.ContainerImage = "Newimage"
+			createdHasComp.SetAnnotations(nil)
+
+			Expect(k8sClient.Update(ctx, createdHasComp)).Should(Succeed())
+
+			updatedHasComp := &appstudiov1alpha1.Component{}
+			Eventually(func() bool {
+				k8sClient.Get(context.Background(), hasCompLookupKey, updatedHasComp)
+				return updatedHasComp.Status.Conditions[len(updatedHasComp.Status.Conditions)-1].Type == "Updated"
+			}, timeout, interval).Should(BeTrue())
+
+			Expect(updatedHasComp.Status.Conditions[len(updatedHasComp.Status.Conditions)-1].Status).Should(Equal(metav1.ConditionFalse))
+
+			// Delete the specified HASComp resource
+			deleteHASCompCR(hasCompLookupKey)
+
+			// Delete the specified HASApp resource
+			hasAppLookupKey := types.NamespacedName{Name: applicationName, Namespace: HASAppNamespace}
 			deleteHASAppCR(hasAppLookupKey)
 		})
 	})

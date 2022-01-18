@@ -40,7 +40,6 @@ func TestGenerateAndPush(t *testing.T) {
 	}
 	component.Name = "test-component"
 
-	//testErr := errors.New("git error")
 	tests := []struct {
 		name          string
 		errors        *testutils.ErrorStack

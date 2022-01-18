@@ -17,6 +17,8 @@ limitations under the License.
 package controllers
 
 import (
+	"errors"
+	"os"
 	"reflect"
 	"testing"
 
@@ -124,6 +126,21 @@ func TestGenerateGitops(t *testing.T) {
 		Executor:  executor,
 		AppFS:     appFS,
 	}
+
+	// Create a second reconciler for testing error scenarios
+	errExec := testutils.NewMockExecutor()
+	errExec.Errors.Push(errors.New("Fatal error"))
+	errReconciler := &ComponentReconciler{
+		Log:       ctrl.Log.WithName("controllers").WithName("Component"),
+		GitHubOrg: github.AppStudioAppDataOrg,
+		GitToken:  "fake-token",
+		Executor:  errExec,
+		AppFS:     ioutils.NewFilesystem(),
+	}
+
+	// Create a folder so that a conflict will occur in one test case
+	errReconciler.AppFS.Fs.Open(os.TempDir())
+
 	tests := []struct {
 		name       string
 		reconciler *ComponentReconciler
@@ -240,12 +257,34 @@ func TestGenerateGitops(t *testing.T) {
 			},
 			wantErr: false,
 		},
+		{
+			name:       "Gitops generarion fails",
+			reconciler: errReconciler,
+			component: &appstudiov1alpha1.Component{
+				TypeMeta: metav1.TypeMeta{
+					APIVersion: "appstudio.redhat.com/v1alpha1",
+					Kind:       "Component",
+				},
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "test-component",
+					Namespace: "test-namespace",
+					Annotations: map[string]string{
+						"gitOpsRepository.url": "https://github.com/appstudio/test-repo",
+					},
+				},
+				Spec: appstudiov1alpha1.ComponentSpec{
+					ComponentName: "test-component",
+					Application:   "test-app",
+				},
+			},
+			wantErr: true,
+		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			err := tt.reconciler.generateGitops(tt.component)
-			if (err != nil) && !tt.wantErr {
+			if (err != nil) != tt.wantErr {
 				t.Errorf("TestGenerateGitops() unexpected error: %v", err)
 			}
 		})

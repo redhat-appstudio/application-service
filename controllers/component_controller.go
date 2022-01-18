@@ -193,6 +193,11 @@ func (r *ComponentReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 					return ctrl.Result{}, err
 				}
 
+				if component.Spec.Build.ContainerImage != "" {
+					// Set the container image in the status
+					component.Status.ContainerImage = component.Spec.Build.ContainerImage
+					log.Info(component.Status.ContainerImage)
+				}
 				r.SetCreateConditionAndUpdateCR(ctx, &component, nil)
 
 				log.Info(fmt.Sprintf("Updating the labels for Component %v", req.NamespacedName))
@@ -218,8 +223,9 @@ func (r *ComponentReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 				if component.Spec.Build.ContainerImage != "" {
 					err = r.generateGitops(&component)
 					if err != nil {
-						log.Error(err, fmt.Sprintf("Unable to generate gitops resources for component %v", req.NamespacedName))
-						r.SetCreateConditionAndUpdateCR(ctx, &component, err)
+						errMsg := fmt.Sprintf("Unable to generate gitops resources for component %v", req.NamespacedName)
+						log.Error(err, errMsg)
+						r.SetCreateConditionAndUpdateCR(ctx, &component, fmt.Errorf(errMsg))
 						return ctrl.Result{}, err
 					}
 				}
@@ -261,10 +267,9 @@ func (r *ComponentReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 			return ctrl.Result{}, err
 		}
 
-		isUpdated := !reflect.DeepEqual(oldCompDevfileData, hasCompDevfileData)
-
+		isUpdated := !reflect.DeepEqual(oldCompDevfileData, hasCompDevfileData) || component.Spec.Build.ContainerImage != component.Status.ContainerImage
 		if isUpdated {
-			log.Info(fmt.Sprintf("The Component devfile data was updated %v", req.NamespacedName))
+			log.Info(fmt.Sprintf("The Component was updated %v", req.NamespacedName))
 			yamlHASCompData, err := yaml.Marshal(hasCompDevfileData)
 			if err != nil {
 				log.Error(err, fmt.Sprintf("Unable to marshall the Component devfile, exiting reconcile loop %v", req.NamespacedName))
@@ -274,10 +279,12 @@ func (r *ComponentReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 
 			// Generate and push the gitops resources if spec.containerImage is set
 			if component.Spec.Build.ContainerImage != "" {
+				component.Status.ContainerImage = component.Spec.Build.ContainerImage
 				err = r.generateGitops(&component)
 				if err != nil {
-					log.Error(err, fmt.Sprintf("Unable to generate gitops resources for component %v", req.NamespacedName))
-					r.SetCreateConditionAndUpdateCR(ctx, &component, err)
+					errMsg := fmt.Sprintf("Unable to generate gitops resources for component %v", req.NamespacedName)
+					log.Error(err, errMsg)
+					r.SetUpdateConditionAndUpdateCR(ctx, &component, fmt.Errorf("%v: %v", errMsg, err))
 					return ctrl.Result{}, err
 				}
 			}

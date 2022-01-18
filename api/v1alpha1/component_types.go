@@ -115,6 +115,9 @@ type ComponentStatus struct {
 	// Condition about the Component CR
 	Conditions []metav1.Condition `json:"conditions,omitempty"`
 
+	// ContainerImage stores the associated built container image for the component
+	ContainerImage string `json:"containerImage,omitempty"`
+
 	// The devfile model for the Component CR
 	Devfile string `json:"devfile,omitempty"`
 }
