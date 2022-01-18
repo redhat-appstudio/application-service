@@ -26,47 +26,22 @@ import (
 	appstudiov1alpha1 "github.com/redhat-appstudio/application-service/api/v1alpha1"
 )
 
-func (r *ComponentDetectionQueryReconciler) SetCreateConditionAndUpdateCR(ctx context.Context, componentDetectionQuery *appstudiov1alpha1.ComponentDetectionQuery, createError error) {
+func (r *ComponentDetectionQueryReconciler) SetCompleteConditionAndUpdateCR(ctx context.Context, componentDetectionQuery *appstudiov1alpha1.ComponentDetectionQuery, completeError error) {
 	log := r.Log.WithValues("ComponentDetectionQuery", componentDetectionQuery.Name)
 
-	if createError == nil {
+	if completeError == nil {
 		meta.SetStatusCondition(&componentDetectionQuery.Status.Conditions, metav1.Condition{
-			Type:    "Created",
+			Type:    "Completed",
 			Status:  metav1.ConditionTrue,
 			Reason:  "OK",
-			Message: "ComponentDetectionQuery has been successfully created",
+			Message: "ComponentDetectionQuery has successfully finished",
 		})
 	} else {
 		meta.SetStatusCondition(&componentDetectionQuery.Status.Conditions, metav1.Condition{
-			Type:    "Created",
+			Type:    "Completed",
 			Status:  metav1.ConditionFalse,
 			Reason:  "Error",
-			Message: fmt.Sprintf("ComponentDetectionQuery create failed: %v", createError),
-		})
-	}
-
-	err := r.Client.Status().Update(ctx, componentDetectionQuery)
-	if err != nil {
-		log.Error(err, "Unable to update ComponentDetectionQuery")
-	}
-}
-
-func (r *ComponentDetectionQueryReconciler) SetUpdateConditionAndUpdateCR(ctx context.Context, componentDetectionQuery *appstudiov1alpha1.ComponentDetectionQuery, updateError error) {
-	log := r.Log.WithValues("ComponentDetectionQuery", componentDetectionQuery.Name)
-
-	if updateError == nil {
-		meta.SetStatusCondition(&componentDetectionQuery.Status.Conditions, metav1.Condition{
-			Type:    "Updated",
-			Status:  metav1.ConditionTrue,
-			Reason:  "OK",
-			Message: "ComponentDetectionQuery has been successfully updated",
-		})
-	} else {
-		meta.SetStatusCondition(&componentDetectionQuery.Status.Conditions, metav1.Condition{
-			Type:    "Updated",
-			Status:  metav1.ConditionFalse,
-			Reason:  "Error",
-			Message: fmt.Sprintf("ComponentDetectionQuery updated failed: %v", updateError),
+			Message: fmt.Sprintf("ComponentDetectionQuery failed: %v", completeError),
 		})
 	}
 

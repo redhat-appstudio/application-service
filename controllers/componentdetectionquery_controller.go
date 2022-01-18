@@ -92,7 +92,7 @@ func (r *ComponentDetectionQueryReconciler) Reconcile(ctx context.Context, req c
 				err = util.CloneRepo(clonePath, source.URL)
 				if err != nil {
 					log.Error(err, fmt.Sprintf("Unable to clone repo %s and read devfile(s) in path %s, exiting reconcile loop %v", source.URL, clonePath, req.NamespacedName))
-					r.SetCreateConditionAndUpdateCR(ctx, &componentDetectionQuery, err)
+					r.SetCompleteConditionAndUpdateCR(ctx, &componentDetectionQuery, err)
 					return ctrl.Result{}, err
 				}
 				log.Info(fmt.Sprintf("cloned from %s to path %s... %v", source.URL, clonePath, req.NamespacedName))
@@ -100,7 +100,7 @@ func (r *ComponentDetectionQueryReconciler) Reconcile(ctx context.Context, req c
 				devfilesMap, err = util.ReadDevfilesFromRepo(clonePath, 1)
 				if err != nil {
 					log.Error(err, fmt.Sprintf("Unable to find devfile(s) in repo %s, exiting reconcile loop %v", source.URL, req.NamespacedName))
-					r.SetCreateConditionAndUpdateCR(ctx, &componentDetectionQuery, err)
+					r.SetCompleteConditionAndUpdateCR(ctx, &componentDetectionQuery, err)
 					return ctrl.Result{}, err
 				}
 			} else {
@@ -108,16 +108,17 @@ func (r *ComponentDetectionQueryReconciler) Reconcile(ctx context.Context, req c
 				rawURL, err := util.ConvertGitHubURL(source.URL)
 				if err != nil {
 					log.Error(err, fmt.Sprintf("Unable to convert Github URL to raw format, exiting reconcile loop %v", req.NamespacedName))
-					r.SetCreateConditionAndUpdateCR(ctx, &componentDetectionQuery, err)
+					r.SetCompleteConditionAndUpdateCR(ctx, &componentDetectionQuery, err)
 					return ctrl.Result{}, err
 				}
 
-				devfileBytes, err = util.CurlForDevfiles(rawURL)
+				devfileBytes, err = util.DownloadDevfile(rawURL)
 				if err != nil {
 					log.Error(err, fmt.Sprintf("Unable to curl for any known devfile locations from %s %v", source.URL, req.NamespacedName))
-					r.SetCreateConditionAndUpdateCR(ctx, &componentDetectionQuery, err)
+					r.SetCompleteConditionAndUpdateCR(ctx, &componentDetectionQuery, err)
 					return ctrl.Result{}, err
 				}
+
 				devfilesMap["./"] = devfileBytes
 			}
 		} else {
@@ -125,7 +126,7 @@ func (r *ComponentDetectionQueryReconciler) Reconcile(ctx context.Context, req c
 				errMsg := fmt.Sprintf("cannot set IsMultiComponent to %v and set DevfileURL to %s as well... %v", componentDetectionQuery.Spec.IsMultiComponent, source.DevfileURL, req.NamespacedName)
 				log.Error(err, errMsg)
 				err := fmt.Errorf(errMsg)
-				r.SetCreateConditionAndUpdateCR(ctx, &componentDetectionQuery, err)
+				r.SetCompleteConditionAndUpdateCR(ctx, &componentDetectionQuery, err)
 				return ctrl.Result{}, err
 			}
 
@@ -134,7 +135,7 @@ func (r *ComponentDetectionQueryReconciler) Reconcile(ctx context.Context, req c
 			if err != nil {
 				log.Error(err, fmt.Sprintf("Unable to GET %s, exiting reconcile loop %v", source.DevfileURL, req.NamespacedName))
 				err := fmt.Errorf("unable to GET from %s", source.DevfileURL)
-				r.SetCreateConditionAndUpdateCR(ctx, &componentDetectionQuery, err)
+				r.SetCompleteConditionAndUpdateCR(ctx, &componentDetectionQuery, err)
 				return ctrl.Result{}, err
 			}
 			devfilesMap["./"] = devfileBytes
@@ -143,11 +144,11 @@ func (r *ComponentDetectionQueryReconciler) Reconcile(ctx context.Context, req c
 		err := r.updateComponentStub(&componentDetectionQuery, devfilesMap)
 		if err != nil {
 			log.Error(err, fmt.Sprintf("Unable to update the component stub %v", req.NamespacedName))
-			r.SetCreateConditionAndUpdateCR(ctx, &componentDetectionQuery, err)
+			r.SetCompleteConditionAndUpdateCR(ctx, &componentDetectionQuery, err)
 			return ctrl.Result{}, err
 		}
 
-		r.SetCreateConditionAndUpdateCR(ctx, &componentDetectionQuery, nil)
+		r.SetCompleteConditionAndUpdateCR(ctx, &componentDetectionQuery, nil)
 	} else {
 		log.Info(fmt.Sprintf("No update scenario yet... %v", req.NamespacedName))
 	}

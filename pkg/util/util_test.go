@@ -98,7 +98,7 @@ func TestISExist(t *testing.T) {
 	}
 }
 
-func TestCurlForDevfiles(t *testing.T) {
+func TestDownloadDevfile(t *testing.T) {
 	tests := []struct {
 		name    string
 		url     string
@@ -129,7 +129,7 @@ func TestCurlForDevfiles(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			contents, err := CurlForDevfiles(tt.url)
+			contents, err := DownloadDevfile(tt.url)
 			if tt.wantErr && (err == nil) {
 				t.Error("wanted error but got nil")
 			} else if !tt.wantErr && err != nil {

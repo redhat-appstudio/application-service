@@ -1,9 +1,0 @@
-apiVersion: appstudio.redhat.com/v1alpha1
-kind: ComponentDetectionQuery
-metadata:
-  name: componentdetectionquery-sample
-spec:
-  isMultiComponent: true
-  git:
-    url: https://github.com/octocat/Hello-World
-    

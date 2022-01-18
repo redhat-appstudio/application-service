@@ -26,18 +26,10 @@ import (
 	"strings"
 
 	"github.com/go-git/go-git/v5"
+	"github.com/redhat-appstudio/application-service/pkg/devfile"
 )
 
-const (
-	devfileName       = "devfile.yaml"
-	hiddenDevfileName = ".devfile.yaml"
-	hiddenDevfileDir  = ".devfile"
-
-	Devfile                = devfileName                                // devfile.yaml
-	HiddenDevfile          = hiddenDevfileName                          // .devfile.yaml
-	HiddenDirDevfile       = hiddenDevfileDir + "/" + devfileName       // .devfile/devfile.yaml
-	HiddenDirHiddenDevfile = hiddenDevfileDir + "/" + hiddenDevfileName // .devfile/.devfile.yaml
-)
+const ()
 
 func SanitizeDisplayName(displayName string) string {
 	sanitizedName := strings.ToLower(strings.Replace(displayName, " ", "-", -1))
@@ -87,11 +79,11 @@ func ConvertGitHubURL(URL string) (string, error) {
 	return URL, nil
 }
 
-// CurlForDevfiles curls for various possible devfile locations in dir and returns the contents
-func CurlForDevfiles(dir string) ([]byte, error) {
+// DownloadDevfile downloads devfile from the various possible devfile locations in dir and returns the contents
+func DownloadDevfile(dir string) ([]byte, error) {
 	var devfileBytes []byte
 	var err error
-	validDevfileLocations := []string{Devfile, HiddenDevfile, HiddenDirDevfile, HiddenDirHiddenDevfile}
+	validDevfileLocations := []string{devfile.Devfile, devfile.HiddenDevfile, devfile.HiddenDirDevfile, devfile.HiddenDirHiddenDevfile}
 
 	for _, path := range validDevfileLocations {
 		devfilePath := dir + "/" + path
@@ -102,7 +94,7 @@ func CurlForDevfiles(dir string) ([]byte, error) {
 		}
 	}
 
-	return nil, fmt.Errorf("unable to curl to any of known devfile locations in dir %s", dir)
+	return nil, fmt.Errorf("unable to find any devfiles in dir %s", dir)
 }
 
 // CurlEndpoint curls the endpoint and returns the response or an error if the response is a non-200 status
@@ -164,7 +156,7 @@ func searchDevfiles(localpath string, currentLevel, depth int) (map[string][]byt
 	}
 
 	for _, f := range files {
-		if (f.Name() == devfileName || f.Name() == hiddenDevfileName) && currentLevel != 0 {
+		if (f.Name() == devfile.DevfileName || f.Name() == devfile.HiddenDevfileName) && currentLevel != 0 {
 			devfileBytes, err = ioutil.ReadFile(path.Join(localpath, f.Name()))
 			if err != nil {
 				return nil, err
@@ -177,7 +169,7 @@ func searchDevfiles(localpath string, currentLevel, depth int) (map[string][]byt
 				currentPath = filepath.Dir(currentPath)
 			}
 			devfileMapFromRepo[context] = devfileBytes
-		} else if f.IsDir() && f.Name() == hiddenDevfileDir {
+		} else if f.IsDir() && f.Name() == devfile.HiddenDevfileDir {
 			// if the dir is .devfile, we dont increment currentLevel
 			// consider devfile.yaml and .devfile/devfile.yaml as the same level
 			recursiveMap, err := searchDevfiles(path.Join(localpath, f.Name()), currentLevel, depth)
@@ -192,8 +184,8 @@ func searchDevfiles(localpath string, currentLevel, depth int) (map[string][]byt
 				currentPath = filepath.Dir(currentPath)
 			}
 			for recursiveContext := range recursiveMap {
-				if recursiveContext == hiddenDevfileDir {
-					devfileMapFromRepo[context] = recursiveMap[hiddenDevfileDir]
+				if recursiveContext == devfile.HiddenDevfileDir {
+					devfileMapFromRepo[context] = recursiveMap[devfile.HiddenDevfileDir]
 				}
 			}
 		} else if f.IsDir() {

@@ -35,11 +35,6 @@ import (
 	util "github.com/redhat-appstudio/application-service/pkg/util"
 )
 
-const (
-	devfileName       = "devfile.yaml"
-	hiddenDevfileName = ".devfile.yaml"
-)
-
 // ComponentReconciler reconciles a Component object
 type ComponentReconciler struct {
 	client.Client
@@ -103,7 +98,7 @@ func (r *ComponentReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 					devfileDir = path.Join(rawURL, context)
 				}
 
-				devfileBytes, err = util.CurlForDevfiles(devfileDir)
+				devfileBytes, err = util.DownloadDevfile(devfileDir)
 				if err != nil {
 					log.Error(err, fmt.Sprintf("Unable to read the devfile from dir %s %v", devfileDir, req.NamespacedName))
 					r.SetCreateConditionAndUpdateCR(ctx, &component, err)

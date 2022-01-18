@@ -301,7 +301,7 @@ var _ = Describe("Component Detection Query controller", func() {
 			}, timeout, interval).Should(BeTrue())
 
 			// Make sure the right err is set
-			Expect(createdHasCompDetectionQuery.Status.Conditions[0].Message).Should(ContainSubstring("unable to curl to any of known devfile locations"))
+			Expect(createdHasCompDetectionQuery.Status.Conditions[0].Message).Should(ContainSubstring("unable to find any devfiles"))
 
 			// Delete the specified Detection Query resource
 			deleteCompDetQueryCR(hasCompDetQueryLookupKey)
