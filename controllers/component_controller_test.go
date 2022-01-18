@@ -23,6 +23,7 @@ import (
 	"testing"
 
 	"github.com/devfile/api/v2/pkg/apis/workspaces/v1alpha2"
+	"github.com/devfile/api/v2/pkg/attributes"
 	data "github.com/devfile/library/pkg/devfile/parser/data"
 	"github.com/devfile/library/pkg/devfile/parser/data/v2/common"
 	. "github.com/onsi/ginkgo"
@@ -30,6 +31,7 @@ import (
 	appstudiov1alpha1 "github.com/redhat-appstudio/application-service/api/v1alpha1"
 	devfile "github.com/redhat-appstudio/application-service/pkg/devfile"
 	corev1 "k8s.io/api/core/v1"
+	"sigs.k8s.io/yaml"
 
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -888,22 +890,7 @@ var _ = Describe("Component controller", func() {
 			applicationName := HASAppName + "9"
 			componentName := HASCompName + "9"
 
-			hasApp := &appstudiov1alpha1.Application{
-				TypeMeta: metav1.TypeMeta{
-					APIVersion: "appstudio.redhat.com/v1alpha1",
-					Kind:       "Application",
-				},
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      applicationName,
-					Namespace: HASAppNamespace,
-				},
-				Spec: appstudiov1alpha1.ApplicationSpec{
-					DisplayName: DisplayName,
-					Description: Description,
-				},
-			}
-
-			Expect(k8sClient.Create(ctx, hasApp)).Should(Succeed())
+			createAndFetchSimpleApp(applicationName, HASAppNamespace, DisplayName, Description)
 
 			hasComp := &appstudiov1alpha1.Component{
 				TypeMeta: metav1.TypeMeta{
@@ -959,6 +946,84 @@ var _ = Describe("Component controller", func() {
 
 			// Delete the specified HASApp resource
 			hasAppLookupKey := types.NamespacedName{Name: applicationName, Namespace: HASAppNamespace}
+			deleteHASAppCR(hasAppLookupKey)
+		})
+	})
+
+	// This test will create an Application and a Component, then remove the gitops repository annotation from the component and update it
+	// The gitops generation should fail due to the gitops repository annotation missing
+	Context("Component created with App with missing gitops repository", func() {
+		It("Should fail since Application has no gitops repository", func() {
+			var err error
+			ctx := context.Background()
+
+			applicationName := HASAppName + "10"
+			componentName := HASCompName + "10"
+
+			hasApp := createAndFetchSimpleApp(applicationName, HASAppNamespace, DisplayName, Description)
+			curDevfile, err := devfile.ParseDevfileModel(hasApp.Status.Devfile)
+			Expect(err).ToNot(HaveOccurred())
+
+			// Remove the gitops URL and update the status of the resource
+			devfileMeta := curDevfile.GetMetadata()
+			devfileMeta.Attributes = attributes.Attributes{}
+			curDevfile.SetMetadata(devfileMeta)
+			devfileYaml, err := yaml.Marshal(curDevfile)
+			Expect(err).ToNot(HaveOccurred())
+			hasApp.Status.Devfile = string(devfileYaml)
+			Expect(k8sClient.Status().Update(context.Background(), hasApp)).Should(Succeed())
+
+			// Wait for the application resource to be updated
+			hasAppLookupKey := types.NamespacedName{Name: applicationName, Namespace: HASAppNamespace}
+			Eventually(func() bool {
+				k8sClient.Get(context.Background(), hasAppLookupKey, hasApp)
+
+				// Return true if the fetched resource has our "updated" devfile status
+				return hasApp.Status.Devfile == string(devfileYaml)
+			}, timeout, interval).Should(BeTrue())
+
+			// Create the hasComp resource
+			hasComp := &appstudiov1alpha1.Component{
+				TypeMeta: metav1.TypeMeta{
+					APIVersion: "appstudio.redhat.com/v1alpha1",
+					Kind:       "Component",
+				},
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      componentName,
+					Namespace: HASAppNamespace,
+				},
+				Spec: appstudiov1alpha1.ComponentSpec{
+					ComponentName: ComponentName,
+					Application:   applicationName,
+					Source: appstudiov1alpha1.ComponentSource{
+						ComponentSourceUnion: appstudiov1alpha1.ComponentSourceUnion{
+							GitSource: &appstudiov1alpha1.GitSource{
+								URL: SampleRepoLink,
+							},
+						},
+					},
+					Build: appstudiov1alpha1.Build{
+						ContainerImage: "quay.io/test/testimage:latest",
+					},
+				},
+			}
+			Expect(k8sClient.Create(ctx, hasComp)).Should(Succeed())
+
+			// Look up the component resource that was created.
+			// num(conditions) may still be < 1 on the first try, so retry until at least _some_ condition is set
+			hasCompLookupKey := types.NamespacedName{Name: componentName, Namespace: HASAppNamespace}
+			createdHasComp := &appstudiov1alpha1.Component{}
+			Eventually(func() bool {
+				k8sClient.Get(context.Background(), hasCompLookupKey, createdHasComp)
+				return len(createdHasComp.Status.Conditions) > 0 && createdHasComp.Status.Conditions[len(createdHasComp.Status.Conditions)-1].Status == metav1.ConditionFalse
+			}, timeout, interval).Should(BeTrue())
+
+			Expect(createdHasComp.Status.Conditions[len(createdHasComp.Status.Conditions)-1].Message).Should(ContainSubstring("unable to retrieve GitOps repository from Application CR devfile"))
+
+			// Delete the specified HASComp resource
+			deleteHASCompCR(hasCompLookupKey)
+
+			// Delete the specified HASApp resource
 			deleteHASAppCR(hasAppLookupKey)
 		})
 	})
