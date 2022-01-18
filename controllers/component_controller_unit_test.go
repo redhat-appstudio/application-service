@@ -37,7 +37,7 @@ import (
 	//+kubebuilder:scaffold:imports
 )
 
-func TestSetGitOpsLabels(t *testing.T) {
+func TestSetGitOpsAnnotations(t *testing.T) {
 	tests := []struct {
 		name                string
 		devfileData         *v2.DevfileV2
@@ -101,14 +101,14 @@ func TestSetGitOpsLabels(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			err := setGitopsLabels(&tt.component, tt.devfileData)
-			if (err != nil) && !tt.wantErr {
-				t.Errorf("TestSetGitOpsLabels() unexpected error: %v", err)
+			err := setGitopsAnnotations(&tt.component, tt.devfileData)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("TestSetGitOpsAnnotations() unexpected error: %v", err)
 			}
 			if !tt.wantErr {
 				compLabels := tt.component.GetAnnotations()
 				if !reflect.DeepEqual(compLabels, tt.wantComponentLabels) {
-					t.Errorf("TestSetGitOpsLabels() error: expected %v got %v", tt.wantComponentLabels, compLabels)
+					t.Errorf("TestSetGitOpsAnnotations() error: expected %v got %v", tt.wantComponentLabels, compLabels)
 				}
 			}
 		})

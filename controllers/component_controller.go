@@ -206,7 +206,7 @@ func (r *ComponentReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 				componentLabels["appstudio.has/component"] = component.Spec.ComponentName
 
 				component.SetLabels(componentLabels)
-				err = setGitopsLabels(&component, hasAppDevfileData)
+				err = setGitopsAnnotations(&component, hasAppDevfileData)
 				if err != nil {
 					log.Error(err, fmt.Sprintf("Unable to retrieve gitops repository information for resource %v", req.NamespacedName))
 					r.SetCreateConditionAndUpdateCR(ctx, &component, err)
@@ -300,6 +300,8 @@ func (r *ComponentReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 	return ctrl.Result{}, nil
 }
 
+// generateGitops retrieves the necessary information about a Component's gitops repository (URL, branch, context)
+// and attempts to use the GitOps package to generate gitops resources based on that component
 func (r *ComponentReconciler) generateGitops(component *appstudiov1alpha1.Component) error {
 	log := r.Log.WithValues("Component", component.Name)
 
@@ -354,14 +356,8 @@ func (r *ComponentReconciler) generateGitops(component *appstudiov1alpha1.Compon
 	return r.AppFS.RemoveAll(tempDir)
 }
 
-// SetupWithManager sets up the controller with the Manager.
-func (r *ComponentReconciler) SetupWithManager(mgr ctrl.Manager) error {
-	return ctrl.NewControllerManagedBy(mgr).
-		For(&appstudiov1alpha1.Component{}).
-		Complete(r)
-}
-
-func setGitopsLabels(component *appstudiov1alpha1.Component, devfileData data.DevfileData) error {
+// setGitopsAnnotations adds the necessary gitops annotations (url, branch, context) to the component CR object
+func setGitopsAnnotations(component *appstudiov1alpha1.Component, devfileData data.DevfileData) error {
 	var err error
 	devfileAttributes := devfileData.GetMetadata().Attributes
 	componentAnnotations := component.GetAnnotations()
@@ -389,4 +385,11 @@ func setGitopsLabels(component *appstudiov1alpha1.Component, devfileData data.De
 
 	component.SetAnnotations(componentAnnotations)
 	return nil
+}
+
+// SetupWithManager sets up the controller with the Manager.
+func (r *ComponentReconciler) SetupWithManager(mgr ctrl.Manager) error {
+	return ctrl.NewControllerManagedBy(mgr).
+		For(&appstudiov1alpha1.Component{}).
+		Complete(r)
 }
