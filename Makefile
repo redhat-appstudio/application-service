@@ -170,6 +170,10 @@ ENVTEST = $(shell pwd)/bin/setup-envtest
 envtest: ## Download envtest-setup locally if necessary.
 	$(call go-get-tool,$(ENVTEST),sigs.k8s.io/controller-runtime/tools/setup-envtest@latest)
 
+DLV = $(shell pwd)/bin/dlv
+dlv:
+	$(call go-get-tool,$(DLV),github.com/go-delve/delve/cmd/dlv@v1.8.0)
+
 # go-get-tool will 'go get' any package $2 and install it to $1.
 PROJECT_DIR := $(shell dirname $(abspath $(lastword $(MAKEFILE_LIST))))
 define go-get-tool
@@ -239,3 +243,34 @@ catalog-build: opm ## Build a catalog image.
 .PHONY: catalog-push
 catalog-push: ## Push a catalog image.
 	$(MAKE) docker-push IMG=$(CATALOG_IMG)
+
+APPLICATIONS_CRD=$(shell pwd)/config/crd/bases/appstudio.redhat.com_applications.yaml
+COMPONENT_DETECTION_QUERIES_CRD=$(shell pwd)/config/crd/bases/appstudio.redhat.com_componentdetectionqueries.yaml
+COMPONENT_CRD=$(shell pwd)/config/crd/bases/appstudio.redhat.com_components.yaml
+PUSHES_CRD=$(shell pwd)/config/crd/bases/appstudio.redhat.com_pushes.yaml
+
+.PHONY: apply-crds
+apply-crds:
+	kubectl apply \
+	-f $(APPLICATIONS_CRD) \
+	-f $(COMPONENT_DETECTION_QUERIES_CRD) \
+	-f $(COMPONENT_CRD) \
+	-f $(PUSHES_CRD)
+
+.PHONY: debug
+debug: dlv generate manifests kustomize apply-crds
+	$(MAKE) debug-stop; \
+	echo "[WARNING] 'Ctrl+C' or 'Command+C' doesn't work for 'dlv' in permissive mode"; \
+	echo "[INFO] Use 'make debug-stop' to interrup debug session"; \
+	echo "[INFO] Use 'make uninstall' to remove operator installation after debug";
+
+	$(DLV) debug --listen=:2345 --headless=true --api-version=2 ./main.go --
+
+.PHONY: debug-stop
+debug-stop:
+	echo "[INFO] Retrieving debug session PID..."; \
+	PID=$$(pgrep dlv || echo ""); \
+	if [ -n "$${PID}" ]; then \
+		echo "Terminate current debug session with PID: $${PID}"; \
+		kill -15 "$${PID}"; \
+	fi

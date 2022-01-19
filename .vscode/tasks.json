@@ -1,0 +1,149 @@
+{
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "label": "Format operator binary",
+            "command": "make fmt",
+            "options": {
+                "env": {
+                    "ARCH": "amd64"
+                }
+            },
+            "type": "shell",
+            "args": [],
+            "problemMatcher": [
+                "$go"
+            ],
+            "presentation": {
+                "reveal": "always"
+            },
+            "group": "build"
+        },
+        {
+            "label": "Run tests",
+            "command": "make test",
+            "options": {
+                "env": {
+                    "ARCH": "amd64"
+                }
+            },
+            "type": "shell",
+            "args": [],
+            "problemMatcher": [
+                "$go"
+            ],
+            "presentation": {
+                "reveal": "always"
+            },
+            "group": "build"
+        },
+        {
+            "label": "Compile operator binary",
+            "command": "make build",
+            "options": {
+                "env": {
+                    "ARCH": "amd64"
+                }
+            },
+            "type": "shell",
+            "args": [],
+            "problemMatcher": [
+                "$go"
+            ],
+            "presentation": {
+                "reveal": "always"
+            },
+            "group": "build"
+        },
+        {
+            "label": "Build and push operator image",
+            "command": "make docker-build docker-push IMG=${IMAGE_REGISTRY_HOST}/${IMAGE_REGISTRY_USER_NAME}/application-service",
+            "options": {
+                "env": {
+                    "ARCH": "amd64"
+                }
+            },
+            "type": "shell",
+            "args": [],
+            "problemMatcher": [
+                "$go"
+            ],
+            "presentation": {
+                "reveal": "always"
+            },
+            "group": "build"
+        },   
+        {
+            "label": "Deploy operator",
+            "command": "IMG=${IMAGE_REGISTRY_HOST}/${IMAGE_REGISTRY_USER_NAME}/application-service; make deploy IMG=\"${IMG}\"",
+            "options": {
+                "env": {
+                    "ARCH": "amd64"
+                }
+            },
+            "type": "shell",
+            "args": [],
+            "problemMatcher": [
+                "$go"
+            ],
+            "presentation": {
+                "reveal": "always"
+            },
+            "group": "build"
+        },
+        {
+            "label": "UnDeploy operator",
+            "command": "make undeploy",
+            "options": {
+                "env": {
+                    "ARCH": "amd64"
+                }
+            },
+            "type": "shell",
+            "args": [],
+            "problemMatcher": [
+                "$go"
+            ],
+            "presentation": {
+                "reveal": "always"
+            },
+            "group": "build"
+        },
+        {
+            "label": "Launch operator debug session",
+            "command": "make debug -s",
+            "options": {
+                "env": {
+                    "ARCH": "amd64"
+                }
+            },
+            "type": "shell",
+            "args": [],
+            "problemMatcher": [
+                "$go"
+            ],
+            "presentation": {
+                "reveal": "always"
+            },
+            "group": "build"
+        },
+        {
+            "label": "Stop operator debug session",
+            "command": "make debug-stop -s",
+            "options": {
+                "env": {
+                    "ARCH": "amd64"
+                }
+            },
+            "type": "shell",
+            "args": [],
+            "problemMatcher": [
+                "$go"
+            ],
+            "presentation": {
+                "reveal": "always"
+            },
+            "group": "build"
+        },
+    ]
+}
