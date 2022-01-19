@@ -347,7 +347,7 @@ func TestUpdateComponentDevfileModel(t *testing.T) {
 
 func TestUpdateComponentStub(t *testing.T) {
 
-	components := []devfileAPIV1.Component{
+	componentsValid := []devfileAPIV1.Component{
 		{
 			Name: "component1",
 			ComponentUnion: devfileAPIV1.ComponentUnion{
@@ -397,6 +397,224 @@ func TestUpdateComponentStub(t *testing.T) {
 		},
 	}
 
+	componentsReplicaErr := []devfileAPIV1.Component{
+		{
+			Name: "component1",
+			ComponentUnion: devfileAPIV1.ComponentUnion{
+				Container: &devfileAPIV1.ContainerComponent{
+					Container: devfileAPIV1.Container{
+						Image: "image",
+					},
+				},
+			},
+			Attributes: attributes.Attributes{}.PutBoolean("appstudio.has/replicas", true),
+		},
+	}
+
+	var err error
+
+	componentsRouteErr := []devfileAPIV1.Component{
+		{
+			Name: "component1",
+			ComponentUnion: devfileAPIV1.ComponentUnion{
+				Container: &devfileAPIV1.ContainerComponent{
+					Container: devfileAPIV1.Container{
+						Image: "image",
+					},
+				},
+			},
+			Attributes: attributes.Attributes{}.Put("appstudio.has/route", []string{"a", "b"}, &err),
+		},
+	}
+	if err != nil {
+		t.Errorf("unexpected err: %+v", err)
+		return
+	}
+
+	componentsStorageLimitErr := []devfileAPIV1.Component{
+		{
+			Name: "component1",
+			ComponentUnion: devfileAPIV1.ComponentUnion{
+				Container: &devfileAPIV1.ContainerComponent{
+					Container: devfileAPIV1.Container{
+						Image: "image",
+					},
+				},
+			},
+			Attributes: attributes.Attributes{}.Put("appstudio.has/storageLimit", []string{"a", "b"}, &err),
+		},
+	}
+	if err != nil {
+		t.Errorf("unexpected err: %+v", err)
+		return
+	}
+
+	componentsEphemeralStorageLimitErr := []devfileAPIV1.Component{
+		{
+			Name: "component1",
+			ComponentUnion: devfileAPIV1.ComponentUnion{
+				Container: &devfileAPIV1.ContainerComponent{
+					Container: devfileAPIV1.Container{
+						Image: "image",
+					},
+				},
+			},
+			Attributes: attributes.Attributes{}.Put("appstudio.has/ephermealStorageLimit", []string{"a", "b"}, &err),
+		},
+	}
+	if err != nil {
+		t.Errorf("unexpected err: %+v", err)
+		return
+	}
+
+	componentsStorageRequestErr := []devfileAPIV1.Component{
+		{
+			Name: "component1",
+			ComponentUnion: devfileAPIV1.ComponentUnion{
+				Container: &devfileAPIV1.ContainerComponent{
+					Container: devfileAPIV1.Container{
+						Image: "image",
+					},
+				},
+			},
+			Attributes: attributes.Attributes{}.Put("appstudio.has/storageRequest", []string{"a", "b"}, &err),
+		},
+	}
+	if err != nil {
+		t.Errorf("unexpected err: %+v", err)
+		return
+	}
+
+	componentsEphemeralStorageRequestErr := []devfileAPIV1.Component{
+		{
+			Name: "component1",
+			ComponentUnion: devfileAPIV1.ComponentUnion{
+				Container: &devfileAPIV1.ContainerComponent{
+					Container: devfileAPIV1.Container{
+						Image: "image",
+					},
+				},
+			},
+			Attributes: attributes.Attributes{}.Put("appstudio.has/ephermealStorageRequest", []string{"a", "b"}, &err),
+		},
+	}
+	if err != nil {
+		t.Errorf("unexpected err: %+v", err)
+		return
+	}
+
+	componentsCPULimitParseErr := []devfileAPIV1.Component{
+		{
+			Name: "component1",
+			ComponentUnion: devfileAPIV1.ComponentUnion{
+				Container: &devfileAPIV1.ContainerComponent{
+					Container: devfileAPIV1.Container{
+						Image:    "image",
+						CpuLimit: "xyz",
+					},
+				},
+			},
+		},
+	}
+
+	componentsMemoryLimitParseErr := []devfileAPIV1.Component{
+		{
+			Name: "component1",
+			ComponentUnion: devfileAPIV1.ComponentUnion{
+				Container: &devfileAPIV1.ContainerComponent{
+					Container: devfileAPIV1.Container{
+						Image:       "image",
+						MemoryLimit: "xyz",
+					},
+				},
+			},
+		},
+	}
+
+	componentsStorageLimitParseErr := []devfileAPIV1.Component{
+		{
+			Name: "component1",
+			ComponentUnion: devfileAPIV1.ComponentUnion{
+				Container: &devfileAPIV1.ContainerComponent{
+					Container: devfileAPIV1.Container{
+						Image: "image",
+					},
+				},
+			},
+			Attributes: attributes.Attributes{}.PutString("appstudio.has/storageLimit", "xyz"),
+		},
+	}
+
+	componentsEphemeralStorageLimitParseErr := []devfileAPIV1.Component{
+		{
+			Name: "component1",
+			ComponentUnion: devfileAPIV1.ComponentUnion{
+				Container: &devfileAPIV1.ContainerComponent{
+					Container: devfileAPIV1.Container{
+						Image: "image",
+					},
+				},
+			},
+			Attributes: attributes.Attributes{}.PutString("appstudio.has/ephermealStorageLimit", "xyz"),
+		},
+	}
+
+	componentsCPURequestParseErr := []devfileAPIV1.Component{
+		{
+			Name: "component1",
+			ComponentUnion: devfileAPIV1.ComponentUnion{
+				Container: &devfileAPIV1.ContainerComponent{
+					Container: devfileAPIV1.Container{
+						Image:      "image",
+						CpuRequest: "xyz",
+					},
+				},
+			},
+		},
+	}
+
+	componentsMemoryRequestParseErr := []devfileAPIV1.Component{
+		{
+			Name: "component1",
+			ComponentUnion: devfileAPIV1.ComponentUnion{
+				Container: &devfileAPIV1.ContainerComponent{
+					Container: devfileAPIV1.Container{
+						Image:         "image",
+						MemoryRequest: "xyz",
+					},
+				},
+			},
+		},
+	}
+
+	componentsStorageRequestParseErr := []devfileAPIV1.Component{
+		{
+			Name: "component1",
+			ComponentUnion: devfileAPIV1.ComponentUnion{
+				Container: &devfileAPIV1.ContainerComponent{
+					Container: devfileAPIV1.Container{
+						Image: "image",
+					},
+				},
+			},
+			Attributes: attributes.Attributes{}.PutString("appstudio.has/storageRequest", "xyz"),
+		},
+	}
+
+	componentsEphemeralStorageRequestParseErr := []devfileAPIV1.Component{
+		{
+			Name: "component1",
+			ComponentUnion: devfileAPIV1.ComponentUnion{
+				Container: &devfileAPIV1.ContainerComponent{
+					Container: devfileAPIV1.Container{
+						Image: "image",
+					},
+				},
+			},
+			Attributes: attributes.Attributes{}.PutString("appstudio.has/ephermealStorageRequest", "xyz"),
+		},
+	}
+
 	tests := []struct {
 		name            string
 		devfilesDataMap map[string]*v2.DevfileV2
@@ -418,7 +636,7 @@ func TestUpdateComponentStub(t *testing.T) {
 						},
 						DevWorkspaceTemplateSpec: devfileAPIV1.DevWorkspaceTemplateSpec{
 							DevWorkspaceTemplateSpecContent: devfileAPIV1.DevWorkspaceTemplateSpecContent{
-								Components: components,
+								Components: componentsValid,
 							},
 						},
 					},
@@ -465,6 +683,328 @@ func TestUpdateComponentStub(t *testing.T) {
 				},
 			},
 			isNil:   true,
+			wantErr: true,
+		},
+		{
+			name: "Check err for replica as non integer",
+			devfilesDataMap: map[string]*v2.DevfileV2{
+				"./": {
+					Devfile: devfileAPIV1.Devfile{
+						DevfileHeader: devfile.DevfileHeader{
+							SchemaVersion: "2.1.0",
+							Metadata: devfile.DevfileMetadata{
+								Name:        "test-devfile",
+								Language:    "language",
+								ProjectType: "project",
+							},
+						},
+						DevWorkspaceTemplateSpec: devfileAPIV1.DevWorkspaceTemplateSpec{
+							DevWorkspaceTemplateSpecContent: devfileAPIV1.DevWorkspaceTemplateSpecContent{
+								Components: componentsReplicaErr,
+							},
+						},
+					},
+				},
+			},
+			wantErr: true,
+		},
+		{
+			name: "Check err for route as non string",
+			devfilesDataMap: map[string]*v2.DevfileV2{
+				"./": {
+					Devfile: devfileAPIV1.Devfile{
+						DevfileHeader: devfile.DevfileHeader{
+							SchemaVersion: "2.1.0",
+							Metadata: devfile.DevfileMetadata{
+								Name:        "test-devfile",
+								Language:    "language",
+								ProjectType: "project",
+							},
+						},
+						DevWorkspaceTemplateSpec: devfileAPIV1.DevWorkspaceTemplateSpec{
+							DevWorkspaceTemplateSpecContent: devfileAPIV1.DevWorkspaceTemplateSpecContent{
+								Components: componentsRouteErr,
+							},
+						},
+					},
+				},
+			},
+			wantErr: true,
+		},
+		{
+			name: "Check err for storage limit as non string",
+			devfilesDataMap: map[string]*v2.DevfileV2{
+				"./": {
+					Devfile: devfileAPIV1.Devfile{
+						DevfileHeader: devfile.DevfileHeader{
+							SchemaVersion: "2.1.0",
+							Metadata: devfile.DevfileMetadata{
+								Name:        "test-devfile",
+								Language:    "language",
+								ProjectType: "project",
+							},
+						},
+						DevWorkspaceTemplateSpec: devfileAPIV1.DevWorkspaceTemplateSpec{
+							DevWorkspaceTemplateSpecContent: devfileAPIV1.DevWorkspaceTemplateSpecContent{
+								Components: componentsStorageLimitErr,
+							},
+						},
+					},
+				},
+			},
+			wantErr: true,
+		},
+		{
+			name: "Check err for ephemeral storage limit as non string",
+			devfilesDataMap: map[string]*v2.DevfileV2{
+				"./": {
+					Devfile: devfileAPIV1.Devfile{
+						DevfileHeader: devfile.DevfileHeader{
+							SchemaVersion: "2.1.0",
+							Metadata: devfile.DevfileMetadata{
+								Name:        "test-devfile",
+								Language:    "language",
+								ProjectType: "project",
+							},
+						},
+						DevWorkspaceTemplateSpec: devfileAPIV1.DevWorkspaceTemplateSpec{
+							DevWorkspaceTemplateSpecContent: devfileAPIV1.DevWorkspaceTemplateSpecContent{
+								Components: componentsEphemeralStorageLimitErr,
+							},
+						},
+					},
+				},
+			},
+			wantErr: true,
+		},
+		{
+			name: "Check err for storage request as non string",
+			devfilesDataMap: map[string]*v2.DevfileV2{
+				"./": {
+					Devfile: devfileAPIV1.Devfile{
+						DevfileHeader: devfile.DevfileHeader{
+							SchemaVersion: "2.1.0",
+							Metadata: devfile.DevfileMetadata{
+								Name:        "test-devfile",
+								Language:    "language",
+								ProjectType: "project",
+							},
+						},
+						DevWorkspaceTemplateSpec: devfileAPIV1.DevWorkspaceTemplateSpec{
+							DevWorkspaceTemplateSpecContent: devfileAPIV1.DevWorkspaceTemplateSpecContent{
+								Components: componentsStorageRequestErr,
+							},
+						},
+					},
+				},
+			},
+			wantErr: true,
+		},
+		{
+			name: "Check err for ephemeral storage request as non string",
+			devfilesDataMap: map[string]*v2.DevfileV2{
+				"./": {
+					Devfile: devfileAPIV1.Devfile{
+						DevfileHeader: devfile.DevfileHeader{
+							SchemaVersion: "2.1.0",
+							Metadata: devfile.DevfileMetadata{
+								Name:        "test-devfile",
+								Language:    "language",
+								ProjectType: "project",
+							},
+						},
+						DevWorkspaceTemplateSpec: devfileAPIV1.DevWorkspaceTemplateSpec{
+							DevWorkspaceTemplateSpecContent: devfileAPIV1.DevWorkspaceTemplateSpecContent{
+								Components: componentsEphemeralStorageRequestErr,
+							},
+						},
+					},
+				},
+			},
+			wantErr: true,
+		},
+		{
+			name: "Check err for cpu limit parse err",
+			devfilesDataMap: map[string]*v2.DevfileV2{
+				"./": {
+					Devfile: devfileAPIV1.Devfile{
+						DevfileHeader: devfile.DevfileHeader{
+							SchemaVersion: "2.1.0",
+							Metadata: devfile.DevfileMetadata{
+								Name:        "test-devfile",
+								Language:    "language",
+								ProjectType: "project",
+							},
+						},
+						DevWorkspaceTemplateSpec: devfileAPIV1.DevWorkspaceTemplateSpec{
+							DevWorkspaceTemplateSpecContent: devfileAPIV1.DevWorkspaceTemplateSpecContent{
+								Components: componentsCPULimitParseErr,
+							},
+						},
+					},
+				},
+			},
+			wantErr: true,
+		},
+		{
+			name: "Check err for memory limit parse err",
+			devfilesDataMap: map[string]*v2.DevfileV2{
+				"./": {
+					Devfile: devfileAPIV1.Devfile{
+						DevfileHeader: devfile.DevfileHeader{
+							SchemaVersion: "2.1.0",
+							Metadata: devfile.DevfileMetadata{
+								Name:        "test-devfile",
+								Language:    "language",
+								ProjectType: "project",
+							},
+						},
+						DevWorkspaceTemplateSpec: devfileAPIV1.DevWorkspaceTemplateSpec{
+							DevWorkspaceTemplateSpecContent: devfileAPIV1.DevWorkspaceTemplateSpecContent{
+								Components: componentsMemoryLimitParseErr,
+							},
+						},
+					},
+				},
+			},
+			wantErr: true,
+		},
+		{
+			name: "Check err for storage limit parse err",
+			devfilesDataMap: map[string]*v2.DevfileV2{
+				"./": {
+					Devfile: devfileAPIV1.Devfile{
+						DevfileHeader: devfile.DevfileHeader{
+							SchemaVersion: "2.1.0",
+							Metadata: devfile.DevfileMetadata{
+								Name:        "test-devfile",
+								Language:    "language",
+								ProjectType: "project",
+							},
+						},
+						DevWorkspaceTemplateSpec: devfileAPIV1.DevWorkspaceTemplateSpec{
+							DevWorkspaceTemplateSpecContent: devfileAPIV1.DevWorkspaceTemplateSpecContent{
+								Components: componentsStorageLimitParseErr,
+							},
+						},
+					},
+				},
+			},
+			wantErr: true,
+		},
+		{
+			name: "Check err for ephemeral storage limit parse err",
+			devfilesDataMap: map[string]*v2.DevfileV2{
+				"./": {
+					Devfile: devfileAPIV1.Devfile{
+						DevfileHeader: devfile.DevfileHeader{
+							SchemaVersion: "2.1.0",
+							Metadata: devfile.DevfileMetadata{
+								Name:        "test-devfile",
+								Language:    "language",
+								ProjectType: "project",
+							},
+						},
+						DevWorkspaceTemplateSpec: devfileAPIV1.DevWorkspaceTemplateSpec{
+							DevWorkspaceTemplateSpecContent: devfileAPIV1.DevWorkspaceTemplateSpecContent{
+								Components: componentsEphemeralStorageLimitParseErr,
+							},
+						},
+					},
+				},
+			},
+			wantErr: true,
+		},
+		{
+			name: "Check err for cpu request parse err",
+			devfilesDataMap: map[string]*v2.DevfileV2{
+				"./": {
+					Devfile: devfileAPIV1.Devfile{
+						DevfileHeader: devfile.DevfileHeader{
+							SchemaVersion: "2.1.0",
+							Metadata: devfile.DevfileMetadata{
+								Name:        "test-devfile",
+								Language:    "language",
+								ProjectType: "project",
+							},
+						},
+						DevWorkspaceTemplateSpec: devfileAPIV1.DevWorkspaceTemplateSpec{
+							DevWorkspaceTemplateSpecContent: devfileAPIV1.DevWorkspaceTemplateSpecContent{
+								Components: componentsCPURequestParseErr,
+							},
+						},
+					},
+				},
+			},
+			wantErr: true,
+		},
+		{
+			name: "Check err for memory request parse err",
+			devfilesDataMap: map[string]*v2.DevfileV2{
+				"./": {
+					Devfile: devfileAPIV1.Devfile{
+						DevfileHeader: devfile.DevfileHeader{
+							SchemaVersion: "2.1.0",
+							Metadata: devfile.DevfileMetadata{
+								Name:        "test-devfile",
+								Language:    "language",
+								ProjectType: "project",
+							},
+						},
+						DevWorkspaceTemplateSpec: devfileAPIV1.DevWorkspaceTemplateSpec{
+							DevWorkspaceTemplateSpecContent: devfileAPIV1.DevWorkspaceTemplateSpecContent{
+								Components: componentsMemoryRequestParseErr,
+							},
+						},
+					},
+				},
+			},
+			wantErr: true,
+		},
+		{
+			name: "Check err for storage request parse err",
+			devfilesDataMap: map[string]*v2.DevfileV2{
+				"./": {
+					Devfile: devfileAPIV1.Devfile{
+						DevfileHeader: devfile.DevfileHeader{
+							SchemaVersion: "2.1.0",
+							Metadata: devfile.DevfileMetadata{
+								Name:        "test-devfile",
+								Language:    "language",
+								ProjectType: "project",
+							},
+						},
+						DevWorkspaceTemplateSpec: devfileAPIV1.DevWorkspaceTemplateSpec{
+							DevWorkspaceTemplateSpecContent: devfileAPIV1.DevWorkspaceTemplateSpecContent{
+								Components: componentsStorageRequestParseErr,
+							},
+						},
+					},
+				},
+			},
+			wantErr: true,
+		},
+		{
+			name: "Check err for ephemeral storage request parse err",
+			devfilesDataMap: map[string]*v2.DevfileV2{
+				"./": {
+					Devfile: devfileAPIV1.Devfile{
+						DevfileHeader: devfile.DevfileHeader{
+							SchemaVersion: "2.1.0",
+							Metadata: devfile.DevfileMetadata{
+								Name:        "test-devfile",
+								Language:    "language",
+								ProjectType: "project",
+							},
+						},
+						DevWorkspaceTemplateSpec: devfileAPIV1.DevWorkspaceTemplateSpec{
+							DevWorkspaceTemplateSpecContent: devfileAPIV1.DevWorkspaceTemplateSpecContent{
+								Components: componentsEphemeralStorageRequestParseErr,
+							},
+						},
+					},
+				},
+			},
 			wantErr: true,
 		},
 	}
