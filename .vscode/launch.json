@@ -9,6 +9,6 @@
             "mode": "auto",
             "program": "${workspaceFolder}/main.go",
             "cwd": "${workspaceFolder}",
-          }
+        }
     ]
 }
