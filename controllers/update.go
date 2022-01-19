@@ -52,7 +52,7 @@ func (r *ComponentReconciler) updateComponentDevfileModel(hasCompDevfileData dat
 			}
 			if component.Spec.Route != "" {
 				log.Info(fmt.Sprintf("setting devfile component %s attribute component.Spec.Route %s", devfileComponent.Name, component.Spec.Route))
-				devfileComponent.Attributes = devfileComponent.Attributes.PutString("appstudio.has/route", component.Spec.Route)
+				devfileComponent.Attributes = devfileComponent.Attributes.PutString(routeKey, component.Spec.Route)
 				compUpdateRequired = true
 			}
 		}
@@ -63,7 +63,7 @@ func (r *ComponentReconciler) updateComponentDevfileModel(hasCompDevfileData dat
 			devfileComponent.Attributes = attributes.Attributes{}
 		} else {
 			var err error
-			currentReplica = int(devfileComponent.Attributes.GetNumber("appstudio.has/replicas", &err))
+			currentReplica = int(devfileComponent.Attributes.GetNumber(replicaKey, &err))
 			if err != nil {
 				if _, ok := err.(*attributes.KeyNotFoundError); !ok {
 					return err
@@ -72,7 +72,7 @@ func (r *ComponentReconciler) updateComponentDevfileModel(hasCompDevfileData dat
 		}
 		if currentReplica != component.Spec.Replicas {
 			log.Info(fmt.Sprintf("setting devfile component %s attribute component.Spec.Replicas to %v", devfileComponent.Name, component.Spec.Replicas))
-			devfileComponent.Attributes = devfileComponent.Attributes.PutInteger("appstudio.has/replicas", component.Spec.Replicas)
+			devfileComponent.Attributes = devfileComponent.Attributes.PutInteger(replicaKey, component.Spec.Replicas)
 			compUpdateRequired = true
 		}
 
@@ -140,18 +140,18 @@ func (r *ComponentReconciler) updateComponentDevfileModel(hasCompDevfileData dat
 			}
 			if resourceStorageLimit.String() != "0" {
 				log.Info(fmt.Sprintf("setting devfile component %s attribute storage limit to %s", devfileComponent.Name, resourceStorageLimit.String()))
-				devfileComponent.Attributes = devfileComponent.Attributes.PutString("appstudio.has/storageLimit", resourceStorageLimit.String())
+				devfileComponent.Attributes = devfileComponent.Attributes.PutString(storageLimitKey, resourceStorageLimit.String())
 				compUpdateRequired = true
 			}
 
-			// Ephermetal Storage Limit
-			resourceEphermeralStorageLimit := limits[corev1.ResourceEphemeralStorage]
+			// Ephemeral Storage Limit
+			resourceEphemeralStorageLimit := limits[corev1.ResourceEphemeralStorage]
 			if len(devfileComponent.Attributes) == 0 {
 				devfileComponent.Attributes = attributes.Attributes{}
 			}
-			if resourceEphermeralStorageLimit.String() != "0" {
-				log.Info(fmt.Sprintf("updating devfile component %s attribute ephermeal storage limit to %s", devfileComponent.Name, resourceEphermeralStorageLimit.String()))
-				devfileComponent.Attributes = devfileComponent.Attributes.PutString("appstudio.has/ephermealStorageLimit", resourceEphermeralStorageLimit.String())
+			if resourceEphemeralStorageLimit.String() != "0" {
+				log.Info(fmt.Sprintf("updating devfile component %s attribute ephemeral storage limit to %s", devfileComponent.Name, resourceEphemeralStorageLimit.String()))
+				devfileComponent.Attributes = devfileComponent.Attributes.PutString(ephemeralStorageLimitKey, resourceEphemeralStorageLimit.String())
 				compUpdateRequired = true
 			}
 		}
@@ -182,18 +182,18 @@ func (r *ComponentReconciler) updateComponentDevfileModel(hasCompDevfileData dat
 			}
 			if resourceStorageRequest.String() != "0" {
 				log.Info(fmt.Sprintf("updating devfile component %s attribute storage request to %s", devfileComponent.Name, resourceStorageRequest.String()))
-				devfileComponent.Attributes = devfileComponent.Attributes.PutString("appstudio.has/storageRequest", resourceStorageRequest.String())
+				devfileComponent.Attributes = devfileComponent.Attributes.PutString(storageRequestKey, resourceStorageRequest.String())
 				compUpdateRequired = true
 			}
 
-			// Ephermetal Storage Request
-			resourceEphermeralStorageRequest := requests[corev1.ResourceEphemeralStorage]
+			// Ephemeral Storage Request
+			resourceEphemeralStorageRequest := requests[corev1.ResourceEphemeralStorage]
 			if len(devfileComponent.Attributes) == 0 {
 				devfileComponent.Attributes = attributes.Attributes{}
 			}
-			if resourceEphermeralStorageRequest.String() != "0" {
-				log.Info(fmt.Sprintf("setting devfile component %s attribute ephermeal storage limit to %s", devfileComponent.Name, resourceEphermeralStorageRequest.String()))
-				devfileComponent.Attributes = devfileComponent.Attributes.PutString("appstudio.has/ephermealStorageRequest", resourceEphermeralStorageRequest.String())
+			if resourceEphemeralStorageRequest.String() != "0" {
+				log.Info(fmt.Sprintf("setting devfile component %s attribute ephemeral storage limit to %s", devfileComponent.Name, resourceEphemeralStorageRequest.String()))
+				devfileComponent.Attributes = devfileComponent.Attributes.PutString(ephemeralStorageRequestKey, resourceEphemeralStorageRequest.String())
 				compUpdateRequired = true
 			}
 		}
@@ -308,7 +308,7 @@ func (r *ComponentDetectionQueryReconciler) updateComponentStub(componentDetecti
 			}
 
 			// Devfile Route
-			componentStub.Route = devfileContainerComponents[0].Attributes.GetString("appstudio.has/route", &err)
+			componentStub.Route = devfileContainerComponents[0].Attributes.GetString(routeKey, &err)
 			if err != nil {
 				if _, ok := err.(*attributes.KeyNotFoundError); !ok {
 					return err
@@ -316,7 +316,7 @@ func (r *ComponentDetectionQueryReconciler) updateComponentStub(componentDetecti
 			}
 
 			// Devfile Replica
-			componentStub.Replicas = int(devfileContainerComponents[0].Attributes.GetNumber("appstudio.has/replicas", &err))
+			componentStub.Replicas = int(devfileContainerComponents[0].Attributes.GetNumber(replicaKey, &err))
 			if err != nil {
 				if _, ok := err.(*attributes.KeyNotFoundError); !ok {
 					return err
@@ -348,7 +348,7 @@ func (r *ComponentDetectionQueryReconciler) updateComponentStub(componentDetecti
 			}
 
 			// Storage Limit
-			storageLimitString := devfileContainerComponents[0].Attributes.GetString("appstudio.has/storageLimit", &err)
+			storageLimitString := devfileContainerComponents[0].Attributes.GetString(storageLimitKey, &err)
 			if err != nil {
 				if _, ok := err.(*attributes.KeyNotFoundError); !ok {
 					return err
@@ -363,7 +363,7 @@ func (r *ComponentDetectionQueryReconciler) updateComponentStub(componentDetecti
 			}
 
 			// Ephemeral Storage Limit
-			ephemeralStorageLimitString := devfileContainerComponents[0].Attributes.GetString("appstudio.has/ephermealStorageLimit", &err)
+			ephemeralStorageLimitString := devfileContainerComponents[0].Attributes.GetString(ephemeralStorageLimitKey, &err)
 			if err != nil {
 				if _, ok := err.(*attributes.KeyNotFoundError); !ok {
 					return err
@@ -402,7 +402,7 @@ func (r *ComponentDetectionQueryReconciler) updateComponentStub(componentDetecti
 			}
 
 			// Storage Request
-			storageRequestString := devfileContainerComponents[0].Attributes.GetString("appstudio.has/storageRequest", &err)
+			storageRequestString := devfileContainerComponents[0].Attributes.GetString(storageRequestKey, &err)
 			if err != nil {
 				if _, ok := err.(*attributes.KeyNotFoundError); !ok {
 					return err
@@ -417,7 +417,7 @@ func (r *ComponentDetectionQueryReconciler) updateComponentStub(componentDetecti
 			}
 
 			// Ephemeral Storage Request
-			ephemeralStorageRequestString := devfileContainerComponents[0].Attributes.GetString("appstudio.has/ephermealStorageRequest", &err)
+			ephemeralStorageRequestString := devfileContainerComponents[0].Attributes.GetString(ephemeralStorageRequestKey, &err)
 			if err != nil {
 				if _, ok := err.(*attributes.KeyNotFoundError); !ok {
 					return err

@@ -183,8 +183,8 @@ func (r *ComponentReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 
 				log.Info(fmt.Sprintf("Updating the labels for Component %v", req.NamespacedName))
 				componentLabels := make(map[string]string)
-				componentLabels["appstudio.has/application"] = component.Spec.Application
-				componentLabels["appstudio.has/component"] = component.Spec.ComponentName
+				componentLabels[applicationKey] = component.Spec.Application
+				componentLabels[componentKey] = component.Spec.ComponentName
 				component.SetLabels(componentLabels)
 				err = r.Client.Update(ctx, &component)
 				if err != nil {

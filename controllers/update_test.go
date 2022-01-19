@@ -377,7 +377,7 @@ func TestUpdateComponentStub(t *testing.T) {
 					},
 				},
 			},
-			Attributes: attributes.Attributes{}.PutInteger("appstudio.has/replicas", 1).PutString("appstudio.has/route", "route1").PutString("appstudio.has/storageLimit", "400Mi").PutString("appstudio.has/ephermealStorageLimit", "400Mi").PutString("appstudio.has/storageRequest", "200Mi").PutString("appstudio.has/ephermealStorageRequest", "200Mi"),
+			Attributes: attributes.Attributes{}.PutInteger(replicaKey, 1).PutString(routeKey, "route1").PutString(storageLimitKey, "400Mi").PutString(ephemeralStorageLimitKey, "400Mi").PutString(storageRequestKey, "200Mi").PutString(ephemeralStorageRequestKey, "200Mi"),
 		},
 		{
 			Name: "component2",
@@ -407,7 +407,7 @@ func TestUpdateComponentStub(t *testing.T) {
 					},
 				},
 			},
-			Attributes: attributes.Attributes{}.PutBoolean("appstudio.has/replicas", true),
+			Attributes: attributes.Attributes{}.PutBoolean(replicaKey, true),
 		},
 	}
 
@@ -423,7 +423,7 @@ func TestUpdateComponentStub(t *testing.T) {
 					},
 				},
 			},
-			Attributes: attributes.Attributes{}.Put("appstudio.has/route", []string{"a", "b"}, &err),
+			Attributes: attributes.Attributes{}.Put(routeKey, []string{"a", "b"}, &err),
 		},
 	}
 	if err != nil {
@@ -441,7 +441,7 @@ func TestUpdateComponentStub(t *testing.T) {
 					},
 				},
 			},
-			Attributes: attributes.Attributes{}.Put("appstudio.has/storageLimit", []string{"a", "b"}, &err),
+			Attributes: attributes.Attributes{}.Put(storageLimitKey, []string{"a", "b"}, &err),
 		},
 	}
 	if err != nil {
@@ -459,7 +459,7 @@ func TestUpdateComponentStub(t *testing.T) {
 					},
 				},
 			},
-			Attributes: attributes.Attributes{}.Put("appstudio.has/ephermealStorageLimit", []string{"a", "b"}, &err),
+			Attributes: attributes.Attributes{}.Put(ephemeralStorageLimitKey, []string{"a", "b"}, &err),
 		},
 	}
 	if err != nil {
@@ -477,7 +477,7 @@ func TestUpdateComponentStub(t *testing.T) {
 					},
 				},
 			},
-			Attributes: attributes.Attributes{}.Put("appstudio.has/storageRequest", []string{"a", "b"}, &err),
+			Attributes: attributes.Attributes{}.Put(storageRequestKey, []string{"a", "b"}, &err),
 		},
 	}
 	if err != nil {
@@ -495,7 +495,7 @@ func TestUpdateComponentStub(t *testing.T) {
 					},
 				},
 			},
-			Attributes: attributes.Attributes{}.Put("appstudio.has/ephermealStorageRequest", []string{"a", "b"}, &err),
+			Attributes: attributes.Attributes{}.Put(ephemeralStorageRequestKey, []string{"a", "b"}, &err),
 		},
 	}
 	if err != nil {
@@ -541,7 +541,7 @@ func TestUpdateComponentStub(t *testing.T) {
 					},
 				},
 			},
-			Attributes: attributes.Attributes{}.PutString("appstudio.has/storageLimit", "xyz"),
+			Attributes: attributes.Attributes{}.PutString(storageLimitKey, "xyz"),
 		},
 	}
 
@@ -555,7 +555,7 @@ func TestUpdateComponentStub(t *testing.T) {
 					},
 				},
 			},
-			Attributes: attributes.Attributes{}.PutString("appstudio.has/ephermealStorageLimit", "xyz"),
+			Attributes: attributes.Attributes{}.PutString(ephemeralStorageLimitKey, "xyz"),
 		},
 	}
 
@@ -597,7 +597,7 @@ func TestUpdateComponentStub(t *testing.T) {
 					},
 				},
 			},
-			Attributes: attributes.Attributes{}.PutString("appstudio.has/storageRequest", "xyz"),
+			Attributes: attributes.Attributes{}.PutString(storageRequestKey, "xyz"),
 		},
 	}
 
@@ -611,7 +611,7 @@ func TestUpdateComponentStub(t *testing.T) {
 					},
 				},
 			},
-			Attributes: attributes.Attributes{}.PutString("appstudio.has/ephermealStorageRequest", "xyz"),
+			Attributes: attributes.Attributes{}.PutString(ephemeralStorageRequestKey, "xyz"),
 		},
 	}
 
@@ -1084,11 +1084,11 @@ func TestUpdateComponentStub(t *testing.T) {
 									assert.Equal(t, resourceMemoryLimit.String(), devfileComponent.Container.MemoryLimit, "The memory limit should be the same")
 
 									resourceStorageLimit := limits[corev1.ResourceStorage]
-									assert.Equal(t, resourceStorageLimit.String(), devfileComponent.Attributes.GetString("appstudio.has/storageLimit", &err), "The storage limit should be the same")
+									assert.Equal(t, resourceStorageLimit.String(), devfileComponent.Attributes.GetString(storageLimitKey, &err), "The storage limit should be the same")
 									assert.Nil(t, err, "err should be nil")
 
 									resourceEphemeralStorageLimit := limits[corev1.ResourceEphemeralStorage]
-									assert.Equal(t, resourceEphemeralStorageLimit.String(), devfileComponent.Attributes.GetString("appstudio.has/ephermealStorageLimit", &err), "The ephemeral storage limit should be the same")
+									assert.Equal(t, resourceEphemeralStorageLimit.String(), devfileComponent.Attributes.GetString(ephemeralStorageLimitKey, &err), "The ephemeral storage limit should be the same")
 									assert.Nil(t, err, "err should be nil")
 								}
 
@@ -1101,18 +1101,18 @@ func TestUpdateComponentStub(t *testing.T) {
 									assert.Equal(t, resourceMemoryRequest.String(), devfileComponent.Container.MemoryRequest, "The memory request should be the same")
 
 									resourceStorageRequest := requests[corev1.ResourceStorage]
-									assert.Equal(t, resourceStorageRequest.String(), devfileComponent.Attributes.GetString("appstudio.has/storageRequest", &err), "The storage request should be the same")
+									assert.Equal(t, resourceStorageRequest.String(), devfileComponent.Attributes.GetString(storageRequestKey, &err), "The storage request should be the same")
 									assert.Nil(t, err, "err should be nil")
 
 									resourceEphemeralStorageRequest := requests[corev1.ResourceEphemeralStorage]
-									assert.Equal(t, resourceEphemeralStorageRequest.String(), devfileComponent.Attributes.GetString("appstudio.has/ephermealStorageRequest", &err), "The ephemeral storage request should be the same")
+									assert.Equal(t, resourceEphemeralStorageRequest.String(), devfileComponent.Attributes.GetString(ephemeralStorageRequestKey, &err), "The ephemeral storage request should be the same")
 									assert.Nil(t, err, "err should be nil")
 								}
 
-								assert.Equal(t, hasCompDetection.ComponentStub.Replicas, int(devfileComponent.Attributes.GetNumber("appstudio.has/replicas", &err)), "The replicas should be the same")
+								assert.Equal(t, hasCompDetection.ComponentStub.Replicas, int(devfileComponent.Attributes.GetNumber(replicaKey, &err)), "The replicas should be the same")
 								assert.Nil(t, err, "err should be nil")
 
-								assert.Equal(t, hasCompDetection.ComponentStub.Route, devfileComponent.Attributes.GetString("appstudio.has/route", &err), "The route should be the same")
+								assert.Equal(t, hasCompDetection.ComponentStub.Route, devfileComponent.Attributes.GetString(routeKey, &err), "The route should be the same")
 								assert.Nil(t, err, "err should be nil")
 
 								break // dont check for the second container
