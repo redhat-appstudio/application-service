@@ -40,10 +40,6 @@ import (
 	"github.com/spf13/afero"
 )
 
-const (
-	devfileName = "devfile.yaml"
-)
-
 // ComponentReconciler reconciles a Component object
 type ComponentReconciler struct {
 	client.Client
@@ -90,15 +86,6 @@ func (r *ComponentReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 	if component.Status.Devfile == "" {
 		source := component.Spec.Source
 		context := component.Spec.Context
-		var devfilePath string
-
-		// append context to devfile if present
-		// context is usually set when the git repo is a multi-component repo (example - contains both frontend & backend)
-		if context == "" {
-			devfilePath = devfileName
-		} else {
-			devfilePath = path.Join(context, devfileName)
-		}
 
 		if source.GitSource != nil && source.GitSource.URL != "" {
 			var devfileBytes []byte
@@ -111,10 +98,18 @@ func (r *ComponentReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 					return ctrl.Result{}, err
 				}
 
-				endpoint := rawURL + "/" + devfilePath
-				devfileBytes, err = util.CurlEndpoint(endpoint)
+				// append context to the path if present
+				// context is usually set when the git repo is a multi-component repo (example - contains both frontend & backend)
+				var devfileDir string
+				if context == "" {
+					devfileDir = rawURL
+				} else {
+					devfileDir = path.Join(rawURL, context)
+				}
+
+				devfileBytes, err = util.DownloadDevfile(devfileDir)
 				if err != nil {
-					log.Error(err, fmt.Sprintf("Unable to curl %s, to read the devfile %v", devfilePath, req.NamespacedName))
+					log.Error(err, fmt.Sprintf("Unable to read the devfile from dir %s %v", devfileDir, req.NamespacedName))
 					r.SetCreateConditionAndUpdateCR(ctx, &component, err)
 					return ctrl.Result{}, err
 				}
@@ -202,9 +197,8 @@ func (r *ComponentReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 
 				log.Info(fmt.Sprintf("Updating the labels for Component %v", req.NamespacedName))
 				componentLabels := make(map[string]string)
-				componentLabels["appstudio.has/application"] = component.Spec.Application
-				componentLabels["appstudio.has/component"] = component.Spec.ComponentName
-
+				componentLabels[applicationKey] = component.Spec.Application
+				componentLabels[componentKey] = component.Spec.ComponentName
 				component.SetLabels(componentLabels)
 				err = setGitopsAnnotations(&component, hasAppDevfileData)
 				if err != nil {

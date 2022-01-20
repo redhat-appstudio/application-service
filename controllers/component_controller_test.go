@@ -1038,6 +1038,7 @@ type updateChecklist struct {
 	resources corev1.ResourceRequirements
 }
 
+// verifyHASComponentUpdates verifies if the devfile data has been properly updated with the Component CR values
 func verifyHASComponentUpdates(devfile data.DevfileData, checklist updateChecklist, goPkgTest *testing.T) {
 	// container component should be updated with the necessary hasComp properties
 	components, err := devfile.GetComponents(common.DevfileOptions{
@@ -1060,7 +1061,7 @@ func verifyHASComponentUpdates(devfile data.DevfileData, checklist updateCheckli
 
 		// Check the route
 		if checklist.route != "" {
-			route := attributes.Get("appstudio.has/route", &err)
+			route := attributes.Get(routeKey, &err)
 			if goPkgTest == nil {
 				Expect(err).Should(Not(HaveOccurred()))
 				Expect(route).Should(Equal(checklist.route))
@@ -1073,7 +1074,7 @@ func verifyHASComponentUpdates(devfile data.DevfileData, checklist updateCheckli
 
 		// Check the replica
 		if checklist.replica != 0 {
-			replicas := attributes.Get("appstudio.has/replicas", &err)
+			replicas := attributes.Get(replicaKey, &err)
 			if goPkgTest == nil {
 				Expect(err).Should(Not(HaveOccurred()))
 				Expect(replicas).Should(Equal(float64(checklist.replica)))
@@ -1087,7 +1088,7 @@ func verifyHASComponentUpdates(devfile data.DevfileData, checklist updateCheckli
 		// Check the storage limit
 		if _, ok := limits[corev1.ResourceStorage]; ok {
 			storageLimitChecklist := limits[corev1.ResourceStorage]
-			storageLimit := attributes.Get("appstudio.has/storageLimit", &err)
+			storageLimit := attributes.Get(storageLimitKey, &err)
 			if goPkgTest == nil {
 				Expect(err).Should(Not(HaveOccurred()))
 				Expect(storageLimit).Should(Equal(storageLimitChecklist.String()))
@@ -1101,7 +1102,7 @@ func verifyHASComponentUpdates(devfile data.DevfileData, checklist updateCheckli
 		// Check the storage request
 		if _, ok := requests[corev1.ResourceStorage]; ok {
 			storageRequestChecklist := requests[corev1.ResourceStorage]
-			storageRequest := attributes.Get("appstudio.has/storageRequest", &err)
+			storageRequest := attributes.Get(storageRequestKey, &err)
 			if goPkgTest == nil {
 				Expect(err).Should(Not(HaveOccurred()))
 				Expect(storageRequest).Should(Equal(storageRequestChecklist.String()))
@@ -1112,10 +1113,10 @@ func verifyHASComponentUpdates(devfile data.DevfileData, checklist updateCheckli
 			}
 		}
 
-		// Check the ephemereal storage limit
+		// Check the ephemeral storage limit
 		if _, ok := limits[corev1.ResourceEphemeralStorage]; ok {
 			ephemeralStorageLimitChecklist := limits[corev1.ResourceEphemeralStorage]
-			ephemeralStorageLimit := attributes.Get("appstudio.has/ephermealStorageLimit", &err)
+			ephemeralStorageLimit := attributes.Get(ephemeralStorageLimitKey, &err)
 			if goPkgTest == nil {
 				Expect(err).Should(Not(HaveOccurred()))
 				Expect(ephemeralStorageLimit).Should(Equal(ephemeralStorageLimitChecklist.String()))
@@ -1126,10 +1127,10 @@ func verifyHASComponentUpdates(devfile data.DevfileData, checklist updateCheckli
 			}
 		}
 
-		// Check the ephemereal storage request
+		// Check the ephemeral storage request
 		if _, ok := requests[corev1.ResourceEphemeralStorage]; ok {
 			ephemeralStorageRequestChecklist := requests[corev1.ResourceEphemeralStorage]
-			ephemeralStorageRequest := attributes.Get("appstudio.has/ephermealStorageRequest", &err)
+			ephemeralStorageRequest := attributes.Get(ephemeralStorageRequestKey, &err)
 			if goPkgTest == nil {
 				Expect(err).Should(Not(HaveOccurred()))
 				Expect(ephemeralStorageRequest).Should(Equal(ephemeralStorageRequestChecklist.String()))
