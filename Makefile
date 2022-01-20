@@ -269,7 +269,7 @@ debug: dlv generate manifests kustomize apply-crds
 .PHONY: debug-stop
 debug-stop:
 	echo "[INFO] Retrieving debug session PID..."; \
-	PID=$$(pgrep dlv || echo ""); \
+	PID=$$(pkill dlv || echo ""); \
 	if [ -n "$${PID}" ]; then \
 		echo "Terminate current debug session with PID: $${PID}"; \
 		kill -15 "$${PID}"; \
