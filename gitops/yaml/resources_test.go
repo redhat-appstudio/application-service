@@ -91,13 +91,6 @@ func assertResourceExists(t *testing.T, path string, resource interface{}) {
 	}
 }
 
-func assertErrorMatch(t *testing.T, msg string, testErr error) {
-	t.Helper()
-	if !errorMatch(t, msg, testErr) {
-		t.Fatalf("failed to match error: '%s' did not match %v", testErr, msg)
-	}
-}
-
 // ErrorMatch returns true if an error matches the required string.
 //
 // e.g. ErrorMatch(t, "failed to open", err) would return true if the

@@ -30,9 +30,9 @@ func TestIsExisting(t *testing.T) {
 
 	// Make sure at least one file and one dir exists in each file system for testing
 	fs.Create(fileName)
-	fs.Mkdir(dirName, 755)
+	fs.Mkdir(dirName, 0755)
 	inmemoryFs.Create(fileName)
-	inmemoryFs.Mkdir(dirName, 755)
+	inmemoryFs.Mkdir(dirName, 0755)
 
 	tests := []struct {
 		name          string
