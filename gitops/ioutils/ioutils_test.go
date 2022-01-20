@@ -24,6 +24,7 @@ import (
 func TestIsExisting(t *testing.T) {
 	fs := NewFilesystem()
 	inmemoryFs := NewMemoryFilesystem()
+	readOnlyFs := NewReadOnlyFs()
 	dirName := "/tmp/test-dir"
 	fileName := "/tmp/test-file"
 	secondFile := "/tmp/test-two"
@@ -68,6 +69,13 @@ func TestIsExisting(t *testing.T) {
 			want:          false,
 			wantErrString: "stat /tmp/test-two: no such file or directory",
 			fs:            fs,
+		},
+		{
+			name:          "Dir already exists, readonly fs",
+			path:          "/",
+			want:          true,
+			wantErrString: "\"/\": Dir already exists at /",
+			fs:            readOnlyFs,
 		},
 	}
 

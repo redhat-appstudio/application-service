@@ -23,6 +23,7 @@ import (
 	appstudiov1alpha1 "github.com/redhat-appstudio/application-service/api/v1alpha1"
 	"github.com/redhat-appstudio/application-service/gitops/ioutils"
 	"github.com/redhat-appstudio/application-service/gitops/testutils"
+	"github.com/spf13/afero"
 )
 
 func TestGenerateAndPush(t *testing.T) {
@@ -39,9 +40,11 @@ func TestGenerateAndPush(t *testing.T) {
 		},
 	}
 	component.Name = "test-component"
-
+	fs := ioutils.NewMemoryFilesystem()
+	readOnlyFs := ioutils.NewReadOnlyFs()
 	tests := []struct {
 		name          string
+		fs            afero.Afero
 		errors        *testutils.ErrorStack
 		outputs       [][]byte
 		want          []testutils.Execution
@@ -49,6 +52,7 @@ func TestGenerateAndPush(t *testing.T) {
 	}{
 		{
 			name:   "No errors",
+			fs:     fs,
 			errors: &testutils.ErrorStack{},
 			want: []testutils.Execution{
 				{
@@ -90,6 +94,7 @@ func TestGenerateAndPush(t *testing.T) {
 		},
 		{
 			name: "Git clone failure",
+			fs:   fs,
 			errors: &testutils.ErrorStack{
 				Errors: []error{
 					nil,
@@ -111,6 +116,7 @@ func TestGenerateAndPush(t *testing.T) {
 		},
 		{
 			name: "Git switch failure, git checkout failure",
+			fs:   fs,
 			errors: &testutils.ErrorStack{
 				Errors: []error{
 					errors.New("Permission denied"),
@@ -144,6 +150,7 @@ func TestGenerateAndPush(t *testing.T) {
 		},
 		{
 			name: "Git switch failure, git checkout success",
+			fs:   fs,
 			errors: &testutils.ErrorStack{
 				Errors: []error{
 					nil,
@@ -177,6 +184,7 @@ func TestGenerateAndPush(t *testing.T) {
 		},
 		{
 			name: "rm -rf failure",
+			fs:   fs,
 			errors: &testutils.ErrorStack{
 				Errors: []error{
 					errors.New("Permission Denied"),
@@ -210,6 +218,7 @@ func TestGenerateAndPush(t *testing.T) {
 		},
 		{
 			name: "git add failure",
+			fs:   fs,
 			errors: &testutils.ErrorStack{
 				Errors: []error{
 					errors.New("Fatal error"),
@@ -246,10 +255,11 @@ func TestGenerateAndPush(t *testing.T) {
 					Args:    []string{"add", "."},
 				},
 			},
-			wantErrString: "failed to add pipelines.yaml to repository in \"/fake/path/test-component\" \"test output1\": Fatal error",
+			wantErrString: "failed to add files for component \"test-component\" to repository in \"/fake/path/test-component\" \"test output1\": Fatal error",
 		},
 		{
 			name: "git diff failure",
+			fs:   fs,
 			errors: &testutils.ErrorStack{
 				Errors: []error{
 					errors.New("Permission Denied"),
@@ -297,6 +307,7 @@ func TestGenerateAndPush(t *testing.T) {
 		},
 		{
 			name: "git commit failure",
+			fs:   fs,
 			errors: &testutils.ErrorStack{
 				Errors: []error{
 					errors.New("Fatal error"),
@@ -351,6 +362,7 @@ func TestGenerateAndPush(t *testing.T) {
 		},
 		{
 			name: "git push failure",
+			fs:   fs,
 			errors: &testutils.ErrorStack{
 				Errors: []error{
 					errors.New("Fatal error"),
@@ -404,13 +416,69 @@ func TestGenerateAndPush(t *testing.T) {
 			},
 			wantErrString: "failed push remote to repository \"git@github.com:testing/testing.git\" \"\": Fatal error",
 		},
+		{
+			name: "gitops generate failure",
+			fs:   readOnlyFs,
+			errors: &testutils.ErrorStack{
+				Errors: []error{
+					errors.New("Fatal error"),
+					nil,
+					nil,
+					nil,
+					nil,
+					nil,
+					nil,
+				},
+			},
+			outputs: [][]byte{
+				[]byte("test output1"),
+				[]byte("test output2"),
+				[]byte("test output3"),
+				[]byte("test output4"),
+				[]byte("test output5"),
+				[]byte("test output6"),
+			},
+			want: []testutils.Execution{
+				{
+					BaseDir: outputPath,
+					Command: "git",
+					Args:    []string{"clone", repo, component.Name},
+				},
+				{
+					BaseDir: outputPath,
+					Command: "git",
+					Args:    []string{"switch", "main"},
+				},
+				{
+					BaseDir: outputPath,
+					Command: "rm",
+					Args:    []string{"-rf", "components/test-component"},
+				},
+				{
+					BaseDir: outputPath,
+					Command: "git",
+					Args:    []string{"--no-pager", "diff"},
+				},
+				{
+					BaseDir: outputPath,
+					Command: "git",
+					Args:    []string{"add", "."},
+				},
+				{
+					BaseDir: outputPath,
+					Command: "git",
+					Args:    []string{"commit", "-m", "Generate GitOps resources"},
+				},
+			},
+			wantErrString: "failed to generate the gitops resources in \"/fake/path/test-component/components/test-component/base\" for component \"test-component\"",
+		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			e := testutils.NewMockExecutor(tt.outputs...)
 			e.Errors = tt.errors
-			err := GenerateAndPush(outputPath, repo, component, e, ioutils.NewMemoryFilesystem(), "main", "/")
+			err := GenerateAndPush(outputPath, repo, component, e, tt.fs, "main", "/")
 
 			if tt.wantErrString != "" {
 				testutils.AssertErrorMatch(t, tt.wantErrString, err)

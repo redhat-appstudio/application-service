@@ -29,7 +29,7 @@ type Executor interface {
 }
 
 // GenerateAndPush takes in the flollowing args and generates the gitops resources for a given component
-// 1. outputPath: Where
+// 1. outputPath: Where to output the gitops resources to.
 // 2. remote: A string of the form https://$token@github.com/<org>/<repo>. Corresponds to the component's gitops repository
 // 2. component: A component struct corresponding to a single Component in an Application in AS
 // 4. The executor to use to execute the git commands (either gitops.executor or gitops.mockExecutor)
@@ -58,10 +58,12 @@ func GenerateAndPush(outputPath string, remote string, component appstudiov1alph
 
 	// Generate the gitops resources
 	componentPath := filepath.Join(repoPath, context, "components", componentName, "base")
-	generate(appFs, componentPath, component)
+	if err := Generate(appFs, componentPath, component); err != nil {
+		return fmt.Errorf("failed to generate the gitops resources in %q for component %q: %s", componentPath, componentName, err)
+	}
 
 	if out, err := e.Execute(repoPath, "git", "add", "."); err != nil {
-		return fmt.Errorf("failed to add pipelines.yaml to repository in %q %q: %s", repoPath, string(out), err)
+		return fmt.Errorf("failed to add files for component %q to repository in %q %q: %s", componentName, repoPath, string(out), err)
 	}
 
 	// See if any files changed, and if so, commit and push them up to the repository
@@ -72,7 +74,7 @@ func GenerateAndPush(outputPath string, remote string, component appstudiov1alph
 		if out, err := e.Execute(repoPath, "git", "commit", "-m", "Generate GitOps resources"); err != nil {
 			return fmt.Errorf("failed to commit files to repository in %q %q: %s", repoPath, string(out), err)
 		}
-		if out, err := e.Execute(repoPath, "git", "push", "origin", "main"); err != nil {
+		if out, err := e.Execute(repoPath, "git", "push", "origin", branch); err != nil {
 			return fmt.Errorf("failed push remote to repository %q %q: %s", remote, string(out), err)
 		}
 	}

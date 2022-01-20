@@ -18,7 +18,6 @@ package controllers
 
 import (
 	"errors"
-	"os"
 	"reflect"
 	"testing"
 
@@ -30,6 +29,7 @@ import (
 	"github.com/redhat-appstudio/application-service/gitops/ioutils"
 	"github.com/redhat-appstudio/application-service/gitops/testutils"
 	"github.com/redhat-appstudio/application-service/pkg/github"
+	"github.com/spf13/afero"
 	ctrl "sigs.k8s.io/controller-runtime"
 
 	devfileApi "github.com/devfile/api/v2/pkg/devfile"
@@ -97,6 +97,36 @@ func TestSetGitOpsAnnotations(t *testing.T) {
 			},
 			wantErr: false,
 		},
+		{
+			name: "Application devfile, gitops branch with invalid value",
+			devfileData: &v2.DevfileV2{
+				Devfile: v1alpha2.Devfile{
+					DevfileHeader: devfileApi.DevfileHeader{
+						SchemaVersion: string(data.APISchemaVersion220),
+						Metadata: devfileApi.DevfileMetadata{
+							Name:       "petclinic",
+							Attributes: attributes.Attributes{}.PutString("gitOpsRepository.url", "https://github.com/testorg/petclinic-gitops").Put("gitOpsRepository.branch", appstudiov1alpha1.Component{}, nil),
+						},
+					},
+				},
+			},
+			wantErr: true,
+		},
+		{
+			name: "Application devfile, gitops context with invalid value",
+			devfileData: &v2.DevfileV2{
+				Devfile: v1alpha2.Devfile{
+					DevfileHeader: devfileApi.DevfileHeader{
+						SchemaVersion: string(data.APISchemaVersion220),
+						Metadata: devfileApi.DevfileMetadata{
+							Name:       "petclinic",
+							Attributes: attributes.Attributes{}.PutString("gitOpsRepository.url", "https://github.com/testorg/petclinic-gitops").Put("gitOpsRepository.context", appstudiov1alpha1.Component{}, nil),
+						},
+					},
+				},
+			},
+			wantErr: true,
+		},
 	}
 
 	for _, tt := range tests {
@@ -119,12 +149,13 @@ func TestSetGitOpsAnnotations(t *testing.T) {
 func TestGenerateGitops(t *testing.T) {
 	executor := testutils.NewMockExecutor()
 	appFS := ioutils.NewMemoryFilesystem()
+	readOnlyFs := ioutils.NewReadOnlyFs()
+
 	r := &ComponentReconciler{
 		Log:       ctrl.Log.WithName("controllers").WithName("Component"),
 		GitHubOrg: github.AppStudioAppDataOrg,
 		GitToken:  "fake-token",
 		Executor:  executor,
-		AppFS:     appFS,
 	}
 
 	// Create a second reconciler for testing error scenarios
@@ -135,21 +166,19 @@ func TestGenerateGitops(t *testing.T) {
 		GitHubOrg: github.AppStudioAppDataOrg,
 		GitToken:  "fake-token",
 		Executor:  errExec,
-		AppFS:     ioutils.NewFilesystem(),
 	}
-
-	// Create a folder so that a conflict will occur in one test case
-	errReconciler.AppFS.Fs.Open(os.TempDir())
 
 	tests := []struct {
 		name       string
 		reconciler *ComponentReconciler
+		fs         afero.Afero
 		component  *appstudiov1alpha1.Component
 		wantErr    bool
 	}{
 		{
 			name:       "Simple application component, no errors",
 			reconciler: r,
+			fs:         appFS,
 			component: &appstudiov1alpha1.Component{
 				TypeMeta: metav1.TypeMeta{
 					APIVersion: "appstudio.redhat.com/v1alpha1",
@@ -174,6 +203,7 @@ func TestGenerateGitops(t *testing.T) {
 		{
 			name:       "Invalid application component, no labels",
 			reconciler: r,
+			fs:         appFS,
 			component: &appstudiov1alpha1.Component{
 				TypeMeta: metav1.TypeMeta{
 					APIVersion: "appstudio.redhat.com/v1alpha1",
@@ -194,6 +224,7 @@ func TestGenerateGitops(t *testing.T) {
 		{
 			name:       "Invalid application component, no gitops URL",
 			reconciler: r,
+			fs:         appFS,
 			component: &appstudiov1alpha1.Component{
 				TypeMeta: metav1.TypeMeta{
 					APIVersion: "appstudio.redhat.com/v1alpha1",
@@ -216,6 +247,7 @@ func TestGenerateGitops(t *testing.T) {
 		{
 			name:       "Invalid application component, invalid gitops url",
 			reconciler: r,
+			fs:         appFS,
 			component: &appstudiov1alpha1.Component{
 				TypeMeta: metav1.TypeMeta{
 					APIVersion: "appstudio.redhat.com/v1alpha1",
@@ -238,6 +270,7 @@ func TestGenerateGitops(t *testing.T) {
 		{
 			name:       "Application component, only gitops URL set",
 			reconciler: r,
+			fs:         appFS,
 			component: &appstudiov1alpha1.Component{
 				TypeMeta: metav1.TypeMeta{
 					APIVersion: "appstudio.redhat.com/v1alpha1",
@@ -260,6 +293,30 @@ func TestGenerateGitops(t *testing.T) {
 		{
 			name:       "Gitops generarion fails",
 			reconciler: errReconciler,
+			fs:         appFS,
+			component: &appstudiov1alpha1.Component{
+				TypeMeta: metav1.TypeMeta{
+					APIVersion: "appstudio.redhat.com/v1alpha1",
+					Kind:       "Component",
+				},
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "test-component",
+					Namespace: "test-namespace",
+					Annotations: map[string]string{
+						"gitOpsRepository.url": "https://github.com/appstudio/test-repo",
+					},
+				},
+				Spec: appstudiov1alpha1.ComponentSpec{
+					ComponentName: "test-component",
+					Application:   "test-app",
+				},
+			},
+			wantErr: true,
+		},
+		{
+			name:       "Fail to create temp folder",
+			reconciler: errReconciler,
+			fs:         readOnlyFs,
 			component: &appstudiov1alpha1.Component{
 				TypeMeta: metav1.TypeMeta{
 					APIVersion: "appstudio.redhat.com/v1alpha1",
@@ -282,6 +339,7 @@ func TestGenerateGitops(t *testing.T) {
 	}
 
 	for _, tt := range tests {
+		tt.reconciler.AppFS = tt.fs
 		t.Run(tt.name, func(t *testing.T) {
 			err := tt.reconciler.generateGitops(tt.component)
 			if (err != nil) != tt.wantErr {

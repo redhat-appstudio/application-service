@@ -31,6 +31,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/yaml"
 
+	"github.com/devfile/api/v2/pkg/attributes"
 	data "github.com/devfile/library/pkg/devfile/parser/data"
 	"github.com/go-logr/logr"
 	appstudiov1alpha1 "github.com/redhat-appstudio/application-service/api/v1alpha1"
@@ -191,7 +192,6 @@ func (r *ComponentReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 				if component.Spec.Build.ContainerImage != "" {
 					// Set the container image in the status
 					component.Status.ContainerImage = component.Spec.Build.ContainerImage
-					log.Info(component.Status.ContainerImage)
 				}
 
 				log.Info(fmt.Sprintf("Updating the labels for Component %v", req.NamespacedName))
@@ -302,14 +302,14 @@ func (r *ComponentReconciler) generateGitops(component *appstudiov1alpha1.Compon
 
 	componentAnnotations := component.GetAnnotations()
 	if componentAnnotations == nil {
-		return fmt.Errorf("unable to create gitops resource, component gitops labels are not set")
+		return fmt.Errorf("unable to create gitops resource, component gitops annotations are not set")
 	}
 
 	// Get the information about the gitops repository from the Component resource
 	var gitOpsURL, gitOpsBranch, gitOpsContext string
 	gitOpsURL = componentAnnotations["gitOpsRepository.url"]
 	if gitOpsURL == "" {
-		err := fmt.Errorf("unable to create gitops resource, gitOpsRepository.url label not set on component")
+		err := fmt.Errorf("unable to create gitops resource, gitOpsRepository.url annotation not set on component")
 		log.Error(err, "")
 		return err
 	}
@@ -367,13 +367,23 @@ func setGitopsAnnotations(component *appstudiov1alpha1.Component, devfileData da
 	componentAnnotations["gitOpsRepository.url"] = gitOpsURL
 
 	// Get the GitOps repository branch
-	gitOpsBranch := devfileAttributes.GetString("gitOpsRepository.branch", nil)
+	gitOpsBranch := devfileAttributes.GetString("gitOpsRepository.branch", &err)
+	if err != nil {
+		if _, ok := err.(*attributes.KeyNotFoundError); !ok {
+			return err
+		}
+	}
 	if gitOpsBranch != "" {
 		componentAnnotations["gitOpsRepository.branch"] = gitOpsBranch
 	}
 
 	// Get the GitOps repository context
-	gitOpsContext := devfileAttributes.GetString("gitOpsRepository.context", nil)
+	gitOpsContext := devfileAttributes.GetString("gitOpsRepository.context", &err)
+	if err != nil {
+		if _, ok := err.(*attributes.KeyNotFoundError); !ok {
+			return err
+		}
+	}
 	if gitOpsContext != "" {
 		componentAnnotations["gitOpsRepository.context"] = gitOpsContext
 	}

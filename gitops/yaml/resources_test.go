@@ -25,11 +25,12 @@ import (
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
-	res "github.com/redhat-appstudio/application-service/gitops/resources"
 	"github.com/spf13/afero"
 	appsv1 "k8s.io/api/apps/v1"
 	"sigs.k8s.io/yaml"
 )
+
+type Resources map[string]interface{}
 
 func TestWriteResources(t *testing.T) {
 	fs := afero.NewOsFs()
@@ -40,7 +41,7 @@ func TestWriteResources(t *testing.T) {
 	defer cleanup()
 	os.Setenv(homeEnv, path)
 	sampleYAML := appsv1.Deployment{}
-	r := res.Resources{
+	r := Resources{
 		"test/myfile.yaml": sampleYAML,
 	}
 

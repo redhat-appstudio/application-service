@@ -36,7 +36,7 @@ const (
 
 // Generate takes in a given Component CR and
 // spits out a deployment, service, and route file to disk
-func generate(fs afero.Fs, outputFolder string, component appstudiov1alpha1.Component) {
+func Generate(fs afero.Fs, outputFolder string, component appstudiov1alpha1.Component) error {
 	deployment := generateDeployment(component)
 
 	k := resources.Kustomization{}
@@ -55,7 +55,8 @@ func generate(fs afero.Fs, outputFolder string, component appstudiov1alpha1.Comp
 	}
 	resources["kustomization.yaml"] = k
 
-	yaml.WriteResources(fs, outputFolder, resources)
+	_, err := yaml.WriteResources(fs, outputFolder, resources)
+	return err
 }
 
 func generateDeployment(component appstudiov1alpha1.Component) *appsv1.Deployment {
@@ -86,9 +87,10 @@ func generateDeployment(component appstudiov1alpha1.Component) *appsv1.Deploymen
 					Containers: []corev1.Container{
 						{
 							Name:            "container-image",
-							Image:           "maven:latest",
+							Image:           component.Spec.Build.ContainerImage,
 							ImagePullPolicy: corev1.PullAlways,
 							Env:             component.Spec.Env,
+							Resources:       component.Spec.Resources,
 						},
 					},
 				},
@@ -122,11 +124,6 @@ func generateDeployment(component appstudiov1alpha1.Component) *appsv1.Deploymen
 				},
 			},
 		}
-	}
-
-	// If the build image is set, set it in the deployment
-	if component.Spec.Build.ContainerImage != "" {
-		deployment.Spec.Template.Spec.Containers[0].Image = component.Spec.Build.ContainerImage
 	}
 
 	return &deployment
@@ -188,6 +185,11 @@ func generateRoute(component appstudiov1alpha1.Component) *routev1.Route {
 				Weight: &weight,
 			},
 		},
+	}
+
+	// If the route field is set in the spec, set it to be the host for the route
+	if component.Spec.Route != "" {
+		route.Spec.Host = component.Spec.Route
 	}
 
 	return &route

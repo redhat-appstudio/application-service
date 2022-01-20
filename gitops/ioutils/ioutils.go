@@ -34,6 +34,11 @@ func NewMemoryFilesystem() afero.Afero {
 	return afero.Afero{Fs: afero.NewMemMapFs()}
 }
 
+// NewReadOnlyFs returns a read-only file system
+func NewReadOnlyFs() afero.Afero {
+	return afero.Afero{Fs: afero.NewReadOnlyFs(afero.NewOsFs())}
+}
+
 // IsExisting returns bool whether path exists
 func IsExisting(fs afero.Fs, path string) (bool, error) {
 	fileInfo, err := fs.Stat(path)

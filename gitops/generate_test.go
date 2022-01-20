@@ -23,6 +23,7 @@ import (
 	appstudiov1alpha1 "github.com/redhat-appstudio/application-service/api/v1alpha1"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/resource"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
 )
@@ -71,7 +72,6 @@ func TestGenerateDeployment(t *testing.T) {
 							Containers: []corev1.Container{
 								{
 									Name:            "container-image",
-									Image:           "maven:latest",
 									ImagePullPolicy: corev1.PullAlways,
 								},
 							},
@@ -99,6 +99,16 @@ func TestGenerateDeployment(t *testing.T) {
 						{
 							Name:  "test",
 							Value: "value",
+						},
+					},
+					Resources: corev1.ResourceRequirements{
+						Limits: corev1.ResourceList{
+							corev1.ResourceCPU:    resource.MustParse("2M"),
+							corev1.ResourceMemory: resource.MustParse("1Gi"),
+						},
+						Requests: corev1.ResourceList{
+							corev1.ResourceCPU:    resource.MustParse("1M"),
+							corev1.ResourceMemory: resource.MustParse("256Mi"),
 						},
 					},
 				},
@@ -155,6 +165,16 @@ func TestGenerateDeployment(t *testing.T) {
 												Port: intstr.FromInt(5000),
 												Path: "/",
 											},
+										},
+									},
+									Resources: corev1.ResourceRequirements{
+										Limits: corev1.ResourceList{
+											corev1.ResourceCPU:    resource.MustParse("2M"),
+											corev1.ResourceMemory: resource.MustParse("1Gi"),
+										},
+										Requests: corev1.ResourceList{
+											corev1.ResourceCPU:    resource.MustParse("1M"),
+											corev1.ResourceMemory: resource.MustParse("256Mi"),
 										},
 									},
 								},
@@ -272,6 +292,47 @@ func TestGenerateRoute(t *testing.T) {
 					Labels:    labels,
 				},
 				Spec: routev1.RouteSpec{
+					Port: &routev1.RoutePort{
+						TargetPort: intstr.FromInt(5000),
+					},
+					TLS: &routev1.TLSConfig{
+						InsecureEdgeTerminationPolicy: routev1.InsecureEdgeTerminationPolicyRedirect,
+						Termination:                   routev1.TLSTerminationEdge,
+					},
+					To: routev1.RouteTargetReference{
+						Kind:   "Service",
+						Name:   componentName,
+						Weight: &weight,
+					},
+				},
+			},
+		},
+		{
+			name: "Component object with route/hostname set",
+			component: appstudiov1alpha1.Component{
+				ObjectMeta: v1.ObjectMeta{
+					Name:      componentName,
+					Namespace: namespace,
+				},
+				Spec: appstudiov1alpha1.ComponentSpec{
+					ComponentName: "test-component",
+					Application:   "test-application",
+					TargetPort:    5000,
+					Route:         "example.com",
+				},
+			},
+			wantRoute: routev1.Route{
+				TypeMeta: v1.TypeMeta{
+					APIVersion: "v1",
+					Kind:       "Route",
+				},
+				ObjectMeta: v1.ObjectMeta{
+					Name:      componentName,
+					Namespace: namespace,
+					Labels:    labels,
+				},
+				Spec: routev1.RouteSpec{
+					Host: "example.com",
 					Port: &routev1.RoutePort{
 						TargetPort: intstr.FromInt(5000),
 					},
