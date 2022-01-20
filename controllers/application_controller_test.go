@@ -49,13 +49,15 @@ var _ = Describe("Application controller", func() {
 		It("Should create successfully with generated repositories", func() {
 			ctx := context.Background()
 
+			applicationName := HASAppName + "1"
+
 			hasApp := &appstudiov1alpha1.Application{
 				TypeMeta: metav1.TypeMeta{
 					APIVersion: "appstudio.redhat.com/v1alpha1",
 					Kind:       "Application",
 				},
 				ObjectMeta: metav1.ObjectMeta{
-					Name:      HASAppName,
+					Name:      applicationName,
 					Namespace: HASAppNamespace,
 				},
 				Spec: appstudiov1alpha1.ApplicationSpec{
@@ -68,7 +70,7 @@ var _ = Describe("Application controller", func() {
 
 			// Look up the has app resource that was created.
 			// num(conditions) may still be < 1 on the first try, so retry until at least _some_ condition is set
-			hasAppLookupKey := types.NamespacedName{Name: HASAppName, Namespace: HASAppNamespace}
+			hasAppLookupKey := types.NamespacedName{Name: applicationName, Namespace: HASAppNamespace}
 			createdHasApp := &appstudiov1alpha1.Application{}
 			Eventually(func() bool {
 				k8sClient.Get(context.Background(), hasAppLookupKey, createdHasApp)
@@ -139,13 +141,15 @@ var _ = Describe("Application controller", func() {
 		It("Should create successfully with appmodel repository set to gitops repository", func() {
 			ctx := context.Background()
 
+			applicationName := HASAppName + "2"
+
 			hasApp := &appstudiov1alpha1.Application{
 				TypeMeta: metav1.TypeMeta{
 					APIVersion: "appstudio.redhat.com/v1alpha1",
 					Kind:       "Application",
 				},
 				ObjectMeta: metav1.ObjectMeta{
-					Name:      HASAppName,
+					Name:      applicationName,
 					Namespace: HASAppNamespace,
 				},
 				Spec: appstudiov1alpha1.ApplicationSpec{
@@ -161,7 +165,7 @@ var _ = Describe("Application controller", func() {
 
 			// Look up the has app resource that was created.
 			// num(conditions) may still be < 1 on the first try, so retry until at least _some_ condition is set
-			hasAppLookupKey := types.NamespacedName{Name: HASAppName, Namespace: HASAppNamespace}
+			hasAppLookupKey := types.NamespacedName{Name: applicationName, Namespace: HASAppNamespace}
 			createdHasApp := &appstudiov1alpha1.Application{}
 			Eventually(func() bool {
 				k8sClient.Get(context.Background(), hasAppLookupKey, createdHasApp)
@@ -188,13 +192,15 @@ var _ = Describe("Application controller", func() {
 		It("Should create successfully with generated gitops repository", func() {
 			ctx := context.Background()
 
+			applicationName := HASAppName + "3"
+
 			hasApp := &appstudiov1alpha1.Application{
 				TypeMeta: metav1.TypeMeta{
 					APIVersion: "appstudio.redhat.com/v1alpha1",
 					Kind:       "Application",
 				},
 				ObjectMeta: metav1.ObjectMeta{
-					Name:      HASAppName,
+					Name:      applicationName,
 					Namespace: HASAppNamespace,
 				},
 				Spec: appstudiov1alpha1.ApplicationSpec{
@@ -210,7 +216,7 @@ var _ = Describe("Application controller", func() {
 
 			// Look up the has app resource that was created.
 			// num(conditions) may still be < 1 on the first try, so retry until at least _some_ condition is set
-			hasAppLookupKey := types.NamespacedName{Name: HASAppName, Namespace: HASAppNamespace}
+			hasAppLookupKey := types.NamespacedName{Name: applicationName, Namespace: HASAppNamespace}
 			createdHasApp := &appstudiov1alpha1.Application{}
 
 			Eventually(func() bool {
@@ -238,13 +244,15 @@ var _ = Describe("Application controller", func() {
 		It("Should update successfully with updated description", func() {
 			ctx := context.Background()
 
+			applicationName := HASAppName + "4"
+
 			hasApp := &appstudiov1alpha1.Application{
 				TypeMeta: metav1.TypeMeta{
 					APIVersion: "appstudio.redhat.com/v1alpha1",
 					Kind:       "Application",
 				},
 				ObjectMeta: metav1.ObjectMeta{
-					Name:      HASAppName,
+					Name:      applicationName,
 					Namespace: HASAppNamespace,
 				},
 				Spec: appstudiov1alpha1.ApplicationSpec{
@@ -260,7 +268,7 @@ var _ = Describe("Application controller", func() {
 
 			// Look up the has app resource that was created.
 			// num(conditions) may still be < 1 on the first try, so retry until at least _some_ condition is set
-			hasAppLookupKey := types.NamespacedName{Name: HASAppName, Namespace: HASAppNamespace}
+			hasAppLookupKey := types.NamespacedName{Name: applicationName, Namespace: HASAppNamespace}
 			fetchedHasApp := &appstudiov1alpha1.Application{}
 			Eventually(func() bool {
 				k8sClient.Get(context.Background(), hasAppLookupKey, fetchedHasApp)

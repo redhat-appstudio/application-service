@@ -42,8 +42,8 @@ var _ = Describe("Component controller", func() {
 
 	// Define utility constants for object names and testing timeouts/durations and intervals.
 	const (
-		HASAppName      = "test-application-123"
-		HASCompName     = "test-component-123"
+		HASAppName      = "test-application"
+		HASCompName     = "test-component"
 		HASAppNamespace = "default"
 		DisplayName     = "petclinic"
 		Description     = "Simple petclinic app"
@@ -156,13 +156,16 @@ var _ = Describe("Component controller", func() {
 		It("Should create successfully and update the Application", func() {
 			ctx := context.Background()
 
+			applicationName := HASAppName + "1"
+			componentName := HASCompName + "1"
+
 			hasApp := &appstudiov1alpha1.Application{
 				TypeMeta: metav1.TypeMeta{
 					APIVersion: "appstudio.redhat.com/v1alpha1",
 					Kind:       "Application",
 				},
 				ObjectMeta: metav1.ObjectMeta{
-					Name:      HASAppName,
+					Name:      applicationName,
 					Namespace: HASAppNamespace,
 				},
 				Spec: appstudiov1alpha1.ApplicationSpec{
@@ -179,12 +182,12 @@ var _ = Describe("Component controller", func() {
 					Kind:       "Component",
 				},
 				ObjectMeta: metav1.ObjectMeta{
-					Name:      HASCompName,
+					Name:      componentName,
 					Namespace: HASAppNamespace,
 				},
 				Spec: appstudiov1alpha1.ComponentSpec{
 					ComponentName: ComponentName,
-					Application:   HASAppName,
+					Application:   applicationName,
 					Source: appstudiov1alpha1.ComponentSource{
 						ComponentSourceUnion: appstudiov1alpha1.ComponentSourceUnion{
 							GitSource: &appstudiov1alpha1.GitSource{
@@ -198,7 +201,7 @@ var _ = Describe("Component controller", func() {
 
 			// Look up the has app resource that was created.
 			// num(conditions) may still be < 1 on the first try, so retry until at least _some_ condition is set
-			hasCompLookupKey := types.NamespacedName{Name: HASCompName, Namespace: HASAppNamespace}
+			hasCompLookupKey := types.NamespacedName{Name: componentName, Namespace: HASAppNamespace}
 			createdHasComp := &appstudiov1alpha1.Component{}
 			Eventually(func() bool {
 				k8sClient.Get(context.Background(), hasCompLookupKey, createdHasComp)
@@ -208,7 +211,7 @@ var _ = Describe("Component controller", func() {
 			// Make sure the devfile model was properly set in Component
 			Expect(createdHasComp.Status.Devfile).Should(Not(Equal("")))
 
-			hasAppLookupKey := types.NamespacedName{Name: HASAppName, Namespace: HASAppNamespace}
+			hasAppLookupKey := types.NamespacedName{Name: applicationName, Namespace: HASAppNamespace}
 			createdHasApp := &appstudiov1alpha1.Application{}
 			Eventually(func() bool {
 				k8sClient.Get(context.Background(), hasAppLookupKey, createdHasApp)
@@ -259,13 +262,16 @@ var _ = Describe("Component controller", func() {
 		It("Should create successfully on a valid url", func() {
 			ctx := context.Background()
 
+			applicationName := HASAppName + "2"
+			componentName := HASCompName + "2"
+
 			hasApp := &appstudiov1alpha1.Application{
 				TypeMeta: metav1.TypeMeta{
 					APIVersion: "appstudio.redhat.com/v1alpha1",
 					Kind:       "Application",
 				},
 				ObjectMeta: metav1.ObjectMeta{
-					Name:      HASAppName,
+					Name:      applicationName,
 					Namespace: HASAppNamespace,
 				},
 				Spec: appstudiov1alpha1.ApplicationSpec{
@@ -282,12 +288,12 @@ var _ = Describe("Component controller", func() {
 					Kind:       "Component",
 				},
 				ObjectMeta: metav1.ObjectMeta{
-					Name:      HASCompName,
+					Name:      componentName,
 					Namespace: HASAppNamespace,
 				},
 				Spec: appstudiov1alpha1.ComponentSpec{
 					ComponentName: ComponentName,
-					Application:   HASAppName,
+					Application:   applicationName,
 					Source: appstudiov1alpha1.ComponentSource{
 						ComponentSourceUnion: appstudiov1alpha1.ComponentSourceUnion{
 							GitSource: &appstudiov1alpha1.GitSource{
@@ -302,7 +308,7 @@ var _ = Describe("Component controller", func() {
 
 			// Look up the has app resource that was created.
 			// num(conditions) may still be < 1 on the first try, so retry until at least _some_ condition is set
-			hasCompLookupKey := types.NamespacedName{Name: HASCompName, Namespace: HASAppNamespace}
+			hasCompLookupKey := types.NamespacedName{Name: componentName, Namespace: HASAppNamespace}
 			createdHasComp := &appstudiov1alpha1.Component{}
 			Eventually(func() bool {
 				k8sClient.Get(context.Background(), hasCompLookupKey, createdHasComp)
@@ -312,7 +318,7 @@ var _ = Describe("Component controller", func() {
 			// Make sure the devfile model was properly set in Component
 			Expect(createdHasComp.Status.Devfile).Should(Not(Equal("")))
 
-			hasAppLookupKey := types.NamespacedName{Name: HASAppName, Namespace: HASAppNamespace}
+			hasAppLookupKey := types.NamespacedName{Name: applicationName, Namespace: HASAppNamespace}
 			createdHasApp := &appstudiov1alpha1.Application{}
 			Eventually(func() bool {
 				k8sClient.Get(context.Background(), hasAppLookupKey, createdHasApp)
@@ -366,13 +372,16 @@ var _ = Describe("Component controller", func() {
 		It("Should error out on a bad url", func() {
 			ctx := context.Background()
 
+			applicationName := HASAppName + "3"
+			componentName := HASCompName + "3"
+
 			hasApp := &appstudiov1alpha1.Application{
 				TypeMeta: metav1.TypeMeta{
 					APIVersion: "appstudio.redhat.com/v1alpha1",
 					Kind:       "Application",
 				},
 				ObjectMeta: metav1.ObjectMeta{
-					Name:      HASAppName,
+					Name:      applicationName,
 					Namespace: HASAppNamespace,
 				},
 				Spec: appstudiov1alpha1.ApplicationSpec{
@@ -389,12 +398,12 @@ var _ = Describe("Component controller", func() {
 					Kind:       "Component",
 				},
 				ObjectMeta: metav1.ObjectMeta{
-					Name:      HASCompName,
+					Name:      componentName,
 					Namespace: HASAppNamespace,
 				},
 				Spec: appstudiov1alpha1.ComponentSpec{
 					ComponentName: ComponentName,
-					Application:   HASAppName,
+					Application:   applicationName,
 					Source: appstudiov1alpha1.ComponentSource{
 						ComponentSourceUnion: appstudiov1alpha1.ComponentSourceUnion{
 							GitSource: &appstudiov1alpha1.GitSource{
@@ -409,7 +418,7 @@ var _ = Describe("Component controller", func() {
 
 			// Look up the has app resource that was created.
 			// num(conditions) may still be < 1 on the first try, so retry until at least _some_ condition is set
-			hasCompLookupKey := types.NamespacedName{Name: HASCompName, Namespace: HASAppNamespace}
+			hasCompLookupKey := types.NamespacedName{Name: componentName, Namespace: HASAppNamespace}
 			createdHasComp := &appstudiov1alpha1.Component{}
 			Eventually(func() bool {
 				k8sClient.Get(context.Background(), hasCompLookupKey, createdHasComp)
@@ -421,7 +430,7 @@ var _ = Describe("Component controller", func() {
 			Expect(createdHasComp.Status.Conditions[len(createdHasComp.Status.Conditions)-1].Reason).Should(Equal("Error"))
 			Expect(strings.ToLower(createdHasComp.Status.Conditions[len(createdHasComp.Status.Conditions)-1].Message)).Should(ContainSubstring("unable to get"))
 
-			hasAppLookupKey := types.NamespacedName{Name: HASAppName, Namespace: HASAppNamespace}
+			hasAppLookupKey := types.NamespacedName{Name: applicationName, Namespace: HASAppNamespace}
 
 			// Delete the specified HASComp resource
 			deleteHASCompCR(hasCompLookupKey)
@@ -435,18 +444,21 @@ var _ = Describe("Component controller", func() {
 		It("Should error out because an Application is missing", func() {
 			ctx := context.Background()
 
+			applicationName := HASAppName + "4"
+			componentName := HASCompName + "4"
+
 			hasComp := &appstudiov1alpha1.Component{
 				TypeMeta: metav1.TypeMeta{
 					APIVersion: "appstudio.redhat.com/v1alpha1",
 					Kind:       "Component",
 				},
 				ObjectMeta: metav1.ObjectMeta{
-					Name:      HASCompName,
+					Name:      componentName,
 					Namespace: HASAppNamespace,
 				},
 				Spec: appstudiov1alpha1.ComponentSpec{
 					ComponentName: ComponentName,
-					Application:   HASAppName,
+					Application:   applicationName,
 					Source: appstudiov1alpha1.ComponentSource{
 						ComponentSourceUnion: appstudiov1alpha1.ComponentSourceUnion{
 							GitSource: &appstudiov1alpha1.GitSource{
@@ -460,7 +472,7 @@ var _ = Describe("Component controller", func() {
 
 			// Look up the has app resource that was created.
 			// num(conditions) may still be < 1 on the first try, so retry until at least _some_ condition is set
-			hasCompLookupKey := types.NamespacedName{Name: HASCompName, Namespace: HASAppNamespace}
+			hasCompLookupKey := types.NamespacedName{Name: componentName, Namespace: HASAppNamespace}
 			createdHasComp := &appstudiov1alpha1.Component{}
 			Eventually(func() bool {
 				k8sClient.Get(context.Background(), hasCompLookupKey, createdHasComp)
@@ -482,13 +494,16 @@ var _ = Describe("Component controller", func() {
 		It("Should create successfully and update the Application", func() {
 			ctx := context.Background()
 
+			applicationName := HASAppName + "5"
+			componentName := HASCompName + "5"
+
 			hasApp := &appstudiov1alpha1.Application{
 				TypeMeta: metav1.TypeMeta{
 					APIVersion: "appstudio.redhat.com/v1alpha1",
 					Kind:       "Application",
 				},
 				ObjectMeta: metav1.ObjectMeta{
-					Name:      HASAppName,
+					Name:      applicationName,
 					Namespace: HASAppNamespace,
 				},
 				Spec: appstudiov1alpha1.ApplicationSpec{
@@ -578,12 +593,12 @@ var _ = Describe("Component controller", func() {
 					Kind:       "Component",
 				},
 				ObjectMeta: metav1.ObjectMeta{
-					Name:      HASCompName,
+					Name:      componentName,
 					Namespace: HASAppNamespace,
 				},
 				Spec: appstudiov1alpha1.ComponentSpec{
 					ComponentName: ComponentName,
-					Application:   HASAppName,
+					Application:   applicationName,
 					Source: appstudiov1alpha1.ComponentSource{
 						ComponentSourceUnion: appstudiov1alpha1.ComponentSourceUnion{
 							GitSource: &appstudiov1alpha1.GitSource{
@@ -601,7 +616,7 @@ var _ = Describe("Component controller", func() {
 			Expect(k8sClient.Create(ctx, hasComp)).Should(Succeed())
 
 			// Look up the has app resource that was created.
-			hasCompLookupKey := types.NamespacedName{Name: HASCompName, Namespace: HASAppNamespace}
+			hasCompLookupKey := types.NamespacedName{Name: componentName, Namespace: HASAppNamespace}
 			createdHasComp := &appstudiov1alpha1.Component{}
 			Eventually(func() bool {
 				k8sClient.Get(context.Background(), hasCompLookupKey, createdHasComp)
@@ -611,7 +626,7 @@ var _ = Describe("Component controller", func() {
 			// Make sure the devfile model was properly set in Component
 			Expect(createdHasComp.Status.Devfile).Should(Not(Equal("")))
 
-			hasAppLookupKey := types.NamespacedName{Name: HASAppName, Namespace: HASAppNamespace}
+			hasAppLookupKey := types.NamespacedName{Name: applicationName, Namespace: HASAppNamespace}
 			createdHasApp := &appstudiov1alpha1.Application{}
 			Eventually(func() bool {
 				k8sClient.Get(context.Background(), hasAppLookupKey, createdHasApp)
