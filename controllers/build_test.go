@@ -158,7 +158,45 @@ func Test_paramsForInitialBuild(t *testing.T) {
 		args args
 		want []tektonapi.Param
 	}{
-		// TODO: Add test cases.
+		{
+			name: "container image not provided",
+			args: args{
+				component: appstudiov1alpha1.Component{
+					ObjectMeta: v1.ObjectMeta{
+						Name:      "testcomponent",
+						Namespace: "kcpworkspacename",
+					},
+					Spec: appstudiov1alpha1.ComponentSpec{
+						Source: appstudiov1alpha1.ComponentSource{
+							ComponentSourceUnion: appstudiov1alpha1.ComponentSourceUnion{
+								GitSource: &appstudiov1alpha1.GitSource{
+									URL: "https://a/b/c",
+								},
+							},
+						},
+						Build: appstudiov1alpha1.Build{
+							ContainerImage: "whatever-is-set",
+						},
+					},
+				},
+			},
+			want: []tektonapi.Param{
+				{
+					Name: "git-url",
+					Value: tektonapi.ArrayOrString{
+						Type:      tektonapi.ParamTypeString,
+						StringVal: "https://a/b/c",
+					},
+				},
+				{
+					Name: "output-image",
+					Value: tektonapi.ArrayOrString{
+						Type:      tektonapi.ParamTypeString,
+						StringVal: "whatever-is-set",
+					},
+				},
+			},
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
