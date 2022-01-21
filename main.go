@@ -1,5 +1,5 @@
 /*
-Copyright 2021.
+Copyright 2021-2022.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -41,6 +41,8 @@ import (
 	"github.com/google/go-github/v41/github"
 	appstudiov1alpha1 "github.com/redhat-appstudio/application-service/api/v1alpha1"
 	"github.com/redhat-appstudio/application-service/controllers"
+	"github.com/redhat-appstudio/application-service/gitops"
+	"github.com/redhat-appstudio/application-service/gitops/ioutils"
 	//+kubebuilder:scaffold:imports
 )
 
@@ -127,9 +129,12 @@ func main() {
 		os.Exit(1)
 	}
 	if err = (&controllers.ComponentReconciler{
-		Client: mgr.GetClient(),
-		Scheme: mgr.GetScheme(),
-		Log:    ctrl.Log.WithName("controllers").WithName("Component"),
+		Client:   mgr.GetClient(),
+		Scheme:   mgr.GetScheme(),
+		Log:      ctrl.Log.WithName("controllers").WithName("Component"),
+		Executor: gitops.NewCmdExecutor(),
+		AppFS:    ioutils.NewFilesystem(),
+		GitToken: ghToken,
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "Component")
 		os.Exit(1)

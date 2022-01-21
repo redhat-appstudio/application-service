@@ -40,7 +40,7 @@ func TestGenerateNewRepositoryName(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			sanitizedName := util.SanitizeDisplayName(tt.displayName)
+			sanitizedName := util.SanitizeName(tt.displayName)
 			generatedRepo := GenerateNewRepositoryName(tt.displayName, tt.namespace)
 
 			if !strings.Contains(generatedRepo, sanitizedName) {
