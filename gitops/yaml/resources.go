@@ -75,10 +75,3 @@ func MarshalOutput(out io.Writer, output interface{}) error {
 	}
 	return nil
 }
-
-// AddKustomize adds kustomization.yaml.  Name and items become map key and value, respectively
-func AddKustomize(fs afero.Fs, name string, items []string, path string) error {
-	content := []interface{}{}
-	content = append(content, map[string]interface{}{name: items})
-	return MarshalItemToFile(fs, path, content)
-}
