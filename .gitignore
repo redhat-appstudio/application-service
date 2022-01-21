@@ -3,3 +3,4 @@ controller-gen
 setup-envtest
 bin/*
 cover.out
+__debug_bin

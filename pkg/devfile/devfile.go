@@ -25,6 +25,17 @@ import (
 	appstudiov1alpha1 "github.com/redhat-appstudio/application-service/api/v1alpha1"
 )
 
+const (
+	DevfileName       = "devfile.yaml"
+	HiddenDevfileName = ".devfile.yaml"
+	HiddenDevfileDir  = ".devfile"
+
+	Devfile                = DevfileName                                // devfile.yaml
+	HiddenDevfile          = HiddenDevfileName                          // .devfile.yaml
+	HiddenDirDevfile       = HiddenDevfileDir + "/" + DevfileName       // .devfile/devfile.yaml
+	HiddenDirHiddenDevfile = HiddenDevfileDir + "/" + HiddenDevfileName // .devfile/.devfile.yaml
+)
+
 func ParseDevfileModel(devfileModel string) (data.DevfileData, error) {
 	// Retrieve the devfile from the body of the resource
 	devfileBytes := []byte(devfileModel)
