@@ -6,6 +6,37 @@ metadata:
   creationTimestamp: null
   name: manager-role
 rules:
+- verbs:
+    - get
+    - list
+    - create
+  apiGroups:
+    - persistentvolumeclaims
+    - persistentvolumeclaims/status
+- verbs:
+    - create
+    - delete
+    - deletecollection
+    - get
+    - list
+    - patch
+    - update
+    - watch
+  apiGroups:
+    - tekton.dev
+  resources:
+    - pipelineruns
+- apiGroups:
+    - triggers.tekton.dev
+  resources:
+    - eventlisteners
+    - triggers
+    - triggertemplates
+  verbs:
+    - create
+    - update
+    - patch
+    - delete
 - apiGroups:
   - appstudio.redhat.com
   resources:
