@@ -247,15 +247,13 @@ catalog-push: ## Push a catalog image.
 APPLICATIONS_CRD=$(shell pwd)/config/crd/bases/appstudio.redhat.com_applications.yaml
 COMPONENT_DETECTION_QUERIES_CRD=$(shell pwd)/config/crd/bases/appstudio.redhat.com_componentdetectionqueries.yaml
 COMPONENT_CRD=$(shell pwd)/config/crd/bases/appstudio.redhat.com_components.yaml
-PUSHES_CRD=$(shell pwd)/config/crd/bases/appstudio.redhat.com_pushes.yaml
 
 .PHONY: apply-crds
 apply-crds:
 	kubectl apply \
 	-f $(APPLICATIONS_CRD) \
 	-f $(COMPONENT_DETECTION_QUERIES_CRD) \
-	-f $(COMPONENT_CRD) \
-	-f $(PUSHES_CRD)
+	-f $(COMPONENT_CRD)
 
 .PHONY: debug
 debug: dlv generate manifests kustomize apply-crds
