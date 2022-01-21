@@ -24,20 +24,27 @@ import (
 	"path"
 	"reflect"
 
+	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
+	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	"sigs.k8s.io/yaml"
 
 	"github.com/devfile/api/v2/pkg/attributes"
 	data "github.com/devfile/library/pkg/devfile/parser/data"
 	"github.com/go-logr/logr"
+	routev1 "github.com/openshift/api/route/v1"
 	appstudiov1alpha1 "github.com/redhat-appstudio/application-service/api/v1alpha1"
 	"github.com/redhat-appstudio/application-service/gitops"
 	devfile "github.com/redhat-appstudio/application-service/pkg/devfile"
 	util "github.com/redhat-appstudio/application-service/pkg/util"
+	tektonapi "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
+	triggersapi "github.com/tektoncd/triggers/pkg/apis/triggers/v1alpha1"
+
 	"github.com/spf13/afero"
 )
 
@@ -295,18 +302,129 @@ func (r *ComponentReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 		component.Spec.Build.ContainerImage = "quay.io/redhat-appstudio/user-workload:" + component.Namespace + "-" + component.Name
 	}
 
-	if component.Spec.Build.ContainerImage != "" {
+	workspaceStorage := commonStorage("appstudio", component.Namespace)
+	pvc := &corev1.PersistentVolumeClaim{}
+	err = r.Get(ctx, types.NamespacedName{Name: workspaceStorage.Name, Namespace: workspaceStorage.Namespace}, pvc)
+	if err != nil {
+		if errors.IsNotFound(err) {
+			err = r.Client.Create(ctx, &workspaceStorage)
+			if err != nil {
+				log.Error(err, fmt.Sprintf("Unable to create common storage %v", workspaceStorage))
+				return ctrl.Result{}, err
+			}
+		} else {
+			log.Error(err, fmt.Sprintf("Unable to get common storage %v", workspaceStorage))
+			return ctrl.Result{}, err
+		}
+	}
 
-		// TODO: would move this to the user's gitops repository under /.tekton
-		webhookURL, err := r.setupWebhookTriggeredImageBuilds(ctx, log, component)
-		if err != nil {
-			log.Error(err, "Unable to setup builds")
+	triggerTemplate, err := triggerTemplate(component)
+	if err != nil {
+		log.Error(err, "Unable to generate triggerTemplate ")
+		return ctrl.Result{}, err
+	}
+
+	err = controllerutil.SetOwnerReference(&component, triggerTemplate, r.Scheme)
+	if err != nil {
+		log.Error(err, fmt.Sprintf("Unable to set owner reference for %v", triggerTemplate))
+	}
+	err = r.Get(ctx, types.NamespacedName{Name: triggerTemplate.Name, Namespace: triggerTemplate.Namespace}, &triggersapi.TriggerTemplate{})
+	if err != nil {
+		if errors.IsNotFound(err) {
+			err = r.Client.Create(ctx, triggerTemplate)
+			if err != nil {
+				log.Error(err, fmt.Sprintf("Unable to create triggerTemplate %v", triggerTemplate))
+				return ctrl.Result{}, err
+			}
+		} else {
+			log.Error(err, fmt.Sprintf("Unable to get triggerTemplate %v", triggerTemplate))
+			return ctrl.Result{}, err
 		}
-		component.Status.Webhook = webhookURL
-		err = r.Client.Status().Update(ctx, &component)
-		if err != nil {
-			log.Error(err, "Unable to update Component with webhook URL")
+	}
+
+	eventListener := eventListener(component, *triggerTemplate)
+
+	err = controllerutil.SetOwnerReference(&component, &eventListener, r.Scheme)
+	if err != nil {
+		log.Error(err, fmt.Sprintf("Unable to set owner reference for %v", eventListener))
+		return ctrl.Result{}, err
+	}
+	err = r.Get(ctx, types.NamespacedName{Name: eventListener.Name, Namespace: eventListener.Namespace}, &triggersapi.EventListener{})
+	if err != nil {
+		if errors.IsNotFound(err) {
+			err = r.Client.Create(ctx, &eventListener)
+			if err != nil {
+				log.Error(err, fmt.Sprintf("Unable to create eventListener %v", eventListener))
+				return ctrl.Result{}, err
+			}
+		} else {
+			log.Error(err, fmt.Sprintf("Unable to get eventListener %v", eventListener))
+			return ctrl.Result{}, err
 		}
+	}
+
+	initialBuildSpec := determineBuildExecution(component, paramsForInitialBuild(component), "initialbuildpath")
+
+	initialBuild := tektonapi.PipelineRun{
+		ObjectMeta: v1.ObjectMeta{
+			Name:        component.Name,
+			Namespace:   component.Namespace,
+			Annotations: commonAnnotations(),
+		},
+		Spec: initialBuildSpec,
+	}
+
+	err = r.Get(ctx, types.NamespacedName{Name: initialBuild.Name, Namespace: initialBuild.Namespace}, &tektonapi.PipelineRun{})
+	if err != nil {
+		if errors.IsNotFound(err) {
+			err = r.Client.Create(ctx, &initialBuild)
+			if err != nil {
+				log.Error(err, fmt.Sprintf("Unable to create initial build %v", initialBuild))
+				return ctrl.Result{}, err
+			}
+
+		} else {
+			log.Error(err, fmt.Sprintf("Unable to get build %v", eventListener))
+			return ctrl.Result{}, err
+		}
+	}
+
+	webhook := route(component)
+
+	err = r.Get(ctx, types.NamespacedName{Name: webhook.Name, Namespace: webhook.Namespace}, &routev1.Route{})
+	if err != nil {
+		if errors.IsNotFound(err) {
+			err = r.Client.Create(ctx, &webhook)
+			if err != nil {
+				log.Error(err, fmt.Sprintf("Unable to create webhook %v", webhook.Name))
+				return ctrl.Result{}, err
+			}
+		} else if errors.IsAlreadyExists(err) {
+			log.Info("Initial build already exists")
+		} else {
+			log.Error(err, fmt.Sprintf("Unable to get webhook %v", webhook.Name))
+			return ctrl.Result{}, err
+		}
+	}
+
+	// Ideally, one must wait for the route to be 'accepted'?
+	createdWebhook := &routev1.Route{}
+	err = r.Client.Get(ctx, types.NamespacedName{Name: webhook.Name, Namespace: webhook.Namespace}, createdWebhook)
+	if err != nil {
+		log.Error(err, fmt.Sprintf("Unable to get inital webhook %v", webhook.Name))
+		return ctrl.Result{}, err
+	}
+
+	/*
+		if createdWebhook != nil && len(createdWebhook.Status.Ingress) != 0 {
+			return createdWebhook.Status.Ingress[0].Host, err
+		}
+	*/
+
+	component.Status.Webhook = createdWebhook.Status.Ingress[0].Host
+	err = r.Client.Status().Update(ctx, &component)
+	if err != nil {
+		log.Error(err, "Unable to update Component with webhook URL")
 	}
 
 	log.Info(fmt.Sprintf("Finished reconcile loop for %v", req.NamespacedName))

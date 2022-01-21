@@ -17,24 +17,18 @@ limitations under the License.
 package controllers
 
 import (
-	"context"
 	"encoding/json"
-	"fmt"
 	"strings"
 
-	"github.com/go-logr/logr"
 	routev1 "github.com/openshift/api/route/v1"
 	appstudiov1alpha1 "github.com/redhat-appstudio/application-service/api/v1alpha1"
 	tektonapi "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	triggersapi "github.com/tektoncd/triggers/pkg/apis/triggers/v1alpha1"
 	corev1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/resource"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/intstr"
-	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 )
 
 func determineBuildDefinition(component appstudiov1alpha1.Component) string {
@@ -179,24 +173,29 @@ func commonStorage(name string, namespace string) corev1.PersistentVolumeClaim {
 	return *workspaceStorage
 }
 
-func (r *ComponentReconciler) setupWebhookTriggeredImageBuilds(ctx context.Context, log logr.Logger, component appstudiov1alpha1.Component) (string, error) {
-
-	workspaceStorage := commonStorage("appstudio", component.Namespace)
-	pvc := &corev1.PersistentVolumeClaim{}
-	err := r.Get(ctx, types.NamespacedName{Name: workspaceStorage.Name, Namespace: workspaceStorage.Namespace}, pvc)
-	if err != nil {
-		if errors.IsNotFound(err) {
-			err = r.Client.Create(ctx, &workspaceStorage)
-			if err != nil {
-				log.Error(err, fmt.Sprintf("Unable to create common storage %v", workspaceStorage))
-				return "", err
-			}
-		} else {
-			log.Error(err, fmt.Sprintf("Unable to get common storage %v", workspaceStorage))
-			return "", err
-		}
+func route(component appstudiov1alpha1.Component) routev1.Route {
+	var port int32 = 8080
+	webhook := &routev1.Route{
+		ObjectMeta: v1.ObjectMeta{
+			Name:        component.Name,
+			Namespace:   component.Namespace,
+			Annotations: commonAnnotations(),
+		},
+		Spec: routev1.RouteSpec{
+			Path: "/",
+			To: routev1.RouteTargetReference{
+				Kind: "Service",
+				Name: "el-" + component.Name,
+			},
+			Port: &routev1.RoutePort{
+				TargetPort: intstr.IntOrString{IntVal: port},
+			},
+		},
 	}
+	return *webhook
+}
 
+func triggerTemplate(component appstudiov1alpha1.Component) (*triggersapi.TriggerTemplate, error) {
 	webhookBasedBuildTemplate := determineBuildExecution(component, paramsForWebhookBasedBuilds(component), "$(tt.params.git-revision)")
 
 	resoureTemplatePipelineRun := tektonapi.PipelineRun{
@@ -214,8 +213,8 @@ func (r *ComponentReconciler) setupWebhookTriggeredImageBuilds(ctx context.Conte
 
 	resourceTemplatePipelineRunBytes, err := json.Marshal(resoureTemplatePipelineRun)
 	if err != nil {
-		log.Error(err, fmt.Sprintf("Unable to convert to bytes %v", resoureTemplatePipelineRun))
-
+		return nil, err
+		//og.Error(err, fmt.Sprintf("Unable to convert to bytes %v", resoureTemplatePipelineRun))
 	}
 
 	triggerTemplate := triggersapi.TriggerTemplate{}
@@ -233,25 +232,10 @@ func (r *ComponentReconciler) setupWebhookTriggeredImageBuilds(ctx context.Conte
 			},
 		},
 	}
+	return &triggerTemplate, err
+}
 
-	err = controllerutil.SetOwnerReference(&component, &triggerTemplate, r.Scheme)
-	if err != nil {
-		log.Error(err, fmt.Sprintf("Unable to set owner reference for %v", triggerTemplate))
-	}
-	err = r.Get(ctx, types.NamespacedName{Name: triggerTemplate.Name, Namespace: triggerTemplate.Namespace}, &triggersapi.TriggerTemplate{})
-	if err != nil {
-		if errors.IsNotFound(err) {
-			err = r.Client.Create(ctx, &triggerTemplate)
-			if err != nil {
-				log.Error(err, fmt.Sprintf("Unable to create triggerTemplate %v", triggerTemplate))
-				return "", err
-			}
-		} else {
-			log.Error(err, fmt.Sprintf("Unable to get triggerTemplate %v", triggerTemplate))
-			return "", err
-		}
-	}
-
+func eventListener(component appstudiov1alpha1.Component, triggerTemplate triggersapi.TriggerTemplate) triggersapi.EventListener {
 	eventListener := triggersapi.EventListener{
 		ObjectMeta: v1.ObjectMeta{
 			Name:        component.Name,
@@ -277,97 +261,5 @@ func (r *ComponentReconciler) setupWebhookTriggeredImageBuilds(ctx context.Conte
 			},
 		},
 	}
-
-	err = controllerutil.SetOwnerReference(&component, &eventListener, r.Scheme)
-	if err != nil {
-		log.Error(err, fmt.Sprintf("Unable to set owner reference for %v", eventListener))
-	}
-	err = r.Get(ctx, types.NamespacedName{Name: eventListener.Name, Namespace: eventListener.Namespace}, &triggersapi.EventListener{})
-	if err != nil {
-		if errors.IsNotFound(err) {
-			err = r.Client.Create(ctx, &eventListener)
-			if err != nil {
-				log.Error(err, fmt.Sprintf("Unable to create eventListener %v", eventListener))
-				return "", err
-			}
-		} else {
-			log.Error(err, fmt.Sprintf("Unable to get eventListener %v", eventListener))
-			return "", err
-		}
-	}
-
-	initialBuildSpec := determineBuildExecution(component, paramsForInitialBuild(component), "initialbuildpath")
-
-	initialBuild := tektonapi.PipelineRun{
-		ObjectMeta: v1.ObjectMeta{
-			Name:        component.Name,
-			Namespace:   component.Namespace,
-			Annotations: commonAnnotations(),
-		},
-		Spec: initialBuildSpec,
-	}
-
-	err = r.Get(ctx, types.NamespacedName{Name: initialBuild.Name, Namespace: initialBuild.Namespace}, &tektonapi.PipelineRun{})
-	if err != nil {
-		if errors.IsNotFound(err) {
-			err = r.Client.Create(ctx, &initialBuild)
-			if err != nil {
-				log.Error(err, fmt.Sprintf("Unable to create initial build %v", initialBuild))
-				return "", err
-			}
-
-		} else {
-			log.Error(err, fmt.Sprintf("Unable to get build %v", eventListener))
-			return "", err
-		}
-	}
-
-	var port int32 = 8080
-	webhook := &routev1.Route{
-		ObjectMeta: v1.ObjectMeta{
-			Name:        component.Name,
-			Namespace:   component.Namespace,
-			Annotations: commonAnnotations(),
-		},
-		Spec: routev1.RouteSpec{
-			Path: "/",
-			To: routev1.RouteTargetReference{
-				Kind: "Service",
-				Name: "el-" + component.Name,
-			},
-			Port: &routev1.RoutePort{
-				TargetPort: intstr.IntOrString{IntVal: port},
-			},
-		},
-	}
-
-	err = r.Get(ctx, types.NamespacedName{Name: webhook.Name, Namespace: webhook.Namespace}, &routev1.Route{})
-	if err != nil {
-		if errors.IsNotFound(err) {
-			err = r.Client.Create(ctx, webhook)
-			if err != nil {
-				log.Error(err, fmt.Sprintf("Unable to create webhook %v", webhook.Name))
-				return "", err
-			}
-		} else if errors.IsAlreadyExists(err) {
-			log.Info("Initial build already exists")
-		} else {
-			log.Error(err, fmt.Sprintf("Unable to get webhook %v", webhook.Name))
-			return "", err
-		}
-	}
-
-	// Ideally, one must wait for the route to be 'accepted'?
-	createdWebhook := &routev1.Route{}
-	err = r.Client.Get(ctx, types.NamespacedName{Name: webhook.Name, Namespace: webhook.Namespace}, createdWebhook)
-	if err != nil {
-		log.Error(err, fmt.Sprintf("Unable to get inital webhook %v", webhook.Name))
-		return "", err
-	}
-
-	if createdWebhook != nil && len(createdWebhook.Status.Ingress) != 0 {
-		return createdWebhook.Status.Ingress[0].Host, err
-	}
-
-	return "", err
+	return eventListener
 }
