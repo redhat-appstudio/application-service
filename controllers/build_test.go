@@ -83,7 +83,7 @@ func Test_determineBuildExecution(t *testing.T) {
 			},
 			want: tektonapi.PipelineRunSpec{
 				PipelineRef: &tektonapi.PipelineRef{
-					Bundle: "quay.io/redhat-appstudio/build-templates-bundle:v0.1",
+					Bundle: "quay.io/redhat-appstudio/build-templates-bundle:v0.1.2",
 					Name:   "devfile-build",
 				},
 				Params: []tektonapi.Param{},
@@ -94,6 +94,12 @@ func Test_determineBuildExecution(t *testing.T) {
 							ClaimName: "appstudio",
 						},
 						SubPath: "testcomponent/initialbuild",
+					},
+					{
+						Name: "registry-auth",
+						Secret: &corev1.SecretVolumeSource{
+							SecretName: "redhat-appstudio-registry",
+						},
 					},
 				},
 			},
@@ -112,7 +118,7 @@ func Test_determineBuildExecution(t *testing.T) {
 			},
 			want: tektonapi.PipelineRunSpec{
 				PipelineRef: &tektonapi.PipelineRef{
-					Bundle: "quay.io/redhat-appstudio/build-templates-bundle:v0.1",
+					Bundle: "quay.io/redhat-appstudio/build-templates-bundle:v0.1.2",
 					Name:   "devfile-build",
 				},
 				Params: []tektonapi.Param{},
@@ -123,6 +129,12 @@ func Test_determineBuildExecution(t *testing.T) {
 							ClaimName: "appstudio",
 						},
 						SubPath: "testcomponent/a-long-git-reference",
+					},
+					{
+						Name: "registry-auth",
+						Secret: &corev1.SecretVolumeSource{
+							SecretName: "redhat-appstudio-registry",
+						},
 					},
 				},
 			},
