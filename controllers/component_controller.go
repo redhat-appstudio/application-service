@@ -253,7 +253,11 @@ func (r *ComponentReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 		}
 	}
 
-	if component.Spec.Source.ImageSource != nil {
+	if component.Spec.Build.ContainerImage == "" {
+		component.Spec.Build.ContainerImage = "quay.io/redhat-appstudio/user-workload:" + component.Namespace + "-" + component.Name
+	}
+
+	if component.Spec.Build.ContainerImage != "" {
 
 		// TODO: would move this to the user's gitops repository under /.tekton
 		webhookURL, err := r.setupWebhookTriggeredImageBuilds(ctx, log, component)

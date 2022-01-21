@@ -53,6 +53,12 @@ func determineBuildExecution(component appstudiov1alpha1.Component, params []tek
 				},
 				SubPath: component.Name + "/" + workspaceSubPath, //$(tt.params.git-revision)/",
 			},
+			{
+				Name: "registry-auth",
+				Secret: &corev1.SecretVolumeSource{
+					SecretName: "redhat-appstudio-registry",
+				},
+			},
 		},
 	}
 	return pipelineRunSpec
@@ -78,7 +84,7 @@ func normalizeOutputImageURL(outputImage string) string {
 
 func paramsForInitialBuild(component appstudiov1alpha1.Component) []tektonapi.Param {
 	sourceCode := component.Spec.Source.GitSource.URL
-	outputImage := component.Spec.Source.ImageSource.ContainerImage
+	outputImage := component.Spec.Build.ContainerImage
 
 	params := []tektonapi.Param{
 		{
@@ -102,7 +108,7 @@ func paramsForInitialBuild(component appstudiov1alpha1.Component) []tektonapi.Pa
 
 func paramsForWebhookBasedBuilds(component appstudiov1alpha1.Component) []tektonapi.Param {
 	sourceCode := component.Spec.Source.GitSource.URL
-	outputImage := normalizeOutputImageURL(component.Spec.Source.ImageSource.ContainerImage)
+	outputImage := normalizeOutputImageURL(component.Spec.Build.ContainerImage)
 
 	params := []tektonapi.Param{
 		{
