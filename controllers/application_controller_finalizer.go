@@ -57,12 +57,12 @@ func (r *ApplicationReconciler) Finalize(application *appstudiov1alpha1.Applicat
 	gitOpsURL := devfileGitOps.(string)
 
 	// Only delete the GitOps repo if we created it.
-	if strings.Contains(gitOpsURL, r.GitHubOrg) {
-		repoName, err := github.GetRepoNameFromURL(gitOpsURL, r.GitHubOrg)
+	if strings.Contains(gitOpsURL, r.Context.GithubConf.GithubOrg) {
+		repoName, err := github.GetRepoNameFromURL(gitOpsURL, r.Context.GithubConf.GithubOrg)
 		if err != nil {
 			return err
 		}
-		return github.DeleteRepository(r.GitHubClient, context.Background(), r.GitHubOrg, repoName)
+		return github.DeleteRepository(r.Context.GithubConf.GithubClient, context.Background(), r.Context.GithubConf.GithubOrg, repoName)
 	}
 	return nil
 }

@@ -23,9 +23,17 @@ import (
 	"github.com/brianvoe/gofakeit/v6"
 	"github.com/google/go-github/v41/github"
 	"github.com/redhat-appstudio/application-service/pkg/util"
+	"golang.org/x/oauth2"
 )
 
 const AppStudioAppDataOrg = "redhat-appstudio-appdata"
+
+func NewGithubClient(token string) *github.Client {
+	ctx := context.Background()
+	ts := oauth2.StaticTokenSource(&oauth2.Token{AccessToken: token})
+	tc := oauth2.NewClient(ctx, ts)
+	return github.NewClient(tc)
+}
 
 func GenerateNewRepositoryName(displayName string, namespace string) string {
 	sanitizedName := util.SanitizeName(displayName)

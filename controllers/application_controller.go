@@ -23,13 +23,16 @@ import (
 	gofakeit "github.com/brianvoe/gofakeit/v6"
 	"github.com/go-logr/logr"
 
-	gh "github.com/google/go-github/v41/github"
+	corev1 "k8s.io/api/core/v1"
 	k8sErrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/types"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
+	"sigs.k8s.io/controller-runtime/pkg/handler"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
+	"sigs.k8s.io/controller-runtime/pkg/source"
 	"sigs.k8s.io/yaml"
 
 	appstudiov1alpha1 "github.com/redhat-appstudio/application-service/api/v1alpha1"
@@ -41,10 +44,9 @@ import (
 // ApplicationReconciler reconciles a Application object
 type ApplicationReconciler struct {
 	client.Client
-	Scheme       *runtime.Scheme
-	Log          logr.Logger
-	GitHubClient *gh.Client
-	GitHubOrg    string
+	Scheme  *runtime.Scheme
+	Log     logr.Logger
+	Context *ControllerContext
 }
 
 //+kubebuilder:rbac:groups=appstudio.redhat.com,resources=applications,verbs=get;list;watch;create;update;patch;delete
@@ -62,6 +64,17 @@ type ApplicationReconciler struct {
 // - https://pkg.go.dev/sigs.k8s.io/controller-runtime@v0.9.2/pkg/reconcile
 func (r *ApplicationReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
 	log := r.Log.WithValues("Application", req.NamespacedName)
+
+	if req.Name == githubTokenSecret || r.Context.GithubConf.GithubClient == nil {
+		githubTokenSecret := &corev1.Secret{}
+		if err := r.Client.Get(ctx, types.NamespacedName{Namespace: req.Namespace, Name: req.Name}, githubTokenSecret); err != nil {
+			return reconcile.Result{}, err
+		}
+		ghTokenBytes := githubTokenSecret.Data[githubTokenSecretKey]
+		ghToken := string(ghTokenBytes)
+		r.Context.GithubConf.GithubClient = github.NewGithubClient(ghToken)
+		r.Context.GithubConf.GithubToken = ghToken
+	}
 
 	// Get the Application resource
 	var application appstudiov1alpha1.Application
@@ -126,7 +139,7 @@ func (r *ApplicationReconciler) Reconcile(ctx context.Context, req ctrl.Request)
 			repoName := github.GenerateNewRepositoryName(application.Spec.DisplayName, application.Namespace)
 
 			// Generate the git repo in the redhat-appstudio-appdata org
-			repoUrl, err := github.GenerateNewRepository(r.GitHubClient, ctx, r.GitHubOrg, repoName, "GitOps Repository")
+			repoUrl, err := github.GenerateNewRepository(r.Context.GithubConf.GithubClient, ctx, r.Context.GithubConf.GithubOrg, repoName, "GitOps Repository")
 			if err != nil {
 				log.Error(err, fmt.Sprintf("Unable to create repository %v", repoUrl))
 				r.SetCreateConditionAndUpdateCR(ctx, &application, err)
@@ -207,5 +220,17 @@ func (r *ApplicationReconciler) SetupWithManager(mgr ctrl.Manager) error {
 
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&appstudiov1alpha1.Application{}).
+		Watches(&source.Kind{Type: &corev1.Secret{}},
+			handler.EnqueueRequestsFromMapFunc(func(obj client.Object) []reconcile.Request {
+				if obj.GetName() == githubTokenSecret { // todo add namespace check...
+					return []reconcile.Request{
+						{NamespacedName: types.NamespacedName{
+							Name:      obj.GetName(),
+							Namespace: obj.GetNamespace(),
+						}},
+					}
+				}
+				return []reconcile.Request{}
+			})).
 		Complete(r)
 }

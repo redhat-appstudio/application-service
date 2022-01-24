@@ -28,7 +28,6 @@ import (
 	appstudiov1alpha1 "github.com/redhat-appstudio/application-service/api/v1alpha1"
 	"github.com/redhat-appstudio/application-service/gitops/ioutils"
 	"github.com/redhat-appstudio/application-service/gitops/testutils"
-	"github.com/redhat-appstudio/application-service/pkg/github"
 	"github.com/spf13/afero"
 	ctrl "sigs.k8s.io/controller-runtime"
 
@@ -151,21 +150,23 @@ func TestGenerateGitops(t *testing.T) {
 	appFS := ioutils.NewMemoryFilesystem()
 	readOnlyFs := ioutils.NewReadOnlyFs()
 
+	contrContext := &ControllerContext{GithubConf: &GithubConfiguration{
+		GithubToken: "fake-token",
+	}}
+
 	r := &ComponentReconciler{
-		Log:       ctrl.Log.WithName("controllers").WithName("Component"),
-		GitHubOrg: github.AppStudioAppDataOrg,
-		GitToken:  "fake-token",
-		Executor:  executor,
+		Log:      ctrl.Log.WithName("controllers").WithName("Component"),
+		Context:  contrContext,
+		Executor: executor,
 	}
 
 	// Create a second reconciler for testing error scenarios
 	errExec := testutils.NewMockExecutor()
 	errExec.Errors.Push(errors.New("Fatal error"))
 	errReconciler := &ComponentReconciler{
-		Log:       ctrl.Log.WithName("controllers").WithName("Component"),
-		GitHubOrg: github.AppStudioAppDataOrg,
-		GitToken:  "fake-token",
-		Executor:  errExec,
+		Log:      ctrl.Log.WithName("controllers").WithName("Component"),
+		Context:  contrContext,
+		Executor: errExec,
 	}
 
 	tests := []struct {

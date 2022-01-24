@@ -40,3 +40,12 @@ const (
 	// componentKey is the key to reference an application-service CR component
 	componentKey = "appstudio.has/component"
 )
+
+// Github related constants.
+const (
+	GithubOrgConfMapKey = "GITHUB_ORG"
+
+	githubTokenSecret = "has-github-token"
+
+	githubTokenSecretKey = "token"
+)

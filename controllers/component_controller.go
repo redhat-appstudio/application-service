@@ -44,12 +44,11 @@ import (
 // ComponentReconciler reconciles a Component object
 type ComponentReconciler struct {
 	client.Client
-	Scheme    *runtime.Scheme
-	Log       logr.Logger
-	GitToken  string
-	GitHubOrg string
-	Executor  gitops.Executor
-	AppFS     afero.Afero
+	Scheme   *runtime.Scheme
+	Log      logr.Logger
+	Context  *ControllerContext
+	Executor gitops.Executor
+	AppFS    afero.Afero
 }
 
 //+kubebuilder:rbac:groups=appstudio.redhat.com,resources=components,verbs=get;list;watch;create;update;patch;delete
@@ -330,7 +329,7 @@ func (r *ComponentReconciler) generateGitops(component *appstudiov1alpha1.Compon
 		log.Error(err, "unable to parse gitops URL due to error")
 		return err
 	}
-	parsedURL.User = url.User(r.GitToken)
+	parsedURL.User = url.User(r.Context.GithubConf.GithubToken)
 	remoteURL := parsedURL.String()
 
 	// Create a temp folder to create the gitops resources in
