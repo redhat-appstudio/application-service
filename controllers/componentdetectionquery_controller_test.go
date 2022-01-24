@@ -307,6 +307,131 @@ var _ = Describe("Component Detection Query controller", func() {
 			deleteCompDetQueryCR(hasCompDetQueryLookupKey)
 		})
 	})
+
+	Context("Create Component Detection Query with Devfile URL that does not exist", func() {
+		It("Should err out", func() {
+			ctx := context.Background()
+
+			queryName := HASCompDetQuery + "5"
+
+			hasCompDetectionQuery := &appstudiov1alpha1.ComponentDetectionQuery{
+				TypeMeta: metav1.TypeMeta{
+					APIVersion: "appstudio.redhat.com/v1alpha1",
+					Kind:       "ComponentDetectionQuery",
+				},
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      queryName,
+					Namespace: HASNamespace,
+				},
+				Spec: appstudiov1alpha1.ComponentDetectionQuerySpec{
+					GitSource: appstudiov1alpha1.GitSource{
+						URL:        "https://github.com/octocat/Hello-World",
+						DevfileURL: "https://registry.devfile.io/devfiles/fake",
+					},
+				},
+			}
+
+			Expect(k8sClient.Create(ctx, hasCompDetectionQuery)).Should(Succeed())
+
+			// Look up the has app resource that was created.
+			// num(conditions) may still be < 1 on the first try, so retry until at least _some_ condition is set
+			hasCompDetQueryLookupKey := types.NamespacedName{Name: queryName, Namespace: HASNamespace}
+			createdHasCompDetectionQuery := &appstudiov1alpha1.ComponentDetectionQuery{}
+			Eventually(func() bool {
+				k8sClient.Get(context.Background(), hasCompDetQueryLookupKey, createdHasCompDetectionQuery)
+				return len(createdHasCompDetectionQuery.Status.Conditions) > 0
+			}, timeout, interval).Should(BeTrue())
+
+			// Make sure the right err is set
+			Expect(createdHasCompDetectionQuery.Status.Conditions[0].Message).Should(ContainSubstring("unable to GET from https://registry.devfile.io/devfiles/fake"))
+
+			// Delete the specified Detection Query resource
+			deleteCompDetQueryCR(hasCompDetQueryLookupKey)
+		})
+	})
+
+	Context("Create Component Detection Query with invalid Git URL", func() {
+		It("Should err out", func() {
+			ctx := context.Background()
+
+			queryName := HASCompDetQuery + "6"
+
+			hasCompDetectionQuery := &appstudiov1alpha1.ComponentDetectionQuery{
+				TypeMeta: metav1.TypeMeta{
+					APIVersion: "appstudio.redhat.com/v1alpha1",
+					Kind:       "ComponentDetectionQuery",
+				},
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      queryName,
+					Namespace: HASNamespace,
+				},
+				Spec: appstudiov1alpha1.ComponentDetectionQuerySpec{
+					GitSource: appstudiov1alpha1.GitSource{
+						URL: "https://github.com/redhat-appstudio-appdata/!@#$%U%I$F    DFDN##",
+					},
+				},
+			}
+
+			Expect(k8sClient.Create(ctx, hasCompDetectionQuery)).Should(Succeed())
+
+			// Look up the has app resource that was created.
+			// num(conditions) may still be < 1 on the first try, so retry until at least _some_ condition is set
+			hasCompDetQueryLookupKey := types.NamespacedName{Name: queryName, Namespace: HASNamespace}
+			createdHasCompDetectionQuery := &appstudiov1alpha1.ComponentDetectionQuery{}
+			Eventually(func() bool {
+				k8sClient.Get(context.Background(), hasCompDetQueryLookupKey, createdHasCompDetectionQuery)
+				return len(createdHasCompDetectionQuery.Status.Conditions) > 0
+			}, timeout, interval).Should(BeTrue())
+
+			// Make sure the right err is set
+			Expect(createdHasCompDetectionQuery.Status.Conditions[0].Message).Should(ContainSubstring("parse \"https://github.com/redhat-appstudio-appdata/!@#$%U%I$F    DFDN##\": invalid URL escape \"%U%\""))
+
+			// Delete the specified Detection Query resource
+			deleteCompDetQueryCR(hasCompDetQueryLookupKey)
+		})
+	})
+
+	Context("Create Component Detection Query with private multicomponent Github repo", func() {
+		It("Should err out due to authentication required error", func() {
+			ctx := context.Background()
+
+			queryName := HASCompDetQuery + "7"
+
+			hasCompDetectionQuery := &appstudiov1alpha1.ComponentDetectionQuery{
+				TypeMeta: metav1.TypeMeta{
+					APIVersion: "appstudio.redhat.com/v1alpha1",
+					Kind:       "ComponentDetectionQuery",
+				},
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      queryName,
+					Namespace: HASNamespace,
+				},
+				Spec: appstudiov1alpha1.ComponentDetectionQuerySpec{
+					IsMultiComponent: true,
+					GitSource: appstudiov1alpha1.GitSource{
+						URL: "https://github.com/johnmcollier/private-repo-test",
+					},
+				},
+			}
+
+			Expect(k8sClient.Create(ctx, hasCompDetectionQuery)).Should(Succeed())
+
+			// Look up the has app resource that was created.
+			// num(conditions) may still be < 1 on the first try, so retry until at least _some_ condition is set
+			hasCompDetQueryLookupKey := types.NamespacedName{Name: queryName, Namespace: HASNamespace}
+			createdHasCompDetectionQuery := &appstudiov1alpha1.ComponentDetectionQuery{}
+			Eventually(func() bool {
+				k8sClient.Get(context.Background(), hasCompDetQueryLookupKey, createdHasCompDetectionQuery)
+				return len(createdHasCompDetectionQuery.Status.Conditions) > 0
+			}, timeout, interval).Should(BeTrue())
+
+			// Make sure the right err is set
+			Expect(createdHasCompDetectionQuery.Status.Conditions[0].Message).Should(ContainSubstring("authentication required"))
+
+			// Delete the specified Detection Query resource
+			deleteCompDetQueryCR(hasCompDetQueryLookupKey)
+		})
+	})
 })
 
 // deleteCompDetQueryCR deletes the specified Comp Detection Query resource and verifies it was properly deleted
