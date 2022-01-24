@@ -35,7 +35,7 @@ import (
 	appstudiov1alpha1 "github.com/redhat-appstudio/application-service/api/v1alpha1"
 	"github.com/redhat-appstudio/application-service/gitops/ioutils"
 	"github.com/redhat-appstudio/application-service/gitops/testutils"
-	// github "github.com/redhat-appstudio/application-service/pkg/github"
+	github "github.com/redhat-appstudio/application-service/pkg/github"
 	//+kubebuilder:scaffold:imports
 )
 
@@ -95,13 +95,18 @@ var _ = BeforeSuite(func() {
 	})
 	Expect(err).ToNot(HaveOccurred())
 
+	context := &ControllerContext{GithubConf: &GithubConfiguration{
+		GithubToken:  "fake-token",
+		GithubClient: github.GetMockedClient(),
+		GithubOrg:    github.AppStudioAppDataOrg,
+	}}
+
 	// To Do: Set up reconcilers for the other controllers
 	err = (&ApplicationReconciler{
-		Client: k8sManager.GetClient(),
-		Scheme: k8sManager.GetScheme(),
-		Log:    ctrl.Log.WithName("controllers").WithName("Application"),
-		// GitHubClient: github.GetMockedClient(),
-		// GitHubOrg:    github.AppStudioAppDataOrg,
+		Client:  k8sManager.GetClient(),
+		Scheme:  k8sManager.GetScheme(),
+		Log:     ctrl.Log.WithName("controllers").WithName("Application"),
+		Context: context,
 	}).SetupWithManager(k8sManager)
 	Expect(err).ToNot(HaveOccurred())
 
@@ -111,6 +116,7 @@ var _ = BeforeSuite(func() {
 		Log:      ctrl.Log.WithName("controllers").WithName("Component"),
 		Executor: testutils.NewMockExecutor(),
 		AppFS:    ioutils.NewMemoryFilesystem(),
+		Context:  context,
 	}).SetupWithManager(k8sManager)
 	Expect(err).ToNot(HaveOccurred())
 
