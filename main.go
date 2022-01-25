@@ -92,7 +92,7 @@ func main() {
 		GithubOrg: ghOrg,
 	}}
 
-	// Retrieve the GitHub Auth Token to use, error out if not found
+	// Retrieve the GitHub Auth Token to use
 	ghToken := os.Getenv("GITHUB_AUTH_TOKEN")
 	if len(ghToken) > 0 {
 		cntsContext.GithubConf.GithubToken = ghToken
