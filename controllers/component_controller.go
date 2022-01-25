@@ -337,7 +337,7 @@ func (r *ComponentReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 				return ctrl.Result{}, err
 			}
 		} else {
-			log.Error(err, fmt.Sprintf("Unable to get triggerTemplate %v", triggerTemplate))
+			log.Error(err, fmt.Sprintf("Unable to get triggerTemplate %s", triggerTemplate.Name))
 			return ctrl.Result{}, err
 		}
 	}
