@@ -82,6 +82,10 @@ func (r *ComponentReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 		return ctrl.Result{}, err
 	}
 
+	if len(r.Context.GithubConf.GithubToken) == 0 {
+		return ctrl.Result{}, fmt.Errorf("Use secret '%s' to provide Github token.", githubTokenSecret)
+	}
+
 	// If the devfile hasn't been populated, the CR was just created
 	if component.Status.Devfile == "" {
 		source := component.Spec.Source

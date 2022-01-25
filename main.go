@@ -18,6 +18,7 @@ package main
 
 import (
 	"flag"
+	"log"
 	"os"
 
 	// Import all Kubernetes client auth plugins (e.g. Azure, GCP, OIDC, etc.)
@@ -36,6 +37,7 @@ import (
 	"github.com/redhat-appstudio/application-service/gitops"
 	"github.com/redhat-appstudio/application-service/gitops/ioutils"
 	"github.com/redhat-appstudio/application-service/pkg/github"
+	"github.com/redhat-appstudio/application-service/pkg/util"
 	//+kubebuilder:scaffold:imports
 )
 
@@ -92,11 +94,16 @@ func main() {
 
 	// Retrieve the GitHub Auth Token to use, error out if not found
 	ghToken := os.Getenv("GITHUB_AUTH_TOKEN")
-
 	if len(ghToken) > 0 {
 		cntsContext.GithubConf.GithubToken = ghToken
 		cntsContext.GithubConf.GithubClient = github.NewGithubClient(ghToken)
 	}
+
+	operatorNamespace, err := util.GetNamespace()
+	if err != nil {
+		log.Fatal(err)
+	}
+	cntsContext.Namespace = operatorNamespace
 
 	if err = (&controllers.ApplicationReconciler{
 		Client:  mgr.GetClient(),

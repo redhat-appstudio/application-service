@@ -65,15 +65,22 @@ type ApplicationReconciler struct {
 func (r *ApplicationReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
 	log := r.Log.WithValues("Application", req.NamespacedName)
 
-	if req.Name == githubTokenSecret || r.Context.GithubConf.GithubClient == nil {
-		githubTokenSecret := &corev1.Secret{}
-		if err := r.Client.Get(ctx, types.NamespacedName{Namespace: req.Namespace, Name: req.Name}, githubTokenSecret); err != nil {
+	if req.Name == githubTokenSecret && req.Namespace == r.Context.Namespace {
+		tokenSecret := &corev1.Secret{}
+		if err := r.Client.Get(ctx, types.NamespacedName{Namespace: req.Namespace, Name: req.Name}, tokenSecret); err != nil {
+			if k8sErrors.IsNotFound(err) {
+				// User removed github token secret
+				log.Info(fmt.Sprintf("[WARNING]: Secret '%s' with Github token was removed", githubTokenSecret))
+				return reconcile.Result{Requeue: false}, nil
+			}
 			return reconcile.Result{}, err
 		}
-		ghTokenBytes := githubTokenSecret.Data[githubTokenSecretKey]
+		ghTokenBytes := tokenSecret.Data[githubTokenSecretKey]
 		ghToken := string(ghTokenBytes)
 		r.Context.GithubConf.GithubClient = github.NewGithubClient(ghToken)
 		r.Context.GithubConf.GithubToken = ghToken
+
+		return reconcile.Result{}, nil
 	}
 
 	// Get the Application resource
@@ -84,7 +91,7 @@ func (r *ApplicationReconciler) Reconcile(ctx context.Context, req ctrl.Request)
 			// Request object not found, could have been deleted after reconcile request.
 			// Owned objects are automatically garbage collected. For additional cleanup logic use finalizers.
 			// Return and don't requeue
-			return reconcile.Result{}, nil
+			return reconcile.Result{Requeue: false}, nil
 		}
 		// Error reading the object - requeue the request.
 		return reconcile.Result{}, err
@@ -125,6 +132,10 @@ func (r *ApplicationReconciler) Reconcile(ctx context.Context, req ctrl.Request)
 				return ctrl.Result{}, err
 			}
 		}
+	}
+
+	if len(r.Context.GithubConf.GithubToken) == 0 {
+		return ctrl.Result{}, fmt.Errorf("Use secret '%s' to provide Github token.", githubTokenSecret)
 	}
 
 	log.Info(fmt.Sprintf("Starting reconcile loop for %v", req.NamespacedName))
@@ -218,19 +229,20 @@ func (r *ApplicationReconciler) Reconcile(ctx context.Context, req ctrl.Request)
 func (r *ApplicationReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	gofakeit.New(0)
 
+	mapSecretsFunc := func(obj client.Object) []reconcile.Request {
+		if obj.GetName() == githubTokenSecret && obj.GetNamespace() == r.Context.Namespace {
+			return []reconcile.Request{
+				{NamespacedName: types.NamespacedName{
+					Name:      obj.GetName(),
+					Namespace: obj.GetNamespace(),
+				}},
+			}
+		}
+		return []reconcile.Request{}
+	}
+
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&appstudiov1alpha1.Application{}).
-		Watches(&source.Kind{Type: &corev1.Secret{}},
-			handler.EnqueueRequestsFromMapFunc(func(obj client.Object) []reconcile.Request {
-				if obj.GetName() == githubTokenSecret { // todo add namespace check...
-					return []reconcile.Request{
-						{NamespacedName: types.NamespacedName{
-							Name:      obj.GetName(),
-							Namespace: obj.GetNamespace(),
-						}},
-					}
-				}
-				return []reconcile.Request{}
-			})).
+		Watches(&source.Kind{Type: &corev1.Secret{}}, handler.EnqueueRequestsFromMapFunc(mapSecretsFunc)).
 		Complete(r)
 }

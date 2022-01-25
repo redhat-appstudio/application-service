@@ -29,6 +29,14 @@ import (
 	"github.com/redhat-appstudio/application-service/pkg/devfile"
 )
 
+var (
+	namespace string
+)
+
+const (
+	namespaceFile = "/var/run/secrets/kubernetes.io/serviceaccount/namespace"
+)
+
 func SanitizeName(name string) string {
 	sanitizedName := strings.ToLower(strings.Replace(strings.Replace(name, " ", "-", -1), "'", "", -1))
 	if len(sanitizedName) > 50 {
@@ -206,4 +214,22 @@ func searchDevfiles(localpath string, currentLevel, depth int) (map[string][]byt
 	}
 
 	return devfileMapFromRepo, err
+}
+
+// GetNamespace returns namespace where is located operator deployment.
+func GetNamespace() (string, error) {
+	debug := os.Getenv("DEBUG")
+	if debug == "true" {
+		return "application-service", nil
+	}
+
+	if len(namespace) == 0 {
+		namespaceBytes, err := ioutil.ReadFile(namespaceFile)
+		if err != nil {
+			return "", err
+		}
+		namespace = string(namespaceBytes)
+	}
+
+	return namespace, nil
 }
