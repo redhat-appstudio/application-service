@@ -243,8 +243,6 @@ func eventListener(component appstudiov1alpha1.Component, triggerTemplate trigge
 			Annotations: commonAnnotations(),
 		},
 		Spec: triggersapi.EventListenerSpec{
-			// If left empty, the "default" service account would be used.
-			// Should leave his empty?
 			ServiceAccountName: "pipeline",
 			Triggers: []triggersapi.EventListenerTrigger{
 				{

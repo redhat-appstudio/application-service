@@ -138,12 +138,12 @@ var _ = Describe("Component controller", func() {
 
 			Eventually(func() bool {
 				k8sClient.Get(context.Background(), triggerTemplateLookupKey, triggerTemplate)
-				return triggerTemplate != nil
+				return triggerTemplate.ResourceVersion != ""
 			}, timeout, interval).Should(BeTrue())
 
 			Eventually(func() bool {
 				k8sClient.Get(context.Background(), eventListenerName, eventListener)
-				return eventListener != nil
+				return eventListener.ResourceVersion != ""
 			}, timeout, interval).Should(BeTrue())
 
 			// Delete the specified HASComp resource

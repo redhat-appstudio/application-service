@@ -24,6 +24,7 @@ import (
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"k8s.io/client-go/kubernetes/scheme"
+
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/envtest"
 	"sigs.k8s.io/controller-runtime/pkg/envtest/printer"
@@ -32,7 +33,11 @@ import (
 
 	ctrl "sigs.k8s.io/controller-runtime"
 
+	routev1 "github.com/openshift/api/route/v1"
 	appstudiov1alpha1 "github.com/redhat-appstudio/application-service/api/v1alpha1"
+	taskrunapi "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
+	triggersapi "github.com/tektoncd/triggers/pkg/apis/triggers/v1alpha1"
+
 	"github.com/redhat-appstudio/application-service/gitops/ioutils"
 	"github.com/redhat-appstudio/application-service/gitops/testutils"
 	github "github.com/redhat-appstudio/application-service/pkg/github"
@@ -75,13 +80,13 @@ var _ = BeforeSuite(func() {
 	err = appstudiov1alpha1.AddToScheme(scheme.Scheme)
 	Expect(err).NotTo(HaveOccurred())
 
-	err = appstudiov1alpha1.AddToScheme(scheme.Scheme)
+	err = triggersapi.AddToScheme(scheme.Scheme)
 	Expect(err).NotTo(HaveOccurred())
 
-	err = appstudiov1alpha1.AddToScheme(scheme.Scheme)
+	err = taskrunapi.AddToScheme(scheme.Scheme)
 	Expect(err).NotTo(HaveOccurred())
 
-	err = appstudiov1alpha1.AddToScheme(scheme.Scheme)
+	err = routev1.AddToScheme(scheme.Scheme)
 	Expect(err).NotTo(HaveOccurred())
 
 	//+kubebuilder:scaffold:scheme
