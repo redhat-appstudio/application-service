@@ -24,7 +24,9 @@ import (
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
 	ctrl "sigs.k8s.io/controller-runtime"
+	"sigs.k8s.io/controller-runtime/pkg/builder"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/predicate"
 
 	"github.com/go-logr/logr"
 	appstudiov1alpha1 "github.com/redhat-appstudio/application-service/api/v1alpha1"
@@ -159,6 +161,6 @@ func (r *ComponentDetectionQueryReconciler) Reconcile(ctx context.Context, req c
 // SetupWithManager sets up the controller with the Manager.
 func (r *ComponentDetectionQueryReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
-		For(&appstudiov1alpha1.ComponentDetectionQuery{}).
+		For(&appstudiov1alpha1.ComponentDetectionQuery{}, builder.WithPredicates(predicate.GenerationChangedPredicate{})).
 		Complete(r)
 }
