@@ -32,6 +32,7 @@ import (
 	devfile "github.com/redhat-appstudio/application-service/pkg/devfile"
 	triggersapi "github.com/tektoncd/triggers/pkg/apis/triggers/v1alpha1"
 	corev1 "k8s.io/api/core/v1"
+
 	"sigs.k8s.io/yaml"
 
 	"k8s.io/apimachinery/pkg/api/resource"
@@ -83,7 +84,7 @@ var _ = Describe("Component controller", func() {
 					Kind:       "Component",
 				},
 				ObjectMeta: metav1.ObjectMeta{
-					Name:      HASAppNameForBuild,
+					Name:      HASCompNameForBuild,
 					Namespace: HASAppNamespace,
 				},
 				Spec: appstudiov1alpha1.ComponentSpec{
@@ -105,7 +106,7 @@ var _ = Describe("Component controller", func() {
 
 			// Look up the has app resource that was created.
 			// num(conditions) may still be < 1 on the first try, so retry until at least _some_ condition is set
-			hasCompLookupKey := types.NamespacedName{Name: HASAppNameForBuild, Namespace: HASAppNamespace}
+			hasCompLookupKey := types.NamespacedName{Name: HASCompNameForBuild, Namespace: HASAppNamespace}
 			createdHasComp := &appstudiov1alpha1.Component{}
 			Eventually(func() bool {
 				k8sClient.Get(context.Background(), hasCompLookupKey, createdHasComp)

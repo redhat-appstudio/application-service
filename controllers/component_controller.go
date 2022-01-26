@@ -400,7 +400,7 @@ func (r *ComponentReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 				return ctrl.Result{}, err
 			}
 		} else if errors.IsAlreadyExists(err) {
-			log.Info("Initial build already exists")
+			log.Info("Initial webhook already exists")
 		} else {
 			log.Error(err, fmt.Sprintf("Unable to get webhook %v", webhook.Name))
 			return ctrl.Result{}, err
@@ -415,13 +415,10 @@ func (r *ComponentReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 		return ctrl.Result{}, err
 	}
 
-	/*
-		if createdWebhook != nil && len(createdWebhook.Status.Ingress) != 0 {
-			return createdWebhook.Status.Ingress[0].Host, err
-		}
-	*/
+	if createdWebhook != nil && len(createdWebhook.Status.Ingress) != 0 {
+		component.Status.Webhook = createdWebhook.Status.Ingress[0].Host
+	}
 
-	component.Status.Webhook = createdWebhook.Status.Ingress[0].Host
 	err = r.Client.Status().Update(ctx, &component)
 	if err != nil {
 		log.Error(err, "Unable to update Component with webhook URL")
