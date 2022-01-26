@@ -228,6 +228,11 @@ func TestConvertGitHubURL(t *testing.T) {
 			wantUrl: "https://raw.githubusercontent.com/devfile-samples/devfile-sample-java-springboot-basic/main",
 		},
 		{
+			name:    "Successfully convert a github url with .git to raw url",
+			url:     "https://github.com/devfile-samples/devfile-sample-java-springboot-basic.git",
+			wantUrl: "https://raw.githubusercontent.com/devfile-samples/devfile-sample-java-springboot-basic/main",
+		},
+		{
 			name:    "A non github url",
 			url:     "https://some.url",
 			wantUrl: "https://some.url",
