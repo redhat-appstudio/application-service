@@ -777,10 +777,12 @@ var _ = Describe("Component controller", func() {
 				return len(createdHasComp.Status.Conditions) > 0 && createdHasComp.GetLabels()["appstudio.has/component"] != ""
 			}, timeout, interval).Should(BeTrue())
 
-			// Remove the component's devfile
+			// Remove the component's devfile and update a field in the spec to trigger a reconcile
 			createdHasComp.Status.Devfile = "a"
-
 			Expect(k8sClient.Status().Update(ctx, createdHasComp)).Should(Succeed())
+
+			createdHasComp.Spec.Build.ContainerImage = "test"
+			Expect(k8sClient.Update(ctx, createdHasComp)).Should(Succeed())
 
 			updatedHasComp := &appstudiov1alpha1.Component{}
 			Eventually(func() bool {
