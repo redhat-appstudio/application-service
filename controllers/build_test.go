@@ -159,7 +159,7 @@ func Test_paramsForInitialBuild(t *testing.T) {
 		want []tektonapi.Param
 	}{
 		{
-			name: "container image not provided",
+			name: "use the image as is",
 			args: args{
 				component: appstudiov1alpha1.Component{
 					ObjectMeta: v1.ObjectMeta{
@@ -216,7 +216,45 @@ func Test_paramsForWebhookBasedBuilds(t *testing.T) {
 		args args
 		want []tektonapi.Param
 	}{
-		// TODO: Add test cases.
+		{
+			name: "use the updated image tag",
+			args: args{
+				component: appstudiov1alpha1.Component{
+					ObjectMeta: v1.ObjectMeta{
+						Name:      "testcomponent",
+						Namespace: "kcpworkspacename",
+					},
+					Spec: appstudiov1alpha1.ComponentSpec{
+						Source: appstudiov1alpha1.ComponentSource{
+							ComponentSourceUnion: appstudiov1alpha1.ComponentSourceUnion{
+								GitSource: &appstudiov1alpha1.GitSource{
+									URL: "https://a/b/c",
+								},
+							},
+						},
+						Build: appstudiov1alpha1.Build{
+							ContainerImage: "docker.io/foo/bar:tag",
+						},
+					},
+				},
+			},
+			want: []tektonapi.Param{
+				{
+					Name: "git-url",
+					Value: tektonapi.ArrayOrString{
+						Type:      tektonapi.ParamTypeString,
+						StringVal: "https://a/b/c",
+					},
+				},
+				{
+					Name: "output-image",
+					Value: tektonapi.ArrayOrString{
+						Type:      tektonapi.ParamTypeString,
+						StringVal: "docker.io/foo/bar:tag-$(tt.params.git-revision)",
+					},
+				},
+			},
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

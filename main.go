@@ -88,17 +88,17 @@ func main() {
 	}
 
 	if err := triggersapi.AddToScheme(mgr.GetScheme()); err != nil {
-		setupLog.Error(err, "unable to add triggers api to the schema")
+		setupLog.Error(err, "unable to add triggers api to the scheme")
 		os.Exit(1)
 	}
 
 	if err := taskrunapi.AddToScheme(mgr.GetScheme()); err != nil {
-		setupLog.Error(err, "unable to add triggers api to the schema")
+		setupLog.Error(err, "unable to add triggers api to the scheme")
 		os.Exit(1)
 	}
 
 	if err := routev1.AddToScheme(mgr.GetScheme()); err != nil {
-		setupLog.Error(err, "unable to add triggers api to the schema")
+		setupLog.Error(err, "unable to add triggers api to the scheme")
 		os.Exit(1)
 	}
 	// Retrieve the GitHub Auth Token to use, error out if not found

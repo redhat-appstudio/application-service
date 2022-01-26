@@ -41,11 +41,12 @@ func determineBuildCatalog(namespace string) string {
 	return "quay.io/redhat-appstudio/build-templates-bundle:v0.1.2"
 }
 
-// determineBuildExecution returns the pipelineRun spec
+// determineBuildExecution returns the pipelineRun spec that would be used
+// in  webhooks-triggered pipelineRuns as well as user-triggered PipelineRuns
 func determineBuildExecution(component appstudiov1alpha1.Component, params []tektonapi.Param, workspaceSubPath string) tektonapi.PipelineRunSpec {
 
 	pipelineRunSpec := tektonapi.PipelineRunSpec{
-		Params: params, //paramsForWebhookBasedBuilds(component),
+		Params: params,
 		PipelineRef: &tektonapi.PipelineRef{
 
 			// This can't be hardcoded to devfile-build.
@@ -61,7 +62,7 @@ func determineBuildExecution(component appstudiov1alpha1.Component, params []tek
 				PersistentVolumeClaim: &corev1.PersistentVolumeClaimVolumeSource{
 					ClaimName: "appstudio",
 				},
-				SubPath: component.Name + "/" + workspaceSubPath, //$(tt.params.git-revision)/",
+				SubPath: component.Name + "/" + workspaceSubPath,
 			},
 			{
 				Name: "registry-auth",
@@ -92,6 +93,8 @@ func normalizeOutputImageURL(outputImage string) string {
 	return outputImage
 }
 
+// paramsForInitialBuild would return the 'input' parameters for the initial PipelineRun
+// that would build an image from source right after a Component is imported.
 func paramsForInitialBuild(component appstudiov1alpha1.Component) []tektonapi.Param {
 	sourceCode := component.Spec.Source.GitSource.URL
 	outputImage := component.Spec.Build.ContainerImage
@@ -116,6 +119,9 @@ func paramsForInitialBuild(component appstudiov1alpha1.Component) []tektonapi.Pa
 	return params
 }
 
+// paramsForWebhookBasedBuilds returns the 'input' paramters for the webhook-triggered
+// PipelineRuns. The key difference between webhook triggered PipelineRuns and user-triggered
+// PipelineRuns would be that you'd have the git revision appended to the output image tag
 func paramsForWebhookBasedBuilds(component appstudiov1alpha1.Component) []tektonapi.Param {
 	sourceCode := component.Spec.Source.GitSource.URL
 	outputImage := normalizeOutputImageURL(component.Spec.Build.ContainerImage)
@@ -149,6 +155,8 @@ func commonAnnotations() map[string]string {
 	return annotations
 }
 
+// commonStorage returns the PVC that would be created per namespace for
+// user-triggered and webhook-triggered Tekton workspaces.
 func commonStorage(name string, namespace string) corev1.PersistentVolumeClaim {
 	fsMode := corev1.PersistentVolumeFilesystem
 
@@ -173,6 +181,9 @@ func commonStorage(name string, namespace string) corev1.PersistentVolumeClaim {
 	return *workspaceStorage
 }
 
+// route returns the Route resource that would enable
+// ingress traffic into the webhook endpoint ( aka EventListener)
+// TODO: This needs to be secure.
 func route(component appstudiov1alpha1.Component) routev1.Route {
 	var port int32 = 8080
 	webhook := &routev1.Route{
@@ -195,6 +206,9 @@ func route(component appstudiov1alpha1.Component) routev1.Route {
 	return *webhook
 }
 
+// triggerTemplate generates the TriggerTemplate resources
+// which defines how a webhook-based trigger event would be handled -
+// In this case, a PipelineRun to build an image would be created.
 func triggerTemplate(component appstudiov1alpha1.Component) (*triggersapi.TriggerTemplate, error) {
 	webhookBasedBuildTemplate := determineBuildExecution(component, paramsForWebhookBasedBuilds(component), "$(tt.params.git-revision)")
 
@@ -204,17 +218,12 @@ func triggerTemplate(component appstudiov1alpha1.Component) (*triggersapi.Trigge
 			Namespace:    component.Namespace,
 			Annotations:  commonAnnotations(),
 		},
-		TypeMeta: v1.TypeMeta{
-			Kind:       "PipelineRun",
-			APIVersion: tektonapi.SchemeGroupVersion.Group + "/" + tektonapi.SchemeGroupVersion.Version,
-		},
 		Spec: webhookBasedBuildTemplate,
 	}
 
 	resourceTemplatePipelineRunBytes, err := json.Marshal(resoureTemplatePipelineRun)
 	if err != nil {
 		return nil, err
-		//og.Error(err, fmt.Sprintf("Unable to convert to bytes %v", resoureTemplatePipelineRun))
 	}
 
 	triggerTemplate := triggersapi.TriggerTemplate{}
@@ -235,6 +244,10 @@ func triggerTemplate(component appstudiov1alpha1.Component) (*triggersapi.Trigge
 	return &triggerTemplate, err
 }
 
+// The eventListener is responsible for defining how to "parse" the incoming event ( "github-push ")
+// and create the resultant PipelineRun ( defined as a TriggerTemplate ).
+// The reconciler for EventListeners create a Service, which when exposed enables
+// ingress traffic from Github events.
 func eventListener(component appstudiov1alpha1.Component, triggerTemplate triggersapi.TriggerTemplate) triggersapi.EventListener {
 	eventListener := triggersapi.EventListener{
 		ObjectMeta: v1.ObjectMeta{

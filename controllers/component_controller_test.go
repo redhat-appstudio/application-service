@@ -28,9 +28,12 @@ import (
 	"github.com/devfile/library/pkg/devfile/parser/data/v2/common"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
+	routev1 "github.com/openshift/api/route/v1"
 	appstudiov1alpha1 "github.com/redhat-appstudio/application-service/api/v1alpha1"
 	devfile "github.com/redhat-appstudio/application-service/pkg/devfile"
+	tektonapi "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	triggersapi "github.com/tektoncd/triggers/pkg/apis/triggers/v1alpha1"
+
 	corev1 "k8s.io/api/core/v1"
 
 	"sigs.k8s.io/yaml"
@@ -55,6 +58,7 @@ var _ = Describe("Component controller", func() {
 	)
 
 	Context("Check if build objects are created if component with output image url set", func() {
+
 		It("should create build objects", func() {
 			ctx := context.Background()
 
@@ -104,8 +108,6 @@ var _ = Describe("Component controller", func() {
 			}
 			Expect(k8sClient.Create(ctx, hasComp)).Should(Succeed())
 
-			// Look up the has app resource that was created.
-			// num(conditions) may still be < 1 on the first try, so retry until at least _some_ condition is set
 			hasCompLookupKey := types.NamespacedName{Name: HASCompNameForBuild, Namespace: HASAppNamespace}
 			createdHasComp := &appstudiov1alpha1.Component{}
 			Eventually(func() bool {
@@ -126,11 +128,12 @@ var _ = Describe("Component controller", func() {
 			pvcLookupKey := types.NamespacedName{Name: "appstudio", Namespace: HASAppNamespace}
 			pvc := &corev1.PersistentVolumeClaim{}
 
-			triggerTemplateLookupKey := types.NamespacedName{Name: HASCompNameForBuild, Namespace: HASAppNamespace}
-			triggerTemplate := &triggersapi.TriggerTemplate{}
+			buildResourceName := types.NamespacedName{Name: HASCompNameForBuild, Namespace: HASAppNamespace}
 
-			eventListenerName := types.NamespacedName{Name: HASCompNameForBuild, Namespace: HASAppNamespace}
+			triggerTemplate := &triggersapi.TriggerTemplate{}
 			eventListener := &triggersapi.EventListener{}
+			pipelineRun := &tektonapi.PipelineRun{}
+			route := &routev1.Route{}
 
 			Eventually(func() bool {
 				k8sClient.Get(context.Background(), pvcLookupKey, pvc)
@@ -138,13 +141,23 @@ var _ = Describe("Component controller", func() {
 			}, timeout, interval).Should(BeTrue())
 
 			Eventually(func() bool {
-				k8sClient.Get(context.Background(), triggerTemplateLookupKey, triggerTemplate)
+				k8sClient.Get(context.Background(), buildResourceName, pipelineRun)
+				return pipelineRun.ResourceVersion != ""
+			}, timeout, interval).Should(BeTrue())
+
+			Eventually(func() bool {
+				k8sClient.Get(context.Background(), buildResourceName, triggerTemplate)
 				return triggerTemplate.ResourceVersion != ""
 			}, timeout, interval).Should(BeTrue())
 
 			Eventually(func() bool {
-				k8sClient.Get(context.Background(), eventListenerName, eventListener)
+				k8sClient.Get(context.Background(), buildResourceName, eventListener)
 				return eventListener.ResourceVersion != ""
+			}, timeout, interval).Should(BeTrue())
+
+			Eventually(func() bool {
+				k8sClient.Get(context.Background(), buildResourceName, route)
+				return route.ResourceVersion != ""
 			}, timeout, interval).Should(BeTrue())
 
 			// Delete the specified HASComp resource
