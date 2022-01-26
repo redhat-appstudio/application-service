@@ -23,6 +23,7 @@ import (
 	"os"
 	"path"
 	"path/filepath"
+	"regexp"
 	"strings"
 
 	"github.com/go-git/go-git/v5"
@@ -54,11 +55,12 @@ func IsExist(path string) (bool, error) {
 // adapted from https://github.com/redhat-developer/odo/blob/e63773cc156ade6174a533535cbaa0c79506ffdb/pkg/catalog/catalog.go#L72
 func ConvertGitHubURL(URL string) (string, error) {
 	// If the URL ends with .git, remove it
-	if len(URL) > len(".git") {
-		if URL[len(URL)-len(".git"):] == ".git" {
-			URL = URL[:len(URL)-4]
-		}
+	// The regex will match if '.git' is at the end of the given string
+	reg, err := regexp.Compile(".git$")
+	if err != nil {
+		return "", err
 	}
+	URL = reg.ReplaceAllString(URL, "")
 
 	url, err := url.Parse(URL)
 	if err != nil {
