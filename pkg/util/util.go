@@ -55,7 +55,7 @@ func IsExist(path string) (bool, error) {
 // adapted from https://github.com/redhat-developer/odo/blob/e63773cc156ade6174a533535cbaa0c79506ffdb/pkg/catalog/catalog.go#L72
 func ConvertGitHubURL(URL string) (string, error) {
 	// If the URL ends with .git, remove it
-	// The regex will match if '.git' is at the end of the given string
+	// The regex will only instances of '.git' if it is at the end of the given string
 	reg, err := regexp.Compile(".git$")
 	if err != nil {
 		return "", err
