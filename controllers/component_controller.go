@@ -305,9 +305,26 @@ func (r *ComponentReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 		component.Spec.Build.ContainerImage = r.ImageRepository + ":" + component.Namespace + "-" + component.Name
 	}
 
+	_, err = r.generateBuild(ctx, &component)
+	if err != nil {
+		return ctrl.Result{}, err
+	}
+
+	err = r.Client.Status().Update(ctx, &component)
+	if err != nil {
+		log.Error(err, "Unable to update Component with webhook URL")
+	}
+
+	log.Info(fmt.Sprintf("Finished reconcile loop for %v", req.NamespacedName))
+	return ctrl.Result{}, err
+}
+
+func (r *ComponentReconciler) generateBuild(ctx context.Context, component *appstudiov1alpha1.Component) (ctrl.Result, error) {
+	log := r.Log.WithValues("Component", component.Namespace)
+
 	workspaceStorage := commonStorage("appstudio", component.Namespace)
 	pvc := &corev1.PersistentVolumeClaim{}
-	err = r.Get(ctx, types.NamespacedName{Name: workspaceStorage.Name, Namespace: workspaceStorage.Namespace}, pvc)
+	err := r.Get(ctx, types.NamespacedName{Name: workspaceStorage.Name, Namespace: workspaceStorage.Namespace}, pvc)
 	if err != nil {
 		if errors.IsNotFound(err) {
 			err = r.Client.Create(ctx, &workspaceStorage)
@@ -321,13 +338,13 @@ func (r *ComponentReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 		}
 	}
 
-	triggerTemplate, err := triggerTemplate(component)
+	triggerTemplate, err := triggerTemplate(*component)
 	if err != nil {
 		log.Error(err, "Unable to generate triggerTemplate ")
 		return ctrl.Result{}, err
 	}
 
-	err = controllerutil.SetOwnerReference(&component, triggerTemplate, r.Scheme)
+	err = controllerutil.SetOwnerReference(component, triggerTemplate, r.Scheme)
 	if err != nil {
 		log.Error(err, fmt.Sprintf("Unable to set owner reference for %v", triggerTemplate))
 	}
@@ -345,9 +362,9 @@ func (r *ComponentReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 		}
 	}
 
-	eventListener := eventListener(component, *triggerTemplate)
+	eventListener := eventListener(*component, *triggerTemplate)
 
-	err = controllerutil.SetOwnerReference(&component, &eventListener, r.Scheme)
+	err = controllerutil.SetOwnerReference(component, &eventListener, r.Scheme)
 	if err != nil {
 		log.Error(err, fmt.Sprintf("Unable to set owner reference for %v", eventListener))
 		return ctrl.Result{}, err
@@ -366,7 +383,7 @@ func (r *ComponentReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 		}
 	}
 
-	initialBuildSpec := determineBuildExecution(component, paramsForInitialBuild(component), "initialbuildpath")
+	initialBuildSpec := determineBuildExecution(*component, paramsForInitialBuild(*component), "initialbuildpath")
 
 	initialBuild := tektonapi.PipelineRun{
 		ObjectMeta: v1.ObjectMeta{
@@ -392,7 +409,7 @@ func (r *ComponentReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 		}
 	}
 
-	webhook := route(component)
+	webhook := route(*component)
 
 	err = r.Get(ctx, types.NamespacedName{Name: webhook.Name, Namespace: webhook.Namespace}, &routev1.Route{})
 	if err != nil {
@@ -422,12 +439,6 @@ func (r *ComponentReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 		component.Status.Webhook = createdWebhook.Status.Ingress[0].Host
 	}
 
-	err = r.Client.Status().Update(ctx, &component)
-	if err != nil {
-		log.Error(err, "Unable to update Component with webhook URL")
-	}
-
-	log.Info(fmt.Sprintf("Finished reconcile loop for %v", req.NamespacedName))
 	return ctrl.Result{}, err
 }
 
