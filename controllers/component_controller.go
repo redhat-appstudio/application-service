@@ -394,6 +394,11 @@ func (r *ComponentReconciler) generateBuild(ctx context.Context, component *apps
 		Spec: initialBuildSpec,
 	}
 
+	err = controllerutil.SetOwnerReference(component, &initialBuild, r.Scheme)
+	if err != nil {
+		log.Error(err, fmt.Sprintf("Unable to set owner reference for %v", initialBuild))
+	}
+
 	err = r.Get(ctx, types.NamespacedName{Name: initialBuild.Name, Namespace: initialBuild.Namespace}, &tektonapi.PipelineRun{})
 	if err != nil {
 		if errors.IsNotFound(err) {
@@ -410,6 +415,11 @@ func (r *ComponentReconciler) generateBuild(ctx context.Context, component *apps
 	}
 
 	webhook := route(*component)
+
+	err = controllerutil.SetOwnerReference(component, &webhook, r.Scheme)
+	if err != nil {
+		log.Error(err, fmt.Sprintf("Unable to set owner reference for %v", webhook))
+	}
 
 	err = r.Get(ctx, types.NamespacedName{Name: webhook.Name, Namespace: webhook.Namespace}, &routev1.Route{})
 	if err != nil {

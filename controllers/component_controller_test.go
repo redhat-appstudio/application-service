@@ -44,6 +44,18 @@ import (
 	//+kubebuilder:scaffold:imports
 )
 
+func isOwnedBy(resource []metav1.OwnerReference, component appstudiov1alpha1.Component) bool {
+	if len(resource) == 0 {
+		return false
+	}
+	if resource[0].Kind == "Component" &&
+		resource[0].APIVersion == "appstudio.redhat.com/v1alpha1" &&
+		resource[0].Name == component.Name {
+		return true
+	}
+	return false
+}
+
 var _ = Describe("Component controller", func() {
 
 	// Define utility constants for object names and testing timeouts/durations and intervals.
@@ -139,7 +151,7 @@ var _ = Describe("Component controller", func() {
 
 			Eventually(func() bool {
 				k8sClient.Get(context.Background(), buildResourceName, pipelineRun)
-				return pipelineRun.ResourceVersion != ""
+				return pipelineRun.ResourceVersion != "" && isOwnedBy(pipelineRun.GetOwnerReferences(), *createdHasComp)
 			}, timeout, interval).Should(BeTrue())
 
 			Expect(pipelineRun.Spec.Params).To(Not(BeEmpty()))
@@ -167,12 +179,12 @@ var _ = Describe("Component controller", func() {
 
 			Eventually(func() bool {
 				k8sClient.Get(context.Background(), buildResourceName, triggerTemplate)
-				return triggerTemplate.ResourceVersion != ""
+				return triggerTemplate.ResourceVersion != "" && isOwnedBy(triggerTemplate.GetOwnerReferences(), *createdHasComp)
 			}, timeout, interval).Should(BeTrue())
 
 			Eventually(func() bool {
 				k8sClient.Get(context.Background(), buildResourceName, eventListener)
-				return eventListener.ResourceVersion != ""
+				return eventListener.ResourceVersion != "" && isOwnedBy(eventListener.GetOwnerReferences(), *createdHasComp)
 			}, timeout, interval).Should(BeTrue())
 
 			Expect(eventListener.Spec.Triggers[0].Bindings[0].Ref).To(Equal("github-push"))
@@ -180,7 +192,7 @@ var _ = Describe("Component controller", func() {
 
 			Eventually(func() bool {
 				k8sClient.Get(context.Background(), buildResourceName, route)
-				return route.ResourceVersion != ""
+				return route.ResourceVersion != "" && isOwnedBy(route.GetOwnerReferences(), *createdHasComp)
 			}, timeout, interval).Should(BeTrue())
 
 			Expect(route.Spec.To.Name).To(Equal("el-" + HASCompNameForBuild))
@@ -283,6 +295,34 @@ var _ = Describe("Component controller", func() {
 
 			// Delete the specified HASApp resource
 			deleteHASAppCR(hasAppLookupKey)
+
+			/*
+					Eventually(func() bool {
+						pipelineRun = &tektonapi.PipelineRun{}
+						err := k8sClient.Get(context.Background(), hasCompLookupKey, pipelineRun)
+						return errors.IsNotFound(err) || pipelineRun == nil || pipelineRun.DeletionTimestamp != nil
+					}, timeout, interval).Should(BeTrue())
+
+
+				Eventually(func() bool {
+					triggerTemplate := &triggersapi.TriggerTemplate{}
+					err := k8sClient.Get(context.Background(), hasCompLookupKey, triggerTemplate)
+					return errors.IsNotFound(err) || triggerTemplate == nil || triggerTemplate.DeletionTimestamp != nil
+				}, timeout, interval).Should(BeTrue())
+
+				Eventually(func() bool {
+					eventListener := &triggersapi.EventListener{}
+					err := k8sClient.Get(context.Background(), hasCompLookupKey, eventListener)
+					return errors.IsNotFound(err) || eventListener == nil || eventListener.DeletionTimestamp != nil
+				}, timeout, interval).Should(BeTrue())
+
+				Eventually(func() bool {
+					route := &routev1.Route{}
+					err := k8sClient.Get(context.Background(), hasCompLookupKey, route)
+					return errors.IsNotFound(err) || route == nil || route.DeletionTimestamp != nil
+				}, timeout, interval).Should(BeTrue())
+			*/
+
 		})
 	})
 
