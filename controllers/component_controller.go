@@ -312,7 +312,7 @@ func (r *ComponentReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 
 	err = r.Client.Status().Update(ctx, &component)
 	if err != nil {
-		log.Error(err, "Unable to update Component with webhook URL")
+		log.Error(err, "Unable to update Component's status")
 	}
 
 	log.Info(fmt.Sprintf("Finished reconcile loop for %v", req.NamespacedName))
