@@ -98,7 +98,7 @@ func Test_determineBuildExecution(t *testing.T) {
 					{
 						Name: "registry-auth",
 						Secret: &corev1.SecretVolumeSource{
-							SecretName: "redhat-appstudio-registry",
+							SecretName: "redhat-appstudio-registry-pull-secret",
 						},
 					},
 				},
@@ -133,7 +133,7 @@ func Test_determineBuildExecution(t *testing.T) {
 					{
 						Name: "registry-auth",
 						Secret: &corev1.SecretVolumeSource{
-							SecretName: "redhat-appstudio-registry",
+							SecretName: "redhat-appstudio-registry-pull-secret",
 						},
 					},
 				},

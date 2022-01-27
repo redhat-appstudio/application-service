@@ -67,7 +67,7 @@ func determineBuildExecution(component appstudiov1alpha1.Component, params []tek
 			{
 				Name: "registry-auth",
 				Secret: &corev1.SecretVolumeSource{
-					SecretName: "redhat-appstudio-registry",
+					SecretName: "redhat-appstudio-registry-pull-secret",
 				},
 			},
 		},
@@ -217,6 +217,10 @@ func triggerTemplate(component appstudiov1alpha1.Component) (*triggersapi.Trigge
 			GenerateName: component.Name + "-",
 			Namespace:    component.Namespace,
 			Annotations:  commonAnnotations(),
+		},
+		TypeMeta: v1.TypeMeta{
+			Kind:       "PipelineRun",
+			APIVersion: "tekton.dev/v1beta1",
 		},
 		Spec: webhookBasedBuildTemplate,
 	}

@@ -135,12 +135,13 @@ func main() {
 		os.Exit(1)
 	}
 	if err = (&controllers.ComponentReconciler{
-		Client:   mgr.GetClient(),
-		Scheme:   mgr.GetScheme(),
-		Log:      ctrl.Log.WithName("controllers").WithName("Component"),
-		Executor: gitops.NewCmdExecutor(),
-		AppFS:    ioutils.NewFilesystem(),
-		GitToken: ghToken,
+		Client:          mgr.GetClient(),
+		Scheme:          mgr.GetScheme(),
+		Log:             ctrl.Log.WithName("controllers").WithName("Component"),
+		Executor:        gitops.NewCmdExecutor(),
+		AppFS:           ioutils.NewFilesystem(),
+		GitToken:        ghToken,
+		ImageRepository: imageRepository,
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "Component")
 		os.Exit(1)

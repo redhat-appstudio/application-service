@@ -157,7 +157,7 @@ var _ = Describe("Component controller", func() {
 			Expect(pipelineRun.Spec.Workspaces).To(Not(BeEmpty()))
 			for _, w := range pipelineRun.Spec.Workspaces {
 				if w.Name == "registry-auth" {
-					Expect(w.Secret.SecretName).To(Equal("redhat-appstudio-registry"))
+					Expect(w.Secret.SecretName).To(Equal("redhat-appstudio-registry-pull-secret"))
 				}
 				if w.Name == "workspace" {
 					Expect(w.PersistentVolumeClaim.ClaimName).To(Equal("appstudio"))

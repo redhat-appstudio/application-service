@@ -3,16 +3,8 @@
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
 metadata:
-  creationTimestamp: null
   name: manager-role-build
 rules:
-- verbs:
-    - get
-    - list
-    - create
-  apiGroups:
-    - persistentvolumeclaims
-    - persistentvolumeclaims/status
 - verbs:
     - create
     - delete
@@ -37,3 +29,25 @@ rules:
     - update
     - patch
     - delete
+    - watch
+    - list
+- verbs:
+    - get
+    - list
+    - create
+    - watch
+  resources:
+    - persistentvolumeclaims
+    - persistentvolumeclaims/status
+  apiGroups:
+    - ""
+- verbs:
+    - get
+    - list
+    - create
+    - watch
+  resources:
+    - routes
+  apiGroups:
+    - route.openshift.io
+

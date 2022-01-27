@@ -56,12 +56,12 @@ The following section outlines the steps to deploy HAS on a physical Kubernetes 
 As a user, upon creation of Component, Tekton resources would be created by the controller. 
 
 If you wish to get 'working' PipelineRuns,
-* Create an image pull secret named `redhat-appstudio-registry`. See [Kubernetes docs](https://kubernetes.io/docs/tasks/configure-pod-container/pull-image-private-registry/#registry-secret-existing-credentials) for more information on how to create
+* Create an image pull secret named `redhat-appstudio-registry-pull-secret`. See [Kubernetes docs](https://kubernetes.io/docs/tasks/configure-pod-container/pull-image-private-registry/#registry-secret-existing-credentials) for more information on how to create
 `Secrets` containing registry credentials. 
 * Configure the default image repository to which Pipelines would push images to using the 
 environment variable `IMAGE_REPOSITORY`. Defaults to `quay.io/redhat-appstudio/user-workload`.
 
-Pipelines would use the credentials in the image pull secret `redhat-appstudio-registry` to push to $IMAGE_REPOSITORY.
+Pipelines would use the credentials in the image pull secret `redhat-appstudio-registry-pull-secret` to push to $IMAGE_REPOSITORY.
 
 
 
