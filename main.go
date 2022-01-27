@@ -113,6 +113,12 @@ func main() {
 		ghOrg = "redhat-appstudio-appdata"
 	}
 
+	// Retrieve the name of the default repository to use
+	imageRepository := os.Getenv("IMAGE_REPOSITORY")
+	if imageRepository == "" {
+		imageRepository = "quay.io/redhat-appstudio/user-workload"
+	}
+
 	ctx := context.Background()
 	ts := oauth2.StaticTokenSource(&oauth2.Token{AccessToken: ghToken})
 	tc := oauth2.NewClient(ctx, ts)

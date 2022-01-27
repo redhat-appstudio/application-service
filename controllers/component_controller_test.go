@@ -57,9 +57,9 @@ var _ = Describe("Component controller", func() {
 		SampleRepoLink  = "https://github.com/devfile-samples/devfile-sample-java-springboot-basic"
 	)
 
-	Context("Check if build objects are created if component with output image url set", func() {
+	Context("Check if build objects are created", func() {
 
-		It("should create build objects", func() {
+		It("should create build objects even if output image it not provided", func() {
 			ctx := context.Background()
 
 			HASAppNameForBuild := "test-application-1234"
@@ -98,9 +98,6 @@ var _ = Describe("Component controller", func() {
 						ComponentSourceUnion: appstudiov1alpha1.ComponentSourceUnion{
 							GitSource: &appstudiov1alpha1.GitSource{
 								URL: SampleRepoLink,
-							},
-							ImageSource: &appstudiov1alpha1.ImageSource{
-								ContainerImage: "docker.io/foo/bar",
 							},
 						},
 					},
@@ -145,6 +142,29 @@ var _ = Describe("Component controller", func() {
 				return pipelineRun.ResourceVersion != ""
 			}, timeout, interval).Should(BeTrue())
 
+			Expect(pipelineRun.Spec.Params).To(Not(BeEmpty()))
+			for _, p := range pipelineRun.Spec.Params {
+				if p.Name == "output-image" {
+					Expect(p.Value.StringVal).To(Equal("docker.io/foo/customized:default-test-component-1234"))
+				}
+				if p.Name == "git-url" {
+					Expect(p.Value.StringVal).To(Equal(SampleRepoLink))
+				}
+			}
+
+			Expect(pipelineRun.Spec.PipelineRef.Bundle).To(Equal("quay.io/redhat-appstudio/build-templates-bundle:v0.1.2"))
+
+			Expect(pipelineRun.Spec.Workspaces).To(Not(BeEmpty()))
+			for _, w := range pipelineRun.Spec.Workspaces {
+				if w.Name == "registry-auth" {
+					Expect(w.Secret.SecretName).To(Equal("redhat-appstudio-registry"))
+				}
+				if w.Name == "workspace" {
+					Expect(w.PersistentVolumeClaim.ClaimName).To(Equal("appstudio"))
+					Expect(w.SubPath).To(Equal(HASCompNameForBuild + "/initialbuildpath"))
+				}
+			}
+
 			Eventually(func() bool {
 				k8sClient.Get(context.Background(), buildResourceName, triggerTemplate)
 				return triggerTemplate.ResourceVersion != ""
@@ -155,10 +175,98 @@ var _ = Describe("Component controller", func() {
 				return eventListener.ResourceVersion != ""
 			}, timeout, interval).Should(BeTrue())
 
+			Expect(eventListener.Spec.Triggers[0].Bindings[0].Ref).To(Equal("github-push"))
+			Expect(eventListener.Spec.Triggers[0].Template.Ref).To(Equal(&HASCompNameForBuild))
+
 			Eventually(func() bool {
 				k8sClient.Get(context.Background(), buildResourceName, route)
 				return route.ResourceVersion != ""
 			}, timeout, interval).Should(BeTrue())
+
+			Expect(route.Spec.To.Name).To(Equal("el-" + HASCompNameForBuild))
+			Expect(route.Spec.To.Kind).To(Equal("Service"))
+			Expect(route.Spec.Path).To(Equal("/"))
+
+			var port int32 = 8080
+			Expect(route.Spec.Port.TargetPort.IntVal).To(Equal(port))
+
+			// Delete the specified HASComp resource
+			deleteHASCompCR(hasCompLookupKey)
+
+			// Delete the specified HASApp resource
+			deleteHASAppCR(hasAppLookupKey)
+		})
+
+		It("should create build objects even if output image it not provided", func() {
+			ctx := context.Background()
+
+			HASAppNameForBuild := "test-application-build-without-image"
+			HASCompNameForBuild := "test-application-build-without-image"
+
+			hasApp := &appstudiov1alpha1.Application{
+				TypeMeta: metav1.TypeMeta{
+					APIVersion: "appstudio.redhat.com/v1alpha1",
+					Kind:       "Application",
+				},
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      HASAppNameForBuild,
+					Namespace: HASAppNamespace,
+				},
+				Spec: appstudiov1alpha1.ApplicationSpec{
+					DisplayName: DisplayName,
+					Description: Description,
+				},
+			}
+
+			Expect(k8sClient.Create(ctx, hasApp)).Should(Succeed())
+
+			hasComp := &appstudiov1alpha1.Component{
+				TypeMeta: metav1.TypeMeta{
+					APIVersion: "appstudio.redhat.com/v1alpha1",
+					Kind:       "Component",
+				},
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      HASCompNameForBuild,
+					Namespace: HASAppNamespace,
+				},
+				Spec: appstudiov1alpha1.ComponentSpec{
+					ComponentName: ComponentName,
+					Application:   HASAppNameForBuild,
+					Source: appstudiov1alpha1.ComponentSource{
+						ComponentSourceUnion: appstudiov1alpha1.ComponentSourceUnion{
+							GitSource: &appstudiov1alpha1.GitSource{
+								URL: SampleRepoLink,
+							},
+						},
+					},
+				},
+			}
+			Expect(k8sClient.Create(ctx, hasComp)).Should(Succeed())
+
+			hasCompLookupKey := types.NamespacedName{Name: HASCompNameForBuild, Namespace: HASAppNamespace}
+			createdHasComp := &appstudiov1alpha1.Component{}
+			Eventually(func() bool {
+				k8sClient.Get(context.Background(), hasCompLookupKey, createdHasComp)
+				return len(createdHasComp.Status.Conditions) > 0
+			}, timeout, interval).Should(BeTrue())
+
+			// Make sure the devfile model was properly set in Component
+			Expect(createdHasComp.Status.Devfile).Should(Not(Equal("")))
+
+			hasAppLookupKey := types.NamespacedName{Name: HASAppNameForBuild, Namespace: HASAppNamespace}
+			createdHasApp := &appstudiov1alpha1.Application{}
+			Eventually(func() bool {
+				k8sClient.Get(context.Background(), hasAppLookupKey, createdHasApp)
+				return len(createdHasApp.Status.Conditions) > 0 && strings.Contains(createdHasApp.Status.Devfile, ComponentName)
+			}, timeout, interval).Should(BeTrue())
+
+			pipelineRun := &tektonapi.PipelineRun{}
+
+			for _, p := range pipelineRun.Spec.Params {
+				if p.Name == "output-image" {
+					Expect(p.Value.StringVal).To(Equal("docker.io/foo/bar"))
+				}
+			}
 
 			// Delete the specified HASComp resource
 			deleteHASCompCR(hasCompLookupKey)

@@ -116,11 +116,12 @@ var _ = BeforeSuite(func() {
 	Expect(err).ToNot(HaveOccurred())
 
 	err = (&ComponentReconciler{
-		Client:   k8sManager.GetClient(),
-		Scheme:   k8sManager.GetScheme(),
-		Log:      ctrl.Log.WithName("controllers").WithName("Component"),
-		Executor: testutils.NewMockExecutor(),
-		AppFS:    ioutils.NewMemoryFilesystem(),
+		Client:          k8sManager.GetClient(),
+		Scheme:          k8sManager.GetScheme(),
+		Log:             ctrl.Log.WithName("controllers").WithName("Component"),
+		Executor:        testutils.NewMockExecutor(),
+		AppFS:           ioutils.NewMemoryFilesystem(),
+		ImageRepository: "docker.io/foo/customized",
 	}).SetupWithManager(k8sManager)
 	Expect(err).ToNot(HaveOccurred())
 

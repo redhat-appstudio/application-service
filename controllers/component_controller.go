@@ -51,12 +51,13 @@ import (
 // ComponentReconciler reconciles a Component object
 type ComponentReconciler struct {
 	client.Client
-	Scheme    *runtime.Scheme
-	Log       logr.Logger
-	GitToken  string
-	GitHubOrg string
-	Executor  gitops.Executor
-	AppFS     afero.Afero
+	Scheme          *runtime.Scheme
+	Log             logr.Logger
+	GitToken        string
+	GitHubOrg       string
+	ImageRepository string
+	Executor        gitops.Executor
+	AppFS           afero.Afero
 }
 
 //+kubebuilder:rbac:groups=appstudio.redhat.com,resources=components,verbs=get;list;watch;create;update;patch;delete
@@ -299,7 +300,7 @@ func (r *ComponentReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 	}
 
 	if component.Spec.Build.ContainerImage == "" {
-		component.Spec.Build.ContainerImage = "quay.io/redhat-appstudio/user-workload:" + component.Namespace + "-" + component.Name
+		component.Spec.Build.ContainerImage = r.ImageRepository + ":" + component.Namespace + "-" + component.Name
 	}
 
 	workspaceStorage := commonStorage("appstudio", component.Namespace)
