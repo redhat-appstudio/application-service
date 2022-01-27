@@ -239,6 +239,9 @@ var _ = Describe("Component controller", func() {
 							},
 						},
 					},
+					Build: appstudiov1alpha1.Build{
+						ContainerImage: "docker.io/foo/bar",
+					},
 				},
 			}
 			Expect(k8sClient.Create(ctx, hasComp)).Should(Succeed())
@@ -261,6 +264,13 @@ var _ = Describe("Component controller", func() {
 			}, timeout, interval).Should(BeTrue())
 
 			pipelineRun := &tektonapi.PipelineRun{}
+
+			Eventually(func() bool {
+				k8sClient.Get(context.Background(), hasCompLookupKey, pipelineRun)
+				return pipelineRun.ResourceVersion != ""
+			}, timeout, interval).Should(BeTrue())
+
+			Expect(pipelineRun.Spec.Params).To(Not(BeEmpty()))
 
 			for _, p := range pipelineRun.Spec.Params {
 				if p.Name == "output-image" {

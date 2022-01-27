@@ -93,6 +93,10 @@ func (r *ComponentReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 		return ctrl.Result{}, err
 	}
 
+	if component.Spec.Build.ContainerImage == "" {
+		component.Spec.Build.ContainerImage = r.ImageRepository + ":" + component.Namespace + "-" + component.Name
+	}
+
 	// If the devfile hasn't been populated, the CR was just created
 	if component.Status.Devfile == "" {
 		source := component.Spec.Source
@@ -233,7 +237,8 @@ func (r *ComponentReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 					}
 				}
 
-				r.SetCreateConditionAndUpdateCR(ctx, &component, nil)
+				err = r.generateBuild(ctx, &component)
+				r.SetCreateConditionAndUpdateCR(ctx, &component, err)
 
 			} else {
 				log.Error(err, fmt.Sprintf("Application devfile model is empty. Before creating a Component, an instance of Application should be created, exiting reconcile loop %v", req.NamespacedName))
@@ -296,18 +301,13 @@ func (r *ComponentReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 
 			component.Status.Devfile = string(yamlHASCompData)
 			r.SetUpdateConditionAndUpdateCR(ctx, &component, nil)
+
+			err = r.generateBuild(ctx, &component)
+			r.SetCreateConditionAndUpdateCR(ctx, &component, err)
+
 		} else {
 			log.Info(fmt.Sprintf("The Component devfile data was not updated %v", req.NamespacedName))
 		}
-	}
-
-	if component.Spec.Build.ContainerImage == "" {
-		component.Spec.Build.ContainerImage = r.ImageRepository + ":" + component.Namespace + "-" + component.Name
-	}
-
-	_, err = r.generateBuild(ctx, &component)
-	if err != nil {
-		return ctrl.Result{}, err
 	}
 
 	err = r.Client.Status().Update(ctx, &component)
@@ -319,7 +319,7 @@ func (r *ComponentReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 	return ctrl.Result{}, err
 }
 
-func (r *ComponentReconciler) generateBuild(ctx context.Context, component *appstudiov1alpha1.Component) (ctrl.Result, error) {
+func (r *ComponentReconciler) generateBuild(ctx context.Context, component *appstudiov1alpha1.Component) error {
 	log := r.Log.WithValues("Component", component.Namespace)
 
 	workspaceStorage := commonStorage("appstudio", component.Namespace)
@@ -330,18 +330,18 @@ func (r *ComponentReconciler) generateBuild(ctx context.Context, component *apps
 			err = r.Client.Create(ctx, &workspaceStorage)
 			if err != nil {
 				log.Error(err, fmt.Sprintf("Unable to create common storage %v", workspaceStorage))
-				return ctrl.Result{}, err
+				return err
 			}
 		} else {
 			log.Error(err, fmt.Sprintf("Unable to get common storage %v", workspaceStorage))
-			return ctrl.Result{}, err
+			return err
 		}
 	}
 
 	triggerTemplate, err := triggerTemplate(*component)
 	if err != nil {
 		log.Error(err, "Unable to generate triggerTemplate ")
-		return ctrl.Result{}, err
+		return err
 	}
 
 	err = controllerutil.SetOwnerReference(component, triggerTemplate, r.Scheme)
@@ -354,11 +354,11 @@ func (r *ComponentReconciler) generateBuild(ctx context.Context, component *apps
 			err = r.Client.Create(ctx, triggerTemplate)
 			if err != nil {
 				log.Error(err, fmt.Sprintf("Unable to create triggerTemplate %v", triggerTemplate))
-				return ctrl.Result{}, err
+				return err
 			}
 		} else {
 			log.Error(err, fmt.Sprintf("Unable to get triggerTemplate %s", triggerTemplate.Name))
-			return ctrl.Result{}, err
+			return err
 		}
 	}
 
@@ -367,7 +367,7 @@ func (r *ComponentReconciler) generateBuild(ctx context.Context, component *apps
 	err = controllerutil.SetOwnerReference(component, &eventListener, r.Scheme)
 	if err != nil {
 		log.Error(err, fmt.Sprintf("Unable to set owner reference for %v", eventListener))
-		return ctrl.Result{}, err
+		return err
 	}
 	err = r.Get(ctx, types.NamespacedName{Name: eventListener.Name, Namespace: eventListener.Namespace}, &triggersapi.EventListener{})
 	if err != nil {
@@ -375,11 +375,11 @@ func (r *ComponentReconciler) generateBuild(ctx context.Context, component *apps
 			err = r.Client.Create(ctx, &eventListener)
 			if err != nil {
 				log.Error(err, fmt.Sprintf("Unable to create eventListener %v", eventListener))
-				return ctrl.Result{}, err
+				return err
 			}
 		} else {
 			log.Error(err, fmt.Sprintf("Unable to get eventListener %v", eventListener))
-			return ctrl.Result{}, err
+			return err
 		}
 	}
 
@@ -400,12 +400,12 @@ func (r *ComponentReconciler) generateBuild(ctx context.Context, component *apps
 			err = r.Client.Create(ctx, &initialBuild)
 			if err != nil {
 				log.Error(err, fmt.Sprintf("Unable to create initial build %v", initialBuild))
-				return ctrl.Result{}, err
+				return err
 			}
 
 		} else {
 			log.Error(err, fmt.Sprintf("Unable to get build %v", eventListener))
-			return ctrl.Result{}, err
+			return err
 		}
 	}
 
@@ -417,13 +417,13 @@ func (r *ComponentReconciler) generateBuild(ctx context.Context, component *apps
 			err = r.Client.Create(ctx, &webhook)
 			if err != nil {
 				log.Error(err, fmt.Sprintf("Unable to create webhook %v", webhook.Name))
-				return ctrl.Result{}, err
+				return err
 			}
 		} else if errors.IsAlreadyExists(err) {
 			log.Info("Initial webhook already exists")
 		} else {
 			log.Error(err, fmt.Sprintf("Unable to get webhook %v", webhook.Name))
-			return ctrl.Result{}, err
+			return err
 		}
 	}
 
@@ -432,14 +432,14 @@ func (r *ComponentReconciler) generateBuild(ctx context.Context, component *apps
 	err = r.Client.Get(ctx, types.NamespacedName{Name: webhook.Name, Namespace: webhook.Namespace}, createdWebhook)
 	if err != nil {
 		log.Error(err, fmt.Sprintf("Unable to get inital webhook %v", webhook.Name))
-		return ctrl.Result{}, err
+		return err
 	}
 
 	if createdWebhook != nil && len(createdWebhook.Status.Ingress) != 0 {
 		component.Status.Webhook = createdWebhook.Status.Ingress[0].Host
 	}
 
-	return ctrl.Result{}, err
+	return err
 }
 
 // generateGitops retrieves the necessary information about a Component's gitops repository (URL, branch, context)
