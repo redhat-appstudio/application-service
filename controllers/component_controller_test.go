@@ -197,7 +197,7 @@ var _ = Describe("Component controller", func() {
 			deleteHASAppCR(hasAppLookupKey)
 		})
 
-		It("should create build objects even if output image it not provided", func() {
+		It("should create build objects when output image is provided", func() {
 			ctx := context.Background()
 
 			HASAppNameForBuild := "test-application-build-without-image"
