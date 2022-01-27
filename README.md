@@ -58,8 +58,8 @@ As a user, upon creation of Component, Tekton resources would be created by the 
 If you wish to get 'working' PipelineRuns,
 * Create an image pull secret named `redhat-appstudio-registry-pull-secret`. See [Kubernetes docs](https://kubernetes.io/docs/tasks/configure-pod-container/pull-image-private-registry/#registry-secret-existing-credentials) for more information on how to create
 `Secrets` containing registry credentials. 
-* Configure the default image repository to which Pipelines would push images to using the 
-environment variable `IMAGE_REPOSITORY`. Defaults to `quay.io/redhat-appstudio/user-workload`.
+* Configure the default image repository to which Pipelines would push images to by defining the environment variable `IMAGE_REPOSITORY` for the operator deployment.
+Defaults to `quay.io/redhat-appstudio/user-workload`.
 
 Pipelines would use the credentials in the image pull secret `redhat-appstudio-registry-pull-secret` to push to $IMAGE_REPOSITORY.
 
