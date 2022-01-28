@@ -238,6 +238,13 @@ func (r *ComponentReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 					}
 				}
 
+				log.Info(fmt.Sprintf("Creating the Build objects  %v", req.NamespacedName))
+
+				webhook, err := r.generateBuild(ctx, &component)
+				r.SetCreateConditionAndUpdateCR(ctx, &component, err)
+
+				component.Status.Webhook = webhook
+
 			} else {
 				log.Error(err, fmt.Sprintf("Application devfile model is empty. Before creating a Component, an instance of Application should be created, exiting reconcile loop %v", req.NamespacedName))
 				err := fmt.Errorf("application devfile model is empty. Before creating a Component, an instance of Application should be created")
@@ -248,18 +255,6 @@ func (r *ComponentReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 		} else if source.ImageSource != nil && source.ImageSource.ContainerImage != "" {
 			log.Info(fmt.Sprintf("container image is not supported at the moment, please use github links for adding a component to an application for %v", req.NamespacedName))
 		}
-
-		log.Info(fmt.Sprintf("Creating the Build objects  %v", req.NamespacedName))
-
-		webhook, err := r.generateBuild(ctx, &component)
-
-		if err != nil {
-			log.Error(err, "Failed to create tekton resources")
-			r.SetCreateConditionAndUpdateCR(ctx, &component, err)
-			return ctrl.Result{}, err
-		}
-
-		component.Status.Webhook = webhook
 
 	} else {
 
@@ -316,11 +311,7 @@ func (r *ComponentReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 
 			log.Info(fmt.Sprintf("Updating the Build objects  %v", req.NamespacedName))
 			webhook, err := r.generateBuild(ctx, &component)
-			if err != nil {
-				log.Error(err, "Failed to create tekton resources")
-				r.SetCreateConditionAndUpdateCR(ctx, &component, err)
-				return ctrl.Result{}, err
-			}
+			r.SetCreateConditionAndUpdateCR(ctx, &component, err)
 			component.Status.Webhook = webhook
 
 		} else {
