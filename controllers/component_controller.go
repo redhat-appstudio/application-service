@@ -322,7 +322,7 @@ func (r *ComponentReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 func (r *ComponentReconciler) generateBuild(ctx context.Context, component *appstudiov1alpha1.Component) error {
 	log := r.Log.WithValues("Component", component.Namespace)
 
-	workspaceStorage := commonStorage("appstudio", component.Namespace)
+	workspaceStorage := commonStorage(*component, "appstudio")
 	pvc := &corev1.PersistentVolumeClaim{}
 	err := r.Get(ctx, types.NamespacedName{Name: workspaceStorage.Name, Namespace: workspaceStorage.Namespace}, pvc)
 	if err != nil {
@@ -387,9 +387,9 @@ func (r *ComponentReconciler) generateBuild(ctx context.Context, component *apps
 
 	initialBuild := tektonapi.PipelineRun{
 		ObjectMeta: v1.ObjectMeta{
-			Name:        component.Name,
-			Namespace:   component.Namespace,
-			Annotations: commonAnnotations(),
+			GenerateName: component.Name + "-",
+			Namespace:    component.Namespace,
+			Labels:       commonLabels(component),
 		},
 		Spec: initialBuildSpec,
 	}
@@ -399,19 +399,10 @@ func (r *ComponentReconciler) generateBuild(ctx context.Context, component *apps
 		log.Error(err, fmt.Sprintf("Unable to set owner reference for %v", initialBuild))
 	}
 
-	err = r.Get(ctx, types.NamespacedName{Name: initialBuild.Name, Namespace: initialBuild.Namespace}, &tektonapi.PipelineRun{})
+	err = r.Client.Create(ctx, &initialBuild)
 	if err != nil {
-		if errors.IsNotFound(err) {
-			err = r.Client.Create(ctx, &initialBuild)
-			if err != nil {
-				log.Error(err, fmt.Sprintf("Unable to create initial build %v", initialBuild))
-				return err
-			}
-
-		} else {
-			log.Error(err, fmt.Sprintf("Unable to get build %v", eventListener))
-			return err
-		}
+		log.Error(err, fmt.Sprintf("Unable to create the build PipelineRun %v", initialBuild))
+		return err
 	}
 
 	webhook := route(*component)

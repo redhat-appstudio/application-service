@@ -36,6 +36,7 @@ import (
 
 	corev1 "k8s.io/api/core/v1"
 
+	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/yaml"
 
 	"k8s.io/apimachinery/pkg/api/resource"
@@ -121,7 +122,7 @@ var _ = Describe("Component controller", func() {
 			createdHasComp := &appstudiov1alpha1.Component{}
 			Eventually(func() bool {
 				k8sClient.Get(context.Background(), hasCompLookupKey, createdHasComp)
-				return len(createdHasComp.Status.Conditions) > 0
+				return len(createdHasComp.Status.Conditions) > 0 && createdHasComp.ResourceVersion != ""
 			}, timeout, interval).Should(BeTrue())
 
 			// Make sure the devfile model was properly set in Component
@@ -141,7 +142,7 @@ var _ = Describe("Component controller", func() {
 
 			triggerTemplate := &triggersapi.TriggerTemplate{}
 			eventListener := &triggersapi.EventListener{}
-			pipelineRun := &tektonapi.PipelineRun{}
+			pipelineRuns := tektonapi.PipelineRunList{}
 			route := &routev1.Route{}
 
 			Eventually(func() bool {
@@ -150,9 +151,16 @@ var _ = Describe("Component controller", func() {
 			}, timeout, interval).Should(BeTrue())
 
 			Eventually(func() bool {
-				k8sClient.Get(context.Background(), buildResourceName, pipelineRun)
-				return pipelineRun.ResourceVersion != "" && isOwnedBy(pipelineRun.GetOwnerReferences(), *createdHasComp)
+				fmt.Println(createdHasComp.ResourceVersion)
+				labelSelectors := client.ListOptions{Raw: &metav1.ListOptions{
+					LabelSelector: "build.appstudio.openshift.io/component=" + createdHasComp.Name,
+				}}
+				k8sClient.List(context.Background(), &pipelineRuns, &labelSelectors)
+				fmt.Println(pipelineRuns.Items)
+				return len(pipelineRuns.Items) > 0
 			}, timeout, interval).Should(BeTrue())
+
+			pipelineRun := pipelineRuns.Items[0]
 
 			Expect(pipelineRun.Spec.Params).To(Not(BeEmpty()))
 			for _, p := range pipelineRun.Spec.Params {
@@ -275,12 +283,17 @@ var _ = Describe("Component controller", func() {
 				return len(createdHasApp.Status.Conditions) > 0 && strings.Contains(createdHasApp.Status.Devfile, ComponentName)
 			}, timeout, interval).Should(BeTrue())
 
-			pipelineRun := &tektonapi.PipelineRun{}
+			pipelineRuns := &tektonapi.PipelineRunList{}
 
 			Eventually(func() bool {
-				k8sClient.Get(context.Background(), hasCompLookupKey, pipelineRun)
-				return pipelineRun.ResourceVersion != ""
+				labelSelectors := client.ListOptions{Raw: &metav1.ListOptions{
+					LabelSelector: "build.appstudio.openshift.io/component=" + createdHasComp.Name,
+				}}
+				k8sClient.List(context.Background(), pipelineRuns, &labelSelectors)
+				return len(pipelineRuns.Items) > 0
 			}, timeout, interval).Should(BeTrue())
+
+			pipelineRun := pipelineRuns.Items[0]
 
 			Expect(pipelineRun.Spec.Params).To(Not(BeEmpty()))
 
@@ -295,34 +308,6 @@ var _ = Describe("Component controller", func() {
 
 			// Delete the specified HASApp resource
 			deleteHASAppCR(hasAppLookupKey)
-
-			/*
-					Eventually(func() bool {
-						pipelineRun = &tektonapi.PipelineRun{}
-						err := k8sClient.Get(context.Background(), hasCompLookupKey, pipelineRun)
-						return errors.IsNotFound(err) || pipelineRun == nil || pipelineRun.DeletionTimestamp != nil
-					}, timeout, interval).Should(BeTrue())
-
-
-				Eventually(func() bool {
-					triggerTemplate := &triggersapi.TriggerTemplate{}
-					err := k8sClient.Get(context.Background(), hasCompLookupKey, triggerTemplate)
-					return errors.IsNotFound(err) || triggerTemplate == nil || triggerTemplate.DeletionTimestamp != nil
-				}, timeout, interval).Should(BeTrue())
-
-				Eventually(func() bool {
-					eventListener := &triggersapi.EventListener{}
-					err := k8sClient.Get(context.Background(), hasCompLookupKey, eventListener)
-					return errors.IsNotFound(err) || eventListener == nil || eventListener.DeletionTimestamp != nil
-				}, timeout, interval).Should(BeTrue())
-
-				Eventually(func() bool {
-					route := &routev1.Route{}
-					err := k8sClient.Get(context.Background(), hasCompLookupKey, route)
-					return errors.IsNotFound(err) || route == nil || route.DeletionTimestamp != nil
-				}, timeout, interval).Should(BeTrue())
-			*/
-
 		})
 	})
 

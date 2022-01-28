@@ -146,25 +146,27 @@ func paramsForWebhookBasedBuilds(component appstudiov1alpha1.Component) []tekton
 	return params
 }
 
-func commonAnnotations() map[string]string {
-	annotations := map[string]string{
-		"build.appstudio.openshift.io/build":   "true",
-		"build.appstudio.openshift.io/type":    "build",
-		"build.appstudio.openshift.io/version": "0.1",
+func commonLabels(component *appstudiov1alpha1.Component) map[string]string {
+	labels := map[string]string{
+		"build.appstudio.openshift.io/build":       "true",
+		"build.appstudio.openshift.io/type":        "build",
+		"build.appstudio.openshift.io/version":     "0.1",
+		"build.appstudio.openshift.io/component":   component.Name,
+		"build.appstudio.openshift.io/application": component.Spec.Application,
 	}
-	return annotations
+	return labels
 }
 
 // commonStorage returns the PVC that would be created per namespace for
 // user-triggered and webhook-triggered Tekton workspaces.
-func commonStorage(name string, namespace string) corev1.PersistentVolumeClaim {
+func commonStorage(component appstudiov1alpha1.Component, name string) corev1.PersistentVolumeClaim {
 	fsMode := corev1.PersistentVolumeFilesystem
 
 	workspaceStorage := &corev1.PersistentVolumeClaim{
 		ObjectMeta: v1.ObjectMeta{
 			Name:        name,
-			Namespace:   namespace,
-			Annotations: commonAnnotations(),
+			Namespace:   component.Namespace,
+			Annotations: commonLabels(&component),
 		},
 		Spec: corev1.PersistentVolumeClaimSpec{
 			AccessModes: []corev1.PersistentVolumeAccessMode{
@@ -190,7 +192,7 @@ func route(component appstudiov1alpha1.Component) routev1.Route {
 		ObjectMeta: v1.ObjectMeta{
 			Name:        component.Name,
 			Namespace:   component.Namespace,
-			Annotations: commonAnnotations(),
+			Annotations: commonLabels(&component),
 		},
 		Spec: routev1.RouteSpec{
 			Path: "/",
@@ -216,7 +218,7 @@ func triggerTemplate(component appstudiov1alpha1.Component) (*triggersapi.Trigge
 		ObjectMeta: v1.ObjectMeta{
 			GenerateName: component.Name + "-",
 			Namespace:    component.Namespace,
-			Annotations:  commonAnnotations(),
+			Annotations:  commonLabels(&component),
 		},
 		TypeMeta: v1.TypeMeta{
 			Kind:       "PipelineRun",
@@ -257,7 +259,7 @@ func eventListener(component appstudiov1alpha1.Component, triggerTemplate trigge
 		ObjectMeta: v1.ObjectMeta{
 			Name:        component.Name,
 			Namespace:   component.Namespace,
-			Annotations: commonAnnotations(),
+			Annotations: commonLabels(&component),
 		},
 		Spec: triggersapi.EventListenerSpec{
 			ServiceAccountName: "pipeline",
