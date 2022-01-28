@@ -213,7 +213,6 @@ func route(component appstudiov1alpha1.Component) routev1.Route {
 // In this case, a PipelineRun to build an image would be created.
 func triggerTemplate(component appstudiov1alpha1.Component) (*triggersapi.TriggerTemplate, error) {
 	webhookBasedBuildTemplate := determineBuildExecution(component, paramsForWebhookBasedBuilds(component), "$(tt.params.git-revision)")
-
 	resoureTemplatePipelineRun := tektonapi.PipelineRun{
 		ObjectMeta: v1.ObjectMeta{
 			GenerateName: component.Name + "-",
@@ -226,12 +225,10 @@ func triggerTemplate(component appstudiov1alpha1.Component) (*triggersapi.Trigge
 		},
 		Spec: webhookBasedBuildTemplate,
 	}
-
 	resourceTemplatePipelineRunBytes, err := json.Marshal(resoureTemplatePipelineRun)
 	if err != nil {
 		return nil, err
 	}
-
 	triggerTemplate := triggersapi.TriggerTemplate{}
 	triggerTemplate.Name = component.Name
 	triggerTemplate.Namespace = component.Namespace

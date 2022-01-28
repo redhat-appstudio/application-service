@@ -161,6 +161,7 @@ func (r *ComponentReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 				r.SetCreateConditionAndUpdateCR(ctx, &component, err)
 				return ctrl.Result{}, nil
 			}
+
 			if hasApplication.Status.Devfile != "" {
 				// Get the devfile of the hasApp CR
 				hasAppDevfileData, err := devfile.ParseDevfileModel(hasApplication.Status.Devfile)
@@ -237,9 +238,6 @@ func (r *ComponentReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 					}
 				}
 
-				err = r.generateBuild(ctx, &component)
-				r.SetCreateConditionAndUpdateCR(ctx, &component, err)
-
 			} else {
 				log.Error(err, fmt.Sprintf("Application devfile model is empty. Before creating a Component, an instance of Application should be created, exiting reconcile loop %v", req.NamespacedName))
 				err := fmt.Errorf("application devfile model is empty. Before creating a Component, an instance of Application should be created")
@@ -250,7 +248,21 @@ func (r *ComponentReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 		} else if source.ImageSource != nil && source.ImageSource.ContainerImage != "" {
 			log.Info(fmt.Sprintf("container image is not supported at the moment, please use github links for adding a component to an application for %v", req.NamespacedName))
 		}
+
+		log.Info(fmt.Sprintf("Creating the Build objects  %v", req.NamespacedName))
+
+		webhook, err := r.generateBuild(ctx, &component)
+
+		if err != nil {
+			log.Error(err, "Failed to create tekton resources")
+			r.SetCreateConditionAndUpdateCR(ctx, &component, err)
+			return ctrl.Result{}, err
+		}
+
+		component.Status.Webhook = webhook
+
 	} else {
+
 		// If the model already exists, see if fields have been updated
 		log.Info(fmt.Sprintf("Checking if the Component has been updated %v", req.NamespacedName))
 
@@ -302,8 +314,14 @@ func (r *ComponentReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 			component.Status.Devfile = string(yamlHASCompData)
 			r.SetUpdateConditionAndUpdateCR(ctx, &component, nil)
 
-			err = r.generateBuild(ctx, &component)
-			r.SetCreateConditionAndUpdateCR(ctx, &component, err)
+			log.Info(fmt.Sprintf("Updating the Build objects  %v", req.NamespacedName))
+			webhook, err := r.generateBuild(ctx, &component)
+			if err != nil {
+				log.Error(err, "Failed to create tekton resources")
+				r.SetCreateConditionAndUpdateCR(ctx, &component, err)
+				return ctrl.Result{}, err
+			}
+			component.Status.Webhook = webhook
 
 		} else {
 			log.Info(fmt.Sprintf("The Component devfile data was not updated %v", req.NamespacedName))
@@ -319,8 +337,9 @@ func (r *ComponentReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 	return ctrl.Result{}, err
 }
 
-func (r *ComponentReconciler) generateBuild(ctx context.Context, component *appstudiov1alpha1.Component) error {
-	log := r.Log.WithValues("Component", component.Namespace)
+func (r *ComponentReconciler) generateBuild(ctx context.Context, component *appstudiov1alpha1.Component) (string, error) {
+
+	log := r.Log.WithValues("Namespace", component.Namespace, "Application", component.Spec.Application, "Component", component.Name)
 
 	workspaceStorage := commonStorage(*component, "appstudio")
 	pvc := &corev1.PersistentVolumeClaim{}
@@ -330,44 +349,55 @@ func (r *ComponentReconciler) generateBuild(ctx context.Context, component *apps
 			err = r.Client.Create(ctx, &workspaceStorage)
 			if err != nil {
 				log.Error(err, fmt.Sprintf("Unable to create common storage %v", workspaceStorage))
-				return err
+				return "", err
 			}
 		} else {
 			log.Error(err, fmt.Sprintf("Unable to get common storage %v", workspaceStorage))
-			return err
+			return "", err
 		}
 	}
+	log.Info(fmt.Sprintf("PV is now present : %v", workspaceStorage.Name))
 
 	triggerTemplate, err := triggerTemplate(*component)
 	if err != nil {
 		log.Error(err, "Unable to generate triggerTemplate ")
-		return err
+		return "", err
 	}
 
 	err = controllerutil.SetOwnerReference(component, triggerTemplate, r.Scheme)
 	if err != nil {
 		log.Error(err, fmt.Sprintf("Unable to set owner reference for %v", triggerTemplate))
 	}
-	err = r.Get(ctx, types.NamespacedName{Name: triggerTemplate.Name, Namespace: triggerTemplate.Namespace}, &triggersapi.TriggerTemplate{})
+
+	existingTriggerTemplate := &triggersapi.TriggerTemplate{}
+	err = r.Get(ctx, types.NamespacedName{Name: triggerTemplate.Name, Namespace: triggerTemplate.Namespace}, existingTriggerTemplate)
 	if err != nil {
 		if errors.IsNotFound(err) {
 			err = r.Client.Create(ctx, triggerTemplate)
 			if err != nil {
 				log.Error(err, fmt.Sprintf("Unable to create triggerTemplate %v", triggerTemplate))
-				return err
+				return "", err
 			}
+			log.Info(fmt.Sprintf("TriggerTemplate created %v", triggerTemplate.Name))
 		} else {
 			log.Error(err, fmt.Sprintf("Unable to get triggerTemplate %s", triggerTemplate.Name))
-			return err
+			return "", err
 		}
+	} else {
+		existingTriggerTemplate.Spec = triggerTemplate.Spec
+		err = r.Client.Update(ctx, existingTriggerTemplate)
+		if err != nil {
+			log.Error(err, fmt.Sprintf("Unable to update triggerTemplate %v", existingTriggerTemplate))
+			return "", err
+		}
+		log.Info(fmt.Sprintf("TriggerTemplate updated %v", triggerTemplate.Name))
 	}
-
 	eventListener := eventListener(*component, *triggerTemplate)
 
 	err = controllerutil.SetOwnerReference(component, &eventListener, r.Scheme)
 	if err != nil {
 		log.Error(err, fmt.Sprintf("Unable to set owner reference for %v", eventListener))
-		return err
+		return "", err
 	}
 	err = r.Get(ctx, types.NamespacedName{Name: eventListener.Name, Namespace: eventListener.Namespace}, &triggersapi.EventListener{})
 	if err != nil {
@@ -375,13 +405,15 @@ func (r *ComponentReconciler) generateBuild(ctx context.Context, component *apps
 			err = r.Client.Create(ctx, &eventListener)
 			if err != nil {
 				log.Error(err, fmt.Sprintf("Unable to create eventListener %v", eventListener))
-				return err
+				return "", err
 			}
 		} else {
 			log.Error(err, fmt.Sprintf("Unable to get eventListener %v", eventListener))
-			return err
+			return "", err
 		}
 	}
+
+	log.Info(fmt.Sprintf("Eventlistener created/updated %v", eventListener.Name))
 
 	initialBuildSpec := determineBuildExecution(*component, paramsForInitialBuild(*component), "initialbuildpath")
 
@@ -402,8 +434,10 @@ func (r *ComponentReconciler) generateBuild(ctx context.Context, component *apps
 	err = r.Client.Create(ctx, &initialBuild)
 	if err != nil {
 		log.Error(err, fmt.Sprintf("Unable to create the build PipelineRun %v", initialBuild))
-		return err
+		return "", err
 	}
+
+	log.Info(fmt.Sprintf("Pipeline created %v", initialBuild))
 
 	webhook := route(*component)
 
@@ -418,29 +452,33 @@ func (r *ComponentReconciler) generateBuild(ctx context.Context, component *apps
 			err = r.Client.Create(ctx, &webhook)
 			if err != nil {
 				log.Error(err, fmt.Sprintf("Unable to create webhook %v", webhook.Name))
-				return err
+				return "", err
 			}
 		} else if errors.IsAlreadyExists(err) {
 			log.Info("Initial webhook already exists")
 		} else {
 			log.Error(err, fmt.Sprintf("Unable to get webhook %v", webhook.Name))
-			return err
+			return "", err
 		}
 	}
+
+	log.Info(fmt.Sprintf("Route created %v", webhook.Name))
 
 	// Ideally, one must wait for the route to be 'accepted'?
 	createdWebhook := &routev1.Route{}
 	err = r.Client.Get(ctx, types.NamespacedName{Name: webhook.Name, Namespace: webhook.Namespace}, createdWebhook)
 	if err != nil {
-		log.Error(err, fmt.Sprintf("Unable to get inital webhook %v", webhook.Name))
-		return err
+		log.Error(err, fmt.Sprintf("Unable to create webhook %v", webhook.Name))
+		return "", err
 	}
 
 	if createdWebhook != nil && len(createdWebhook.Status.Ingress) != 0 {
-		component.Status.Webhook = createdWebhook.Status.Ingress[0].Host
+		webhookURL := createdWebhook.Status.Ingress[0].Host
+		log.Info(fmt.Sprintf("Github webhook url generated %v", webhookURL))
+		return webhookURL, err
 	}
 
-	return err
+	return "", err
 }
 
 // generateGitops retrieves the necessary information about a Component's gitops repository (URL, branch, context)
