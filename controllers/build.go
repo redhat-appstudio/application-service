@@ -38,7 +38,7 @@ func determineBuildDefinition(component appstudiov1alpha1.Component) string {
 func determineBuildCatalog(namespace string) string {
 	// TODO: If there's a namespace/workspace specific catalog, we got
 	// to respect that.
-	return "quay.io/redhat-appstudio/build-templates-bundle:v0.1.2"
+	return "quay.io/redhat-appstudio/build-templates-bundle@sha256:2205a29208fa686b47f841819f7abedb64adb93935493693892d0e18bbdbb77e"
 }
 
 // determineBuildExecution returns the pipelineRun spec that would be used

@@ -172,7 +172,7 @@ var _ = Describe("Component controller", func() {
 				}
 			}
 
-			Expect(pipelineRun.Spec.PipelineRef.Bundle).To(Equal("quay.io/redhat-appstudio/build-templates-bundle:v0.1.2"))
+			Expect(pipelineRun.Spec.PipelineRef.Bundle).To(Equal("quay.io/redhat-appstudio/build-templates-bundle@sha256:2205a29208fa686b47f841819f7abedb64adb93935493693892d0e18bbdbb77e"))
 
 			Expect(pipelineRun.Spec.Workspaces).To(Not(BeEmpty()))
 			for _, w := range pipelineRun.Spec.Workspaces {

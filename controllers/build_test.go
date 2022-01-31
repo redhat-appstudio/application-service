@@ -83,7 +83,7 @@ func Test_determineBuildExecution(t *testing.T) {
 			},
 			want: tektonapi.PipelineRunSpec{
 				PipelineRef: &tektonapi.PipelineRef{
-					Bundle: "quay.io/redhat-appstudio/build-templates-bundle:v0.1.2",
+					Bundle: "quay.io/redhat-appstudio/build-templates-bundle@sha256:2205a29208fa686b47f841819f7abedb64adb93935493693892d0e18bbdbb77e",
 					Name:   "devfile-build",
 				},
 				Params: []tektonapi.Param{},
@@ -118,7 +118,7 @@ func Test_determineBuildExecution(t *testing.T) {
 			},
 			want: tektonapi.PipelineRunSpec{
 				PipelineRef: &tektonapi.PipelineRef{
-					Bundle: "quay.io/redhat-appstudio/build-templates-bundle:v0.1.2",
+					Bundle: "quay.io/redhat-appstudio/build-templates-bundle@sha256:2205a29208fa686b47f841819f7abedb64adb93935493693892d0e18bbdbb77e",
 					Name:   "devfile-build",
 				},
 				Params: []tektonapi.Param{},
