@@ -190,7 +190,7 @@ func route(component appstudiov1alpha1.Component) routev1.Route {
 	var port int32 = 8080
 	webhook := &routev1.Route{
 		ObjectMeta: v1.ObjectMeta{
-			Name:        component.Name,
+			Name:        "el" + component.Name,
 			Namespace:   component.Namespace,
 			Annotations: commonLabels(&component),
 		},

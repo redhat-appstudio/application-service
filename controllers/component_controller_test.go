@@ -198,8 +198,9 @@ var _ = Describe("Component controller", func() {
 			Expect(eventListener.Spec.Triggers[0].Bindings[0].Ref).To(Equal("github-push"))
 			Expect(eventListener.Spec.Triggers[0].Template.Ref).To(Equal(&HASCompNameForBuild))
 
+			routeResourcename := types.NamespacedName{Namespace: buildResourceName.Namespace, Name: "el" + buildResourceName.Name}
 			Eventually(func() bool {
-				k8sClient.Get(context.Background(), buildResourceName, route)
+				k8sClient.Get(context.Background(), routeResourcename, route)
 				return route.ResourceVersion != "" && isOwnedBy(route.GetOwnerReferences(), *createdHasComp)
 			}, timeout, interval).Should(BeTrue())
 
