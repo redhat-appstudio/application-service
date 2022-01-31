@@ -48,6 +48,23 @@ IMG=quay.io/user/hasoperator:next make docker-push
 
 The following section outlines the steps to deploy HAS on a physical Kubernetes cluster. If you are looking to deploy HAS on KCP, please see [this document](./docs/kcp.md).
 
+### Setting up the AppStudio Build Service environment
+
+* Install `OpenShift GitOps` from the in-cluster Operator Marketplace.
+* `oc -n openshift-gitops apply -f https://raw.githubusercontent.com/redhat-appstudio/infra-deployments/main/argo-cd-apps/base/build.yaml`
+
+As a user, upon creation of Component, Tekton resources would be created by the controller. 
+
+If you wish to get 'working' PipelineRuns,
+* Create an image pull secret named `redhat-appstudio-registry-pull-secret`. See [Kubernetes docs](https://kubernetes.io/docs/tasks/configure-pod-container/pull-image-private-registry/#registry-secret-existing-credentials) for more information on how to create
+`Secrets` containing registry credentials. 
+* Configure the default image repository to which Pipelines would push images to by defining the environment variable `IMAGE_REPOSITORY` for the operator deployment.
+Defaults to `quay.io/redhat-appstudio/user-workload`.
+
+Pipelines would use the credentials in the image pull secret `redhat-appstudio-registry-pull-secret` to push to $IMAGE_REPOSITORY.
+
+
+
 ### Creating a GitHub Secret for HAS
 
 Before deploying the operator, you must ensure that a secret, `has-github-token`, exists in the namespace where HAS will be deployed. This secret must contain a key-value pair, where the key is `token` and where the value points to a valid GitHub Personal Access Token.
@@ -62,6 +79,7 @@ For example, on OpenShift:
 <img width="862" alt="Screen Shot 2021-12-14 at 1 08 43 AM" src="https://user-images.githubusercontent.com/6880023/145942734-63422532-6fad-4017-9d26-79436fe241b8.png">
 
 ### Deploying HAS
+
 
 Once a secret has been created, simply run the following commands to deploy HAS:
 ```

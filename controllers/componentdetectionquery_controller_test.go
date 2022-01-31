@@ -229,7 +229,7 @@ var _ = Describe("Component Detection Query controller", func() {
 		It("Should err out", func() {
 			ctx := context.Background()
 
-			queryName := HASCompDetQuery + "4"
+			queryName := HASCompDetQuery + "5"
 
 			hasCompDetectionQuery := &appstudiov1alpha1.ComponentDetectionQuery{
 				TypeMeta: metav1.TypeMeta{
@@ -271,7 +271,7 @@ var _ = Describe("Component Detection Query controller", func() {
 		It("Should err out", func() {
 			ctx := context.Background()
 
-			queryName := HASCompDetQuery + "4"
+			queryName := HASCompDetQuery + "6"
 
 			hasCompDetectionQuery := &appstudiov1alpha1.ComponentDetectionQuery{
 				TypeMeta: metav1.TypeMeta{

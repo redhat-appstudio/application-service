@@ -34,6 +34,10 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/healthz"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 
+	routev1 "github.com/openshift/api/route/v1"
+	taskrunapi "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
+	triggersapi "github.com/tektoncd/triggers/pkg/apis/triggers/v1alpha1"
+
 	"github.com/google/go-github/v41/github"
 	appstudiov1alpha1 "github.com/redhat-appstudio/application-service/api/v1alpha1"
 	"github.com/redhat-appstudio/application-service/controllers"
@@ -83,6 +87,20 @@ func main() {
 		os.Exit(1)
 	}
 
+	if err := triggersapi.AddToScheme(mgr.GetScheme()); err != nil {
+		setupLog.Error(err, "unable to add triggers api to the scheme")
+		os.Exit(1)
+	}
+
+	if err := taskrunapi.AddToScheme(mgr.GetScheme()); err != nil {
+		setupLog.Error(err, "unable to add triggers api to the scheme")
+		os.Exit(1)
+	}
+
+	if err := routev1.AddToScheme(mgr.GetScheme()); err != nil {
+		setupLog.Error(err, "unable to add triggers api to the scheme")
+		os.Exit(1)
+	}
 	// Retrieve the GitHub Auth Token to use, error out if not found
 	ghToken := os.Getenv("GITHUB_AUTH_TOKEN")
 	if ghToken == "" {
@@ -93,6 +111,12 @@ func main() {
 	ghOrg := os.Getenv("GITHUB_ORG")
 	if ghOrg == "" {
 		ghOrg = "redhat-appstudio-appdata"
+	}
+
+	// Retrieve the name of the default repository to use
+	imageRepository := os.Getenv("IMAGE_REPOSITORY")
+	if imageRepository == "" {
+		imageRepository = "quay.io/redhat-appstudio/user-workload"
 	}
 
 	ctx := context.Background()
@@ -111,12 +135,13 @@ func main() {
 		os.Exit(1)
 	}
 	if err = (&controllers.ComponentReconciler{
-		Client:   mgr.GetClient(),
-		Scheme:   mgr.GetScheme(),
-		Log:      ctrl.Log.WithName("controllers").WithName("Component"),
-		Executor: gitops.NewCmdExecutor(),
-		AppFS:    ioutils.NewFilesystem(),
-		GitToken: ghToken,
+		Client:          mgr.GetClient(),
+		Scheme:          mgr.GetScheme(),
+		Log:             ctrl.Log.WithName("controllers").WithName("Component"),
+		Executor:        gitops.NewCmdExecutor(),
+		AppFS:           ioutils.NewFilesystem(),
+		GitToken:        ghToken,
+		ImageRepository: imageRepository,
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "Component")
 		os.Exit(1)
