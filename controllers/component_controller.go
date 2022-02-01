@@ -471,7 +471,7 @@ func (r *ComponentReconciler) generateBuild(ctx context.Context, component *apps
 		}
 
 		if createdWebhook != nil && len(createdWebhook.Status.Ingress) != 0 {
-			log.Info(fmt.Sprintf("Github webhook url generated %v", createdWebhook.Status.Ingress[0].Host))
+			log.Info(fmt.Sprintf("webhook url generated %v", createdWebhook.Status.Ingress[0].Host))
 			return createdWebhook.Status.Ingress[0].Host, nil
 		}
 	}
