@@ -23,6 +23,7 @@ import (
 	"os"
 	"path"
 	"reflect"
+	"time"
 
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -455,18 +456,24 @@ func (r *ComponentReconciler) generateBuild(ctx context.Context, component *apps
 
 	log.Info(fmt.Sprintf("Route created %v", webhook.Name))
 
-	// Ideally, one must wait for the route to be 'accepted'?
-	createdWebhook := &routev1.Route{}
-	err = r.Client.Get(ctx, types.NamespacedName{Name: webhook.Name, Namespace: webhook.Namespace}, createdWebhook)
-	if err != nil {
-		log.Error(err, fmt.Sprintf("Unable to create webhook %v", webhook.Name))
-		return "", err
-	}
+	// retry for 3 seconds, if nothing comes up,
+	// don't report a failure since this throws an
+	// unncessary false positive. if Route creation had *really*
+	// failed, we would have known.
 
-	if createdWebhook != nil && len(createdWebhook.Status.Ingress) != 0 {
-		webhookURL := createdWebhook.Status.Ingress[0].Host
-		log.Info(fmt.Sprintf("Github webhook url generated %v", webhookURL))
-		return webhookURL, err
+	for i := 0; i < 3; i++ {
+		time.Sleep(time.Second * 1)
+		// Ideally, one must wait for the route to be 'accepted'?
+		createdWebhook := &routev1.Route{}
+		err := r.Client.Get(ctx, types.NamespacedName{Name: webhook.Name, Namespace: webhook.Namespace}, createdWebhook)
+		if err != nil {
+			log.Error(err, fmt.Sprintf("Unable to fetch the created webhook %v, retrying", webhook.Name))
+		}
+
+		if createdWebhook != nil && len(createdWebhook.Status.Ingress) != 0 {
+			log.Info(fmt.Sprintf("webhook url generated %v", createdWebhook.Status.Ingress[0].Host))
+			return createdWebhook.Status.Ingress[0].Host, nil
+		}
 	}
 
 	return "", err
