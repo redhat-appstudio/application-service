@@ -443,7 +443,7 @@ func (r *ComponentReconciler) generateBuild(ctx context.Context, component *apps
 		if errors.IsNotFound(err) {
 			err = r.Client.Create(ctx, &webhook)
 			if err != nil {
-				log.Error(err, fmt.Sprintf("Unable to fetch the created webhook %v", webhook.Name))
+				log.Error(err, fmt.Sprintf("Unable to create webhook %v", webhook.Name))
 				return "", err
 			}
 		} else if errors.IsAlreadyExists(err) {
