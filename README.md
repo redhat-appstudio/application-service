@@ -97,7 +97,7 @@ For example:
 
 ### Disabling Webhooks for Local Dev
 
-Webhooks require self-signed certificates to validate the resources. To disable webhooks during local dev and testing, run `make run ENABLE_WEBHOOKS=false`
+Webhooks require self-signed certificates to validate the resources. To disable webhooks during local dev and testing, export `ENABLE_WEBHOOKS=false`
 
 
 Useful links:
