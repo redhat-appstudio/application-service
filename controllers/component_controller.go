@@ -526,10 +526,7 @@ func (r *ComponentReconciler) generateGitops(component *appstudiov1alpha1.Compon
 func setGitopsStatus(component *appstudiov1alpha1.Component, devfileData data.DevfileData) error {
 	var err error
 	devfileAttributes := devfileData.GetMetadata().Attributes
-	componentAnnotations := component.GetAnnotations()
-	if componentAnnotations == nil {
-		componentAnnotations = make(map[string]string)
-	}
+
 	// Get the GitOps repository URL
 	gitOpsURL := devfileAttributes.GetString("gitOpsRepository.url", &err)
 	if err != nil {
