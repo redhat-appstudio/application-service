@@ -130,7 +130,7 @@ func (r *ApplicationReconciler) Reconcile(ctx context.Context, req ctrl.Request)
 			if err != nil {
 				log.Error(err, fmt.Sprintf("Unable to create repository %v", repoUrl))
 				r.SetCreateConditionAndUpdateCR(ctx, &application, err)
-				return reconcile.Result{}, err
+				return reconcile.Result{}, nil
 			}
 
 			gitOpsRepo = repoUrl
@@ -145,13 +145,13 @@ func (r *ApplicationReconciler) Reconcile(ctx context.Context, req ctrl.Request)
 		if err != nil {
 			log.Error(err, fmt.Sprintf("Unable to convert Application CR to devfile, exiting reconcile loop %v", req.NamespacedName))
 			r.SetCreateConditionAndUpdateCR(ctx, &application, err)
-			return reconcile.Result{}, err
+			return reconcile.Result{}, nil
 		}
 		yamlData, err := yaml.Marshal(devfileData)
 		if err != nil {
 			log.Error(err, fmt.Sprintf("Unable to marshall Application devfile, exiting reconcile loop %v", req.NamespacedName))
 			r.SetCreateConditionAndUpdateCR(ctx, &application, err)
-			return reconcile.Result{}, err
+			return reconcile.Result{}, nil
 		}
 
 		application.Status.Devfile = string(yamlData)
@@ -165,7 +165,7 @@ func (r *ApplicationReconciler) Reconcile(ctx context.Context, req ctrl.Request)
 		devfileData, err := devfile.ParseDevfileModel(application.Status.Devfile)
 		if err != nil {
 			log.Error(err, fmt.Sprintf("Unable to parse devfile model, exiting reconcile loop %v", req.NamespacedName))
-			return ctrl.Result{}, err
+			return ctrl.Result{}, nil
 		}
 
 		// Update any specific fields that changed
@@ -189,7 +189,7 @@ func (r *ApplicationReconciler) Reconcile(ctx context.Context, req ctrl.Request)
 			if err != nil {
 				log.Error(err, fmt.Sprintf("Unable to marshall Application devfile, exiting reconcile loop %v", req.NamespacedName))
 				r.SetUpdateConditionAndUpdateCR(ctx, &application, err)
-				return reconcile.Result{}, err
+				return reconcile.Result{}, nil
 			}
 
 			application.Status.Devfile = string(yamlData)
@@ -198,7 +198,7 @@ func (r *ApplicationReconciler) Reconcile(ctx context.Context, req ctrl.Request)
 	}
 
 	log.Info(fmt.Sprintf("Finished reconcile loop for %v", req.NamespacedName))
-	return ctrl.Result{}, err
+	return ctrl.Result{}, nil
 }
 
 // SetupWithManager sets up the controller with the Manager.
