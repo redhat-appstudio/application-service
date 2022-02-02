@@ -210,20 +210,10 @@ func (r *ComponentReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 					component.Status.ContainerImage = component.Spec.Build.ContainerImage
 				}
 
-				log.Info(fmt.Sprintf("Updating the labels for Component %v", req.NamespacedName))
-				componentLabels := make(map[string]string)
-				componentLabels[applicationKey] = component.Spec.Application
-				componentLabels[componentKey] = component.Spec.ComponentName
-				component.SetLabels(componentLabels)
-				err = setGitopsAnnotations(&component, hasAppDevfileData)
+				log.Info(fmt.Sprintf("Adding the GitOps repository information to the status for component %v", req.NamespacedName))
+				err = setGitopsStatus(&component, hasAppDevfileData)
 				if err != nil {
 					log.Error(err, fmt.Sprintf("Unable to retrieve gitops repository information for resource %v", req.NamespacedName))
-					r.SetCreateConditionAndUpdateCR(ctx, &component, err)
-					return ctrl.Result{}, err
-				}
-				err = r.Client.Update(ctx, &component)
-				if err != nil {
-					log.Error(err, fmt.Sprintf("Unable to update Component with the required labels %v", req.NamespacedName))
 					r.SetCreateConditionAndUpdateCR(ctx, &component, err)
 					return ctrl.Result{}, err
 				}
@@ -484,26 +474,23 @@ func (r *ComponentReconciler) generateBuild(ctx context.Context, component *apps
 func (r *ComponentReconciler) generateGitops(component *appstudiov1alpha1.Component) error {
 	log := r.Log.WithValues("Component", component.Name)
 
-	componentAnnotations := component.GetAnnotations()
-	if componentAnnotations == nil {
-		return fmt.Errorf("unable to create gitops resource, component gitops annotations are not set")
-	}
+	gitopsStatus := component.Status.GitOps
 
 	// Get the information about the gitops repository from the Component resource
 	var gitOpsURL, gitOpsBranch, gitOpsContext string
-	gitOpsURL = componentAnnotations["gitOpsRepository.url"]
+	gitOpsURL = gitopsStatus.RepositoryURL
 	if gitOpsURL == "" {
-		err := fmt.Errorf("unable to create gitops resource, gitOpsRepository.url annotation not set on component")
+		err := fmt.Errorf("unable to create gitops resource, GitOps Repository not set on component status")
 		log.Error(err, "")
 		return err
 	}
-	if componentAnnotations["gitOpsRepository.branch"] != "" {
-		gitOpsBranch = componentAnnotations["gitOpsRepository.branch"]
+	if gitopsStatus.Branch != "" {
+		gitOpsBranch = gitopsStatus.Branch
 	} else {
 		gitOpsBranch = "main"
 	}
-	if componentAnnotations["gitOpsRepository.context"] != "" {
-		gitOpsContext = componentAnnotations["gitOpsRepository.context"]
+	if gitopsStatus.Context != "" {
+		gitOpsContext = gitopsStatus.Context
 	} else {
 		gitOpsContext = "/"
 	}
@@ -535,8 +522,8 @@ func (r *ComponentReconciler) generateGitops(component *appstudiov1alpha1.Compon
 	return r.AppFS.RemoveAll(tempDir)
 }
 
-// setGitopsAnnotations adds the necessary gitops annotations (url, branch, context) to the component CR object
-func setGitopsAnnotations(component *appstudiov1alpha1.Component, devfileData data.DevfileData) error {
+// setGitopsStatus adds the necessary gitops annotations (url, branch, context) to the component CR status
+func setGitopsStatus(component *appstudiov1alpha1.Component, devfileData data.DevfileData) error {
 	var err error
 	devfileAttributes := devfileData.GetMetadata().Attributes
 	componentAnnotations := component.GetAnnotations()
@@ -548,7 +535,7 @@ func setGitopsAnnotations(component *appstudiov1alpha1.Component, devfileData da
 	if err != nil {
 		return fmt.Errorf("unable to retrieve GitOps repository from Application CR devfile: %v", err)
 	}
-	componentAnnotations["gitOpsRepository.url"] = gitOpsURL
+	component.Status.GitOps.RepositoryURL = gitOpsURL
 
 	// Get the GitOps repository branch
 	gitOpsBranch := devfileAttributes.GetString("gitOpsRepository.branch", &err)
@@ -558,7 +545,7 @@ func setGitopsAnnotations(component *appstudiov1alpha1.Component, devfileData da
 		}
 	}
 	if gitOpsBranch != "" {
-		componentAnnotations["gitOpsRepository.branch"] = gitOpsBranch
+		component.Status.GitOps.Branch = gitOpsBranch
 	}
 
 	// Get the GitOps repository context
@@ -569,10 +556,8 @@ func setGitopsAnnotations(component *appstudiov1alpha1.Component, devfileData da
 		}
 	}
 	if gitOpsContext != "" {
-		componentAnnotations["gitOpsRepository.context"] = gitOpsContext
+		component.Status.GitOps.Context = gitOpsContext
 	}
-
-	component.SetAnnotations(componentAnnotations)
 	return nil
 }
 

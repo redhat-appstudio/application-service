@@ -78,22 +78,7 @@ var _ = Describe("Component controller", func() {
 			HASAppNameForBuild := "test-application-1234"
 			HASCompNameForBuild := "test-component-1234"
 
-			hasApp := &appstudiov1alpha1.Application{
-				TypeMeta: metav1.TypeMeta{
-					APIVersion: "appstudio.redhat.com/v1alpha1",
-					Kind:       "Application",
-				},
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      HASAppNameForBuild,
-					Namespace: HASAppNamespace,
-				},
-				Spec: appstudiov1alpha1.ApplicationSpec{
-					DisplayName: DisplayName,
-					Description: Description,
-				},
-			}
-
-			Expect(k8sClient.Create(ctx, hasApp)).Should(Succeed())
+			createAndFetchSimpleApp(HASAppNameForBuild, HASAppNamespace, DisplayName, Description)
 
 			hasComp := &appstudiov1alpha1.Component{
 				TypeMeta: metav1.TypeMeta{
@@ -224,22 +209,7 @@ var _ = Describe("Component controller", func() {
 			HASAppNameForBuild := "test-application-build-without-image"
 			HASCompNameForBuild := "test-application-build-without-image"
 
-			hasApp := &appstudiov1alpha1.Application{
-				TypeMeta: metav1.TypeMeta{
-					APIVersion: "appstudio.redhat.com/v1alpha1",
-					Kind:       "Application",
-				},
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      HASAppNameForBuild,
-					Namespace: HASAppNamespace,
-				},
-				Spec: appstudiov1alpha1.ApplicationSpec{
-					DisplayName: DisplayName,
-					Description: Description,
-				},
-			}
-
-			Expect(k8sClient.Create(ctx, hasApp)).Should(Succeed())
+			createAndFetchSimpleApp(HASAppNameForBuild, HASAppNamespace, DisplayName, Description)
 
 			hasComp := &appstudiov1alpha1.Component{
 				TypeMeta: metav1.TypeMeta{
@@ -319,22 +289,7 @@ var _ = Describe("Component controller", func() {
 			applicationName := HASAppName + "1"
 			componentName := HASCompName + "1"
 
-			hasApp := &appstudiov1alpha1.Application{
-				TypeMeta: metav1.TypeMeta{
-					APIVersion: "appstudio.redhat.com/v1alpha1",
-					Kind:       "Application",
-				},
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      applicationName,
-					Namespace: HASAppNamespace,
-				},
-				Spec: appstudiov1alpha1.ApplicationSpec{
-					DisplayName: DisplayName,
-					Description: Description,
-				},
-			}
-
-			Expect(k8sClient.Create(ctx, hasApp)).Should(Succeed())
+			createAndFetchSimpleApp(applicationName, HASAppNamespace, DisplayName, Description)
 
 			hasComp := &appstudiov1alpha1.Component{
 				TypeMeta: metav1.TypeMeta{
@@ -365,7 +320,7 @@ var _ = Describe("Component controller", func() {
 			createdHasComp := &appstudiov1alpha1.Component{}
 			Eventually(func() bool {
 				k8sClient.Get(context.Background(), hasCompLookupKey, createdHasComp)
-				return len(createdHasComp.Status.Conditions) > 0 && createdHasComp.GetAnnotations()["gitOpsRepository.url"] != ""
+				return len(createdHasComp.Status.Conditions) > 0 && createdHasComp.Status.GitOps.RepositoryURL != ""
 			}, timeout, interval).Should(BeTrue())
 
 			// Make sure the devfile model was properly set in Component
@@ -396,7 +351,7 @@ var _ = Describe("Component controller", func() {
 			// gitOpsRepo set in the component equal the repository in the app cr's devfile
 			gitopsRepo := hasAppDevfile.GetMetadata().Attributes.GetString("gitOpsRepository.url", &err)
 			Expect(err).Should(Not(HaveOccurred()))
-			Expect(string(createdHasComp.GetObjectMeta().GetAnnotations()["gitOpsRepository.url"])).Should(Equal(gitopsRepo))
+			Expect(string(createdHasComp.Status.GitOps.RepositoryURL)).Should(Equal(gitopsRepo))
 
 			hasProjects, err := hasAppDevfile.GetProjects(common.DevfileOptions{})
 			Expect(err).Should(Not(HaveOccurred()))
@@ -430,22 +385,7 @@ var _ = Describe("Component controller", func() {
 			applicationName := HASAppName + "2"
 			componentName := HASCompName + "2"
 
-			hasApp := &appstudiov1alpha1.Application{
-				TypeMeta: metav1.TypeMeta{
-					APIVersion: "appstudio.redhat.com/v1alpha1",
-					Kind:       "Application",
-				},
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      applicationName,
-					Namespace: HASAppNamespace,
-				},
-				Spec: appstudiov1alpha1.ApplicationSpec{
-					DisplayName: DisplayName,
-					Description: Description,
-				},
-			}
-
-			Expect(k8sClient.Create(ctx, hasApp)).Should(Succeed())
+			createAndFetchSimpleApp(applicationName, HASAppNamespace, DisplayName, Description)
 
 			hasComp := &appstudiov1alpha1.Component{
 				TypeMeta: metav1.TypeMeta{
@@ -540,22 +480,7 @@ var _ = Describe("Component controller", func() {
 			applicationName := HASAppName + "3"
 			componentName := HASCompName + "3"
 
-			hasApp := &appstudiov1alpha1.Application{
-				TypeMeta: metav1.TypeMeta{
-					APIVersion: "appstudio.redhat.com/v1alpha1",
-					Kind:       "Application",
-				},
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      applicationName,
-					Namespace: HASAppNamespace,
-				},
-				Spec: appstudiov1alpha1.ApplicationSpec{
-					DisplayName: DisplayName,
-					Description: Description,
-				},
-			}
-
-			Expect(k8sClient.Create(ctx, hasApp)).Should(Succeed())
+			createAndFetchSimpleApp(applicationName, HASAppNamespace, DisplayName, Description)
 
 			hasComp := &appstudiov1alpha1.Component{
 				TypeMeta: metav1.TypeMeta{
@@ -662,22 +587,7 @@ var _ = Describe("Component controller", func() {
 			applicationName := HASAppName + "5"
 			componentName := HASCompName + "5"
 
-			hasApp := &appstudiov1alpha1.Application{
-				TypeMeta: metav1.TypeMeta{
-					APIVersion: "appstudio.redhat.com/v1alpha1",
-					Kind:       "Application",
-				},
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      applicationName,
-					Namespace: HASAppNamespace,
-				},
-				Spec: appstudiov1alpha1.ApplicationSpec{
-					DisplayName: DisplayName,
-					Description: Description,
-				},
-			}
-
-			Expect(k8sClient.Create(ctx, hasApp)).Should(Succeed())
+			createAndFetchSimpleApp(applicationName, HASAppNamespace, DisplayName, Description)
 
 			originalRoute := "route-endpoint-url"
 			updatedRoute := "route-endpoint-url-2"
@@ -788,7 +698,7 @@ var _ = Describe("Component controller", func() {
 			createdHasComp := &appstudiov1alpha1.Component{}
 			Eventually(func() bool {
 				k8sClient.Get(context.Background(), hasCompLookupKey, createdHasComp)
-				return len(createdHasComp.Status.Conditions) > 0 && createdHasComp.GetLabels()["appstudio.has/component"] != ""
+				return len(createdHasComp.Status.Conditions) > 0 //&& createdHasComp.GetLabels()["appstudio.has/component"] != ""
 			}, timeout, interval).Should(BeTrue())
 
 			// Validate that the built container image was set in the status
@@ -898,22 +808,7 @@ var _ = Describe("Component controller", func() {
 			applicationName := HASAppName + "6"
 			componentName := HASCompName + "6"
 
-			hasApp := &appstudiov1alpha1.Application{
-				TypeMeta: metav1.TypeMeta{
-					APIVersion: "appstudio.redhat.com/v1alpha1",
-					Kind:       "Application",
-				},
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      applicationName,
-					Namespace: HASAppNamespace,
-				},
-				Spec: appstudiov1alpha1.ApplicationSpec{
-					DisplayName: DisplayName,
-					Description: Description,
-				},
-			}
-
-			Expect(k8sClient.Create(ctx, hasApp)).Should(Succeed())
+			createAndFetchSimpleApp(applicationName, HASAppNamespace, DisplayName, Description)
 
 			hasComp := &appstudiov1alpha1.Component{
 				TypeMeta: metav1.TypeMeta{
@@ -985,22 +880,7 @@ var _ = Describe("Component controller", func() {
 			applicationName := HASAppName + "7"
 			componentName := HASCompName + "7"
 
-			hasApp := &appstudiov1alpha1.Application{
-				TypeMeta: metav1.TypeMeta{
-					APIVersion: "appstudio.redhat.com/v1alpha1",
-					Kind:       "Application",
-				},
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      applicationName,
-					Namespace: HASAppNamespace,
-				},
-				Spec: appstudiov1alpha1.ApplicationSpec{
-					DisplayName: DisplayName,
-					Description: Description,
-				},
-			}
-
-			Expect(k8sClient.Create(ctx, hasApp)).Should(Succeed())
+			createAndFetchSimpleApp(applicationName, HASAppNamespace, DisplayName, Description)
 
 			hasComp := &appstudiov1alpha1.Component{
 				TypeMeta: metav1.TypeMeta{
@@ -1034,7 +914,7 @@ var _ = Describe("Component controller", func() {
 			createdHasComp := &appstudiov1alpha1.Component{}
 			Eventually(func() bool {
 				k8sClient.Get(context.Background(), hasCompLookupKey, createdHasComp)
-				return len(createdHasComp.Status.Conditions) > 0 && createdHasComp.GetLabels()["appstudio.has/component"] != ""
+				return len(createdHasComp.Status.Conditions) > 0 //&& createdHasComp.GetLabels()["appstudio.has/component"] != ""
 			}, timeout, interval).Should(BeTrue())
 
 			// Remove the component's devfile and update a field in the spec to trigger a reconcile
@@ -1095,6 +975,12 @@ var _ = Describe("Component controller", func() {
 			}
 
 			Expect(k8sClient.Create(ctx, hasApp)).Should(Succeed())
+			createdHasApp := &appstudiov1alpha1.Application{}
+			hasAppLookupKey := types.NamespacedName{Name: applicationName, Namespace: HASAppNamespace}
+			Eventually(func() bool {
+				k8sClient.Get(context.Background(), hasAppLookupKey, createdHasApp)
+				return len(createdHasApp.Status.Conditions) > 0
+			}, timeout, interval).Should(BeTrue())
 
 			hasComp := &appstudiov1alpha1.Component{
 				TypeMeta: metav1.TypeMeta{
@@ -1138,7 +1024,6 @@ var _ = Describe("Component controller", func() {
 			deleteHASCompCR(hasCompLookupKey)
 
 			// Delete the specified HASApp resource
-			hasAppLookupKey := types.NamespacedName{Name: applicationName, Namespace: HASAppNamespace}
 			deleteHASAppCR(hasAppLookupKey)
 		})
 	})
@@ -1186,19 +1071,21 @@ var _ = Describe("Component controller", func() {
 			createdHasComp := &appstudiov1alpha1.Component{}
 			Eventually(func() bool {
 				k8sClient.Get(context.Background(), hasCompLookupKey, createdHasComp)
-				return len(createdHasComp.Status.Conditions) > 0 && createdHasComp.GetLabels()["appstudio.has/component"] != ""
+				return len(createdHasComp.Status.Conditions) > 0 //&& createdHasComp.GetLabels()["appstudio.has/component"] != ""
 			}, timeout, interval).Should(BeTrue())
 
-			// Remove the gitops notifications
-			createdHasComp.Spec.Build.ContainerImage = "Newimage"
-			createdHasComp.SetAnnotations(nil)
+			// Remove the gitops status
+			createdHasComp.Status.GitOps = appstudiov1alpha1.GitOpsStatus{}
+			Expect(k8sClient.Status().Update(ctx, createdHasComp)).Should(Succeed())
 
+			// Trigger a new reconcile
+			createdHasComp.Spec.Build.ContainerImage = "Newimage"
 			Expect(k8sClient.Update(ctx, createdHasComp)).Should(Succeed())
 
 			updatedHasComp := &appstudiov1alpha1.Component{}
 			Eventually(func() bool {
 				k8sClient.Get(context.Background(), hasCompLookupKey, updatedHasComp)
-				return updatedHasComp.Status.Conditions[len(updatedHasComp.Status.Conditions)-1].Type == "Updated"
+				return updatedHasComp.Status.Conditions[len(updatedHasComp.Status.Conditions)-1].Type == "Updated" && updatedHasComp.Status.Conditions[len(updatedHasComp.Status.Conditions)-1].Status == metav1.ConditionFalse
 			}, timeout, interval).Should(BeTrue())
 
 			Expect(updatedHasComp.Status.Conditions[len(updatedHasComp.Status.Conditions)-1].Status).Should(Equal(metav1.ConditionFalse))

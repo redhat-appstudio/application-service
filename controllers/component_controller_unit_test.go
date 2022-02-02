@@ -37,13 +37,13 @@ import (
 	//+kubebuilder:scaffold:imports
 )
 
-func TestSetGitOpsAnnotations(t *testing.T) {
+func TestSetGitOpsStatus(t *testing.T) {
 	tests := []struct {
-		name                string
-		devfileData         *v2.DevfileV2
-		component           appstudiov1alpha1.Component
-		wantComponentLabels map[string]string
-		wantErr             bool
+		name             string
+		devfileData      *v2.DevfileV2
+		component        appstudiov1alpha1.Component
+		wantGitOpsStatus appstudiov1alpha1.GitOpsStatus
+		wantErr          bool
 	}{
 		{
 			name: "Simple application devfile, only gitops url",
@@ -58,8 +58,8 @@ func TestSetGitOpsAnnotations(t *testing.T) {
 					},
 				},
 			},
-			wantComponentLabels: map[string]string{
-				"gitOpsRepository.url": "https://github.com/testorg/petclinic-gitops",
+			wantGitOpsStatus: appstudiov1alpha1.GitOpsStatus{
+				RepositoryURL: "https://github.com/testorg/petclinic-gitops",
 			},
 			wantErr: false,
 		},
@@ -90,10 +90,10 @@ func TestSetGitOpsAnnotations(t *testing.T) {
 					},
 				},
 			},
-			wantComponentLabels: map[string]string{
-				"gitOpsRepository.url":     "https://github.com/testorg/petclinic-gitops",
-				"gitOpsRepository.branch":  "main",
-				"gitOpsRepository.context": "/test",
+			wantGitOpsStatus: appstudiov1alpha1.GitOpsStatus{
+				RepositoryURL: "https://github.com/testorg/petclinic-gitops",
+				Branch:        "main",
+				Context:       "/test",
 			},
 			wantErr: false,
 		},
@@ -131,14 +131,14 @@ func TestSetGitOpsAnnotations(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			err := setGitopsAnnotations(&tt.component, tt.devfileData)
+			err := setGitopsStatus(&tt.component, tt.devfileData)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("TestSetGitOpsAnnotations() unexpected error: %v", err)
 			}
 			if !tt.wantErr {
-				compLabels := tt.component.GetAnnotations()
-				if !reflect.DeepEqual(compLabels, tt.wantComponentLabels) {
-					t.Errorf("TestSetGitOpsAnnotations() error: expected %v got %v", tt.wantComponentLabels, compLabels)
+				compGitOps := tt.component.Status.GitOps
+				if !reflect.DeepEqual(compGitOps, tt.wantGitOpsStatus) {
+					t.Errorf("TestSetGitOpsAnnotations() error: expected %v got %v", tt.wantGitOpsStatus, compGitOps)
 				}
 			}
 		})
@@ -187,15 +187,17 @@ func TestGenerateGitops(t *testing.T) {
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "test-component",
 					Namespace: "test-namespace",
-					Annotations: map[string]string{
-						"gitOpsRepository.url":     "https://github.com/test/repo",
-						"gitOpsRepository.branch":  "main",
-						"gitOpsRepository.context": "/test",
-					},
 				},
 				Spec: appstudiov1alpha1.ComponentSpec{
 					ComponentName: "test-component",
 					Application:   "test-app",
+				},
+				Status: appstudiov1alpha1.ComponentStatus{
+					GitOps: appstudiov1alpha1.GitOpsStatus{
+						RepositoryURL: "https://github.com/test/repo",
+						Branch:        "main",
+						Context:       "/test",
+					},
 				},
 			},
 			wantErr: false,
@@ -279,13 +281,15 @@ func TestGenerateGitops(t *testing.T) {
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "test-component",
 					Namespace: "test-namespace",
-					Annotations: map[string]string{
-						"gitOpsRepository.url": "https://github.com/appstudio/test-repo",
-					},
 				},
 				Spec: appstudiov1alpha1.ComponentSpec{
 					ComponentName: "test-component",
 					Application:   "test-app",
+				},
+				Status: appstudiov1alpha1.ComponentStatus{
+					GitOps: appstudiov1alpha1.GitOpsStatus{
+						RepositoryURL: "https://github.com/test/repo",
+					},
 				},
 			},
 			wantErr: false,
@@ -302,13 +306,15 @@ func TestGenerateGitops(t *testing.T) {
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "test-component",
 					Namespace: "test-namespace",
-					Annotations: map[string]string{
-						"gitOpsRepository.url": "https://github.com/appstudio/test-repo",
-					},
 				},
 				Spec: appstudiov1alpha1.ComponentSpec{
 					ComponentName: "test-component",
 					Application:   "test-app",
+				},
+				Status: appstudiov1alpha1.ComponentStatus{
+					GitOps: appstudiov1alpha1.GitOpsStatus{
+						RepositoryURL: "https://github.com/test/repo",
+					},
 				},
 			},
 			wantErr: true,
@@ -325,13 +331,15 @@ func TestGenerateGitops(t *testing.T) {
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "test-component",
 					Namespace: "test-namespace",
-					Annotations: map[string]string{
-						"gitOpsRepository.url": "https://github.com/appstudio/test-repo",
-					},
 				},
 				Spec: appstudiov1alpha1.ComponentSpec{
 					ComponentName: "test-component",
 					Application:   "test-app",
+				},
+				Status: appstudiov1alpha1.ComponentStatus{
+					GitOps: appstudiov1alpha1.GitOpsStatus{
+						RepositoryURL: "https://github.com/test/repo",
+					},
 				},
 			},
 			wantErr: true,
