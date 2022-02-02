@@ -478,7 +478,7 @@ func TestGenerateAndPush(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			e := testutils.NewMockExecutor(tt.outputs...)
 			e.Errors = tt.errors
-			err := GenerateAndPush(outputPath, repo, component, e, tt.fs, "main", "/")
+			err := GenerateAndPush(outputPath, repo, component, Generate, e, tt.fs, "main", "/")
 
 			if tt.wantErrString != "" {
 				testutils.AssertErrorMatch(t, tt.wantErrString, err)

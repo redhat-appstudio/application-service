@@ -24,6 +24,8 @@ import (
 	"github.com/spf13/afero"
 )
 
+type GitopsGeneratorFunc func(fs afero.Fs, outputFolder string, component appstudiov1alpha1.Component) error
+
 type Executor interface {
 	Execute(baseDir, command string, args ...string) ([]byte, error)
 }
@@ -31,13 +33,14 @@ type Executor interface {
 // GenerateAndPush takes in the flollowing args and generates the gitops resources for a given component
 // 1. outputPath: Where to output the gitops resources to.
 // 2. remote: A string of the form https://$token@github.com/<org>/<repo>. Corresponds to the component's gitops repository
-// 2. component: A component struct corresponding to a single Component in an Application in AS
-// 4. The executor to use to execute the git commands (either gitops.executor or gitops.mockExecutor)
-// 5. The filesystem object used to create (either ioutils.NewFilesystem() or ioutils.NewMemoryFilesystem())
-// 6. The branch to push to
-// 7. The path within the repository to generate the resources in
+// 3. component: A component struct corresponding to a single Component in an Application in AS
+// 4. generator: A routine that generates gitops files
+// 5. The executor to use to execute the git commands (either gitops.executor or gitops.mockExecutor)
+// 6. The filesystem object used to create (either ioutils.NewFilesystem() or ioutils.NewMemoryFilesystem())
+// 7. The branch to push to
+// 8. The path within the repository to generate the resources in
 // Adapted from https://github.com/redhat-developer/kam/blob/master/pkg/pipelines/utils.go#L79
-func GenerateAndPush(outputPath string, remote string, component appstudiov1alpha1.Component, e Executor, appFs afero.Fs, branch string, context string) error {
+func GenerateAndPush(outputPath string, remote string, component appstudiov1alpha1.Component, generator GitopsGeneratorFunc, e Executor, appFs afero.Fs, branch string, context string) error {
 	componentName := component.Name
 	if out, err := e.Execute(outputPath, "git", "clone", remote, componentName); err != nil {
 		return fmt.Errorf("failed to clone git repository in %q %q: %s", outputPath, string(out), err)
@@ -58,7 +61,7 @@ func GenerateAndPush(outputPath string, remote string, component appstudiov1alph
 
 	// Generate the gitops resources
 	componentPath := filepath.Join(repoPath, context, "components", componentName, "base")
-	if err := Generate(appFs, componentPath, component); err != nil {
+	if err := generator(appFs, componentPath, component); err != nil {
 		return fmt.Errorf("failed to generate the gitops resources in %q for component %q: %s", componentPath, componentName, err)
 	}
 

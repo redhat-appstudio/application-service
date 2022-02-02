@@ -29,6 +29,7 @@ import (
 )
 
 const (
+	kastomizeFileName  = "kustomization.yaml"
 	deploymentFileName = "deployment.yaml"
 	serviceFileName    = "service.yaml"
 	routeFileName      = "route.yaml"
@@ -53,7 +54,7 @@ func Generate(fs afero.Fs, outputFolder string, component appstudiov1alpha1.Comp
 		resources[serviceFileName] = service
 		resources[routeFileName] = route
 	}
-	resources["kustomization.yaml"] = k
+	resources[kastomizeFileName] = k
 
 	_, err := yaml.WriteResources(fs, outputFolder, resources)
 	return err

@@ -26,6 +26,7 @@ import (
 	data "github.com/devfile/library/pkg/devfile/parser/data"
 	v2 "github.com/devfile/library/pkg/devfile/parser/data/v2"
 	appstudiov1alpha1 "github.com/redhat-appstudio/application-service/api/v1alpha1"
+	"github.com/redhat-appstudio/application-service/gitops"
 	"github.com/redhat-appstudio/application-service/gitops/ioutils"
 	"github.com/redhat-appstudio/application-service/gitops/testutils"
 	"github.com/redhat-appstudio/application-service/pkg/github"
@@ -341,7 +342,7 @@ func TestGenerateGitops(t *testing.T) {
 	for _, tt := range tests {
 		tt.reconciler.AppFS = tt.fs
 		t.Run(tt.name, func(t *testing.T) {
-			err := tt.reconciler.generateGitops(tt.component)
+			err := tt.reconciler.generateGitops(tt.component, gitops.Generate)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("TestGenerateGitops() unexpected error: %v", err)
 			}

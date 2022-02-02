@@ -14,36 +14,75 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package controllers
+package gitops
 
 import (
 	"encoding/json"
+	"path/filepath"
 	"strings"
 
 	routev1 "github.com/openshift/api/route/v1"
 	appstudiov1alpha1 "github.com/redhat-appstudio/application-service/api/v1alpha1"
+	"github.com/redhat-appstudio/application-service/gitops/resources"
+	yaml "github.com/redhat-appstudio/application-service/gitops/yaml"
+	"github.com/spf13/afero"
 	tektonapi "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	triggersapi "github.com/tektoncd/triggers/pkg/apis/triggers/v1alpha1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
-	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/util/intstr"
 )
 
-func determineBuildDefinition(component appstudiov1alpha1.Component) string {
-	return "devfile-build"
+const (
+	buildCommonStoragePVCFileName = "common-storage-pvc.yaml"
+	buildTriggerTemplateFileName  = "trigger-template.yaml"
+	buildEvetListenerFileName     = "event-listener.yaml"
+	buildWebhookRouteFileName     = "build-webhook-route.yaml"
+)
+
+func GenerateBuild(fs afero.Fs, outputFolder string, component appstudiov1alpha1.Component) error {
+	// Because GenerateAndPush cleans up everything for component it cleans previously generated main gitops files for the component.
+	// To keep generalized behaviour of GenerateAndPush we just regenerate component gitops files here.
+	// They should be the same and will not be included into this commit for build gitops files.
+	// This operation is cheap as generation of gitops files doesn't involve queries to cluster nor git calls.
+	if err := Generate(fs, outputFolder, component); err != nil {
+		return err
+	}
+
+	// Switch to build folder
+	outputFolder = filepath.Join(outputFolder, ".tekton")
+
+	commonStoragePVC := GenerateCommonStorage(component, "appstudio")
+	triggerTemplate, err := GenerateTriggerTemplate(component)
+	if err != nil {
+		return err
+	}
+	eventListener := GenerateEventListener(component, *triggerTemplate)
+	webhookRoute := GenerateBuildWebhookRoute(component)
+
+	buildResources := map[string]interface{}{
+		buildCommonStoragePVCFileName: commonStoragePVC,
+		buildTriggerTemplateFileName:  triggerTemplate,
+		buildEvetListenerFileName:     eventListener,
+		buildWebhookRouteFileName:     webhookRoute,
+	}
+
+	kustomize := resources.Kustomization{}
+	for fileName := range buildResources {
+		kustomize.AddResources(fileName)
+	}
+
+	buildResources[kastomizeFileName] = kustomize
+
+	_, err = yaml.WriteResources(fs, outputFolder, buildResources)
+	return err
 }
 
-func determineBuildCatalog(namespace string) string {
-	// TODO: If there's a namespace/workspace specific catalog, we got
-	// to respect that.
-	return "quay.io/redhat-appstudio/build-templates-bundle@sha256:2205a29208fa686b47f841819f7abedb64adb93935493693892d0e18bbdbb77e"
-}
-
-// determineBuildExecution returns the pipelineRun spec that would be used
+// DetermineBuildExecution returns the pipelineRun spec that would be used
 // in  webhooks-triggered pipelineRuns as well as user-triggered PipelineRuns
-func determineBuildExecution(component appstudiov1alpha1.Component, params []tektonapi.Param, workspaceSubPath string) tektonapi.PipelineRunSpec {
+func DetermineBuildExecution(component appstudiov1alpha1.Component, params []tektonapi.Param, workspaceSubPath string) tektonapi.PipelineRunSpec {
 
 	pipelineRunSpec := tektonapi.PipelineRunSpec{
 		Params: params,
@@ -75,6 +114,16 @@ func determineBuildExecution(component appstudiov1alpha1.Component, params []tek
 	return pipelineRunSpec
 }
 
+func determineBuildDefinition(component appstudiov1alpha1.Component) string {
+	return "devfile-build"
+}
+
+func determineBuildCatalog(namespace string) string {
+	// TODO: If there's a namespace/workspace specific catalog, we got
+	// to respect that.
+	return "quay.io/redhat-appstudio/build-templates-bundle@sha256:2205a29208fa686b47f841819f7abedb64adb93935493693892d0e18bbdbb77e"
+}
+
 func normalizeOutputImageURL(outputImage string) string {
 
 	// if provided image format was
@@ -93,9 +142,9 @@ func normalizeOutputImageURL(outputImage string) string {
 	return outputImage
 }
 
-// paramsForInitialBuild would return the 'input' parameters for the initial PipelineRun
+// GetParamsForComponentInitialBuild would return the 'input' parameters for the initial PipelineRun
 // that would build an image from source right after a Component is imported.
-func paramsForInitialBuild(component appstudiov1alpha1.Component) []tektonapi.Param {
+func GetParamsForComponentInitialBuild(component appstudiov1alpha1.Component) []tektonapi.Param {
 	sourceCode := component.Spec.Source.GitSource.URL
 	outputImage := component.Spec.Build.ContainerImage
 
@@ -146,7 +195,7 @@ func paramsForWebhookBasedBuilds(component appstudiov1alpha1.Component) []tekton
 	return params
 }
 
-func commonLabels(component *appstudiov1alpha1.Component) map[string]string {
+func GetBuildCommonLabelsForComponent(component *appstudiov1alpha1.Component) map[string]string {
 	labels := map[string]string{
 		"build.appstudio.openshift.io/build":       "true",
 		"build.appstudio.openshift.io/type":        "build",
@@ -157,16 +206,16 @@ func commonLabels(component *appstudiov1alpha1.Component) map[string]string {
 	return labels
 }
 
-// commonStorage returns the PVC that would be created per namespace for
+// GenerateCommonStorage returns the PVC that would be created per namespace for
 // user-triggered and webhook-triggered Tekton workspaces.
-func commonStorage(component appstudiov1alpha1.Component, name string) corev1.PersistentVolumeClaim {
+func GenerateCommonStorage(component appstudiov1alpha1.Component, name string) corev1.PersistentVolumeClaim {
 	fsMode := corev1.PersistentVolumeFilesystem
 
 	workspaceStorage := &corev1.PersistentVolumeClaim{
-		ObjectMeta: v1.ObjectMeta{
+		ObjectMeta: metav1.ObjectMeta{
 			Name:        name,
 			Namespace:   component.Namespace,
-			Annotations: commonLabels(&component),
+			Annotations: GetBuildCommonLabelsForComponent(&component),
 		},
 		Spec: corev1.PersistentVolumeClaimSpec{
 			AccessModes: []corev1.PersistentVolumeAccessMode{
@@ -183,16 +232,16 @@ func commonStorage(component appstudiov1alpha1.Component, name string) corev1.Pe
 	return *workspaceStorage
 }
 
-// route returns the Route resource that would enable
+// GenerateBuildWebhookRoute returns the Route resource that would enable
 // ingress traffic into the webhook endpoint ( aka EventListener)
 // TODO: This needs to be secure.
-func route(component appstudiov1alpha1.Component) routev1.Route {
+func GenerateBuildWebhookRoute(component appstudiov1alpha1.Component) routev1.Route {
 	var port int32 = 8080
 	webhook := &routev1.Route{
-		ObjectMeta: v1.ObjectMeta{
+		ObjectMeta: metav1.ObjectMeta{
 			Name:        "el" + component.Name,
 			Namespace:   component.Namespace,
-			Annotations: commonLabels(&component),
+			Annotations: GetBuildCommonLabelsForComponent(&component),
 		},
 		Spec: routev1.RouteSpec{
 			Path: "/",
@@ -208,18 +257,18 @@ func route(component appstudiov1alpha1.Component) routev1.Route {
 	return *webhook
 }
 
-// triggerTemplate generates the TriggerTemplate resources
+// GenerateTriggerTemplate generates the TriggerTemplate resources
 // which defines how a webhook-based trigger event would be handled -
 // In this case, a PipelineRun to build an image would be created.
-func triggerTemplate(component appstudiov1alpha1.Component) (*triggersapi.TriggerTemplate, error) {
-	webhookBasedBuildTemplate := determineBuildExecution(component, paramsForWebhookBasedBuilds(component), "$(tt.params.git-revision)")
+func GenerateTriggerTemplate(component appstudiov1alpha1.Component) (*triggersapi.TriggerTemplate, error) {
+	webhookBasedBuildTemplate := DetermineBuildExecution(component, paramsForWebhookBasedBuilds(component), "$(tt.params.git-revision)")
 	resoureTemplatePipelineRun := tektonapi.PipelineRun{
-		ObjectMeta: v1.ObjectMeta{
+		ObjectMeta: metav1.ObjectMeta{
 			GenerateName: component.Name + "-",
 			Namespace:    component.Namespace,
-			Annotations:  commonLabels(&component),
+			Annotations:  GetBuildCommonLabelsForComponent(&component),
 		},
-		TypeMeta: v1.TypeMeta{
+		TypeMeta: metav1.TypeMeta{
 			Kind:       "PipelineRun",
 			APIVersion: "tekton.dev/v1beta1",
 		},
@@ -247,16 +296,16 @@ func triggerTemplate(component appstudiov1alpha1.Component) (*triggersapi.Trigge
 	return &triggerTemplate, err
 }
 
-// The eventListener is responsible for defining how to "parse" the incoming event ( "github-push ")
+// The GenerateEventListener is responsible for defining how to "parse" the incoming event ( "github-push ")
 // and create the resultant PipelineRun ( defined as a TriggerTemplate ).
 // The reconciler for EventListeners create a Service, which when exposed enables
 // ingress traffic from Github events.
-func eventListener(component appstudiov1alpha1.Component, triggerTemplate triggersapi.TriggerTemplate) triggersapi.EventListener {
+func GenerateEventListener(component appstudiov1alpha1.Component, triggerTemplate triggersapi.TriggerTemplate) triggersapi.EventListener {
 	eventListener := triggersapi.EventListener{
-		ObjectMeta: v1.ObjectMeta{
+		ObjectMeta: metav1.ObjectMeta{
 			Name:        component.Name,
 			Namespace:   component.Namespace,
-			Annotations: commonLabels(&component),
+			Annotations: GetBuildCommonLabelsForComponent(&component),
 		},
 		Spec: triggersapi.EventListenerSpec{
 			ServiceAccountName: "pipeline",
