@@ -506,7 +506,7 @@ func (r *ComponentReconciler) generateGitops(component *appstudiov1alpha1.Compon
 	return r.AppFS.RemoveAll(tempDir)
 }
 
-// setGitopsStatus adds the necessary gitops annotations (url, branch, context) to the component CR status
+// setGitopsStatus adds the necessary gitops info (url, branch, context) to the component CR status
 func setGitopsStatus(component *appstudiov1alpha1.Component, devfileData data.DevfileData) error {
 	var err error
 	devfileAttributes := devfileData.GetMetadata().Attributes
