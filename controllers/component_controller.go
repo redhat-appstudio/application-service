@@ -228,15 +228,11 @@ func (r *ComponentReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 					return ctrl.Result{}, err
 				}
 
-				// Generate and push the gitops resources if spec.containerImage is set
-				if component.Spec.Build.ContainerImage != "" {
-					err = r.generateGitops(&component, gitops.Generate)
-					if err != nil {
-						errMsg := fmt.Sprintf("Unable to generate gitops resources for component %v", req.NamespacedName)
-						log.Error(err, errMsg)
-						r.SetCreateConditionAndUpdateCR(ctx, &component, fmt.Errorf(errMsg))
-						return ctrl.Result{}, err
-					}
+				if err := r.generateGitops(&component, gitops.Generate); err != nil {
+					errMsg := fmt.Sprintf("Unable to generate gitops resources for component %v", req.NamespacedName)
+					log.Error(err, errMsg)
+					r.SetCreateConditionAndUpdateCR(ctx, &component, fmt.Errorf(errMsg))
+					return ctrl.Result{}, err
 				}
 
 				log.Info(fmt.Sprintf("Creating the Build objects  %v", req.NamespacedName))
@@ -295,16 +291,12 @@ func (r *ComponentReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 				return ctrl.Result{}, err
 			}
 
-			// Generate and push the gitops resources if spec.containerImage is set
-			if component.Spec.Build.ContainerImage != "" {
-				component.Status.ContainerImage = component.Spec.Build.ContainerImage
-				err = r.generateGitops(&component, gitops.Generate)
-				if err != nil {
-					errMsg := fmt.Sprintf("Unable to generate gitops resources for component %v", req.NamespacedName)
-					log.Error(err, errMsg)
-					r.SetUpdateConditionAndUpdateCR(ctx, &component, fmt.Errorf("%v: %v", errMsg, err))
-					return ctrl.Result{}, err
-				}
+			component.Status.ContainerImage = component.Spec.Build.ContainerImage
+			if err := r.generateGitops(&component, gitops.Generate); err != nil {
+				errMsg := fmt.Sprintf("Unable to generate gitops resources for component %v", req.NamespacedName)
+				log.Error(err, errMsg)
+				r.SetUpdateConditionAndUpdateCR(ctx, &component, fmt.Errorf("%v: %v", errMsg, err))
+				return ctrl.Result{}, err
 			}
 
 			component.Status.Devfile = string(yamlHASCompData)
