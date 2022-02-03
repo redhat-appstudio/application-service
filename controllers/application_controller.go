@@ -164,6 +164,7 @@ func (r *ApplicationReconciler) Reconcile(ctx context.Context, req ctrl.Request)
 		// Get the devfile of the hasApp CR
 		devfileData, err := devfile.ParseDevfileModel(application.Status.Devfile)
 		if err != nil {
+			r.SetUpdateConditionAndUpdateCR(ctx, &application, err)
 			log.Error(err, fmt.Sprintf("Unable to parse devfile model, exiting reconcile loop %v", req.NamespacedName))
 			return ctrl.Result{}, nil
 		}
