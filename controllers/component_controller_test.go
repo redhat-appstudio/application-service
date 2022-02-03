@@ -196,6 +196,33 @@ var _ = Describe("Component controller", func() {
 			var port int32 = 8080
 			Expect(route.Spec.Port.TargetPort.IntVal).To(Equal(port))
 
+			// set the route ingress
+			route.Annotations = map[string]string{
+				"test": "test",
+			}
+			route.Status.Ingress = []routev1.RouteIngress{
+				{
+					Host: "fakeroute.fakeurl.com",
+				},
+			}
+
+			// Update the route and wait for it to get updated server-side
+			Expect(k8sClient.Status().Update(context.Background(), route)).Should(Succeed())
+			Eventually(func() bool {
+				k8sClient.Get(context.Background(), routeResourcename, route)
+				return len(route.Status.Ingress) > 0
+			}, timeout, interval).Should(BeTrue())
+
+			// Trigger another reconcile in the controller
+			// With the Route URL now set, validate that the component's status.webhook is set to the route url
+			createdHasComp.Spec.Build.ContainerImage = "newimage"
+			Expect(k8sClient.Update(context.Background(), createdHasComp)).Should(Succeed())
+
+			Eventually(func() bool {
+				k8sClient.Get(context.Background(), hasCompLookupKey, createdHasComp)
+				return createdHasComp.Status.Webhook != ""
+			}, timeout, interval).Should(BeTrue())
+
 			// Delete the specified HASComp resource
 			deleteHASCompCR(hasCompLookupKey)
 
@@ -698,7 +725,7 @@ var _ = Describe("Component controller", func() {
 			createdHasComp := &appstudiov1alpha1.Component{}
 			Eventually(func() bool {
 				k8sClient.Get(context.Background(), hasCompLookupKey, createdHasComp)
-				return len(createdHasComp.Status.Conditions) > 0 //&& createdHasComp.GetLabels()["appstudio.has/component"] != ""
+				return len(createdHasComp.Status.Conditions) > 0
 			}, timeout, interval).Should(BeTrue())
 
 			// Validate that the built container image was set in the status
@@ -914,7 +941,7 @@ var _ = Describe("Component controller", func() {
 			createdHasComp := &appstudiov1alpha1.Component{}
 			Eventually(func() bool {
 				k8sClient.Get(context.Background(), hasCompLookupKey, createdHasComp)
-				return len(createdHasComp.Status.Conditions) > 0 //&& createdHasComp.GetLabels()["appstudio.has/component"] != ""
+				return len(createdHasComp.Status.Conditions) > 0
 			}, timeout, interval).Should(BeTrue())
 
 			// Remove the component's devfile and update a field in the spec to trigger a reconcile
@@ -1071,7 +1098,7 @@ var _ = Describe("Component controller", func() {
 			createdHasComp := &appstudiov1alpha1.Component{}
 			Eventually(func() bool {
 				k8sClient.Get(context.Background(), hasCompLookupKey, createdHasComp)
-				return len(createdHasComp.Status.Conditions) > 0 //&& createdHasComp.GetLabels()["appstudio.has/component"] != ""
+				return len(createdHasComp.Status.Conditions) > 0
 			}, timeout, interval).Should(BeTrue())
 
 			// Remove the gitops status
