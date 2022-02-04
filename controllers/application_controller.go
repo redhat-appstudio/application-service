@@ -78,6 +78,7 @@ func (r *ApplicationReconciler) Reconcile(ctx context.Context, req ctrl.Request)
 	}
 
 	fmt.Println("HELLO!")
+	fmt.Println("HELLO!")
 
 	// Check if the Application CR is under deletion
 	// If so: Remove the GitOps repo (if generated) and remove the finalizer.
