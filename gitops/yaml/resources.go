@@ -17,11 +17,14 @@
 package yaml
 
 import (
+	"bytes"
 	"fmt"
 	"io"
+	"os"
 	"path/filepath"
 
 	"github.com/mitchellh/go-homedir"
+	"github.com/redhat-appstudio/application-service/gitops/resources"
 	"github.com/spf13/afero"
 	"sigs.k8s.io/yaml"
 )
@@ -81,4 +84,31 @@ func AddKustomize(fs afero.Fs, name string, items []string, path string) error {
 	content := []interface{}{}
 	content = append(content, map[string]interface{}{name: items})
 	return MarshalItemToFile(fs, path, content)
+}
+
+// MergeKustomizeResource rewrites existing kustomization.yaml by adding specified items under resources section
+func MergeResourcesIntoKustomize(fs afero.Fs, name string, res ...string) error {
+	kustomizeFile, err := fs.OpenFile(name, os.O_RDWR, 0777)
+	if err != nil {
+		return err
+	}
+	defer kustomizeFile.Close()
+
+	kustomizeContent := bytes.NewBuffer(nil)
+	if _, err := io.Copy(kustomizeContent, kustomizeFile); err != nil {
+		return err
+	}
+
+	kustomize := resources.Kustomization{}
+	if err := yaml.Unmarshal(kustomizeContent.Bytes(), &kustomize); err != nil {
+		return err
+	}
+
+	kustomize.AddResources(res...)
+
+	if err := kustomizeFile.Truncate(0); err != nil {
+		return err
+	}
+
+	return MarshalOutput(kustomizeFile, kustomize)
 }

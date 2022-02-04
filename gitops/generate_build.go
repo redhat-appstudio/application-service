@@ -18,6 +18,7 @@ package gitops
 
 import (
 	"encoding/json"
+	"os"
 	"path/filepath"
 	"strings"
 
@@ -38,7 +39,7 @@ import (
 const (
 	buildCommonStoragePVCFileName = "common-storage-pvc.yaml"
 	buildTriggerTemplateFileName  = "trigger-template.yaml"
-	buildEvetListenerFileName     = "event-listener.yaml"
+	buildEventListenerFileName    = "event-listener.yaml"
 	buildWebhookRouteFileName     = "build-webhook-route.yaml"
 )
 
@@ -51,8 +52,7 @@ func GenerateBuild(fs afero.Fs, outputFolder string, component appstudiov1alpha1
 		return err
 	}
 
-	// Switch to build folder
-	outputFolder = filepath.Join(outputFolder, ".tekton")
+	tektonResourcesDirName := ".tekton" + string(os.PathSeparator)
 
 	commonStoragePVC := GenerateCommonStorage(component, "appstudio")
 	triggerTemplate, err := GenerateTriggerTemplate(component)
@@ -65,7 +65,7 @@ func GenerateBuild(fs afero.Fs, outputFolder string, component appstudiov1alpha1
 	buildResources := map[string]interface{}{
 		buildCommonStoragePVCFileName: commonStoragePVC,
 		buildTriggerTemplateFileName:  triggerTemplate,
-		buildEvetListenerFileName:     eventListener,
+		buildEventListenerFileName:    eventListener,
 		buildWebhookRouteFileName:     webhookRoute,
 	}
 
@@ -74,10 +74,18 @@ func GenerateBuild(fs afero.Fs, outputFolder string, component appstudiov1alpha1
 		kustomize.AddResources(fileName)
 	}
 
-	buildResources[kastomizeFileName] = kustomize
+	buildResources[kustomizeFileName] = kustomize
 
-	_, err = yaml.WriteResources(fs, outputFolder, buildResources)
-	return err
+	if _, err = yaml.WriteResources(fs, filepath.Join(outputFolder, tektonResourcesDirName), buildResources); err != nil {
+		return err
+	}
+
+	// Add ".tekton/" directory into resources list of the parent kustomization.yaml
+	if err := yaml.MergeResourcesIntoKustomize(fs, filepath.Join(outputFolder, kustomizeFileName), tektonResourcesDirName); err != nil {
+		return err
+	}
+
+	return nil
 }
 
 // DetermineBuildExecution returns the pipelineRun spec that would be used
@@ -212,6 +220,10 @@ func GenerateCommonStorage(component appstudiov1alpha1.Component, name string) c
 	fsMode := corev1.PersistentVolumeFilesystem
 
 	workspaceStorage := &corev1.PersistentVolumeClaim{
+		TypeMeta: metav1.TypeMeta{
+			Kind:       "PersistentVolumeClaim",
+			APIVersion: "v1",
+		},
 		ObjectMeta: metav1.ObjectMeta{
 			Name:        name,
 			Namespace:   component.Namespace,
@@ -238,6 +250,10 @@ func GenerateCommonStorage(component appstudiov1alpha1.Component, name string) c
 func GenerateBuildWebhookRoute(component appstudiov1alpha1.Component) routev1.Route {
 	var port int32 = 8080
 	webhook := &routev1.Route{
+		TypeMeta: metav1.TypeMeta{
+			Kind:       "Route",
+			APIVersion: "route.openshift.io/v1",
+		},
 		ObjectMeta: metav1.ObjectMeta{
 			Name:        "el" + component.Name,
 			Namespace:   component.Namespace,
@@ -278,18 +294,25 @@ func GenerateTriggerTemplate(component appstudiov1alpha1.Component) (*triggersap
 	if err != nil {
 		return nil, err
 	}
-	triggerTemplate := triggersapi.TriggerTemplate{}
-	triggerTemplate.Name = component.Name
-	triggerTemplate.Namespace = component.Namespace
-	triggerTemplate.Spec = triggersapi.TriggerTemplateSpec{
-		Params: []triggersapi.ParamSpec{
-			{
-				Name: "git-revision",
-			},
+	triggerTemplate := triggersapi.TriggerTemplate{
+		TypeMeta: metav1.TypeMeta{
+			Kind:       "TriggerTemplate",
+			APIVersion: "triggers.tekton.dev/v1beta1",
 		},
-		ResourceTemplates: []triggersapi.TriggerResourceTemplate{
-			{
-				RawExtension: runtime.RawExtension{Raw: resourceTemplatePipelineRunBytes},
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      component.Name,
+			Namespace: component.Namespace,
+		},
+		Spec: triggersapi.TriggerTemplateSpec{
+			Params: []triggersapi.ParamSpec{
+				{
+					Name: "git-revision",
+				},
+			},
+			ResourceTemplates: []triggersapi.TriggerResourceTemplate{
+				{
+					RawExtension: runtime.RawExtension{Raw: resourceTemplatePipelineRunBytes},
+				},
 			},
 		},
 	}
@@ -302,6 +325,10 @@ func GenerateTriggerTemplate(component appstudiov1alpha1.Component) (*triggersap
 // ingress traffic from Github events.
 func GenerateEventListener(component appstudiov1alpha1.Component, triggerTemplate triggersapi.TriggerTemplate) triggersapi.EventListener {
 	eventListener := triggersapi.EventListener{
+		TypeMeta: metav1.TypeMeta{
+			Kind:       "EventListener",
+			APIVersion: "triggers.tekton.dev/v1beta1",
+		},
 		ObjectMeta: metav1.ObjectMeta{
 			Name:        component.Name,
 			Namespace:   component.Namespace,
