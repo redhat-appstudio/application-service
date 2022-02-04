@@ -26,11 +26,6 @@ spec:
       kind: Component
       name: components.appstudio.redhat.com
       version: v1alpha1
-    - description: Push is the Schema for the pushes API
-      displayName: Push
-      kind: Push
-      name: pushes.appstudio.redhat.com
-      version: v1alpha1
   description: Hybrid Application Service operator
   displayName: Hybrid Application Service
   icon:

@@ -1,7 +1,0 @@
-apiVersion: appstudio.redhat.com/v1alpha1
-kind: Push
-metadata:
-  name: push-sample
-spec:
-  # Add fields here
-  foo: bar

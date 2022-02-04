@@ -18,6 +18,7 @@ package controllers
 
 import (
 	"context"
+	"testing"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -160,4 +161,84 @@ func createAndFetchSimpleApp(name string, namespace string, display string, desc
 	}, timeout, interval).Should(BeTrue())
 
 	return fetchedHasApp
+}
+
+func TestGetFinalizeCount(t *testing.T) {
+	tests := []struct {
+		name        string
+		application appstudiov1alpha1.Application
+		want        int
+	}{
+		{
+			name:        "Application, no finalize counter",
+			application: appstudiov1alpha1.Application{},
+			want:        0,
+		},
+		{
+			name: "Application, finalize counter already exists",
+			application: appstudiov1alpha1.Application{
+				ObjectMeta: metav1.ObjectMeta{
+					Annotations: map[string]string{
+						finalizeCount: "4",
+					},
+				},
+			},
+			want: 4,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			count, err := getFinalizeCount(&tt.application)
+			if err != nil {
+				t.Errorf("TestGetFinalizeCount() unexpected error: %v", err)
+			}
+			if count != tt.want {
+				t.Errorf("TestGetFinalizeCount() error: expected %v got %v", tt.want, count)
+			}
+		})
+	}
+
+}
+
+func TestSetFinalizeCount(t *testing.T) {
+	tests := []struct {
+		name        string
+		application appstudiov1alpha1.Application
+		count       int
+		want        int
+	}{
+		{
+			name:        "Application, no finalize counter",
+			application: appstudiov1alpha1.Application{},
+			count:       0,
+			want:        0,
+		},
+		{
+			name: "Application, finalize counter already exists",
+			application: appstudiov1alpha1.Application{
+				ObjectMeta: metav1.ObjectMeta{
+					Annotations: map[string]string{
+						finalizeCount: "4",
+					},
+				},
+			},
+			count: 4,
+			want:  4,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			setFinalizeCount(&tt.application, tt.count)
+			count, err := getFinalizeCount(&tt.application)
+			if err != nil {
+				t.Errorf("TestGetFinalizeCount() unexpected error: %v", err)
+			}
+			if count != tt.want {
+				t.Errorf("TestGetFinalizeCount() error: expected %v got %v", tt.want, count)
+			}
+		})
+	}
+
 }

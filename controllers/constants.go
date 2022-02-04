@@ -33,10 +33,4 @@ const (
 
 	// ephemeralStorageRequestKey is the key to reference ephemeral storage request
 	ephemeralStorageRequestKey = "appstudio.has/ephemeralStorageRequest"
-
-	// applicationKey is the key to reference an application-service CR application
-	applicationKey = "appstudio.has/application"
-
-	// componentKey is the key to reference an application-service CR component
-	componentKey = "appstudio.has/component"
 )
