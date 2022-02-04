@@ -111,7 +111,7 @@ func (r *ComponentReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 				if err != nil {
 					log.Error(err, fmt.Sprintf("Unable to convert Github URL to raw format, exiting reconcile loop %v", req.NamespacedName))
 					r.SetCreateConditionAndUpdateCR(ctx, &component, err)
-					return ctrl.Result{}, err
+					return ctrl.Result{}, nil
 				}
 
 				// append context to the path if present
@@ -127,7 +127,7 @@ func (r *ComponentReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 				if err != nil {
 					log.Error(err, fmt.Sprintf("Unable to read the devfile from dir %s %v", devfileDir, req.NamespacedName))
 					r.SetCreateConditionAndUpdateCR(ctx, &component, err)
-					return ctrl.Result{}, err
+					return ctrl.Result{}, nil
 				}
 			} else {
 				devfileBytes, err = util.CurlEndpoint(source.GitSource.DevfileURL)
@@ -135,7 +135,7 @@ func (r *ComponentReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 					log.Error(err, fmt.Sprintf("Unable to GET %s, exiting reconcile loop %v", source.GitSource.DevfileURL, req.NamespacedName))
 					err := fmt.Errorf("unable to GET from %s", source.GitSource.DevfileURL)
 					r.SetCreateConditionAndUpdateCR(ctx, &component, err)
-					return ctrl.Result{}, err
+					return ctrl.Result{}, nil
 				}
 			}
 
@@ -144,7 +144,7 @@ func (r *ComponentReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 			if err != nil {
 				log.Error(err, fmt.Sprintf("Unable to parse the devfile from Component, exiting reconcile loop %v", req.NamespacedName))
 				r.SetCreateConditionAndUpdateCR(ctx, &component, err)
-				return ctrl.Result{}, err
+				return ctrl.Result{}, nil
 			}
 
 			err = r.updateComponentDevfileModel(hasCompDevfileData, component)
@@ -160,7 +160,7 @@ func (r *ComponentReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 			if err != nil {
 				log.Error(err, fmt.Sprintf("Unable to get the Application %s, exiting reconcile loop %v", component.Spec.Application, req.NamespacedName))
 				r.SetCreateConditionAndUpdateCR(ctx, &component, err)
-				return ctrl.Result{}, nil
+				return ctrl.Result{}, err
 			}
 
 			if hasApplication.Status.Devfile != "" {
@@ -169,7 +169,7 @@ func (r *ComponentReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 				if err != nil {
 					log.Error(err, fmt.Sprintf("Unable to parse the devfile from Application, exiting reconcile loop %v", req.NamespacedName))
 					r.SetCreateConditionAndUpdateCR(ctx, &component, err)
-					return ctrl.Result{}, err
+					return ctrl.Result{}, nil
 				}
 
 				err = r.updateApplicationDevfileModel(hasAppDevfileData, component)
@@ -183,7 +183,7 @@ func (r *ComponentReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 				if err != nil {
 					log.Error(err, fmt.Sprintf("Unable to marshall the Component devfile, exiting reconcile loop %v", req.NamespacedName))
 					r.SetCreateConditionAndUpdateCR(ctx, &component, err)
-					return ctrl.Result{}, err
+					return ctrl.Result{}, nil
 				}
 
 				component.Status.Devfile = string(yamlHASCompData)
@@ -193,7 +193,7 @@ func (r *ComponentReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 				if err != nil {
 					log.Error(err, fmt.Sprintf("Unable to marshall the Application devfile, exiting reconcile loop %v", req.NamespacedName))
 					r.SetCreateConditionAndUpdateCR(ctx, &component, err)
-					return ctrl.Result{}, err
+					return ctrl.Result{}, nil
 				}
 				hasApplication.Status.Devfile = string(yamlHASAppData)
 				err = r.Status().Update(ctx, &hasApplication)
@@ -225,7 +225,7 @@ func (r *ComponentReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 						errMsg := fmt.Sprintf("Unable to generate gitops resources for component %v", req.NamespacedName)
 						log.Error(err, errMsg)
 						r.SetCreateConditionAndUpdateCR(ctx, &component, fmt.Errorf(errMsg))
-						return ctrl.Result{}, err
+						return ctrl.Result{}, nil
 					}
 				}
 
@@ -240,7 +240,7 @@ func (r *ComponentReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 				log.Error(err, fmt.Sprintf("Application devfile model is empty. Before creating a Component, an instance of Application should be created, exiting reconcile loop %v", req.NamespacedName))
 				err := fmt.Errorf("application devfile model is empty. Before creating a Component, an instance of Application should be created")
 				r.SetCreateConditionAndUpdateCR(ctx, &component, err)
-				return ctrl.Result{}, err
+				return ctrl.Result{}, nil
 			}
 
 		} else if source.ImageSource != nil && source.ImageSource.ContainerImage != "" {
@@ -257,14 +257,14 @@ func (r *ComponentReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 		if err != nil {
 			log.Error(err, fmt.Sprintf("Unable to parse the devfile from Component, exiting reconcile loop %v", req.NamespacedName))
 			r.SetUpdateConditionAndUpdateCR(ctx, &component, err)
-			return ctrl.Result{}, err
+			return ctrl.Result{}, nil
 		}
 
 		err = r.updateComponentDevfileModel(hasCompDevfileData, component)
 		if err != nil {
 			log.Error(err, fmt.Sprintf("Unable to update the Component Devfile model %v", req.NamespacedName))
 			r.SetUpdateConditionAndUpdateCR(ctx, &component, err)
-			return ctrl.Result{}, err
+			return ctrl.Result{}, nil
 		}
 
 		// Read the devfile again to compare it with any updates
@@ -272,7 +272,7 @@ func (r *ComponentReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 		if err != nil {
 			log.Error(err, fmt.Sprintf("Unable to parse the devfile from Component, exiting reconcile loop %v", req.NamespacedName))
 			r.SetUpdateConditionAndUpdateCR(ctx, &component, err)
-			return ctrl.Result{}, err
+			return ctrl.Result{}, nil
 		}
 
 		isUpdated := !reflect.DeepEqual(oldCompDevfileData, hasCompDevfileData) || component.Spec.Build.ContainerImage != component.Status.ContainerImage
@@ -282,7 +282,7 @@ func (r *ComponentReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 			if err != nil {
 				log.Error(err, fmt.Sprintf("Unable to marshall the Component devfile, exiting reconcile loop %v", req.NamespacedName))
 				r.SetUpdateConditionAndUpdateCR(ctx, &component, err)
-				return ctrl.Result{}, err
+				return ctrl.Result{}, nil
 			}
 
 			// Generate and push the gitops resources if spec.containerImage is set
@@ -293,7 +293,7 @@ func (r *ComponentReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 					errMsg := fmt.Sprintf("Unable to generate gitops resources for component %v", req.NamespacedName)
 					log.Error(err, errMsg)
 					r.SetUpdateConditionAndUpdateCR(ctx, &component, fmt.Errorf("%v: %v", errMsg, err))
-					return ctrl.Result{}, err
+					return ctrl.Result{}, nil
 				}
 			}
 
@@ -316,7 +316,7 @@ func (r *ComponentReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 	}
 
 	log.Info(fmt.Sprintf("Finished reconcile loop for %v", req.NamespacedName))
-	return ctrl.Result{}, err
+	return ctrl.Result{}, nil
 }
 
 func (r *ComponentReconciler) generateBuild(ctx context.Context, component *appstudiov1alpha1.Component) (string, error) {
