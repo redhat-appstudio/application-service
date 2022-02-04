@@ -146,13 +146,6 @@ func main() {
 		setupLog.Error(err, "unable to create controller", "controller", "Component")
 		os.Exit(1)
 	}
-	if err = (&controllers.PushReconciler{
-		Client: mgr.GetClient(),
-		Scheme: mgr.GetScheme(),
-	}).SetupWithManager(mgr); err != nil {
-		setupLog.Error(err, "unable to create controller", "controller", "Push")
-		os.Exit(1)
-	}
 	if err = (&controllers.ComponentDetectionQueryReconciler{
 		Client: mgr.GetClient(),
 		Scheme: mgr.GetScheme(),

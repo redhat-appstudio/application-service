@@ -178,6 +178,8 @@ func TestCurlEndpoint(t *testing.T) {
 }
 
 func TestCloneRepo(t *testing.T) {
+	os.Mkdir("/tmp/alreadyexistingdir", 0755)
+
 	tests := []struct {
 		name      string
 		clonePath string
@@ -199,6 +201,12 @@ func TestCloneRepo(t *testing.T) {
 			name:      "Invalid Clone Path",
 			clonePath: "\000x",
 			wantErr:   true,
+		},
+		{
+			name:      "Clone path, already existing folder",
+			clonePath: "/tmp/alreadyexistingdir",
+			repo:      "https://github.com/devfile-samples/devfile-sample-java-springboot-basic",
+			wantErr:   false,
 		},
 	}
 

@@ -40,16 +40,6 @@ metadata:
           "spec": {
             "foo": "bar"
           }
-        },
-        {
-          "apiVersion": "appstudio.redhat.com/v1alpha1",
-          "kind": "Push",
-          "metadata": {
-            "name": "push-sample"
-          },
-          "spec": {
-            "foo": "bar"
-          }
         }
       ]
     capabilities: Basic Install
@@ -76,11 +66,6 @@ spec:
       displayName: Component
       kind: Component
       name: components.appstudio.redhat.com
-      version: v1alpha1
-    - description: Push is the Schema for the pushes API
-      displayName: Push
-      kind: Push
-      name: pushes.appstudio.redhat.com
       version: v1alpha1
   description: Hybrid Application Service operator
   displayName: Hybrid Application Service
@@ -170,32 +155,6 @@ spec:
           - patch
           - update
         - apiGroups:
-          - appstudio.redhat.com
-          resources:
-          - pushes
-          verbs:
-          - create
-          - delete
-          - get
-          - list
-          - patch
-          - update
-          - watch
-        - apiGroups:
-          - appstudio.redhat.com
-          resources:
-          - pushes/finalizers
-          verbs:
-          - update
-        - apiGroups:
-          - appstudio.redhat.com
-          resources:
-          - pushes/status
-          verbs:
-          - get
-          - patch
-          - update
-        - apiGroups:
           - authentication.k8s.io
           resources:
           - tokenreviews
@@ -253,7 +212,7 @@ spec:
                       key: token
                       name: has-github-token
                       optional: true
-                image: quay.io/redhat-appstudio/application-service:next
+                image: quay.io/jcollier/application-service:latest
                 imagePullPolicy: Always
                 livenessProbe:
                   httpGet:

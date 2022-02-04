@@ -2,6 +2,5 @@
 resources:
 - appstudio_v1alpha1_application.yaml
 - appstudio_v1alpha1_component.yaml
-- appstudio_v1alpha1_push.yaml
 - appstudio_v1alpha1_componentdetectionquery.yaml
 #+kubebuilder:scaffold:manifestskustomizesamples

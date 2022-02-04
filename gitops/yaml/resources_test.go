@@ -25,6 +25,8 @@ import (
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
+	"github.com/redhat-appstudio/application-service/gitops/ioutils"
+	"github.com/redhat-appstudio/application-service/gitops/resources"
 	"github.com/spf13/afero"
 	appsv1 "k8s.io/api/apps/v1"
 	"sigs.k8s.io/yaml"
@@ -33,7 +35,8 @@ import (
 type Resources map[string]interface{}
 
 func TestWriteResources(t *testing.T) {
-	fs := afero.NewOsFs()
+	fs := ioutils.NewFilesystem()
+	readOnlyFs := ioutils.NewReadOnlyFs()
 	homeEnv := "HOME"
 	originalHome := os.Getenv(homeEnv)
 	defer os.Setenv(homeEnv, originalHome)
@@ -47,17 +50,39 @@ func TestWriteResources(t *testing.T) {
 
 	tests := []struct {
 		name   string
+		fs     afero.Afero
 		path   string
 		errMsg string
 	}{
-		{"Path with ~", "~/manifest", ""},
-		{"Path without ~", filepath.ToSlash(filepath.Join(path, "manifest", "gitops")), ""},
-		{"Path without permission", "/", "failed to MkDirAll for /test/myfile.yaml"},
+		{
+			name:   "Path with ~",
+			fs:     fs,
+			path:   "~/manifest",
+			errMsg: "",
+		},
+		{
+			name:   "Path without ~",
+			fs:     fs,
+			path:   filepath.ToSlash(filepath.Join(path, "manifest", "gitops")),
+			errMsg: "",
+		},
+		{
+			name:   "Path without permission",
+			fs:     fs,
+			path:   "/",
+			errMsg: "failed to MkDirAll for /test/myfile.yaml",
+		},
+		{
+			name:   "Invalid path",
+			fs:     readOnlyFs,
+			path:   "~~~",
+			errMsg: "failed to resolve path to file: cannot expand user-specific home dir",
+		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			_, err := WriteResources(fs, tt.path, r)
+			_, err := WriteResources(tt.fs, tt.path, r)
 			if !errorMatch(t, tt.errMsg, err) {
 				t.Fatalf("error mismatch: got %v, want %v", err, tt.errMsg)
 			}
@@ -66,6 +91,99 @@ func TestWriteResources(t *testing.T) {
 			}
 			if err == nil {
 				assertResourceExists(t, filepath.Join(tt.path, "test", "myfile.yaml"), sampleYAML)
+			}
+		})
+	}
+}
+
+func TestMarshalItemToFile(t *testing.T) {
+	fs := ioutils.NewFilesystem()
+	readOnlyFs := ioutils.NewReadOnlyFs()
+
+	// Create a regexpfs for test cases where we need to mock file creation failures
+	// If a given file name doesn't match the given regex, file creation will fail, so it makes it easy to mock file creation failures
+	regexpFs := afero.Afero{Fs: afero.NewRegexpFs(afero.NewMemMapFs(), regexp.MustCompile("hello"))}
+
+	tests := []struct {
+		name   string
+		fs     afero.Afero
+		path   string
+		item   interface{}
+		errMsg string
+	}{
+		{
+			name:   "Simple resource",
+			fs:     fs,
+			path:   filepath.Join(os.TempDir(), "test"),
+			item:   resources.Kustomization{},
+			errMsg: "",
+		},
+		{
+			name:   "Read only filesystem error",
+			fs:     readOnlyFs,
+			path:   "/test/file",
+			item:   resources.Kustomization{},
+			errMsg: "failed to MkDirAll for /test/file: operation not permitted",
+		},
+		{
+			name:   "Unable to create file error",
+			fs:     regexpFs,
+			path:   "/testtwo/file-two",
+			item:   resources.Kustomization{},
+			errMsg: "failed to Create file /testtwo/file-two: no such file or directory",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			err := MarshalItemToFile(tt.fs, tt.path, tt.item)
+			if !errorMatch(t, tt.errMsg, err) {
+				t.Fatalf("error mismatch: got %v, want %v", err, tt.errMsg)
+			}
+			if err == nil {
+				assertResourceExists(t, tt.path, tt.item)
+			}
+		})
+	}
+}
+
+func TestMarshallOutput(t *testing.T) {
+	fs := ioutils.NewMemoryFilesystem()
+	readOnlyFs := afero.NewReadOnlyFs(afero.NewMemMapFs())
+
+	f, _ := fs.Create("/test/file")
+	readonlyF, _ := readOnlyFs.Open("/")
+	tests := []struct {
+		name   string
+		f      afero.File
+		item   interface{}
+		errMsg string
+	}{
+		{
+			name:   "Simple resource",
+			f:      f,
+			item:   resources.Kustomization{},
+			errMsg: "",
+		},
+		{
+			name:   "Invalid resource",
+			f:      f,
+			item:   make(chan int),
+			errMsg: "failed to marshal data: error marshaling into JSON: json: unsupported type: chan int",
+		},
+		{
+			name:   "Unable to write to resource",
+			f:      readonlyF,
+			item:   6.0,
+			errMsg: "failed to write data: write /: file handle is read only",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			err := MarshalOutput(tt.f, tt.item)
+			if !errorMatch(t, tt.errMsg, err) {
+				t.Fatalf("TestMarshallOutput(): error mismatch: got %v, want %v", err, tt.errMsg)
 			}
 		})
 	}

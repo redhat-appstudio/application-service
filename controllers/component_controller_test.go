@@ -1177,6 +1177,149 @@ var _ = Describe("Component controller", func() {
 		})
 	})
 
+	Context("Create Component with invalid git url", func() {
+		It("Should fail with error", func() {
+			ctx := context.Background()
+
+			applicationName := HASAppName + "11"
+			componentName := HASCompName + "11"
+
+			hasApp := &appstudiov1alpha1.Application{
+				TypeMeta: metav1.TypeMeta{
+					APIVersion: "appstudio.redhat.com/v1alpha1",
+					Kind:       "Application",
+				},
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      applicationName,
+					Namespace: HASAppNamespace,
+				},
+				Spec: appstudiov1alpha1.ApplicationSpec{
+					DisplayName: DisplayName,
+					Description: Description,
+				},
+			}
+
+			Expect(k8sClient.Create(ctx, hasApp)).Should(Succeed())
+
+			hasComp := &appstudiov1alpha1.Component{
+				TypeMeta: metav1.TypeMeta{
+					APIVersion: "appstudio.redhat.com/v1alpha1",
+					Kind:       "Component",
+				},
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      componentName,
+					Namespace: HASAppNamespace,
+				},
+				Spec: appstudiov1alpha1.ComponentSpec{
+					ComponentName: ComponentName,
+					Application:   applicationName,
+					Source: appstudiov1alpha1.ComponentSource{
+						ComponentSourceUnion: appstudiov1alpha1.ComponentSourceUnion{
+							GitSource: &appstudiov1alpha1.GitSource{
+								URL: "http://fds df &#%&%*$ jdnc/\\",
+							},
+						},
+					},
+				},
+			}
+			Expect(k8sClient.Create(ctx, hasComp)).Should(Succeed())
+
+			// Look up the has app resource that was created.
+			// num(conditions) may still be < 1 on the first try, so retry until at least _some_ condition is set
+			hasCompLookupKey := types.NamespacedName{Name: componentName, Namespace: HASAppNamespace}
+			createdHasComp := &appstudiov1alpha1.Component{}
+			Eventually(func() bool {
+				k8sClient.Get(context.Background(), hasCompLookupKey, createdHasComp)
+				return len(createdHasComp.Status.Conditions) > 0
+			}, timeout, interval).Should(BeTrue())
+
+			// Make sure the devfile model was properly set in Component
+			errCondition := createdHasComp.Status.Conditions[len(createdHasComp.Status.Conditions)-1]
+			Expect(errCondition.Status).Should(Equal(metav1.ConditionFalse))
+			Expect(errCondition.Message).Should(ContainSubstring("Component create failed: parse \"http://fds df &\": invalid character \" \" in host name"))
+
+			hasAppLookupKey := types.NamespacedName{Name: applicationName, Namespace: HASAppNamespace}
+
+			// Delete the specified HASComp resource
+			deleteHASCompCR(hasCompLookupKey)
+
+			// Delete the specified HASApp resource
+			deleteHASAppCR(hasAppLookupKey)
+		})
+	})
+
+	Context("Create Component with invalid devfile url", func() {
+		It("Should fail with error that devfile couldn't be unmarshalled", func() {
+			ctx := context.Background()
+
+			applicationName := HASAppName + "12"
+			componentName := HASCompName + "12"
+
+			hasApp := &appstudiov1alpha1.Application{
+				TypeMeta: metav1.TypeMeta{
+					APIVersion: "appstudio.redhat.com/v1alpha1",
+					Kind:       "Application",
+				},
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      applicationName,
+					Namespace: HASAppNamespace,
+				},
+				Spec: appstudiov1alpha1.ApplicationSpec{
+					DisplayName: DisplayName,
+					Description: Description,
+				},
+			}
+
+			Expect(k8sClient.Create(ctx, hasApp)).Should(Succeed())
+
+			hasComp := &appstudiov1alpha1.Component{
+				TypeMeta: metav1.TypeMeta{
+					APIVersion: "appstudio.redhat.com/v1alpha1",
+					Kind:       "Component",
+				},
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      componentName,
+					Namespace: HASAppNamespace,
+				},
+				Spec: appstudiov1alpha1.ComponentSpec{
+					ComponentName: ComponentName,
+					Application:   applicationName,
+					Source: appstudiov1alpha1.ComponentSource{
+						ComponentSourceUnion: appstudiov1alpha1.ComponentSourceUnion{
+							GitSource: &appstudiov1alpha1.GitSource{
+								URL:        SampleRepoLink,
+								DevfileURL: "https://gist.githubusercontent.com/johnmcollier/f322819abaef77a4646a5d27279acb1a/raw/04cfa05bdd8a2f960fffd3cb2fe007efd597f059/component.yaml",
+							},
+						},
+					},
+				},
+			}
+			Expect(k8sClient.Create(ctx, hasComp)).Should(Succeed())
+
+			// Look up the has app resource that was created.
+			// num(conditions) may still be < 1 on the first try, so retry until at least _some_ condition is set
+			hasCompLookupKey := types.NamespacedName{Name: componentName, Namespace: HASAppNamespace}
+			createdHasComp := &appstudiov1alpha1.Component{}
+			Eventually(func() bool {
+				k8sClient.Get(context.Background(), hasCompLookupKey, createdHasComp)
+				return len(createdHasComp.Status.Conditions) > 0
+			}, timeout, interval).Should(BeTrue())
+
+			// Make sure the devfile model was properly set in Component
+			errCondition := createdHasComp.Status.Conditions[len(createdHasComp.Status.Conditions)-1]
+			Expect(errCondition.Status).Should(Equal(metav1.ConditionFalse))
+			Expect(errCondition.Message).Should(ContainSubstring("Component create failed: schemaVersion not present in devfile"))
+
+			hasAppLookupKey := types.NamespacedName{Name: applicationName, Namespace: HASAppNamespace}
+
+			// Delete the specified HASComp resource
+			deleteHASCompCR(hasCompLookupKey)
+
+			// Delete the specified HASApp resource
+			deleteHASAppCR(hasAppLookupKey)
+		})
+	})
+
 })
 
 type updateChecklist struct {
