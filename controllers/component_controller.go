@@ -26,7 +26,6 @@ import (
 
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
@@ -308,7 +307,7 @@ func (r *ComponentReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 
 	// Get the Webhook from the event listener route and update it
 	// Only attempt to get it if the build generation succeeded, otherwise the route won't exist
-	if component.Status.Conditions[len(component.Status.Conditions)-1].Status == metav1.ConditionTrue {
+	if component.Status.Conditions[len(component.Status.Conditions)-1].Status == v1.ConditionTrue {
 		createdWebhook := &routev1.Route{}
 		err = r.Client.Get(ctx, types.NamespacedName{Name: "el" + component.Name, Namespace: component.Namespace}, createdWebhook)
 		if err != nil {
