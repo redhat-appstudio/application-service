@@ -217,20 +217,16 @@ func (r *ComponentReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 					return ctrl.Result{}, err
 				}
 
-				// Generate and push the gitops resources if spec.containerImage is set
-				if component.Spec.Build.ContainerImage != "" {
-					err = r.generateGitops(&component)
-					if err != nil {
-						errMsg := fmt.Sprintf("Unable to generate gitops resources for component %v", req.NamespacedName)
-						log.Error(err, errMsg)
-						r.SetCreateConditionAndUpdateCR(ctx, &component, fmt.Errorf(errMsg))
-						return ctrl.Result{}, nil
-					}
+				// Generate and push the gitops resources
+				if err := r.generateGitops(&component); err != nil {
+					errMsg := fmt.Sprintf("Unable to generate gitops resources for component %v", req.NamespacedName)
+					log.Error(err, errMsg)
+					r.SetCreateConditionAndUpdateCR(ctx, &component, fmt.Errorf(errMsg))
+					return ctrl.Result{}, nil
 				}
 
 				log.Info(fmt.Sprintf("Creating the Build objects  %v", req.NamespacedName))
-
-				err = r.generateBuild(ctx, &component)
+				err = r.runBuild(ctx, &component)
 				r.SetCreateConditionAndUpdateCR(ctx, &component, err)
 			} else {
 				log.Error(err, fmt.Sprintf("Application devfile model is empty. Before creating a Component, an instance of Application should be created, exiting reconcile loop %v", req.NamespacedName))
@@ -281,23 +277,20 @@ func (r *ComponentReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 				return ctrl.Result{}, nil
 			}
 
-			// Generate and push the gitops resources if spec.containerImage is set
-			if component.Spec.Build.ContainerImage != "" {
-				component.Status.ContainerImage = component.Spec.Build.ContainerImage
-				err = r.generateGitops(&component)
-				if err != nil {
-					errMsg := fmt.Sprintf("Unable to generate gitops resources for component %v", req.NamespacedName)
-					log.Error(err, errMsg)
-					r.SetUpdateConditionAndUpdateCR(ctx, &component, fmt.Errorf("%v: %v", errMsg, err))
-					return ctrl.Result{}, nil
-				}
+			// Generate and push the gitops resources
+			component.Status.ContainerImage = component.Spec.Build.ContainerImage
+			if err := r.generateGitops(&component); err != nil {
+				errMsg := fmt.Sprintf("Unable to generate gitops resources for component %v", req.NamespacedName)
+				log.Error(err, errMsg)
+				r.SetUpdateConditionAndUpdateCR(ctx, &component, fmt.Errorf("%v: %v", errMsg, err))
+				return ctrl.Result{}, nil
 			}
 
 			component.Status.Devfile = string(yamlHASCompData)
 			r.SetUpdateConditionAndUpdateCR(ctx, &component, nil)
 
 			log.Info(fmt.Sprintf("Updating the Build objects  %v", req.NamespacedName))
-			err = r.generateBuild(ctx, &component)
+			err = r.runBuild(ctx, &component)
 			r.SetCreateConditionAndUpdateCR(ctx, &component, err)
 
 		} else {
@@ -327,11 +320,13 @@ func (r *ComponentReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 	return ctrl.Result{}, nil
 }
 
-func (r *ComponentReconciler) generateBuild(ctx context.Context, component *appstudiov1alpha1.Component) error {
+func (r *ComponentReconciler) runBuild(ctx context.Context, component *appstudiov1alpha1.Component) error {
 
 	log := r.Log.WithValues("Namespace", component.Namespace, "Application", component.Spec.Application, "Component", component.Name)
 
-	workspaceStorage := commonStorage(*component, "appstudio")
+	// TODO delete creation of gitops build objects(except PipelineRun) when build part of gitops repository will be respected
+
+	workspaceStorage := gitops.GenerateCommonStorage(*component, "appstudio")
 	pvc := &corev1.PersistentVolumeClaim{}
 	err := r.Get(ctx, types.NamespacedName{Name: workspaceStorage.Name, Namespace: workspaceStorage.Namespace}, pvc)
 	if err != nil {
@@ -348,7 +343,7 @@ func (r *ComponentReconciler) generateBuild(ctx context.Context, component *apps
 	}
 	log.Info(fmt.Sprintf("PV is now present : %v", workspaceStorage.Name))
 
-	triggerTemplate, err := triggerTemplate(*component)
+	triggerTemplate, err := gitops.GenerateTriggerTemplate(*component)
 	if err != nil {
 		log.Error(err, "Unable to generate triggerTemplate ")
 		return err
@@ -382,7 +377,7 @@ func (r *ComponentReconciler) generateBuild(ctx context.Context, component *apps
 		}
 		log.Info(fmt.Sprintf("TriggerTemplate updated %v", triggerTemplate.Name))
 	}
-	eventListener := eventListener(*component, *triggerTemplate)
+	eventListener := gitops.GenerateEventListener(*component, *triggerTemplate)
 
 	err = controllerutil.SetOwnerReference(component, &eventListener, r.Scheme)
 	if err != nil {
@@ -405,13 +400,13 @@ func (r *ComponentReconciler) generateBuild(ctx context.Context, component *apps
 
 	log.Info(fmt.Sprintf("Eventlistener created/updated %v", eventListener.Name))
 
-	initialBuildSpec := determineBuildExecution(*component, paramsForInitialBuild(*component), "initialbuildpath")
+	initialBuildSpec := gitops.DetermineBuildExecution(*component, gitops.GetParamsForComponentInitialBuild(*component), "initialbuildpath")
 
 	initialBuild := tektonapi.PipelineRun{
 		ObjectMeta: v1.ObjectMeta{
 			GenerateName: component.Name + "-",
 			Namespace:    component.Namespace,
-			Labels:       commonLabels(component),
+			Labels:       gitops.GetBuildCommonLabelsForComponent(component),
 		},
 		Spec: initialBuildSpec,
 	}
@@ -429,7 +424,7 @@ func (r *ComponentReconciler) generateBuild(ctx context.Context, component *apps
 
 	log.Info(fmt.Sprintf("Pipeline created %v", initialBuild))
 
-	webhook := route(*component)
+	webhook := gitops.GenerateBuildWebhookRoute(*component)
 
 	err = controllerutil.SetOwnerReference(component, &webhook, r.Scheme)
 	if err != nil {

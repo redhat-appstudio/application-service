@@ -33,6 +33,13 @@ func TestGenerateAndPush(t *testing.T) {
 	componentName := "test-component"
 	component := appstudiov1alpha1.Component{
 		Spec: appstudiov1alpha1.ComponentSpec{
+			Source: appstudiov1alpha1.ComponentSource{
+				ComponentSourceUnion: appstudiov1alpha1.ComponentSourceUnion{
+					GitSource: &appstudiov1alpha1.GitSource{
+						URL: repo,
+					},
+				},
+			},
 			Build: appstudiov1alpha1.Build{
 				ContainerImage: "testimage:latest",
 			},
