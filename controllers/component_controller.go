@@ -26,6 +26,7 @@ import (
 
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
@@ -306,21 +307,24 @@ func (r *ComponentReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 	}
 
 	// Get the Webhook from the event listener route and update it
-	createdWebhook := &routev1.Route{}
-	err = r.Client.Get(ctx, types.NamespacedName{Name: "el" + component.Name, Namespace: component.Namespace}, createdWebhook)
-	if err != nil {
-		if errors.IsNotFound(err) {
-			log.Error(err, fmt.Sprintf("Unable to fetch the created webhook %v, retrying", "el-"+component.Name))
-			return ctrl.Result{Requeue: true}, nil
-		} else {
-			return ctrl.Result{}, err
+	// Only attempt to get it if the build generation succeeded, otherwise the route won't exist
+	if component.Status.Conditions[len(component.Status.Conditions)-1].Status == metav1.ConditionTrue {
+		createdWebhook := &routev1.Route{}
+		err = r.Client.Get(ctx, types.NamespacedName{Name: "el" + component.Name, Namespace: component.Namespace}, createdWebhook)
+		if err != nil {
+			if errors.IsNotFound(err) {
+				log.Error(err, fmt.Sprintf("Unable to fetch the created webhook %v, retrying", "el-"+component.Name))
+				return ctrl.Result{Requeue: true}, nil
+			} else {
+				return ctrl.Result{}, err
+			}
 		}
-	}
 
-	// Get the ingress url from the status of the route, if it exists
-	if len(createdWebhook.Status.Ingress) != 0 {
-		component.Status.Webhook = createdWebhook.Status.Ingress[0].Host
-		r.Client.Status().Update(ctx, &component)
+		// Get the ingress url from the status of the route, if it exists
+		if len(createdWebhook.Status.Ingress) != 0 {
+			component.Status.Webhook = createdWebhook.Status.Ingress[0].Host
+			r.Client.Status().Update(ctx, &component)
+		}
 	}
 
 	log.Info(fmt.Sprintf("Finished reconcile loop for %v", req.NamespacedName))
