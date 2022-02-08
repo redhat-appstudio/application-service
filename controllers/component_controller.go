@@ -23,6 +23,7 @@ import (
 	"os"
 	"path"
 	"reflect"
+	"time"
 
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -403,7 +404,7 @@ func (r *ComponentReconciler) runBuild(ctx context.Context, component *appstudio
 
 	log.Info(fmt.Sprintf("Eventlistener created/updated %v", eventListener.Name))
 
-	initialBuildSpec := gitops.DetermineBuildExecution(*component, gitops.GetParamsForComponentInitialBuild(*component), "initialbuildpath")
+	initialBuildSpec := gitops.DetermineBuildExecution(*component, gitops.GetParamsForComponentInitialBuild(*component), getInitialBuildWorkspaceSubpath())
 
 	initialBuild := tektonapi.PipelineRun{
 		ObjectMeta: v1.ObjectMeta{
@@ -449,6 +450,10 @@ func (r *ComponentReconciler) runBuild(ctx context.Context, component *appstudio
 	}
 
 	return err
+}
+
+func getInitialBuildWorkspaceSubpath() string {
+	return "initialbuild-" + time.Now().Format("2006-Feb-02_15-04-05")
 }
 
 // generateGitops retrieves the necessary information about a Component's gitops repository (URL, branch, context)

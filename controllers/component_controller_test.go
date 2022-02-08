@@ -166,7 +166,7 @@ var _ = Describe("Component controller", func() {
 				}
 				if w.Name == "workspace" {
 					Expect(w.PersistentVolumeClaim.ClaimName).To(Equal("appstudio"))
-					Expect(w.SubPath).To(Equal(HASCompNameForBuild + "/initialbuildpath"))
+					Expect(w.SubPath).To(ContainSubstring("/initialbuild-"))
 				}
 			}
 
