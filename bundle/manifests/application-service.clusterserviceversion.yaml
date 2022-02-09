@@ -155,6 +155,51 @@ spec:
           - patch
           - update
         - apiGroups:
+          - tekton.dev
+          resources:
+          - pipelineruns
+          verbs:
+          - create
+          - delete
+          - deletecollection
+          - get
+          - list
+          - patch
+          - update
+          - watch
+        - apiGroups:
+          - triggers.tekton.dev
+          resources:
+          - eventlisteners
+          - triggers
+          - triggertemplates
+          verbs:
+          - create
+          - update
+          - patch
+          - delete
+          - watch
+          - list
+        - apiGroups:
+          - ""
+          resources:
+          - persistentvolumeclaims
+          - persistentvolumeclaims/status
+          verbs:
+          - get
+          - list
+          - create
+          - watch
+        - apiGroups:
+          - route.openshift.io
+          resources:
+          - routes
+          verbs:
+          - get
+          - list
+          - create
+          - watch
+        - apiGroups:
           - authentication.k8s.io
           resources:
           - tokenreviews
@@ -212,7 +257,7 @@ spec:
                       key: token
                       name: has-github-token
                       optional: true
-                image: quay.io/jcollier/application-service:latest
+                image: quay.io/redhat-appstudio/application-service:next
                 imagePullPolicy: Always
                 livenessProbe:
                   httpGet:

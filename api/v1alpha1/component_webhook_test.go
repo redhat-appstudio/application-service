@@ -44,6 +44,8 @@ var _ = Describe("Application validation webhook", func() {
 		It("Should reject until all the fields are valid", func() {
 			ctx := context.Background()
 
+			uniqueHASCompName := HASCompName + "1"
+
 			// Bad Component Name, Bad Application Name and no Src
 			hasComp := &Component{
 				TypeMeta: metav1.TypeMeta{
@@ -51,7 +53,7 @@ var _ = Describe("Application validation webhook", func() {
 					Kind:       "Component",
 				},
 				ObjectMeta: metav1.ObjectMeta{
-					Name:      HASCompName,
+					Name:      uniqueHASCompName,
 					Namespace: HASAppNamespace,
 				},
 				Spec: ComponentSpec{
@@ -89,7 +91,7 @@ var _ = Describe("Application validation webhook", func() {
 			Expect(err).Should(BeNil())
 
 			// Look up the has app resource that was created.
-			hasCompLookupKey := types.NamespacedName{Name: HASCompName, Namespace: HASAppNamespace}
+			hasCompLookupKey := types.NamespacedName{Name: uniqueHASCompName, Namespace: HASAppNamespace}
 			createdHasComp := &Component{}
 			Eventually(func() bool {
 				k8sClient.Get(ctx, hasCompLookupKey, createdHasComp)
@@ -105,13 +107,15 @@ var _ = Describe("Application validation webhook", func() {
 		It("Should update non immutable fields successfully and err out on immutable fields", func() {
 			ctx := context.Background()
 
+			uniqueHASCompName := HASCompName + "2"
+
 			hasComp := &Component{
 				TypeMeta: metav1.TypeMeta{
 					APIVersion: "appstudio.redhat.com/v1alpha1",
 					Kind:       "Component",
 				},
 				ObjectMeta: metav1.ObjectMeta{
-					Name:      HASCompName,
+					Name:      uniqueHASCompName,
 					Namespace: HASAppNamespace,
 				},
 				Spec: ComponentSpec{
@@ -129,7 +133,7 @@ var _ = Describe("Application validation webhook", func() {
 			Expect(k8sClient.Create(ctx, hasComp)).Should(Succeed())
 
 			// Look up the has app resource that was created.
-			hasCompLookupKey := types.NamespacedName{Name: HASCompName, Namespace: HASAppNamespace}
+			hasCompLookupKey := types.NamespacedName{Name: uniqueHASCompName, Namespace: HASAppNamespace}
 			createdHasComp := &Component{}
 			Eventually(func() bool {
 				k8sClient.Get(ctx, hasCompLookupKey, createdHasComp)
