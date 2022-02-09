@@ -76,9 +76,12 @@ type ComponentSpec struct {
 	// INSERT ADDITIONAL SPEC FIELDS - desired state of cluster
 	// Important: Run "make" to regenerate code after modifying this file
 
+	// +kubebuilder:validation:Pattern=^[a-z0-9]([-a-z0-9]*[a-z0-9])?$
+	// +kubebuilder:validation:MaxLength=63
 	// ComponentName is name of the component to be added to the HASApplication
 	ComponentName string `json:"componentName"`
 
+	// +kubebuilder:validation:Pattern=^[a-z0-9]([-a-z0-9]*[a-z0-9])?$
 	// Application to add the component to
 	Application string `json:"application"`
 

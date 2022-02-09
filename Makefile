@@ -5,6 +5,7 @@
 # - use environment variables to overwrite this value (e.g export VERSION=0.0.2)
 VERSION ?= 0.0.1
 TAG_NAME ?= next
+CERT_MANAGER_VERSION ?= v1.6.1
 
 # CHANNELS define the bundle channels used in the bundle.
 # Add a new line here if you would like to change its default config. (E.g CHANNELS = "candidate,fast,stable")
@@ -40,6 +41,7 @@ BUNDLE_IMG ?= $(IMAGE_TAG_BASE)-bundle:$(TAG_NAME)
 IMG ?= $(IMAGE_TAG_BASE):$(TAG_NAME)
 
 GITHUB_ORG ?= redhat-appstudio-appdata
+ENABLE_WEBHOOKS ?= true
 
 # Produce CRDs that work back to Kubernetes 1.11 (no version conversion)
 CRD_OPTIONS ?= "crd:trivialVersions=true,preserveUnknownFields=false"
@@ -137,17 +139,26 @@ run: manifests generate fmt vet ## Run a controller from your host.
 	go run ./main.go
 
 docker-build: test ## Build docker image with the manager.
-	docker build -t ${IMG} .
+	docker build --build-arg ENABLE_WEBHOOKS=${ENABLE_WEBHOOKS} -t ${IMG} .
 
 docker-push: ## Push docker image with the manager.
 	docker push ${IMG}
 
+install-cert: ## Install cert manager for webhooks
+	kubectl apply -f https://github.com/jetstack/cert-manager/releases/download/$(CERT_MANAGER_VERSION)/cert-manager.yaml
+
+uninstall-cert:
+	kubectl delete -f https://github.com/jetstack/cert-manager/releases/download/$(CERT_MANAGER_VERSION)/cert-manager.yaml
+
 ##@ Deployment
 
-install: manifests kustomize ## Install CRDs into the K8s cluster specified in ~/.kube/config.
+install-kcp: manifests kustomize
 	$(KUSTOMIZE) build config/crd | kubectl apply -f -
 
-uninstall: manifests kustomize ## Uninstall CRDs from the K8s cluster specified in ~/.kube/config.
+install: manifests kustomize install-cert ## Install CRDs into the K8s cluster specified in ~/.kube/config.
+	$(KUSTOMIZE) build config/crd | kubectl apply -f -
+
+uninstall: manifests kustomize uninstall-cert ## Uninstall CRDs from the K8s cluster specified in ~/.kube/config.
 	$(KUSTOMIZE) build config/crd | kubectl delete -f -
 
 deploy: manifests kustomize ## Deploy controller to the K8s cluster specified in ~/.kube/config.

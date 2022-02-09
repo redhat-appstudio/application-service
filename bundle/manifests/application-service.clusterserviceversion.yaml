@@ -155,6 +155,51 @@ spec:
           - patch
           - update
         - apiGroups:
+          - tekton.dev
+          resources:
+          - pipelineruns
+          verbs:
+          - create
+          - delete
+          - deletecollection
+          - get
+          - list
+          - patch
+          - update
+          - watch
+        - apiGroups:
+          - triggers.tekton.dev
+          resources:
+          - eventlisteners
+          - triggers
+          - triggertemplates
+          verbs:
+          - create
+          - update
+          - patch
+          - delete
+          - watch
+          - list
+        - apiGroups:
+          - ""
+          resources:
+          - persistentvolumeclaims
+          - persistentvolumeclaims/status
+          verbs:
+          - get
+          - list
+          - create
+          - watch
+        - apiGroups:
+          - route.openshift.io
+          resources:
+          - routes
+          verbs:
+          - get
+          - list
+          - create
+          - watch
+        - apiGroups:
           - authentication.k8s.io
           resources:
           - tokenreviews
@@ -212,7 +257,7 @@ spec:
                       key: token
                       name: has-github-token
                       optional: true
-                image: quay.io/jcollier/application-service:latest
+                image: quay.io/redhat-appstudio/application-service:next
                 imagePullPolicy: Always
                 livenessProbe:
                   httpGet:
@@ -221,6 +266,10 @@ spec:
                   initialDelaySeconds: 15
                   periodSeconds: 20
                 name: manager
+                ports:
+                - containerPort: 9443
+                  name: webhook-server
+                  protocol: TCP
                 readinessProbe:
                   httpGet:
                     path: /readyz
@@ -236,10 +285,19 @@ spec:
                     memory: 20Mi
                 securityContext:
                   allowPrivilegeEscalation: false
+                volumeMounts:
+                - mountPath: /tmp/k8s-webhook-server/serving-certs
+                  name: cert
+                  readOnly: true
               securityContext:
                 runAsNonRoot: true
               serviceAccountName: application-service-controller-manager
               terminationGracePeriodSeconds: 10
+              volumes:
+              - name: cert
+                secret:
+                  defaultMode: 420
+                  secretName: webhook-server-cert
       permissions:
       - rules:
         - apiGroups:
@@ -304,3 +362,100 @@ spec:
   provider:
     name: Red Hat
   version: 0.0.1
+  webhookdefinitions:
+  - admissionReviewVersions:
+    - v1
+    containerPort: 443
+    conversionCRDs:
+    - applications.appstudio.redhat.com
+    - components.appstudio.redhat.com
+    deploymentName: application-service-controller-manager
+    generateName: capplicationscomponents.kb.io
+    sideEffects: None
+    targetPort: 9443
+    type: ConversionWebhook
+    webhookPath: /convert
+  - admissionReviewVersions:
+    - v1
+    - v1beta1
+    containerPort: 443
+    deploymentName: application-service-controller-manager
+    failurePolicy: Fail
+    generateName: mapplication.kb.io
+    rules:
+    - apiGroups:
+      - appstudio.redhat.com
+      apiVersions:
+      - v1alpha1
+      operations:
+      - CREATE
+      - UPDATE
+      resources:
+      - applications
+    sideEffects: None
+    targetPort: 9443
+    type: MutatingAdmissionWebhook
+    webhookPath: /mutate-appstudio-redhat-com-v1alpha1-application
+  - admissionReviewVersions:
+    - v1
+    - v1beta1
+    containerPort: 443
+    deploymentName: application-service-controller-manager
+    failurePolicy: Fail
+    generateName: mcomponent.kb.io
+    rules:
+    - apiGroups:
+      - appstudio.redhat.com
+      apiVersions:
+      - v1alpha1
+      operations:
+      - CREATE
+      - UPDATE
+      resources:
+      - components
+    sideEffects: None
+    targetPort: 9443
+    type: MutatingAdmissionWebhook
+    webhookPath: /mutate-appstudio-redhat-com-v1alpha1-component
+  - admissionReviewVersions:
+    - v1
+    - v1beta1
+    containerPort: 443
+    deploymentName: application-service-controller-manager
+    failurePolicy: Fail
+    generateName: vapplication.kb.io
+    rules:
+    - apiGroups:
+      - appstudio.redhat.com
+      apiVersions:
+      - v1alpha1
+      operations:
+      - CREATE
+      - UPDATE
+      resources:
+      - applications
+    sideEffects: None
+    targetPort: 9443
+    type: ValidatingAdmissionWebhook
+    webhookPath: /validate-appstudio-redhat-com-v1alpha1-application
+  - admissionReviewVersions:
+    - v1
+    - v1beta1
+    containerPort: 443
+    deploymentName: application-service-controller-manager
+    failurePolicy: Fail
+    generateName: vcomponent.kb.io
+    rules:
+    - apiGroups:
+      - appstudio.redhat.com
+      apiVersions:
+      - v1alpha1
+      operations:
+      - CREATE
+      - UPDATE
+      resources:
+      - components
+    sideEffects: None
+    targetPort: 9443
+    type: ValidatingAdmissionWebhook
+    webhookPath: /validate-appstudio-redhat-com-v1alpha1-component

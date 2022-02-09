@@ -281,6 +281,7 @@ func (r *ComponentDetectionQueryReconciler) updateComponentStub(componentDetecti
 
 		componentStub := appstudiov1alpha1.ComponentSpec{
 			ComponentName: devfileMetadata.Name,
+			Application:   "insert-application-name",
 			Context:       context,
 			Source: appstudiov1alpha1.ComponentSource{
 				ComponentSourceUnion: appstudiov1alpha1.ComponentSourceUnion{

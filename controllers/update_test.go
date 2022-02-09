@@ -1055,6 +1055,7 @@ func TestUpdateComponentStub(t *testing.T) {
 						assert.Equal(t, hasCompDetection.ProjectType, tt.devfilesDataMap[hasCompDetection.ComponentStub.Context].Metadata.ProjectType, "The project type should be the same")
 						assert.Equal(t, hasCompDetection.DevfileFound, true, "The devfile found should be true")
 						assert.Equal(t, hasCompDetection.ComponentStub.ComponentName, tt.devfilesDataMap[hasCompDetection.ComponentStub.Context].Metadata.Name, "The component name should be the same")
+						assert.Equal(t, hasCompDetection.ComponentStub.Application, "insert-application-name", "The application name should match the generic name")
 
 						for _, devfileComponent := range tt.devfilesDataMap[hasCompDetection.ComponentStub.Context].Components {
 							if devfileComponent.Container != nil {

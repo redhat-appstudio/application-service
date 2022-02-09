@@ -154,6 +154,19 @@ func main() {
 		setupLog.Error(err, "unable to create controller", "controller", "ComponentDetectionQuery")
 		os.Exit(1)
 	}
+
+	if os.Getenv("ENABLE_WEBHOOKS") != "false" {
+		setupLog.Info("setting up webhooks")
+		if err = (&appstudiov1alpha1.Component{}).SetupWebhookWithManager(mgr); err != nil {
+			setupLog.Error(err, "unable to create webhook", "webhook", "Component")
+			os.Exit(1)
+		}
+		if err = (&appstudiov1alpha1.Application{}).SetupWebhookWithManager(mgr); err != nil {
+			setupLog.Error(err, "unable to create webhook", "webhook", "Application")
+			os.Exit(1)
+		}
+	}
+
 	//+kubebuilder:scaffold:builder
 
 	if err := mgr.AddHealthzCheck("healthz", healthz.Ping); err != nil {

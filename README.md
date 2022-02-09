@@ -95,6 +95,10 @@ For example:
 
 `GITHUB_ORG=fake-organization make deploy` would deploy HAS configured to use github.com/fake-organization.
 
+### Disabling Webhooks for Local Dev
+
+Webhooks require self-signed certificates to validate the resources. To disable webhooks during local dev and testing, export `ENABLE_WEBHOOKS=false`
+
 
 Useful links:
 * [HAS Project information page](https://docs.google.com/document/d/1axzNOhRBSkly3M2Y32Pxr1MBpBif2ljb-ufj0_aEt74/edit?usp=sharing)

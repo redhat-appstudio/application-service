@@ -35,7 +35,6 @@ import (
 	appstudiov1alpha1 "github.com/redhat-appstudio/application-service/api/v1alpha1"
 	devfile "github.com/redhat-appstudio/application-service/pkg/devfile"
 	github "github.com/redhat-appstudio/application-service/pkg/github"
-	util "github.com/redhat-appstudio/application-service/pkg/util"
 )
 
 // ApplicationReconciler reconciles a Application object
@@ -170,7 +169,7 @@ func (r *ApplicationReconciler) Reconcile(ctx context.Context, req ctrl.Request)
 		}
 
 		// Update any specific fields that changed
-		displayName := util.SanitizeName(application.Spec.DisplayName)
+		displayName := application.Spec.DisplayName
 		description := application.Spec.Description
 		devfileMeta := devfileData.GetMetadata()
 		updateRequired := false

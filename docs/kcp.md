@@ -16,11 +16,19 @@ Before running the following commands, ensure that you have the following enviro
 
 3. (Optional) `GITHUB_ORG=<github-org>` Set to a GitHub org (or account) if you do not have write access to `redhat-appstudio-appdata`.
 
+KCP has the rudimentary Kubernetes resources, hence as a result admission & validating webhooks wont work on KCP. There is currently an [issue](https://github.com/kcp-dev/kcp/issues/143) on KCP to discuss when the feature would be installed on KCP. To disable webhooks and the certificate manager to run the operator, complete the following steps:
+
+1. Search for `# Comment for KCP` in files `config/crd/kustomization.yaml`, `config/default/kustomization.yaml` and comment out the webhooks and cert-manager sections as instructed
+
+2. Run `make bundle` and it should update the bundles without the webhook and cert-manager
+   
+3. export `ENABLE_WEBHOOKS=false` to disable all the webhook controller logic
+
 Once the above prerequisites have been met, run the following commands:
 
 1. `make build` to build the HAS operator binary
 
-2. `make install` to install the HAS CRDs onto the KCP instance
+2. `make install-kcp` to install the HAS CRDs onto the KCP instance
 
 3. `./bin/manager` to run the operator
 
