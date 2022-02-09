@@ -21,7 +21,92 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func TestComponentValidatingWebhook(t *testing.T) {
+func TestComponentCreateValidatingWebhook(t *testing.T) {
+
+	tests := []struct {
+		name    string
+		newComp Component
+		err     string
+	}{
+		{
+			name: "component name cannot be created due to bad URL",
+			err:  "invalid URI for request",
+			newComp: Component{
+				Spec: ComponentSpec{
+					ComponentName: "component1",
+					Application:   "application1",
+					Source: ComponentSource{
+						ComponentSourceUnion: ComponentSourceUnion{
+							GitSource: &GitSource{
+								URL: "badurl",
+							},
+						},
+					},
+				},
+			},
+		},
+		{
+			name: "component needs to have one source specified",
+			err:  "git source or an image source must be specified",
+			newComp: Component{
+				Spec: ComponentSpec{
+					ComponentName: "component1",
+					Application:   "application1",
+					Source: ComponentSource{
+						ComponentSourceUnion: ComponentSourceUnion{
+							GitSource: &GitSource{},
+						},
+					},
+				},
+			},
+		},
+		{
+			name: "valid component with git src",
+			newComp: Component{
+				Spec: ComponentSpec{
+					ComponentName: "component1",
+					Application:   "application1",
+					Source: ComponentSource{
+						ComponentSourceUnion: ComponentSourceUnion{
+							GitSource: &GitSource{
+								URL: "http://url",
+							},
+						},
+					},
+				},
+			},
+		},
+		{
+			name: "valid component with image src",
+			newComp: Component{
+				Spec: ComponentSpec{
+					ComponentName: "component1",
+					Application:   "application1",
+					Source: ComponentSource{
+						ComponentSourceUnion: ComponentSourceUnion{
+							ImageSource: &ImageSource{
+								ContainerImage: "image",
+							},
+						},
+					},
+				},
+			},
+		},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			err := test.newComp.ValidateCreate()
+
+			if test.err == "" {
+				assert.Nil(t, err)
+			} else {
+				assert.Contains(t, err.Error(), test.err)
+			}
+		})
+	}
+}
+
+func TestComponentUpdateValidatingWebhook(t *testing.T) {
 
 	originalComponent := Component{
 		Spec: ComponentSpec{

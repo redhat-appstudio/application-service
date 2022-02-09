@@ -81,6 +81,7 @@ spec:
                       properties:
                         application:
                           description: Application to add the component to
+                          pattern: ^[a-z0-9]([-a-z0-9]*[a-z0-9])?$
                           type: string
                         build:
                           description: The build artifacts associated with the component
@@ -95,6 +96,8 @@ spec:
                         componentName:
                           description: ComponentName is name of the component to be
                             added to the HASApplication
+                          maxLength: 63
+                          pattern: ^[a-z0-9]([-a-z0-9]*[a-z0-9])?$
                           type: string
                         context:
                           description: A relative path inside the git repo containing

@@ -1,5 +1,5 @@
 /*
-Copyright 2021 Red Hat, Inc.
+Copyright 2022 Red Hat, Inc.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -43,7 +43,6 @@ var _ webhook.Defaulter = &Application{}
 
 // Default implements webhook.Defaulter so a webhook will be registered for the type
 func (r *Application) Default() {
-	applicationlog.Info("default", "name", r.Name)
 
 	// TODO(user): fill in your defaulting logic.
 }
@@ -55,7 +54,6 @@ var _ webhook.Validator = &Application{}
 
 // ValidateCreate implements webhook.Validator so a webhook will be registered for the type
 func (r *Application) ValidateCreate() error {
-	applicationlog.Info("validate create", "name", r.Name)
 
 	// TODO(user): fill in your validation logic upon object creation.
 	return nil
@@ -63,7 +61,7 @@ func (r *Application) ValidateCreate() error {
 
 // ValidateUpdate implements webhook.Validator so a webhook will be registered for the type
 func (r *Application) ValidateUpdate(old runtime.Object) error {
-	applicationlog.Info("validate update", "name", r.Name)
+	applicationlog.Info("validating the update request", "name", r.Name)
 
 	switch old.(type) {
 	case *Application:
@@ -85,7 +83,6 @@ func (r *Application) ValidateUpdate(old runtime.Object) error {
 
 // ValidateDelete implements webhook.Validator so a webhook will be registered for the type
 func (r *Application) ValidateDelete() error {
-	applicationlog.Info("validate delete", "name", r.Name)
 
 	// TODO(user): fill in your validation logic upon object deletion.
 	return nil

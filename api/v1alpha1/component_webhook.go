@@ -1,5 +1,5 @@
 /*
-Copyright 2021 Red Hat, Inc.
+Copyright 2022 Red Hat, Inc.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -18,6 +18,7 @@ package v1alpha1
 
 import (
 	"fmt"
+	"net/url"
 	"reflect"
 
 	"k8s.io/apimachinery/pkg/runtime"
@@ -43,7 +44,6 @@ var _ webhook.Defaulter = &Component{}
 
 // Default implements webhook.Defaulter so a webhook will be registered for the type
 func (r *Component) Default() {
-	componentlog.Info("default", "name", r.Name)
 
 	// TODO(user): fill in your defaulting logic.
 }
@@ -55,15 +55,29 @@ var _ webhook.Validator = &Component{}
 
 // ValidateCreate implements webhook.Validator so a webhook will be registered for the type
 func (r *Component) ValidateCreate() error {
-	componentlog.Info("validate create", "name", r.Name)
+	componentlog.Info("validating the create request", "name", r.Name)
 
-	// TODO(user): fill in your validation logic upon object creation.
+	sourceSpecified := false
+
+	if r.Spec.Source.GitSource != nil && r.Spec.Source.GitSource.URL != "" {
+		if _, err := url.ParseRequestURI(r.Spec.Source.GitSource.URL); err != nil {
+			return err
+		}
+		sourceSpecified = true
+	} else if r.Spec.Source.ImageSource != nil && r.Spec.Source.ImageSource.ContainerImage != "" {
+		sourceSpecified = true
+	}
+
+	if !sourceSpecified {
+		return fmt.Errorf("a git source or an image source must be specified when creating a component")
+	}
+
 	return nil
 }
 
 // ValidateUpdate implements webhook.Validator so a webhook will be registered for the type
 func (r *Component) ValidateUpdate(old runtime.Object) error {
-	componentlog.Info("validate update", "name", r.Name)
+	componentlog.Info("validating the update request", "name", r.Name)
 
 	switch old.(type) {
 	case *Component:
@@ -93,7 +107,6 @@ func (r *Component) ValidateUpdate(old runtime.Object) error {
 
 // ValidateDelete implements webhook.Validator so a webhook will be registered for the type
 func (r *Component) ValidateDelete() error {
-	componentlog.Info("validate delete", "name", r.Name)
 
 	// TODO(user): fill in your validation logic upon object deletion.
 	return nil

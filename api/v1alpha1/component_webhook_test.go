@@ -40,6 +40,67 @@ var _ = Describe("Application validation webhook", func() {
 		SampleRepoLink  = "https://github.com/devfile-samples/devfile-sample-java-springboot-basic"
 	)
 
+	Context("Create Application CR with bad fields", func() {
+		It("Should reject until all the fields are valid", func() {
+			ctx := context.Background()
+
+			// Bad Component Name, Bad Application Name and no Src
+			hasComp := &Component{
+				TypeMeta: metav1.TypeMeta{
+					APIVersion: "appstudio.redhat.com/v1alpha1",
+					Kind:       "Component",
+				},
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      HASCompName,
+					Namespace: HASAppNamespace,
+				},
+				Spec: ComponentSpec{
+					ComponentName: "@#",
+					Application:   "@#",
+					Source: ComponentSource{
+						ComponentSourceUnion: ComponentSourceUnion{
+							GitSource: &GitSource{},
+						},
+					},
+				},
+			}
+
+			err := k8sClient.Create(ctx, hasComp)
+			Expect(err).Should(HaveOccurred())
+			Expect(err.Error()).Should(ContainSubstring("spec.componentName in body should match '^[a-z0-9]([-a-z0-9]*[a-z0-9])?$'"))
+			Expect(err.Error()).Should(ContainSubstring("spec.application in body should match '^[a-z0-9]([-a-z0-9]*[a-z0-9])?$'"))
+
+			hasComp.Spec.ComponentName = ComponentName
+			hasComp.Spec.Application = HASAppName
+
+			err = k8sClient.Create(ctx, hasComp)
+			Expect(err).Should(HaveOccurred())
+			Expect(err.Error()).Should(ContainSubstring("git source or an image source must be specified"))
+
+			// Bad URL
+			hasComp.Spec.Source.GitSource.URL = "badurl"
+			err = k8sClient.Create(ctx, hasComp)
+			Expect(err).Should(HaveOccurred())
+			Expect(err.Error()).Should(ContainSubstring("invalid URI for request"))
+
+			// Good URL
+			hasComp.Spec.Source.GitSource.URL = SampleRepoLink
+			err = k8sClient.Create(ctx, hasComp)
+			Expect(err).Should(BeNil())
+
+			// Look up the has app resource that was created.
+			hasCompLookupKey := types.NamespacedName{Name: HASCompName, Namespace: HASAppNamespace}
+			createdHasComp := &Component{}
+			Eventually(func() bool {
+				k8sClient.Get(ctx, hasCompLookupKey, createdHasComp)
+				return !reflect.DeepEqual(createdHasComp, &Component{})
+			}, timeout, interval).Should(BeTrue())
+
+			// Delete the specified HASComp resource
+			deleteHASCompCR(hasCompLookupKey)
+		})
+	})
+
 	Context("Update Application CR fields", func() {
 		It("Should update non immutable fields successfully and err out on immutable fields", func() {
 			ctx := context.Background()

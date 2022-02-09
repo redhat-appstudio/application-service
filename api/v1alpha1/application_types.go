@@ -1,5 +1,5 @@
 /*
-Copyright 2021 Red Hat, Inc.
+Copyright 2021-2022 Red Hat, Inc.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -29,7 +29,7 @@ type ApplicationSpec struct {
 	// Important: Run "make" to regenerate code after modifying this file
 
 	// DisplayName refers to the name that an application will be deployed with in App Studio.
-	DisplayName string `json:"displayName,omitempty"`
+	DisplayName string `json:"displayName"`
 
 	// AppModelRepository refers to the git repository that will store the application model (a devfile)
 	// Can be the same as GitOps repository.
