@@ -63,15 +63,14 @@ func (r *Application) ValidateCreate() error {
 func (r *Application) ValidateUpdate(old runtime.Object) error {
 	applicationlog.Info("validating the update request", "name", r.Name)
 
-	switch old.(type) {
+	switch old := old.(type) {
 	case *Application:
-		oldApplication, _ := old.(*Application)
 
-		if !reflect.DeepEqual(r.Spec.AppModelRepository, oldApplication.Spec.AppModelRepository) {
+		if !reflect.DeepEqual(r.Spec.AppModelRepository, old.Spec.AppModelRepository) {
 			return fmt.Errorf("app model repository cannot be updated to %+v", r.Spec.AppModelRepository)
 		}
 
-		if !reflect.DeepEqual(r.Spec.GitOpsRepository, oldApplication.Spec.GitOpsRepository) {
+		if !reflect.DeepEqual(r.Spec.GitOpsRepository, old.Spec.GitOpsRepository) {
 			return fmt.Errorf("gitops repository cannot be updated to %+v", r.Spec.GitOpsRepository)
 		}
 	default:

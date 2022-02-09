@@ -79,23 +79,22 @@ func (r *Component) ValidateCreate() error {
 func (r *Component) ValidateUpdate(old runtime.Object) error {
 	componentlog.Info("validating the update request", "name", r.Name)
 
-	switch old.(type) {
+	switch old := old.(type) {
 	case *Component:
-		oldComponent, _ := old.(*Component)
 
-		if r.Spec.ComponentName != oldComponent.Spec.ComponentName {
+		if r.Spec.ComponentName != old.Spec.ComponentName {
 			return fmt.Errorf("component name cannot be updated to %s", r.Spec.ComponentName)
 		}
 
-		if r.Spec.Application != oldComponent.Spec.Application {
+		if r.Spec.Application != old.Spec.Application {
 			return fmt.Errorf("application name cannot be updated to %s", r.Spec.Application)
 		}
 
-		if r.Spec.Context != oldComponent.Spec.Context {
+		if r.Spec.Context != old.Spec.Context {
 			return fmt.Errorf("context cannot be updated to %s", r.Spec.Context)
 		}
 
-		if r.Spec.Source.GitSource != nil && oldComponent.Spec.Source.GitSource != nil && !reflect.DeepEqual(*(r.Spec.Source.GitSource), *(oldComponent.Spec.Source.GitSource)) {
+		if r.Spec.Source.GitSource != nil && old.Spec.Source.GitSource != nil && !reflect.DeepEqual(*(r.Spec.Source.GitSource), *(old.Spec.Source.GitSource)) {
 			return fmt.Errorf("git source cannot be updated to %+v", *(r.Spec.Source.GitSource))
 		}
 	default:
