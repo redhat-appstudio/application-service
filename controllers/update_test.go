@@ -401,6 +401,34 @@ func TestUpdateComponentDevfileModel(t *testing.T) {
 			},
 			wantErr: true,
 		},
+		{
+			name: "Component with invalid component type - should error out",
+			components: []devfileAPIV1.Component{
+				{
+					Name:           "component1",
+					ComponentUnion: devfileAPIV1.ComponentUnion{},
+				},
+			},
+			component: appstudiov1alpha1.Component{
+				Spec: appstudiov1alpha1.ComponentSpec{
+					ComponentName: "component1",
+					Env: []corev1.EnvVar{
+						{
+							Name:  "FOO",
+							Value: "foo",
+						},
+						{
+							ValueFrom: &corev1.EnvVarSource{
+								SecretKeyRef: &corev1.SecretKeySelector{
+									Key: "test",
+								},
+							},
+						},
+					},
+				},
+			},
+			wantErr: true,
+		},
 	}
 
 	for _, tt := range tests {
@@ -1105,6 +1133,33 @@ func TestUpdateComponentStub(t *testing.T) {
 				},
 			},
 			wantErr: true,
+		},
+		{
+			name: "Invalid Component present",
+			devfilesDataMap: map[string]*v2.DevfileV2{
+				"./": {
+					Devfile: devfileAPIV1.Devfile{
+						DevfileHeader: devfile.DevfileHeader{
+							SchemaVersion: "2.1.0",
+							Metadata: devfile.DevfileMetadata{
+								Name:        "test-devfile",
+								Language:    "language",
+								ProjectType: "project",
+							},
+						},
+						DevWorkspaceTemplateSpec: devfileAPIV1.DevWorkspaceTemplateSpec{
+							DevWorkspaceTemplateSpecContent: devfileAPIV1.DevWorkspaceTemplateSpecContent{
+								Components: []devfileAPIV1.Component{
+									{
+										Name:           "component1",
+										ComponentUnion: devfileAPIV1.ComponentUnion{},
+									},
+								},
+							},
+						},
+					},
+				},
+			},
 		},
 	}
 
