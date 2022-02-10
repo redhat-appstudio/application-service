@@ -56,14 +56,21 @@ func TestGenerateNewRepository(t *testing.T) {
 		repoName string
 		orgName  string
 		want     string
-		wantErr  error
+		wantErr  bool
 	}{
 		{
 			name:     "Simple repo name",
 			repoName: "test-repo-1",
 			orgName:  "redhat-appstudio-appdata",
 			want:     "https://github.com/redhat-appstudio-appdata/test-repo-1",
-			wantErr:  nil,
+			wantErr:  false,
+		},
+		{
+			name:     "Repo creation fails",
+			repoName: "test-error-response",
+			orgName:  "redhat-appstudio-appdata",
+			want:     "https://github.com/redhat-appstudio-appdata/test-repo-1",
+			wantErr:  true,
 		},
 	}
 
@@ -73,9 +80,10 @@ func TestGenerateNewRepository(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			repoURL, err := GenerateNewRepository(mockedClient, context.Background(), tt.orgName, tt.repoName, "")
 
-			if err != tt.wantErr {
-				t.Errorf("TestGenerateNewRepository() error: expected %v got %v", tt.wantErr, err)
-			} else if repoURL != tt.want {
+			if (err != nil) && !tt.wantErr {
+				t.Errorf("TestGenerateNewRepository() unexpected error value: %v", err)
+			}
+			if !tt.wantErr && repoURL != tt.want {
 				t.Errorf("TestGenerateNewRepository() error: expected %v got %v", tt.want, repoURL)
 			}
 		})
