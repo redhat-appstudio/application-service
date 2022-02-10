@@ -1134,33 +1134,6 @@ func TestUpdateComponentStub(t *testing.T) {
 			},
 			wantErr: true,
 		},
-		{
-			name: "Invalid Component present",
-			devfilesDataMap: map[string]*v2.DevfileV2{
-				"./": {
-					Devfile: devfileAPIV1.Devfile{
-						DevfileHeader: devfile.DevfileHeader{
-							SchemaVersion: "2.1.0",
-							Metadata: devfile.DevfileMetadata{
-								Name:        "test-devfile",
-								Language:    "language",
-								ProjectType: "project",
-							},
-						},
-						DevWorkspaceTemplateSpec: devfileAPIV1.DevWorkspaceTemplateSpec{
-							DevWorkspaceTemplateSpecContent: devfileAPIV1.DevWorkspaceTemplateSpecContent{
-								Components: []devfileAPIV1.Component{
-									{
-										Name:           "component1",
-										ComponentUnion: devfileAPIV1.ComponentUnion{},
-									},
-								},
-							},
-						},
-					},
-				},
-			},
-		},
 	}
 
 	for _, tt := range tests {
