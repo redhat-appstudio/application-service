@@ -155,10 +155,10 @@ uninstall-cert:
 install-kcp: manifests kustomize
 	$(KUSTOMIZE) build config/crd | kubectl apply -f -
 
-install: manifests kustomize install-cert ## Install CRDs into the K8s cluster specified in ~/.kube/config.
+install: manifests kustomize #install-cert ## Install CRDs into the K8s cluster specified in ~/.kube/config.
 	$(KUSTOMIZE) build config/crd | kubectl apply -f -
 
-uninstall: manifests kustomize uninstall-cert ## Uninstall CRDs from the K8s cluster specified in ~/.kube/config.
+uninstall: manifests kustomize #uninstall-cert ## Uninstall CRDs from the K8s cluster specified in ~/.kube/config.
 	$(KUSTOMIZE) build config/crd | kubectl delete -f -
 
 deploy: manifests kustomize ## Deploy controller to the K8s cluster specified in ~/.kube/config.
