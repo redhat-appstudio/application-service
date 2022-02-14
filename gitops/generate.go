@@ -61,10 +61,8 @@ func Generate(fs afero.Fs, outputFolder string, component appstudiov1alpha1.Comp
 
 func generateDeployment(component appstudiov1alpha1.Component) *appsv1.Deployment {
 	replicas := getReplicas(component)
-
-	labels := map[string]string{
-		"component": component.Name,
-	}
+	k8sLabels := generateK8sLabels(component)
+	matchLabels := getMatchLabel(component)
 	deployment := appsv1.Deployment{
 		TypeMeta: v1.TypeMeta{
 			Kind:       "Deployment",
@@ -73,15 +71,16 @@ func generateDeployment(component appstudiov1alpha1.Component) *appsv1.Deploymen
 		ObjectMeta: v1.ObjectMeta{
 			Name:      component.Name,
 			Namespace: component.Namespace,
+			Labels:    k8sLabels,
 		},
 		Spec: appsv1.DeploymentSpec{
 			Replicas: &replicas,
 			Selector: &v1.LabelSelector{
-				MatchLabels: labels,
+				MatchLabels: matchLabels,
 			},
 			Template: corev1.PodTemplateSpec{
 				ObjectMeta: v1.ObjectMeta{
-					Labels: labels,
+					Labels: matchLabels,
 				},
 				Spec: corev1.PodSpec{
 					Containers: []corev1.Container{
@@ -130,9 +129,8 @@ func generateDeployment(component appstudiov1alpha1.Component) *appsv1.Deploymen
 }
 
 func generateService(component appstudiov1alpha1.Component) *corev1.Service {
-	labels := map[string]string{
-		"component": component.Name,
-	}
+	k8sLabels := generateK8sLabels(component)
+	matchLabels := getMatchLabel(component)
 	service := corev1.Service{
 		TypeMeta: v1.TypeMeta{
 			APIVersion: "v1",
@@ -141,9 +139,10 @@ func generateService(component appstudiov1alpha1.Component) *corev1.Service {
 		ObjectMeta: v1.ObjectMeta{
 			Name:      component.Name,
 			Namespace: component.Namespace,
+			Labels:    k8sLabels,
 		},
 		Spec: corev1.ServiceSpec{
-			Selector: labels,
+			Selector: matchLabels,
 			Ports: []corev1.ServicePort{
 				{
 					Port:       int32(component.Spec.TargetPort),
@@ -157,9 +156,7 @@ func generateService(component appstudiov1alpha1.Component) *corev1.Service {
 }
 
 func generateRoute(component appstudiov1alpha1.Component) *routev1.Route {
-	labels := map[string]string{
-		"component": component.Name,
-	}
+	k8sLabels := generateK8sLabels(component)
 	weight := int32(100)
 	route := routev1.Route{
 		TypeMeta: v1.TypeMeta{
@@ -169,7 +166,7 @@ func generateRoute(component appstudiov1alpha1.Component) *routev1.Route {
 		ObjectMeta: v1.ObjectMeta{
 			Name:      component.Name,
 			Namespace: component.Namespace,
-			Labels:    labels,
+			Labels:    k8sLabels,
 		},
 		Spec: routev1.RouteSpec{
 			Port: &routev1.RoutePort{
@@ -203,4 +200,30 @@ func getReplicas(component appstudiov1alpha1.Component) int32 {
 		return int32(component.Spec.Replicas)
 	}
 	return 1
+}
+
+// generateLabels returns a map containing the following labels:
+// component - The label used as the matchLabel for the deployment, service, and route
+// The following k8s labels are also added:
+// app.kubernetes.io/name: "<component-name>"
+// app.kubernetes.io/instance: "<component-cr-name>"
+// app.kubernetes.io/part-of: "<application-name>"
+// app.kubernetes.io/managed-by: "kustomize"
+// app.kubernetes.io/created-by: "application-service"
+func generateK8sLabels(component appstudiov1alpha1.Component) map[string]string {
+	return map[string]string{
+		"app.kubernetes.io/name":       component.Spec.ComponentName,
+		"app.kubernetes.io/instance":   component.Name,
+		"app.kubernetes.io/part-of":    component.Spec.Application,
+		"app.kubernetes.io/managed-by": "kustomize",
+		"app.kubernetes.io/created-by": "application-service",
+	}
+}
+
+// GetMatchLabel returns the label selector that will be used to tie deployments, services, and pods together
+// For cleanliness, using just one unique label from the generateK8sLabels function
+func getMatchLabel(component appstudiov1alpha1.Component) map[string]string {
+	return map[string]string{
+		"app.kubernetes.io/instance": component.Name,
+	}
 }
