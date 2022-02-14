@@ -202,9 +202,7 @@ func getReplicas(component appstudiov1alpha1.Component) int32 {
 	return 1
 }
 
-// generateLabels returns a map containing the following labels:
-// component - The label used as the matchLabel for the deployment, service, and route
-// The following k8s labels are also added:
+// generateLabels returns a map containing the following common Kubernetes labels:
 // app.kubernetes.io/name: "<component-name>"
 // app.kubernetes.io/instance: "<component-cr-name>"
 // app.kubernetes.io/part-of: "<application-name>"
