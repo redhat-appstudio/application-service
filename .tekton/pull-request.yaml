@@ -1,0 +1,73 @@
+apiVersion: tekton.dev/v1beta1
+kind: PipelineRun
+metadata:
+  generateName: on-pr-
+  namespace: application-service
+  annotations:
+    pipelinesascode.tekton.dev/on-event: "[pull_request]"
+    pipelinesascode.tekton.dev/on-target-branch: "[main]"
+    pipelinesascode.tekton.dev/max-keep-runs: "2"
+spec:
+  params:
+    - name: repo_url
+      value: 'https://github.com/sbose78/application-service'
+    - name: revision
+      value: 'main'
+  pipelineSpec:
+    params:
+      - name: repo_url
+        type: string
+      - name: revision
+        type: string
+    tasks:
+      - name: fetchit
+        params:
+          - name: url
+            value: $(params.repo_url)
+          - name: revision
+            value: $(params.revision)
+        taskRef:
+          kind: ClusterTask
+          name: git-clone
+        workspaces:
+          - name: output
+            workspace: source
+      - name: build
+        runAfter:
+          - fetchit
+        taskSpec:
+          metadata: {}
+          steps:
+            - image: >-
+                registry.access.redhat.com/ubi8/go-toolset
+              name: build
+              resources: {}
+              script: |
+                #!/usr/bin/env bash
+                set -eux
+
+                ls -ltr 
+
+                make build
+              workingDir: $(workspaces.source.path)
+          workspaces:
+            - name: source
+        workspaces:
+          - name: source
+            workspace: source
+    workspaces:
+      - name: source
+  serviceAccountName: pipeline
+  timeout: 1h0m0s
+  workspaces:
+    - name: source
+      volumeClaimTemplate:
+        metadata:
+          creationTimestamp: null
+        spec:
+          accessModes:
+            - ReadWriteOnce
+          resources:
+            requests:
+              storage: 3Gi
+        status: {}
