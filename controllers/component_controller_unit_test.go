@@ -168,6 +168,18 @@ func TestGenerateGitops(t *testing.T) {
 		Executor:  errExec,
 	}
 
+	componentSpec := appstudiov1alpha1.ComponentSpec{
+		ComponentName: "test-component",
+		Application:   "test-app",
+		Source: appstudiov1alpha1.ComponentSource{
+			ComponentSourceUnion: appstudiov1alpha1.ComponentSourceUnion{
+				GitSource: &appstudiov1alpha1.GitSource{
+					URL: "git@github.com:testing/testing.git",
+				},
+			},
+		},
+	}
+
 	tests := []struct {
 		name       string
 		reconciler *ComponentReconciler
@@ -188,10 +200,7 @@ func TestGenerateGitops(t *testing.T) {
 					Name:      "test-component",
 					Namespace: "test-namespace",
 				},
-				Spec: appstudiov1alpha1.ComponentSpec{
-					ComponentName: "test-component",
-					Application:   "test-app",
-				},
+				Spec: componentSpec,
 				Status: appstudiov1alpha1.ComponentStatus{
 					GitOps: appstudiov1alpha1.GitOpsStatus{
 						RepositoryURL: "https://github.com/test/repo",
@@ -216,10 +225,7 @@ func TestGenerateGitops(t *testing.T) {
 					Namespace:   "test-namespace",
 					Annotations: nil,
 				},
-				Spec: appstudiov1alpha1.ComponentSpec{
-					ComponentName: "test-component",
-					Application:   "test-app",
-				},
+				Spec: componentSpec,
 			},
 			wantErr: true,
 		},
@@ -239,10 +245,7 @@ func TestGenerateGitops(t *testing.T) {
 						"fake": "fake",
 					},
 				},
-				Spec: appstudiov1alpha1.ComponentSpec{
-					ComponentName: "test-component",
-					Application:   "test-app",
-				},
+				Spec: componentSpec,
 			},
 			wantErr: true,
 		},
@@ -262,10 +265,7 @@ func TestGenerateGitops(t *testing.T) {
 						"gitOpsRepository.url": "dsfdsf sdfsdf sdk;;;fsd ppz mne@ddsfj#$*(%",
 					},
 				},
-				Spec: appstudiov1alpha1.ComponentSpec{
-					ComponentName: "test-component",
-					Application:   "test-app",
-				},
+				Spec: componentSpec,
 			},
 			wantErr: true,
 		},
@@ -282,10 +282,7 @@ func TestGenerateGitops(t *testing.T) {
 					Name:      "test-component",
 					Namespace: "test-namespace",
 				},
-				Spec: appstudiov1alpha1.ComponentSpec{
-					ComponentName: "test-component",
-					Application:   "test-app",
-				},
+				Spec: componentSpec,
 				Status: appstudiov1alpha1.ComponentStatus{
 					GitOps: appstudiov1alpha1.GitOpsStatus{
 						RepositoryURL: "https://github.com/test/repo",
@@ -307,10 +304,7 @@ func TestGenerateGitops(t *testing.T) {
 					Name:      "test-component",
 					Namespace: "test-namespace",
 				},
-				Spec: appstudiov1alpha1.ComponentSpec{
-					ComponentName: "test-component",
-					Application:   "test-app",
-				},
+				Spec: componentSpec,
 				Status: appstudiov1alpha1.ComponentStatus{
 					GitOps: appstudiov1alpha1.GitOpsStatus{
 						RepositoryURL: "https://github.com/test/repo",
@@ -332,10 +326,7 @@ func TestGenerateGitops(t *testing.T) {
 					Name:      "test-component",
 					Namespace: "test-namespace",
 				},
-				Spec: appstudiov1alpha1.ComponentSpec{
-					ComponentName: "test-component",
-					Application:   "test-app",
-				},
+				Spec: componentSpec,
 				Status: appstudiov1alpha1.ComponentStatus{
 					GitOps: appstudiov1alpha1.GitOpsStatus{
 						RepositoryURL: "https://github.com/test/repo",

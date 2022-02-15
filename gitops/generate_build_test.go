@@ -13,7 +13,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 */
-package controllers
+package gitops
 
 import (
 	"reflect"
@@ -25,7 +25,7 @@ import (
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-func Test_normalizeOutputImageURL(t *testing.T) {
+func TestNormalizeOutputImageURL(t *testing.T) {
 	type args struct {
 		outputImage string
 	}
@@ -58,7 +58,7 @@ func Test_normalizeOutputImageURL(t *testing.T) {
 	}
 }
 
-func Test_determineBuildExecution(t *testing.T) {
+func TestDetermineBuildExecution(t *testing.T) {
 	type args struct {
 		component        appstudiov1alpha1.Component
 		params           []tektonapi.Param
@@ -142,14 +142,14 @@ func Test_determineBuildExecution(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := determineBuildExecution(tt.args.component, tt.args.params, tt.args.workspaceSubPath); !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("determineBuildExecution() = %v, want %v", got, tt.want)
+			if got := DetermineBuildExecution(tt.args.component, tt.args.params, tt.args.workspaceSubPath); !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("DetermineBuildExecution() = %v, want %v", got, tt.want)
 			}
 		})
 	}
 }
 
-func Test_paramsForInitialBuild(t *testing.T) {
+func TestGetParamsForComponentInitialBuild(t *testing.T) {
 	type args struct {
 		component appstudiov1alpha1.Component
 	}
@@ -200,14 +200,14 @@ func Test_paramsForInitialBuild(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := paramsForInitialBuild(tt.args.component); !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("paramsForInitialBuild() = %v, want %v", got, tt.want)
+			if got := GetParamsForComponentInitialBuild(tt.args.component); !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("GetParamsForComponentInitialBuild() = %v, want %v", got, tt.want)
 			}
 		})
 	}
 }
 
-func Test_paramsForWebhookBasedBuilds(t *testing.T) {
+func TestGetParamsForComponentWebhookBuilds(t *testing.T) {
 	type args struct {
 		component appstudiov1alpha1.Component
 	}
@@ -258,8 +258,8 @@ func Test_paramsForWebhookBasedBuilds(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := paramsForWebhookBasedBuilds(tt.args.component); !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("paramsForWebhookBasedBuilds() = %v, want %v", got, tt.want)
+			if got := getParamsForComponentWebhookBuilds(tt.args.component); !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("getParamsForComponentWebhookBuilds() = %v, want %v", got, tt.want)
 			}
 		})
 	}

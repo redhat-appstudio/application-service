@@ -16,6 +16,8 @@
 package gitops
 
 import (
+	"path/filepath"
+
 	routev1 "github.com/openshift/api/route/v1"
 	appstudiov1alpha1 "github.com/redhat-appstudio/application-service/api/v1alpha1"
 	"github.com/redhat-appstudio/application-service/gitops/resources"
@@ -29,6 +31,7 @@ import (
 )
 
 const (
+	kustomizeFileName  = "kustomization.yaml"
 	deploymentFileName = "deployment.yaml"
 	serviceFileName    = "service.yaml"
 	routeFileName      = "route.yaml"
@@ -53,6 +56,13 @@ func Generate(fs afero.Fs, outputFolder string, component appstudiov1alpha1.Comp
 		resources[serviceFileName] = service
 		resources[routeFileName] = route
 	}
+
+	tektonResourcesDirName := ".tekton"
+	k.AddResources(tektonResourcesDirName + "/")
+	if err := GenerateBuild(fs, filepath.Join(outputFolder, tektonResourcesDirName), component); err != nil {
+		return err
+	}
+
 	resources["kustomization.yaml"] = k
 
 	_, err := yaml.WriteResources(fs, outputFolder, resources)
