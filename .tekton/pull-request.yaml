@@ -10,9 +10,9 @@ metadata:
 spec:
   params:
     - name: repo_url
-      value: 'https://github.com/sbose78/application-service'
+      value: "{{repo_url}}"
     - name: revision
-      value: 'main'
+      value: "{{revision}}"
   pipelineSpec:
     params:
       - name: repo_url
@@ -69,5 +69,5 @@ spec:
             - ReadWriteOnce
           resources:
             requests:
-              storage: 3Gi
+              storage: 1Gi
         status: {}
