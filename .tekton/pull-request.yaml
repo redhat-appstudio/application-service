@@ -58,7 +58,6 @@ spec:
     workspaces:
       - name: source
   serviceAccountName: pipeline
-  timeout: 1h0m0s
   workspaces:
     - name: source
       volumeClaimTemplate:
@@ -70,4 +69,3 @@ spec:
           resources:
             requests:
               storage: 1Gi
-        status: {}
