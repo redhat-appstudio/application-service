@@ -2,7 +2,6 @@ apiVersion: tekton.dev/v1beta1
 kind: PipelineRun
 metadata:
   name: has-on-pull-request
-  namespace: application-service
   annotations:
     pipelinesascode.tekton.dev/on-event: "[pull_request]"
     pipelinesascode.tekton.dev/on-target-branch: "[main]"
@@ -20,7 +19,7 @@ spec:
       - name: revision
         type: string
     tasks:
-      - name: fetchit
+      - name: git-clone
         params:
           - name: url
             value: $(params.repo_url)
@@ -32,9 +31,13 @@ spec:
         workspaces:
           - name: output
             workspace: source
-      - name: build
+
+      - name: test
         runAfter:
-          - fetchit
+          - git-clone
+        workspaces:
+            - name: source
+              workspace: source
         taskSpec:
           metadata: {}
           steps:
@@ -48,10 +51,33 @@ spec:
 
                 ls -ltr 
 
-                make build
+                make build && make test
               workingDir: $(workspaces.source.path)
           workspaces:
             - name: source
+
+      - name: build-container 
+        params:
+          - name: IMAGE
+            value: quay.io/redhat-appstudio/pull-request-builds:has-{{revision}}
+          - name: BUILDER_IMAGE
+            value: >-
+              registry.redhat.io/rhel8/buildah@sha256:99cae35f40c7ec050fed3765b2b27e0b8bbea2aa2da7c16408e2ca13c60ff8ee
+          - name: STORAGE_DRIVER
+            value: vfs
+          - name: DOCKERFILE
+            value: ./Dockerfile
+          - name: CONTEXT
+            value: .
+          - name: TLSVERIFY
+            value: 'true'
+          - name: FORMAT
+            value: oci
+        runAfter:
+          - git-clone
+        taskRef:
+          kind: ClusterTask
+          name: buildah
         workspaces:
           - name: source
             workspace: source
@@ -60,12 +86,6 @@ spec:
   serviceAccountName: pipeline
   workspaces:
     - name: source
-      volumeClaimTemplate:
-        metadata:
-          creationTimestamp: null
-        spec:
-          accessModes:
-            - ReadWriteOnce
-          resources:
-            requests:
-              storage: 1Gi
+      persistentVolumeClaim:
+        claimName: app-studio-default-workspace
+      subPath: application-service-{{revision}}
