@@ -49,6 +49,8 @@ spec:
                 ls -ltr 
 
                 make build
+
+                make test
               workingDir: $(workspaces.source.path)
           workspaces:
             - name: source
