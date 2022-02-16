@@ -34,7 +34,7 @@ spec:
             workspace: source
       - name: build-and-test
         runAfter:
-          - fetchit
+          - git-clone
         taskSpec:
           metadata: {}
           steps:
