@@ -81,7 +81,7 @@ For example, on OpenShift:
 ### Deploying HAS
 
 
-Once a secret has been created, simply run the following commands to deploy HAS:
+Once a secret has been created, simply run the following commands to deploy HAS
 ```
 make install
 make deploy
