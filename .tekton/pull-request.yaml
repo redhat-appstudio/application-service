@@ -20,7 +20,7 @@ spec:
       - name: revision
         type: string
     tasks:
-      - name: fetchit
+      - name: git-clone
         params:
           - name: url
             value: $(params.repo_url)
@@ -32,7 +32,7 @@ spec:
         workspaces:
           - name: output
             workspace: source
-      - name: build
+      - name: build-and-test
         runAfter:
           - fetchit
         taskSpec:
