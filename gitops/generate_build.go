@@ -71,18 +71,26 @@ func GenerateBuild(fs afero.Fs, outputFolder string, component appstudiov1alpha1
 	return nil
 }
 
-// DetermineBuildExecution returns the pipelineRun spec that would be used
+func GeneratePipelineRun(component appstudiov1alpha1.Component, params []tektonapi.Param, workspaceSubPath string) tektonapi.PipelineRun {
+	pipelineRunSpec := GeneratePipelineRunSpec(component, params, workspaceSubPath)
+	return tektonapi.PipelineRun{
+		ObjectMeta: metav1.ObjectMeta{
+			GenerateName: component.Name + "-",
+			Namespace:    component.Namespace,
+			Labels:       getBuildCommonLabelsForComponent(&component),
+		},
+		Spec: pipelineRunSpec,
+	}
+}
+
+// GeneratePipelineRunSpec returns the pipelineRun spec that would be used
 // in webhooks-triggered pipelineRuns as well as user-triggered PipelineRuns
-func DetermineBuildExecution(component appstudiov1alpha1.Component, params []tektonapi.Param, workspaceSubPath string) tektonapi.PipelineRunSpec {
+func GeneratePipelineRunSpec(component appstudiov1alpha1.Component, params []tektonapi.Param, workspaceSubPath string) tektonapi.PipelineRunSpec {
 
 	pipelineRunSpec := tektonapi.PipelineRunSpec{
 		Params: params,
 		PipelineRef: &tektonapi.PipelineRef{
-
-			// This can't be hardcoded to devfile-build.
-			// The logic should determine if it is a
-			// nodejs build, java build, dockerfile build or a devfile build.
-			Name:   determineBuildDefinition(component),
+			Name:   component.Status.BuildPipeline,
 			Bundle: determineBuildCatalog(component.Namespace),
 		},
 
@@ -103,10 +111,6 @@ func DetermineBuildExecution(component appstudiov1alpha1.Component, params []tek
 		},
 	}
 	return pipelineRunSpec
-}
-
-func determineBuildDefinition(component appstudiov1alpha1.Component) string {
-	return "devfile-build"
 }
 
 func determineBuildCatalog(namespace string) string {
@@ -186,7 +190,7 @@ func getParamsForComponentWebhookBuilds(component appstudiov1alpha1.Component) [
 	return params
 }
 
-func GetBuildCommonLabelsForComponent(component *appstudiov1alpha1.Component) map[string]string {
+func getBuildCommonLabelsForComponent(component *appstudiov1alpha1.Component) map[string]string {
 	labels := map[string]string{
 		"build.appstudio.openshift.io/build":       "true",
 		"build.appstudio.openshift.io/type":        "build",
@@ -210,7 +214,7 @@ func GenerateCommonStorage(component appstudiov1alpha1.Component, name string) c
 		ObjectMeta: metav1.ObjectMeta{
 			Name:        name,
 			Namespace:   component.Namespace,
-			Annotations: GetBuildCommonLabelsForComponent(&component),
+			Annotations: getBuildCommonLabelsForComponent(&component),
 		},
 		Spec: corev1.PersistentVolumeClaimSpec{
 			AccessModes: []corev1.PersistentVolumeAccessMode{
@@ -240,7 +244,7 @@ func GenerateBuildWebhookRoute(component appstudiov1alpha1.Component) routev1.Ro
 		ObjectMeta: metav1.ObjectMeta{
 			Name:        "el" + component.Name,
 			Namespace:   component.Namespace,
-			Annotations: GetBuildCommonLabelsForComponent(&component),
+			Annotations: getBuildCommonLabelsForComponent(&component),
 		},
 		Spec: routev1.RouteSpec{
 			Path: "/",
@@ -260,12 +264,12 @@ func GenerateBuildWebhookRoute(component appstudiov1alpha1.Component) routev1.Ro
 // which defines how a webhook-based trigger event would be handled -
 // In this case, a PipelineRun to build an image would be created.
 func GenerateTriggerTemplate(component appstudiov1alpha1.Component) (*triggersapi.TriggerTemplate, error) {
-	webhookBasedBuildTemplate := DetermineBuildExecution(component, getParamsForComponentWebhookBuilds(component), "$(tt.params.git-revision)")
+	webhookBasedBuildTemplate := GeneratePipelineRunSpec(component, getParamsForComponentWebhookBuilds(component), "$(tt.params.git-revision)")
 	resoureTemplatePipelineRun := tektonapi.PipelineRun{
 		ObjectMeta: metav1.ObjectMeta{
 			GenerateName: component.Name + "-",
 			Namespace:    component.Namespace,
-			Annotations:  GetBuildCommonLabelsForComponent(&component),
+			Annotations:  getBuildCommonLabelsForComponent(&component),
 		},
 		TypeMeta: metav1.TypeMeta{
 			Kind:       "PipelineRun",
@@ -315,7 +319,7 @@ func GenerateEventListener(component appstudiov1alpha1.Component, triggerTemplat
 		ObjectMeta: metav1.ObjectMeta{
 			Name:        component.Name,
 			Namespace:   component.Namespace,
-			Annotations: GetBuildCommonLabelsForComponent(&component),
+			Annotations: getBuildCommonLabelsForComponent(&component),
 		},
 		Spec: triggersapi.EventListenerSpec{
 			ServiceAccountName: "pipeline",

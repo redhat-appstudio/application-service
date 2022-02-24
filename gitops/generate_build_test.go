@@ -142,7 +142,7 @@ func TestDetermineBuildExecution(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := DetermineBuildExecution(tt.args.component, tt.args.params, tt.args.workspaceSubPath); !reflect.DeepEqual(got, tt.want) {
+			if got := GeneratePipelineRunSpec(tt.args.component, tt.args.params, tt.args.workspaceSubPath); !reflect.DeepEqual(got, tt.want) {
 				t.Errorf("DetermineBuildExecution() = %v, want %v", got, tt.want)
 			}
 		})

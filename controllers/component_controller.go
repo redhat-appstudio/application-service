@@ -23,6 +23,7 @@ import (
 	"os"
 	"path"
 	"reflect"
+	"strconv"
 	"time"
 
 	corev1 "k8s.io/api/core/v1"
@@ -45,7 +46,6 @@ import (
 	"github.com/redhat-appstudio/application-service/gitops"
 	devfile "github.com/redhat-appstudio/application-service/pkg/devfile"
 	util "github.com/redhat-appstudio/application-service/pkg/util"
-	tektonapi "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	triggersapi "github.com/tektoncd/triggers/pkg/apis/triggers/v1alpha1"
 
 	"github.com/spf13/afero"
@@ -98,49 +98,86 @@ func (r *ComponentReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 		component.Spec.Build.ContainerImage = r.ImageRepository + ":" + component.Namespace + "-" + component.Name
 	}
 
+	// Get the Application CR
+	application := appstudiov1alpha1.Application{}
+	err = r.Get(ctx, types.NamespacedName{Name: component.Spec.Application, Namespace: component.Namespace}, &application)
+	if err != nil {
+		log.Error(err, fmt.Sprintf("Unable to get the Application %s, exiting reconcile loop %v", component.Spec.Application, req.NamespacedName))
+		r.SetCreateConditionAndUpdateCR(ctx, &component, err)
+		return ctrl.Result{}, err
+	}
+	if application.Status.Devfile == "" {
+		log.Error(err, fmt.Sprintf("Application devfile model is empty. Before creating a Component, an instance of Application should be created, exiting reconcile loop %v", req.NamespacedName))
+		err := fmt.Errorf("application devfile model is empty. Before creating a Component, an instance of Application should be created")
+		r.SetCreateConditionAndUpdateCR(ctx, &component, err)
+		return ctrl.Result{}, nil
+	}
+
 	// If the devfile hasn't been populated, the CR was just created
 	if component.Status.Devfile == "" {
 		source := component.Spec.Source
 		context := component.Spec.Context
 
 		if source.GitSource != nil && source.GitSource.URL != "" {
-			var devfileBytes []byte
+			var buildPipelineName string
+			var componentDevfile string
 
-			if source.GitSource.DevfileURL == "" {
-				rawURL, err := util.ConvertGitHubURL(source.GitSource.URL)
-				if err != nil {
-					log.Error(err, fmt.Sprintf("Unable to convert Github URL to raw format, exiting reconcile loop %v", req.NamespacedName))
-					r.SetCreateConditionAndUpdateCR(ctx, &component, err)
-					return ctrl.Result{}, nil
-				}
+			// Obtain component's devfile
+			if source.GitSource.DevfileURL != "" {
+				// Link to devfile is set, use devfile pipeline
+				buildPipelineName = devfile.DevfileBuild
 
-				// append context to the path if present
-				// context is usually set when the git repo is a multi-component repo (example - contains both frontend & backend)
-				var devfileDir string
-				if context == "" {
-					devfileDir = rawURL
-				} else {
-					devfileDir = path.Join(rawURL, context)
-				}
-
-				devfileBytes, err = util.DownloadDevfile(devfileDir)
-				if err != nil {
-					log.Error(err, fmt.Sprintf("Unable to read the devfile from dir %s %v", devfileDir, req.NamespacedName))
-					r.SetCreateConditionAndUpdateCR(ctx, &component, err)
-					return ctrl.Result{}, nil
-				}
-			} else {
-				devfileBytes, err = util.CurlEndpoint(source.GitSource.DevfileURL)
+				devfileBytes, err := util.CurlEndpoint(source.GitSource.DevfileURL)
 				if err != nil {
 					log.Error(err, fmt.Sprintf("Unable to GET %s, exiting reconcile loop %v", source.GitSource.DevfileURL, req.NamespacedName))
 					err := fmt.Errorf("unable to GET from %s", source.GitSource.DevfileURL)
 					r.SetCreateConditionAndUpdateCR(ctx, &component, err)
 					return ctrl.Result{}, nil
 				}
+				componentDevfile = string(devfileBytes)
+			} else {
+				// Devfile link is not set, detect build pipeline
+
+				repoDir, err := r.CloneSourceRepository(&component)
+				if err != nil {
+					// Do not reconcile on error to avoid infinite loop for wrong url
+					return ctrl.Result{}, nil
+				}
+				defer os.RemoveAll(repoDir)
+
+				// append context to the path if present
+				// context is usually set when the git repo is a multi-component repo (example - contains both frontend & backend)
+				var componentRootDir string
+				if context == "" {
+					componentRootDir = repoDir
+				} else {
+					componentRootDir = path.Join(repoDir, context)
+				}
+
+				buildPipelineName, err = devfile.DetermineBuildPipeline(r.AppFS, componentRootDir, &component)
+				if err != nil {
+					log.Error(err, "failed to determine pipeline for component %v", req.NamespacedName)
+					return ctrl.Result{}, nil
+				}
+
+				componentDevfile, err = devfile.ConstructDevfileForComponent(&component, r.AppFS, componentRootDir, buildPipelineName)
+				if err != nil {
+					log.Error(err, "failed to construct devfile for component %v", req.NamespacedName)
+					return ctrl.Result{}, nil
+				}
+			}
+
+			// Set the container image in the status
+			component.Status.ContainerImage = component.Spec.Build.ContainerImage
+			// Set pipeline that's used for build
+			component.Status.BuildPipeline = buildPipelineName
+			if err := r.Status().Update(ctx, &component); err != nil {
+				log.Error(err, fmt.Sprintf("failed to update build pipeline for component %v", req.NamespacedName))
+				return ctrl.Result{}, err
 			}
 
 			// Parse the Component Devfile
-			hasCompDevfileData, err := devfile.ParseDevfileModel(string(devfileBytes))
+			hasCompDevfileData, err := devfile.ParseDevfileModel(componentDevfile)
 			if err != nil {
 				log.Error(err, fmt.Sprintf("Unable to parse the devfile from Component, exiting reconcile loop %v", req.NamespacedName))
 				r.SetCreateConditionAndUpdateCR(ctx, &component, err)
@@ -154,90 +191,76 @@ func (r *ComponentReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 				return ctrl.Result{}, nil
 			}
 
-			// Get the Application CR
-			hasApplication := appstudiov1alpha1.Application{}
-			err = r.Get(ctx, types.NamespacedName{Name: component.Spec.Application, Namespace: component.Namespace}, &hasApplication)
+			// Get the devfile of the hasApp CR
+			hasAppDevfileData, err := devfile.ParseDevfileModel(application.Status.Devfile)
 			if err != nil {
-				log.Error(err, fmt.Sprintf("Unable to get the Application %s, exiting reconcile loop %v", component.Spec.Application, req.NamespacedName))
-				r.SetCreateConditionAndUpdateCR(ctx, &component, err)
-				return ctrl.Result{}, err
-			}
-
-			if hasApplication.Status.Devfile != "" {
-				// Get the devfile of the hasApp CR
-				hasAppDevfileData, err := devfile.ParseDevfileModel(hasApplication.Status.Devfile)
-				if err != nil {
-					log.Error(err, fmt.Sprintf("Unable to parse the devfile from Application, exiting reconcile loop %v", req.NamespacedName))
-					r.SetCreateConditionAndUpdateCR(ctx, &component, err)
-					return ctrl.Result{}, nil
-				}
-
-				err = r.updateApplicationDevfileModel(hasAppDevfileData, component)
-				if err != nil {
-					log.Error(err, fmt.Sprintf("Unable to update the HAS Application Devfile model %v", req.NamespacedName))
-					r.SetCreateConditionAndUpdateCR(ctx, &component, err)
-					return ctrl.Result{}, nil
-				}
-
-				yamlHASCompData, err := yaml.Marshal(hasCompDevfileData)
-				if err != nil {
-					log.Error(err, fmt.Sprintf("Unable to marshall the Component devfile, exiting reconcile loop %v", req.NamespacedName))
-					r.SetCreateConditionAndUpdateCR(ctx, &component, err)
-					return ctrl.Result{}, nil
-				}
-
-				component.Status.Devfile = string(yamlHASCompData)
-
-				// Update the HASApp CR with the new devfile
-				yamlHASAppData, err := yaml.Marshal(hasAppDevfileData)
-				if err != nil {
-					log.Error(err, fmt.Sprintf("Unable to marshall the Application devfile, exiting reconcile loop %v", req.NamespacedName))
-					r.SetCreateConditionAndUpdateCR(ctx, &component, err)
-					return ctrl.Result{}, nil
-				}
-				hasApplication.Status.Devfile = string(yamlHASAppData)
-				err = r.Status().Update(ctx, &hasApplication)
-				if err != nil {
-					log.Error(err, "Unable to update Application")
-					// if we're unable to update the Application CR, then  we need to err out
-					// since we need to save a reference of the Component in Application
-					r.SetCreateConditionAndUpdateCR(ctx, &component, err)
-					return ctrl.Result{}, err
-				}
-
-				if component.Spec.Build.ContainerImage != "" {
-					// Set the container image in the status
-					component.Status.ContainerImage = component.Spec.Build.ContainerImage
-				}
-
-				log.Info(fmt.Sprintf("Adding the GitOps repository information to the status for component %v", req.NamespacedName))
-				err = setGitopsStatus(&component, hasAppDevfileData)
-				if err != nil {
-					log.Error(err, fmt.Sprintf("Unable to retrieve gitops repository information for resource %v", req.NamespacedName))
-					r.SetCreateConditionAndUpdateCR(ctx, &component, err)
-					return ctrl.Result{}, err
-				}
-
-				// Generate and push the gitops resources
-				if err := r.generateGitops(&component); err != nil {
-					errMsg := fmt.Sprintf("Unable to generate gitops resources for component %v", req.NamespacedName)
-					log.Error(err, errMsg)
-					r.SetCreateConditionAndUpdateCR(ctx, &component, fmt.Errorf(errMsg))
-					return ctrl.Result{}, nil
-				}
-
-				log.Info(fmt.Sprintf("Creating the Build objects  %v", req.NamespacedName))
-				err = r.runBuild(ctx, &component)
-				r.SetCreateConditionAndUpdateCR(ctx, &component, err)
-			} else {
-				log.Error(err, fmt.Sprintf("Application devfile model is empty. Before creating a Component, an instance of Application should be created, exiting reconcile loop %v", req.NamespacedName))
-				err := fmt.Errorf("application devfile model is empty. Before creating a Component, an instance of Application should be created")
+				log.Error(err, fmt.Sprintf("Unable to parse the devfile from Application, exiting reconcile loop %v", req.NamespacedName))
 				r.SetCreateConditionAndUpdateCR(ctx, &component, err)
 				return ctrl.Result{}, nil
 			}
 
+			err = r.updateApplicationDevfileModel(hasAppDevfileData, component)
+			if err != nil {
+				log.Error(err, fmt.Sprintf("Unable to update the HAS Application Devfile model %v", req.NamespacedName))
+				r.SetCreateConditionAndUpdateCR(ctx, &component, err)
+				return ctrl.Result{}, nil
+			}
+
+			// Update the component CR with the new devfile
+			yamlHASCompData, err := yaml.Marshal(hasCompDevfileData)
+			if err != nil {
+				log.Error(err, fmt.Sprintf("Unable to marshall the Component devfile, exiting reconcile loop %v", req.NamespacedName))
+				r.SetCreateConditionAndUpdateCR(ctx, &component, err)
+				return ctrl.Result{}, nil
+			}
+			component.Status.Devfile = string(yamlHASCompData)
+			if err = r.Status().Update(ctx, &component); err != nil {
+				return ctrl.Result{}, err
+			}
+
+			// Update the HASApp CR with the new devfile
+			yamlHASAppData, err := yaml.Marshal(hasAppDevfileData)
+			if err != nil {
+				log.Error(err, fmt.Sprintf("Unable to marshall the Application devfile, exiting reconcile loop %v", req.NamespacedName))
+				r.SetCreateConditionAndUpdateCR(ctx, &component, err)
+				return ctrl.Result{}, nil
+			}
+			application.Status.Devfile = string(yamlHASAppData)
+			if err = r.Status().Update(ctx, &application); err != nil {
+				log.Error(err, "Unable to update Application")
+				// if we're unable to update the Application CR, then  we need to err out
+				// since we need to save a reference of the Component in Application
+				r.SetCreateConditionAndUpdateCR(ctx, &component, err)
+				return ctrl.Result{}, err
+			}
+
+			log.Info(fmt.Sprintf("Adding the GitOps repository information to the status for component %v", req.NamespacedName))
+			err = setGitopsStatus(&component, hasAppDevfileData)
+			if err != nil {
+				log.Error(err, fmt.Sprintf("Unable to retrieve gitops repository information for resource %v", req.NamespacedName))
+				r.SetCreateConditionAndUpdateCR(ctx, &component, err)
+				return ctrl.Result{}, err
+			}
+
+			// Generate and push the gitops resources
+			if err := r.generateGitops(&component); err != nil {
+				errMsg := fmt.Sprintf("Unable to generate gitops resources for component %v", req.NamespacedName)
+				log.Error(err, errMsg)
+				r.SetCreateConditionAndUpdateCR(ctx, &component, fmt.Errorf(errMsg))
+				return ctrl.Result{}, nil
+			}
+
+			log.Info(fmt.Sprintf("Creating the Build objects  %v", req.NamespacedName))
+			err = r.runBuild(ctx, &component)
+			r.SetCreateConditionAndUpdateCR(ctx, &component, err)
+
 		} else if source.ImageSource != nil && source.ImageSource.ContainerImage != "" {
 			log.Info(fmt.Sprintf("container image is not supported at the moment, please use github links for adding a component to an application for %v", req.NamespacedName))
+			return ctrl.Result{}, nil
+		} else {
+			log.Info("component source is not specified")
+			// Do not reconcile until component configuration changed
+			return ctrl.Result{}, nil
 		}
 
 	} else {
@@ -404,17 +427,7 @@ func (r *ComponentReconciler) runBuild(ctx context.Context, component *appstudio
 
 	log.Info(fmt.Sprintf("Eventlistener created/updated %v", eventListener.Name))
 
-	initialBuildSpec := gitops.DetermineBuildExecution(*component, gitops.GetParamsForComponentInitialBuild(*component), getInitialBuildWorkspaceSubpath())
-
-	initialBuild := tektonapi.PipelineRun{
-		ObjectMeta: v1.ObjectMeta{
-			GenerateName: component.Name + "-",
-			Namespace:    component.Namespace,
-			Labels:       gitops.GetBuildCommonLabelsForComponent(component),
-		},
-		Spec: initialBuildSpec,
-	}
-
+	initialBuild := gitops.GeneratePipelineRun(*component, gitops.GetParamsForComponentInitialBuild(*component), getInitialBuildWorkspaceSubpath())
 	err = controllerutil.SetOwnerReference(component, &initialBuild, r.Scheme)
 	if err != nil {
 		log.Error(err, fmt.Sprintf("Unable to set owner reference for %v", initialBuild))
@@ -543,6 +556,33 @@ func setGitopsStatus(component *appstudiov1alpha1.Component, devfileData data.De
 		component.Status.GitOps.Context = gitOpsContext
 	}
 	return nil
+}
+
+// CloneSourceRepository clones given repository in a temporaty location using minimal amount of data to be transferred.
+// Returns the cloned repository root diectory.
+func (r *ComponentReconciler) CloneSourceRepository(component *appstudiov1alpha1.Component) (string, error) {
+	log := r.Log.WithValues("Component", component.Name, "CloneSourceRepository")
+
+	repoDir, err := r.AppFS.TempDir(os.TempDir(), component.Name+"-"+strconv.FormatInt(time.Now().Unix(), 10))
+	if err != nil {
+		log.Error(err, fmt.Sprintf("unable to create temp directory for \"%s\" component repository due to error", component.Name))
+		return "", fmt.Errorf("unable to create temp directory for gitops resources due to error: %v", err)
+	}
+
+	gitRepoUrl := component.Spec.Source.GitSource.URL
+	if len(gitRepoUrl) < 1 {
+		err := fmt.Errorf("unable to clone \"%s\" component repository: no URL specified", component.Name)
+		log.Error(err, err.Error())
+		return "", err
+	}
+
+	log.Info("Starting cloning repository \"%s\" for \"\" component", gitRepoUrl, component.Name)
+	if err := util.CloneRepo(repoDir, gitRepoUrl); err != nil {
+		log.Error(err, "failed to clone git repository from \"%s\" for: \"%s\" component.", gitRepoUrl, component.Name)
+		return "", err
+	}
+	log.Info("Cloned repository \"%s\" for \"%s\" component", gitRepoUrl, component.Name)
+	return repoDir, nil
 }
 
 // SetupWithManager sets up the controller with the Manager.

@@ -30,6 +30,7 @@ import (
 
 	"github.com/go-logr/logr"
 	appstudiov1alpha1 "github.com/redhat-appstudio/application-service/api/v1alpha1"
+	devfile "github.com/redhat-appstudio/application-service/pkg/devfile"
 	util "github.com/redhat-appstudio/application-service/pkg/util"
 )
 
@@ -99,7 +100,7 @@ func (r *ComponentDetectionQueryReconciler) Reconcile(ctx context.Context, req c
 				}
 				log.Info(fmt.Sprintf("cloned from %s to path %s... %v", source.URL, clonePath, req.NamespacedName))
 
-				devfilesMap, err = util.ReadDevfilesFromRepo(clonePath, 1)
+				devfilesMap, err = devfile.ReadDevfilesFromRepo(clonePath, 1)
 				if err != nil {
 					log.Error(err, fmt.Sprintf("Unable to find devfile(s) in repo %s, exiting reconcile loop %v", source.URL, req.NamespacedName))
 					r.SetCompleteConditionAndUpdateCR(ctx, &componentDetectionQuery, err)
@@ -114,7 +115,7 @@ func (r *ComponentDetectionQueryReconciler) Reconcile(ctx context.Context, req c
 					return ctrl.Result{}, nil
 				}
 
-				devfileBytes, err = util.DownloadDevfile(rawURL)
+				devfileBytes, err = devfile.DownloadDevfile(rawURL)
 				if err != nil {
 					log.Error(err, fmt.Sprintf("Unable to curl for any known devfile locations from %s %v", source.URL, req.NamespacedName))
 					r.SetCompleteConditionAndUpdateCR(ctx, &componentDetectionQuery, err)

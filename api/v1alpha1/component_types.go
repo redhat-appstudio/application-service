@@ -112,9 +112,6 @@ type ComponentSpec struct {
 
 // ComponentStatus defines the observed state of Component
 type ComponentStatus struct {
-	// INSERT ADDITIONAL STATUS FIELD - define observed state of cluster
-	// Important: Run "make" to regenerate code after modifying this file
-
 	// Condition about the Component CR
 	Conditions []metav1.Condition `json:"conditions,omitempty"`
 
@@ -129,6 +126,9 @@ type ComponentStatus struct {
 
 	// GitOps specific status for the Component CR
 	GitOps GitOpsStatus `json:"gitops,omitempty"`
+
+	// Name of build pipeline to use for the component, e.g. devfile-build, docker-build, etc.
+	BuildPipeline string `json:"pipeline,omitempty"`
 }
 
 // GitOpsStatus contains GitOps repository-specific status for the component
