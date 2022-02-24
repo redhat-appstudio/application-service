@@ -20,6 +20,7 @@ import (
 	"io/ioutil"
 	"path"
 	"path/filepath"
+	"strconv"
 	"strings"
 
 	"github.com/devfile/api/v2/pkg/attributes"
@@ -115,25 +116,14 @@ func ConstructDevfileForComponent(component *appstudiov1alpha1.Component, appFs 
 }
 
 func constructDevfileFromDockerfile(component *appstudiov1alpha1.Component, dockerfile string) (string, error) {
+	// Parse dockerfile using original parser
 	parsedDockerfile, err := mobyparser.Parse(strings.NewReader(dockerfile))
 	if err != nil {
 		return "", fmt.Errorf("failed to parse dockerfile: %s", err.Error())
 	}
 	dockerfileRootNode := parsedDockerfile.AST
-	fmt.Printf("%v", dockerfileRootNode)
 
-	var exposedPorts []string
-	for _, directiveRootNode := range dockerfileRootNode.Children {
-		if strings.ToUpper(directiveRootNode.Value) == "EXPOSE" {
-			for node := directiveRootNode.Next; node != nil; node = node.Next {
-				// TODO handle 5000/tcp
-				exposedPorts = append(exposedPorts, node.Value)
-			}
-		}
-	}
-
-	return "", nil // TODO del test debug
-
+	// Construct devfile
 	devfileVersion := string(data.APISchemaVersion220)
 	devfileData, err := data.NewDevfileData(devfileVersion)
 	if err != nil {
@@ -163,7 +153,38 @@ func constructDevfileFromDockerfile(component *appstudiov1alpha1.Component, dock
 		}
 	}
 
-	// Add exposed ports
+	// Get exposed endpoints
+	var endpoints []devfilev1.Endpoint
+	for _, directiveRootNode := range dockerfileRootNode.Children {
+		if strings.ToUpper(directiveRootNode.Value) == "EXPOSE" {
+			for node := directiveRootNode.Next; node != nil; node = node.Next {
+				// value contains exposed port or port/protocol, e.g. 1234 or 5000/tcp
+				value := node.Value
+
+				var port int
+				protocol := ""
+				if strings.Contains(value, "/") {
+					portProtocol := strings.Split(value, "/")
+					port, err = strconv.Atoi(portProtocol[0])
+					if err != nil {
+						continue
+					}
+					protocol = portProtocol[1]
+				} else {
+					port, err = strconv.Atoi(value)
+					if err != nil {
+						continue
+					}
+				}
+
+				endpoints = append(endpoints, devfilev1.Endpoint{
+					TargetPort: port,
+					Protocol:   devfilev1.EndpointProtocol(protocol),
+					Exposure:   "public",
+				})
+			}
+		}
+	}
 
 	// Add component based on build from the dockerfile image
 	devfileComponent := devfilev1.Component{
@@ -173,7 +194,7 @@ func constructDevfileFromDockerfile(component *appstudiov1alpha1.Component, dock
 				Container: devfilev1.Container{
 					Image: component.Status.ContainerImage,
 				},
-				Endpoints: []devfilev1.Endpoint{},
+				Endpoints: endpoints,
 			},
 		},
 	}
