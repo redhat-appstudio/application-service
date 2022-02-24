@@ -156,7 +156,7 @@ func (r *ComponentReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 
 				buildPipelineName, err = devfile.DetermineBuildPipeline(r.AppFS, componentRootDir, &component)
 				if err != nil {
-					log.Error(err, "failed to determine pipeline for component %v", req.NamespacedName)
+					log.Error(err, fmt.Sprintf("failed to determine pipeline for component %v", req.NamespacedName))
 					return ctrl.Result{}, nil
 				}
 
@@ -561,7 +561,7 @@ func setGitopsStatus(component *appstudiov1alpha1.Component, devfileData data.De
 // CloneSourceRepository clones given repository in a temporaty location using minimal amount of data to be transferred.
 // Returns the cloned repository root diectory.
 func (r *ComponentReconciler) CloneSourceRepository(component *appstudiov1alpha1.Component) (string, error) {
-	log := r.Log.WithValues("Component", component.Name, "CloneSourceRepository")
+	log := r.Log.WithValues("Component", component.Name)
 
 	repoDir, err := r.AppFS.TempDir(os.TempDir(), component.Name+"-"+strconv.FormatInt(time.Now().Unix(), 10))
 	if err != nil {

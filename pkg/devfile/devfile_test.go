@@ -251,14 +251,3 @@ func TestReadDevfilesFromRepo(t *testing.T) {
 		})
 	}
 }
-
-func TestX(t *testing.T) {
-	df :=
-		`	
-FROm golang
-COPY main.go main.go
-EXPOSE 8080 5050/tcp 1000
-ENTRYPOINT go run main.go
-	`
-	constructDevfileFromDockerfile(nil, df)
-}

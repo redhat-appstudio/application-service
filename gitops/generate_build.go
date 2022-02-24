@@ -86,7 +86,6 @@ func GeneratePipelineRun(component appstudiov1alpha1.Component, params []tektona
 // GeneratePipelineRunSpec returns the pipelineRun spec that would be used
 // in webhooks-triggered pipelineRuns as well as user-triggered PipelineRuns
 func GeneratePipelineRunSpec(component appstudiov1alpha1.Component, params []tektonapi.Param, workspaceSubPath string) tektonapi.PipelineRunSpec {
-
 	pipelineRunSpec := tektonapi.PipelineRunSpec{
 		Params: params,
 		PipelineRef: &tektonapi.PipelineRef{
