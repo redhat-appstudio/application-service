@@ -75,7 +75,7 @@ var _ = BeforeSuite(func() {
 			filepath.Join("..", "config", "crd", "bases"),
 			filepath.Join("..", "hack", "routecrd"),
 			filepath.Join(build.Default.GOPATH, "pkg", "mod", "github.com", "tektoncd", "triggers@v0.17.1", "config"),
-			filepath.Join(build.Default.GOPATH, "pkg", "mod", "github.com", "tektoncd", "pipeline@v0.30.0", "config")},
+			filepath.Join(build.Default.GOPATH, "pkg", "mod", "github.com", "tektoncd", "pipeline@v0.32.1", "config")},
 		ErrorIfCRDPathMissing: true,
 	}
 
