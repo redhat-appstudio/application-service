@@ -10,7 +10,6 @@ require (
 	github.com/go-logr/logr v0.4.0
 	github.com/google/go-cmp v0.5.6
 	github.com/google/go-github/v41 v41.0.0
-	github.com/imroc/req v0.3.2
 	github.com/migueleliasweb/go-github-mock v0.0.5
 	github.com/mitchellh/go-homedir v1.1.0
 	github.com/onsi/ginkgo v1.16.5
@@ -86,6 +85,7 @@ require (
 	github.com/hashicorp/errwrap v1.0.0 // indirect
 	github.com/hashicorp/go-multierror v1.1.1 // indirect
 	github.com/imdario/mergo v0.3.12 // indirect
+	github.com/imroc/req v0.3.2 // indirect
 	github.com/jbenet/go-context v0.0.0-20150711004518-d14ea06fba99 // indirect
 	github.com/josharian/intern v1.0.0 // indirect
 	github.com/json-iterator/go v1.1.11 // indirect
