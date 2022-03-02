@@ -21,8 +21,10 @@ import (
 	"fmt"
 	"path"
 
+	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/types"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/builder"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -30,14 +32,16 @@ import (
 
 	"github.com/go-logr/logr"
 	appstudiov1alpha1 "github.com/redhat-appstudio/application-service/api/v1alpha1"
+	"github.com/redhat-appstudio/application-service/pkg/spi"
 	util "github.com/redhat-appstudio/application-service/pkg/util"
 )
 
 // ComponentDetectionQueryReconciler reconciles a ComponentDetectionQuery object
 type ComponentDetectionQueryReconciler struct {
 	client.Client
-	Scheme *runtime.Scheme
-	Log    logr.Logger
+	Scheme    *runtime.Scheme
+	SPIClient spi.SPI
+	Log       logr.Logger
 }
 
 const (
@@ -78,7 +82,22 @@ func (r *ComponentDetectionQueryReconciler) Reconcile(ctx context.Context, req c
 	// If there is no component list in the map, the CR was just created
 	if len(componentDetectionQuery.Status.ComponentDetected) == 0 {
 		log.Info(fmt.Sprintf("Checking to see if a component can be detected %v", req.NamespacedName))
+		var gitToken string
+		if componentDetectionQuery.Spec.GitSource.Secret != "" {
+			gitSecret := corev1.Secret{}
+			namespacedName := types.NamespacedName{
+				Name:      componentDetectionQuery.Spec.GitSource.Secret,
+				Namespace: componentDetectionQuery.Namespace,
+			}
 
+			err = r.Client.Get(ctx, namespacedName, &gitSecret)
+			if err != nil {
+				log.Error(err, fmt.Sprintf("Unable to retrieve Git secret %v, exiting reconcile loop %v", componentDetectionQuery.Spec.GitSource.Secret, req.NamespacedName))
+				r.SetCompleteConditionAndUpdateCR(ctx, &componentDetectionQuery, err)
+				return ctrl.Result{}, nil
+			}
+			gitToken = string(gitSecret.Data["password"])
+		}
 		source := componentDetectionQuery.Spec.GitSource
 		var devfileBytes []byte
 		devfilesMap := make(map[string][]byte)
@@ -91,7 +110,7 @@ func (r *ComponentDetectionQueryReconciler) Reconcile(ctx context.Context, req c
 
 				clonePath := path.Join(clonePathPrefix, componentDetectionQuery.Namespace, componentDetectionQuery.Name)
 
-				err = util.CloneRepo(clonePath, source.URL)
+				err = util.CloneRepo(clonePath, source.URL, gitToken)
 				if err != nil {
 					log.Error(err, fmt.Sprintf("Unable to clone repo %s and read devfile(s) in path %s, exiting reconcile loop %v", source.URL, clonePath, req.NamespacedName))
 					r.SetCompleteConditionAndUpdateCR(ctx, &componentDetectionQuery, err)
@@ -107,18 +126,29 @@ func (r *ComponentDetectionQueryReconciler) Reconcile(ctx context.Context, req c
 				}
 			} else {
 				log.Info(fmt.Sprintf("Since this is not a multi-component, attempt will be made to read devfile at the root dir... %v", req.NamespacedName))
-				rawURL, err := util.ConvertGitHubURL(source.URL)
-				if err != nil {
-					log.Error(err, fmt.Sprintf("Unable to convert Github URL to raw format, exiting reconcile loop %v", req.NamespacedName))
-					r.SetCompleteConditionAndUpdateCR(ctx, &componentDetectionQuery, err)
-					return ctrl.Result{}, nil
-				}
+				var gitURL string
+				if gitToken == "" {
+					gitURL, err = util.ConvertGitHubURL(source.URL)
+					if err != nil {
+						log.Error(err, fmt.Sprintf("Unable to convert Github URL to raw format, exiting reconcile loop %v", req.NamespacedName))
+						r.SetCompleteConditionAndUpdateCR(ctx, &componentDetectionQuery, err)
+						return ctrl.Result{}, nil
+					}
 
-				devfileBytes, err = util.DownloadDevfile(rawURL)
-				if err != nil {
-					log.Error(err, fmt.Sprintf("Unable to curl for any known devfile locations from %s %v", source.URL, req.NamespacedName))
-					r.SetCompleteConditionAndUpdateCR(ctx, &componentDetectionQuery, err)
-					return ctrl.Result{}, nil
+					devfileBytes, err = util.DownloadDevfile(gitURL)
+					if err != nil {
+						log.Error(err, fmt.Sprintf("Unable to curl for any known devfile locations from %s %v", source.URL, req.NamespacedName))
+						r.SetCompleteConditionAndUpdateCR(ctx, &componentDetectionQuery, err)
+						return ctrl.Result{}, nil
+					}
+				} else {
+					// Use SPI to retrieve the devfile from the private repository
+					devfileBytes, err = spi.DownloadDevfileUsingSPI(r.SPIClient, ctx, componentDetectionQuery.Namespace, source.URL, "main", "")
+					if err != nil {
+						log.Error(err, fmt.Sprintf("Unable to curl for any known devfile locations from %s %v", source.URL, req.NamespacedName))
+						r.SetCompleteConditionAndUpdateCR(ctx, &componentDetectionQuery, err)
+						return ctrl.Result{}, nil
+					}
 				}
 
 				devfilesMap["./"] = devfileBytes

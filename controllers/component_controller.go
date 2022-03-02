@@ -44,6 +44,7 @@ import (
 	appstudiov1alpha1 "github.com/redhat-appstudio/application-service/api/v1alpha1"
 	"github.com/redhat-appstudio/application-service/gitops"
 	devfile "github.com/redhat-appstudio/application-service/pkg/devfile"
+	"github.com/redhat-appstudio/application-service/pkg/spi"
 	util "github.com/redhat-appstudio/application-service/pkg/util"
 	tektonapi "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	triggersapi "github.com/tektoncd/triggers/pkg/apis/triggers/v1alpha1"
@@ -61,6 +62,7 @@ type ComponentReconciler struct {
 	ImageRepository string
 	Executor        gitops.Executor
 	AppFS           afero.Afero
+	SPIClient       spi.SPI
 }
 
 //+kubebuilder:rbac:groups=appstudio.redhat.com,resources=components,verbs=get;list;watch;create;update;patch;delete
@@ -99,36 +101,68 @@ func (r *ComponentReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 	}
 
 	// If the devfile hasn't been populated, the CR was just created
+	var gitToken string
 	if component.Status.Devfile == "" {
+		// If a Git secret was passed in, retrieve it for use in our Git operations
+		// The secret needs to be in the same namespace as the Component
+		if component.Spec.Source.GitSource.Secret != "" {
+			gitSecret := corev1.Secret{}
+			namespacedName := types.NamespacedName{
+				Name:      component.Spec.Source.GitSource.Secret,
+				Namespace: component.Namespace,
+			}
+
+			err = r.Client.Get(ctx, namespacedName, &gitSecret)
+			if err != nil {
+				log.Error(err, fmt.Sprintf("Unable to retrieve Git secret %v, exiting reconcile loop %v", component.Spec.Source.GitSource.Secret, req.NamespacedName))
+				r.SetCreateConditionAndUpdateCR(ctx, &component, err)
+				return ctrl.Result{}, nil
+			}
+
+			gitToken = string(gitSecret.Data["password"])
+		}
 		source := component.Spec.Source
 		context := component.Spec.Context
 
 		if source.GitSource != nil && source.GitSource.URL != "" {
 			var devfileBytes []byte
-
+			var gitURL string
 			if source.GitSource.DevfileURL == "" {
-				rawURL, err := util.ConvertGitHubURL(source.GitSource.URL)
-				if err != nil {
-					log.Error(err, fmt.Sprintf("Unable to convert Github URL to raw format, exiting reconcile loop %v", req.NamespacedName))
-					r.SetCreateConditionAndUpdateCR(ctx, &component, err)
-					return ctrl.Result{}, nil
-				}
 
 				// append context to the path if present
 				// context is usually set when the git repo is a multi-component repo (example - contains both frontend & backend)
-				var devfileDir string
-				if context == "" {
-					devfileDir = rawURL
+
+				if gitToken == "" {
+					gitURL, err = util.ConvertGitHubURL(source.GitSource.URL)
+					if err != nil {
+						log.Error(err, fmt.Sprintf("Unable to convert Github URL to raw format, exiting reconcile loop %v", req.NamespacedName))
+						r.SetCreateConditionAndUpdateCR(ctx, &component, err)
+						return ctrl.Result{}, nil
+					}
+
+					var devfileDir string
+					if context == "" {
+						devfileDir = gitURL
+					} else {
+						devfileDir = path.Join(gitURL, context)
+					}
+
+					devfileBytes, err = util.DownloadDevfile(devfileDir)
+					if err != nil {
+						log.Error(err, fmt.Sprintf("Unable to read the devfile from dir %s %v", devfileDir, req.NamespacedName))
+						r.SetCreateConditionAndUpdateCR(ctx, &component, err)
+						return ctrl.Result{}, nil
+					}
 				} else {
-					devfileDir = path.Join(rawURL, context)
+					// Use SPI to retrieve the devfile from the private repository
+					devfileBytes, err = spi.DownloadDevfileUsingSPI(r.SPIClient, ctx, component.Namespace, source.GitSource.URL, "main", context)
+					if err != nil {
+						log.Error(err, fmt.Sprintf("Unable to download from any known devfile locations from %s %v", source.GitSource.URL, req.NamespacedName))
+						r.SetCreateConditionAndUpdateCR(ctx, &component, err)
+						return ctrl.Result{}, nil
+					}
 				}
 
-				devfileBytes, err = util.DownloadDevfile(devfileDir)
-				if err != nil {
-					log.Error(err, fmt.Sprintf("Unable to read the devfile from dir %s %v", devfileDir, req.NamespacedName))
-					r.SetCreateConditionAndUpdateCR(ctx, &component, err)
-					return ctrl.Result{}, nil
-				}
 			} else {
 				devfileBytes, err = util.CurlEndpoint(source.GitSource.DevfileURL)
 				if err != nil {
