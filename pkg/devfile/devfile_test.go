@@ -134,8 +134,10 @@ func TestConvertApplicationToDevfile(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			// Convert the hasApp resource to a devfile
-			convertedDevfile := ConvertApplicationToDevfile(tt.hasApp, tt.gitOpsRepo, tt.appModelRepo)
-			if !reflect.DeepEqual(convertedDevfile, tt.wantDevfile) {
+			convertedDevfile, err := ConvertApplicationToDevfile(tt.hasApp, tt.gitOpsRepo, tt.appModelRepo)
+			if err != nil {
+				t.Errorf("TestConvertApplicationToDevfile() unexpected error: %v", err)
+			} else if !reflect.DeepEqual(convertedDevfile, tt.wantDevfile) {
 				t.Errorf("TestConvertApplicationToDevfile() error: expected %v got %v", tt.wantDevfile, convertedDevfile)
 			}
 		})

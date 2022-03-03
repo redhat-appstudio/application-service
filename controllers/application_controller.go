@@ -140,7 +140,12 @@ func (r *ApplicationReconciler) Reconcile(ctx context.Context, req ctrl.Request)
 		}
 
 		// Convert the devfile string to a devfile object
-		devfileData := devfile.ConvertApplicationToDevfile(application, gitOpsRepo, appModelRepo)
+		devfileData, err := devfile.ConvertApplicationToDevfile(application, gitOpsRepo, appModelRepo)
+		if err != nil {
+			log.Error(err, fmt.Sprintf("Unable to convert Application CR to devfile, exiting reconcile loop %v", req.NamespacedName))
+			r.SetCreateConditionAndUpdateCR(ctx, &application, err)
+			return reconcile.Result{}, nil
+		}
 		yamlData, err := yaml.Marshal(devfileData)
 		if err != nil {
 			log.Error(err, fmt.Sprintf("Unable to marshall Application devfile, exiting reconcile loop %v", req.NamespacedName))
