@@ -1164,9 +1164,9 @@ func TestUpdateComponentStub(t *testing.T) {
 			}
 			var err error
 			if tt.isNil {
-				err = r.updateComponentStub(nil, devfilesMap)
+				err = r.updateComponentStub(nil, devfilesMap, nil)
 			} else {
-				err = r.updateComponentStub(&componentDetectionQuery, devfilesMap)
+				err = r.updateComponentStub(&componentDetectionQuery, devfilesMap, nil)
 			}
 
 			if tt.wantErr && (err == nil) {

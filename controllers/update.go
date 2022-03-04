@@ -246,7 +246,7 @@ func (r *ComponentReconciler) updateApplicationDevfileModel(hasAppDevfileData da
 	return nil
 }
 
-func (r *ComponentDetectionQueryReconciler) updateComponentStub(componentDetectionQuery *appstudiov1alpha1.ComponentDetectionQuery, devfilesMap map[string][]byte) error {
+func (r *ComponentDetectionQueryReconciler) updateComponentStub(componentDetectionQuery *appstudiov1alpha1.ComponentDetectionQuery, devfilesMap map[string][]byte, devfilesURLMap map[string]string) error {
 
 	if componentDetectionQuery == nil {
 		return fmt.Errorf("componentDetectionQuery is nil")
@@ -285,7 +285,10 @@ func (r *ComponentDetectionQueryReconciler) updateComponentStub(componentDetecti
 			Context:       context,
 			Source: appstudiov1alpha1.ComponentSource{
 				ComponentSourceUnion: appstudiov1alpha1.ComponentSourceUnion{
-					GitSource: &componentDetectionQuery.Spec.GitSource,
+					GitSource: &appstudiov1alpha1.GitSource{
+						URL:        componentDetectionQuery.Spec.GitSource.URL,
+						DevfileURL: devfilesURLMap[context],
+					},
 				},
 			},
 		}

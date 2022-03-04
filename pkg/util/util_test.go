@@ -324,7 +324,7 @@ func TestReadDevfilesFromRepo(t *testing.T) {
 			if err != nil {
 				t.Errorf("got unexpected error %v", err)
 			} else {
-				devfileMap, err := ReadDevfilesFromRepo(tt.clonePath, tt.depth)
+				devfileMap, _, err := ReadDevfilesFromRepo(nil, tt.clonePath, tt.depth)
 				if tt.wantErr && (err == nil) {
 					t.Error("wanted error but got nil")
 				} else if !tt.wantErr && err != nil {
