@@ -551,7 +551,7 @@ var _ = Describe("Component Detection Query controller", func() {
 
 			// Make sure the a devfile is detected
 			Expect(createdHasCompDetectionQuery.Status.Conditions[0].Status).Should(Equal(metav1.ConditionFalse))
-			Expect(createdHasCompDetectionQuery.Status.Conditions[0].Message).Should(ContainSubstring("ComponentDetectionQuery failed: unexpected client error: unexpected requesting \"https://github.com/maysunfaisal/multi-components/info/refs?service=git-upload-pack\" status code: 400"))
+			Expect(createdHasCompDetectionQuery.Status.Conditions[0].Message).Should(ContainSubstring("ComponentDetectionQuery failed: authentication required"))
 
 			// Delete the specified Detection Query resource
 			deleteCompDetQueryCR(hasCompDetQueryLookupKey)
