@@ -145,8 +145,9 @@ func CloneRepo(clonePath, repoURL string, token string) error {
 
 	// If a token was passed in, configure token auth for the git client
 	if token != "" {
-		cloneOpts.Auth = &transportHttp.TokenAuth{
-			Token: token,
+		cloneOpts.Auth = &transportHttp.BasicAuth{
+			Username: "token",
+			Password: token,
 		}
 	}
 	// Clone the repo
