@@ -29,12 +29,20 @@ import (
 )
 
 func TestGenerateDeployment(t *testing.T) {
+	applicationName := "test-application"
 	componentName := "test-component"
 	namespace := "test-namespace"
 	replicas := int32(1)
 	otherReplicas := int32(3)
-	labels := map[string]string{
-		"component": componentName,
+	k8slabels := map[string]string{
+		"app.kubernetes.io/name":       componentName,
+		"app.kubernetes.io/instance":   componentName,
+		"app.kubernetes.io/part-of":    applicationName,
+		"app.kubernetes.io/managed-by": "kustomize",
+		"app.kubernetes.io/created-by": "application-service",
+	}
+	matchLabels := map[string]string{
+		"app.kubernetes.io/instance": componentName,
 	}
 
 	tests := []struct {
@@ -49,6 +57,10 @@ func TestGenerateDeployment(t *testing.T) {
 					Name:      componentName,
 					Namespace: namespace,
 				},
+				Spec: appstudiov1alpha1.ComponentSpec{
+					ComponentName: componentName,
+					Application:   applicationName,
+				},
 			},
 			wantDeployment: appsv1.Deployment{
 				TypeMeta: v1.TypeMeta{
@@ -58,15 +70,16 @@ func TestGenerateDeployment(t *testing.T) {
 				ObjectMeta: v1.ObjectMeta{
 					Name:      componentName,
 					Namespace: namespace,
+					Labels:    k8slabels,
 				},
 				Spec: appsv1.DeploymentSpec{
 					Replicas: &replicas,
 					Selector: &v1.LabelSelector{
-						MatchLabels: labels,
+						MatchLabels: matchLabels,
 					},
 					Template: corev1.PodTemplateSpec{
 						ObjectMeta: v1.ObjectMeta{
-							Labels: labels,
+							Labels: matchLabels,
 						},
 						Spec: corev1.PodSpec{
 							Containers: []corev1.Container{
@@ -88,8 +101,8 @@ func TestGenerateDeployment(t *testing.T) {
 					Namespace: namespace,
 				},
 				Spec: appstudiov1alpha1.ComponentSpec{
-					ComponentName: "test-component",
-					Application:   "test-application",
+					ComponentName: componentName,
+					Application:   applicationName,
 					Replicas:      3,
 					TargetPort:    5000,
 					Build: appstudiov1alpha1.Build{
@@ -121,15 +134,16 @@ func TestGenerateDeployment(t *testing.T) {
 				ObjectMeta: v1.ObjectMeta{
 					Name:      componentName,
 					Namespace: namespace,
+					Labels:    k8slabels,
 				},
 				Spec: appsv1.DeploymentSpec{
 					Replicas: &otherReplicas,
 					Selector: &v1.LabelSelector{
-						MatchLabels: labels,
+						MatchLabels: matchLabels,
 					},
 					Template: corev1.PodTemplateSpec{
 						ObjectMeta: v1.ObjectMeta{
-							Labels: labels,
+							Labels: matchLabels,
 						},
 						Spec: corev1.PodSpec{
 							Containers: []corev1.Container{
@@ -198,10 +212,18 @@ func TestGenerateDeployment(t *testing.T) {
 }
 
 func TestGenerateService(t *testing.T) {
+	applicationName := "test-application"
 	componentName := "test-component"
 	namespace := "test-namespace"
-	labels := map[string]string{
-		"component": componentName,
+	k8slabels := map[string]string{
+		"app.kubernetes.io/name":       componentName,
+		"app.kubernetes.io/instance":   componentName,
+		"app.kubernetes.io/part-of":    applicationName,
+		"app.kubernetes.io/managed-by": "kustomize",
+		"app.kubernetes.io/created-by": "application-service",
+	}
+	matchLabels := map[string]string{
+		"app.kubernetes.io/instance": componentName,
 	}
 
 	tests := []struct {
@@ -217,8 +239,8 @@ func TestGenerateService(t *testing.T) {
 					Namespace: namespace,
 				},
 				Spec: appstudiov1alpha1.ComponentSpec{
-					ComponentName: "test-component",
-					Application:   "test-application",
+					ComponentName: componentName,
+					Application:   applicationName,
 					TargetPort:    5000,
 				},
 			},
@@ -230,9 +252,10 @@ func TestGenerateService(t *testing.T) {
 				ObjectMeta: v1.ObjectMeta{
 					Name:      componentName,
 					Namespace: namespace,
+					Labels:    k8slabels,
 				},
 				Spec: corev1.ServiceSpec{
-					Selector: labels,
+					Selector: matchLabels,
 					Ports: []corev1.ServicePort{
 						{
 							Port:       int32(5000),
@@ -256,10 +279,15 @@ func TestGenerateService(t *testing.T) {
 }
 
 func TestGenerateRoute(t *testing.T) {
+	applicationName := "test-application"
 	componentName := "test-component"
 	namespace := "test-namespace"
-	labels := map[string]string{
-		"component": componentName,
+	k8slabels := map[string]string{
+		"app.kubernetes.io/name":       componentName,
+		"app.kubernetes.io/instance":   componentName,
+		"app.kubernetes.io/part-of":    applicationName,
+		"app.kubernetes.io/managed-by": "kustomize",
+		"app.kubernetes.io/created-by": "application-service",
 	}
 	weight := int32(100)
 
@@ -276,8 +304,8 @@ func TestGenerateRoute(t *testing.T) {
 					Namespace: namespace,
 				},
 				Spec: appstudiov1alpha1.ComponentSpec{
-					ComponentName: "test-component",
-					Application:   "test-application",
+					ComponentName: componentName,
+					Application:   applicationName,
 					TargetPort:    5000,
 				},
 			},
@@ -289,7 +317,7 @@ func TestGenerateRoute(t *testing.T) {
 				ObjectMeta: v1.ObjectMeta{
 					Name:      componentName,
 					Namespace: namespace,
-					Labels:    labels,
+					Labels:    k8slabels,
 				},
 				Spec: routev1.RouteSpec{
 					Port: &routev1.RoutePort{
@@ -315,8 +343,8 @@ func TestGenerateRoute(t *testing.T) {
 					Namespace: namespace,
 				},
 				Spec: appstudiov1alpha1.ComponentSpec{
-					ComponentName: "test-component",
-					Application:   "test-application",
+					ComponentName: componentName,
+					Application:   applicationName,
 					TargetPort:    5000,
 					Route:         "example.com",
 				},
@@ -329,7 +357,7 @@ func TestGenerateRoute(t *testing.T) {
 				ObjectMeta: v1.ObjectMeta{
 					Name:      componentName,
 					Namespace: namespace,
-					Labels:    labels,
+					Labels:    k8slabels,
 				},
 				Spec: routev1.RouteSpec{
 					Host: "example.com",
