@@ -24,8 +24,16 @@ spec:
     spec:
       securityContext:
         runAsNonRoot: true
+      volumes:
+      - name: default-user-workload-pull-secret
+        secret:
+          secretName: default-user-workload-pull-secret
       containers:
-      - command:
+      - volumeMounts:
+        - name: default-user-workload-pull-secret
+          mountPath: "/etc/build"
+          readOnly: true
+        command:
         - /manager
         args:
         - --leader-elect

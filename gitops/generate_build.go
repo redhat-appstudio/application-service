@@ -18,6 +18,9 @@ package gitops
 
 import (
 	"encoding/json"
+
+	"log"
+	"os"
 	"strings"
 
 	routev1 "github.com/openshift/api/route/v1"
@@ -28,6 +31,7 @@ import (
 	tektonapi "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	triggersapi "github.com/tektoncd/triggers/pkg/apis/triggers/v1alpha1"
 	corev1 "k8s.io/api/core/v1"
+	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -71,6 +75,24 @@ func GenerateBuild(fs afero.Fs, outputFolder string, component appstudiov1alpha1
 	return nil
 }
 
+func DefaultUserWorkloadPullSecret(component appstudiov1alpha1.Component, path string) v1.Secret {
+	content, err := os.ReadFile(path) //"/etc/build/.dockerconfigjson")
+	if err != nil {
+		log.Fatal(err)
+	}
+	secret := v1.Secret{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      component.Name,
+			Namespace: component.Namespace,
+		},
+		Data: map[string][]byte{
+			".dockerconfigjson": content,
+		},
+		Type: "kubernetes.io/dockerconfigjson",
+	}
+	return secret
+}
+
 // DetermineBuildExecution returns the pipelineRun spec that would be used
 // in webhooks-triggered pipelineRuns as well as user-triggered PipelineRuns
 func DetermineBuildExecution(component appstudiov1alpha1.Component, params []tektonapi.Param, workspaceSubPath string) tektonapi.PipelineRunSpec {
@@ -97,7 +119,8 @@ func DetermineBuildExecution(component appstudiov1alpha1.Component, params []tek
 			{
 				Name: "registry-auth",
 				Secret: &corev1.SecretVolumeSource{
-					SecretName: "redhat-appstudio-registry-pull-secret",
+					SecretName: component.Name,
+					// TODO: Cleanup "redhat-appstudio-registry-pull-secret" from namespaces,
 				},
 			},
 		},

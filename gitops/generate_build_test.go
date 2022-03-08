@@ -19,6 +19,7 @@ import (
 	"reflect"
 	"testing"
 
+	"github.com/redhat-appstudio/application-service/api/v1alpha1"
 	appstudiov1alpha1 "github.com/redhat-appstudio/application-service/api/v1alpha1"
 	tektonapi "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	corev1 "k8s.io/api/core/v1"
@@ -98,7 +99,7 @@ func TestDetermineBuildExecution(t *testing.T) {
 					{
 						Name: "registry-auth",
 						Secret: &corev1.SecretVolumeSource{
-							SecretName: "redhat-appstudio-registry-pull-secret",
+							SecretName: "testcomponent",
 						},
 					},
 				},
@@ -133,7 +134,7 @@ func TestDetermineBuildExecution(t *testing.T) {
 					{
 						Name: "registry-auth",
 						Secret: &corev1.SecretVolumeSource{
-							SecretName: "redhat-appstudio-registry-pull-secret",
+							SecretName: "testcomponent",
 						},
 					},
 				},
@@ -260,6 +261,71 @@ func TestGetParamsForComponentWebhookBuilds(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			if got := getParamsForComponentWebhookBuilds(tt.args.component); !reflect.DeepEqual(got, tt.want) {
 				t.Errorf("getParamsForComponentWebhookBuilds() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func Test_defaultUserWorkloadPullSecret(t *testing.T) {
+
+	type args struct {
+		path      string
+		component appstudiov1alpha1.Component
+	}
+	tests := []struct {
+		name string
+		args args
+		want corev1.Secret
+	}{
+		{
+			name: "from test data - empty file",
+			args: args{
+				path: "testdata/.emptydockerconfigjson",
+				component: v1alpha1.Component{
+					ObjectMeta: v1.ObjectMeta{
+						Name:      "foo",
+						Namespace: "bar",
+					},
+				},
+			},
+			want: corev1.Secret{
+				ObjectMeta: v1.ObjectMeta{
+					Name:      "foo",
+					Namespace: "bar",
+				},
+				Data: map[string][]byte{
+					".dockerconfigjson": []byte(""),
+				},
+				Type: "kubernetes.io/dockerconfigjson",
+			},
+		},
+		{
+			name: "from test data",
+			args: args{
+				path: "testdata/.dockerconfigjson",
+				component: v1alpha1.Component{
+					ObjectMeta: v1.ObjectMeta{
+						Name:      "foo",
+						Namespace: "bar",
+					},
+				},
+			},
+			want: corev1.Secret{
+				ObjectMeta: v1.ObjectMeta{
+					Name:      "foo",
+					Namespace: "bar",
+				},
+				Data: map[string][]byte{
+					".dockerconfigjson": []byte(`{"auths":{"https://index.docker.io/v1/":{"username":"sbose78","password":"foo","auth":"c2Jvc2U3ODpmb28=","email":""}}}`),
+				},
+				Type: "kubernetes.io/dockerconfigjson",
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := DefaultUserWorkloadPullSecret(tt.args.component, tt.args.path); !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("defaultUserWorkloadPullSecret() = %v, want %v", got, tt.want)
 			}
 		})
 	}

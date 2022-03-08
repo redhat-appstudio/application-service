@@ -23,6 +23,7 @@ import (
 	"os"
 	"path"
 	"reflect"
+	"strings"
 	"time"
 
 	corev1 "k8s.io/api/core/v1"
@@ -327,6 +328,40 @@ func (r *ComponentReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 func (r *ComponentReconciler) runBuild(ctx context.Context, component *appstudiov1alpha1.Component) error {
 
 	log := r.Log.WithValues("Namespace", component.Namespace, "Application", component.Spec.Application, "Component", component.Name)
+
+	// Not exposing this as config on purpose since this is supposed to be moved out eventually
+	// Also, this is really being used for tests.
+	credentialPath := os.Getenv("BUILD_CREDENTIALS")
+	if credentialPath == "" {
+		// expect this to be unset in production.
+		credentialPath = "/etc/build/.dockerconfigjson"
+	}
+
+	if strings.Contains(component.Spec.Build.ContainerImage, r.ImageRepository) {
+
+		defaultSecret := gitops.DefaultUserWorkloadPullSecret(*component, credentialPath)
+		err := controllerutil.SetOwnerReference(component, &defaultSecret, r.Scheme)
+		if err != nil {
+			log.Error(err, fmt.Sprintf("Unable to set owner reference for %v", defaultSecret))
+			return err
+		}
+		secret := &corev1.Secret{}
+		err = r.Get(ctx, types.NamespacedName{Name: defaultSecret.Name, Namespace: component.Namespace}, secret)
+		if err != nil {
+			if errors.IsNotFound(err) {
+				err = r.Client.Create(ctx, &defaultSecret)
+				if err != nil {
+					log.Error(err, fmt.Sprintf("Unable to create secret %v", defaultSecret))
+					return err
+				}
+			} else {
+				log.Error(err, fmt.Sprintf("Unable to get create secret %v", defaultSecret))
+				return err
+			}
+		}
+		log.Info(fmt.Sprintf("Secret is now present : %v", defaultSecret.Name))
+
+	}
 
 	// TODO delete creation of gitops build objects(except PipelineRun) when build part of gitops repository will be respected
 

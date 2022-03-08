@@ -120,6 +120,7 @@ var _ = Describe("Component controller", func() {
 				return len(createdHasApp.Status.Conditions) > 0 && strings.Contains(createdHasApp.Status.Devfile, ComponentName)
 			}, timeout, interval).Should(BeTrue())
 
+			secret := &corev1.Secret{}
 			pvcLookupKey := types.NamespacedName{Name: "appstudio", Namespace: HASAppNamespace}
 			pvc := &corev1.PersistentVolumeClaim{}
 
@@ -129,6 +130,14 @@ var _ = Describe("Component controller", func() {
 			eventListener := &triggersapi.EventListener{}
 			pipelineRuns := tektonapi.PipelineRunList{}
 			route := &routev1.Route{}
+
+			Eventually(func() bool {
+				k8sClient.Get(context.Background(), buildResourceName, secret)
+				// Test: should not be a non empty pull secret.
+				// Data: read from gitops/testdata/
+				return string(secret.Data[".dockerconfigjson"]) != ""
+
+			}, timeout, interval).Should(BeTrue())
 
 			Eventually(func() bool {
 				k8sClient.Get(context.Background(), pvcLookupKey, pvc)
@@ -162,7 +171,7 @@ var _ = Describe("Component controller", func() {
 			Expect(pipelineRun.Spec.Workspaces).To(Not(BeEmpty()))
 			for _, w := range pipelineRun.Spec.Workspaces {
 				if w.Name == "registry-auth" {
-					Expect(w.Secret.SecretName).To(Equal("redhat-appstudio-registry-pull-secret"))
+					Expect(w.Secret.SecretName).To(Equal("test-component-1234"))
 				}
 				if w.Name == "workspace" {
 					Expect(w.PersistentVolumeClaim.ClaimName).To(Equal("appstudio"))
