@@ -24,7 +24,7 @@ import (
 	"strings"
 
 	routev1 "github.com/openshift/api/route/v1"
-	appstudiov1alpha1 "github.com/redhat-appstudio/application-service/api/v1alpha1"
+	appstudiov1alpha1 "github.com/redhat-appstudio/application-service/api/ "
 	"github.com/redhat-appstudio/application-service/gitops/resources"
 	yaml "github.com/redhat-appstudio/application-service/gitops/yaml"
 	"github.com/spf13/afero"
