@@ -30,7 +30,6 @@ import (
 	"github.com/spf13/afero"
 	tektonapi "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	triggersapi "github.com/tektoncd/triggers/pkg/apis/triggers/v1alpha1"
-	corev1 "k8s.io/api/core/v1"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -75,7 +74,7 @@ func GenerateBuild(fs afero.Fs, outputFolder string, component appstudiov1alpha1
 	return nil
 }
 
-func DefaultUserWorkloadPullSecret(component appstudiov1alpha1.Component, path string) v1.Secret {
+func DefaultUserWorkloadPullSecret(component appstudiov1alpha1.Component, path string) corev1.Secret {
 	content, err := os.ReadFile(path) //"/etc/build/.dockerconfigjson")
 	if err != nil {
 		log.Fatal(err)

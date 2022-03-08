@@ -19,7 +19,6 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/redhat-appstudio/application-service/api/v1alpha1"
 	appstudiov1alpha1 "github.com/redhat-appstudio/application-service/api/v1alpha1"
 	tektonapi "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	corev1 "k8s.io/api/core/v1"
@@ -281,7 +280,7 @@ func Test_defaultUserWorkloadPullSecret(t *testing.T) {
 			name: "from test data - empty file",
 			args: args{
 				path: "testdata/.emptydockerconfigjson",
-				component: v1alpha1.Component{
+				component: appstudiov1alpha1.Component{
 					ObjectMeta: v1.ObjectMeta{
 						Name:      "foo",
 						Namespace: "bar",
@@ -303,7 +302,7 @@ func Test_defaultUserWorkloadPullSecret(t *testing.T) {
 			name: "from test data",
 			args: args{
 				path: "testdata/.dockerconfigjson",
-				component: v1alpha1.Component{
+				component: appstudiov1alpha1.Component{
 					ObjectMeta: v1.ObjectMeta{
 						Name:      "foo",
 						Namespace: "bar",
