@@ -20,7 +20,6 @@ import (
 	"context"
 	"fmt"
 	"path"
-	"reflect"
 
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -35,8 +34,6 @@ import (
 	appstudiov1alpha1 "github.com/redhat-appstudio/application-service/api/v1alpha1"
 	"github.com/redhat-appstudio/application-service/pkg/spi"
 	util "github.com/redhat-appstudio/application-service/pkg/util"
-
-	"github.com/redhat-developer/alizer/go/pkg/apis/recognizer"
 )
 
 // ComponentDetectionQueryReconciler reconciles a ComponentDetectionQuery object
@@ -122,7 +119,7 @@ func (r *ComponentDetectionQueryReconciler) Reconcile(ctx context.Context, req c
 				}
 				log.Info(fmt.Sprintf("cloned from %s to path %s... %v", source.URL, clonePath, req.NamespacedName))
 
-				devfilesMap, devfilesURLMap, err = util.ReadDevfilesFromRepo(log, clonePath, maxDevfileDiscoveryDepth)
+				devfilesMap, devfilesURLMap, err = util.ReadDevfilesFromRepo(clonePath, maxDevfileDiscoveryDepth)
 				if err != nil {
 					if _, ok := err.(*util.NoDevfileFound); !ok {
 						log.Error(err, fmt.Sprintf("Unable to find devfile(s) in repo %s due to an error %s, exiting reconcile loop %v", source.URL, err.Error(), req.NamespacedName))
@@ -172,32 +169,18 @@ func (r *ComponentDetectionQueryReconciler) Reconcile(ctx context.Context, req c
 					log.Info(fmt.Sprintf("cloned from %s to path %s... %v", source.URL, clonePath, req.NamespacedName))
 					log.Info(fmt.Sprintf("analyzing path %s", clonePath))
 
-					types, err := util.GetAlizerDevfileTypes()
+					// if we didnt find any devfile upto our desired depth, then use alizer
+					var detectedDevfileEndpoint string
+					devfileBytes, detectedDevfileEndpoint, err = util.AnalyzeAndDetectDevfile(clonePath)
 					if err != nil {
-						log.Error(err, fmt.Sprintf("Unable to get devfile from registry for detection %v", req.NamespacedName))
-						r.SetCompleteConditionAndUpdateCR(ctx, &componentDetectionQuery, err)
-						return ctrl.Result{}, nil
-					}
-
-					detectedType, err := recognizer.SelectDevFileFromTypes(clonePath, types)
-					if err != nil && err.Error() != fmt.Sprintf("No valid devfile found for project in %s", clonePath) {
-						// if we get an unrelated err, err out
-						log.Error(err, fmt.Sprintf("unable to detect a devfile from the devfile registry for the source repo %s %v", componentDetectionQuery.Spec.GitSource.URL, req.NamespacedName))
-						r.SetCompleteConditionAndUpdateCR(ctx, &componentDetectionQuery, err)
-						return ctrl.Result{}, nil
-					} else if !reflect.DeepEqual(detectedType, recognizer.DevFileType{}) {
-						detectedDevfileEndpoint := util.DevfileStageRegistryEndpoint + "/devfiles/" + detectedType.Name
-
-						log.Info(fmt.Sprintf("matching devfile sample found in the registry, getting devfile from %s %v", detectedDevfileEndpoint, detectedType.Name))
-
-						devfileBytes, err = util.CurlEndpoint(detectedDevfileEndpoint)
-						if err != nil {
-							log.Error(err, fmt.Sprintf("Unable to GET %s, exiting reconcile loop %v", source.DevfileURL, req.NamespacedName))
-							err := fmt.Errorf("unable to GET from %s", source.DevfileURL)
+						if _, ok := err.(*util.NoDevfileFound); !ok {
+							log.Error(err, fmt.Sprintf("unable to detect devfile in path %s %v", clonePath, req.NamespacedName))
 							r.SetCompleteConditionAndUpdateCR(ctx, &componentDetectionQuery, err)
 							return ctrl.Result{}, nil
 						}
+					}
 
+					if len(devfileBytes) > 0 {
 						devfilesMap["./"] = devfileBytes
 						devfilesURLMap["./"] = detectedDevfileEndpoint
 					}

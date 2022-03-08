@@ -31,8 +31,6 @@ import (
 	transportHttp "github.com/go-git/go-git/v5/plumbing/transport/http"
 	"github.com/redhat-appstudio/application-service/pkg/devfile"
 
-	"github.com/go-logr/logr"
-
 	"github.com/devfile/registry-support/index/generator/schema"
 	registryLibrary "github.com/devfile/registry-support/registry-library/library"
 	"github.com/redhat-developer/alizer/go/pkg/apis/recognizer"
@@ -170,13 +168,14 @@ func CloneRepo(clonePath, repoURL string, token string) error {
 }
 
 // ReadDevfilesFromRepo attempts to read and return devfiles from the local path upto the specified depth
-func ReadDevfilesFromRepo(log logr.Logger, localpath string, depth int) (map[string][]byte, map[string]string, error) {
-	return searchDevfiles(log, localpath, 0, depth)
+func ReadDevfilesFromRepo(localpath string, depth int) (map[string][]byte, map[string]string, error) {
+	return searchDevfiles(localpath, 0, depth)
 }
 
-func searchDevfiles(log logr.Logger, localpath string, currentLevel, depth int) (map[string][]byte, map[string]string, error) {
+func searchDevfiles(localpath string, currentLevel, depth int) (map[string][]byte, map[string]string, error) {
 
-	var devfileBytes []byte
+	// var devfileBytes []byte
+	// var detectedDevfileEndpoint string
 	devfileMapFromRepo := make(map[string][]byte)
 	devfilesURLMapFromRepo := make(map[string]string)
 
@@ -189,33 +188,23 @@ func searchDevfiles(log logr.Logger, localpath string, currentLevel, depth int) 
 
 	for _, f := range files {
 		if (f.Name() == devfile.DevfileName || f.Name() == devfile.HiddenDevfileName) && currentLevel != 0 {
-			devfileBytes, err = ioutil.ReadFile(path.Join(localpath, f.Name()))
+			devfileBytes, err := ioutil.ReadFile(path.Join(localpath, f.Name()))
 			if err != nil {
 				return nil, nil, err
 			}
 
-			var context string
-			currentPath := localpath
-			for i := 0; i < currentLevel; i++ {
-				context = path.Join(filepath.Base(currentPath), context)
-				currentPath = filepath.Dir(currentPath)
-			}
+			context := getContext(localpath, currentLevel)
 			devfileMapFromRepo[context] = devfileBytes
 			isDevfilePresent = true
 		} else if f.IsDir() && f.Name() == devfile.HiddenDevfileDir {
 			// if the dir is .devfile, we dont increment currentLevel
 			// consider devfile.yaml and .devfile/devfile.yaml as the same level
-			recursiveDevfileMap, recursiveDevfileURLMap, err := searchDevfiles(log, path.Join(localpath, f.Name()), currentLevel, depth)
+			recursiveDevfileMap, recursiveDevfileURLMap, err := searchDevfiles(path.Join(localpath, f.Name()), currentLevel, depth)
 			if err != nil {
 				return nil, nil, err
 			}
 
-			var context string
-			currentPath := localpath
-			for i := 0; i < currentLevel; i++ {
-				context = path.Join(filepath.Base(currentPath), context)
-				currentPath = filepath.Dir(currentPath)
-			}
+			context := getContext(localpath, currentLevel)
 			for recursiveContext := range recursiveDevfileMap {
 				if recursiveContext == devfile.HiddenDevfileDir {
 					devfileMapFromRepo[context] = recursiveDevfileMap[devfile.HiddenDevfileDir]
@@ -225,7 +214,7 @@ func searchDevfiles(log logr.Logger, localpath string, currentLevel, depth int) 
 			}
 		} else if f.IsDir() {
 			if currentLevel+1 <= depth {
-				recursiveDevfileMap, recursiveDevfileURLMap, err := searchDevfiles(log, path.Join(localpath, f.Name()), currentLevel+1, depth)
+				recursiveDevfileMap, recursiveDevfileURLMap, err := searchDevfiles(path.Join(localpath, f.Name()), currentLevel+1, depth)
 				if err != nil {
 					return nil, nil, err
 				}
@@ -243,49 +232,17 @@ func searchDevfiles(log logr.Logger, localpath string, currentLevel, depth int) 
 		err = &NoDevfileFound{location: localpath}
 	} else if !isDevfilePresent && currentLevel == depth {
 		// if we didnt find any devfile upto our desired depth, then use alizer
-		languages, err := recognizer.Analyze(localpath)
+		devfileBytes, detectedDevfileEndpoint, err := AnalyzeAndDetectDevfile(localpath)
 		if err != nil {
-			return nil, nil, err
-		}
-
-		types, err := GetAlizerDevfileTypes()
-		if err != nil {
-			return nil, nil, err
-		}
-
-		for _, language := range languages {
-			if language.CanBeComponent {
-				// if we get one language analysis that determines it can be a component
-				// we can then determine a devfile from the registry and break
-
-				// No need to check for err, if a path does not have a detected devfile, ignore err
-				detectedType, err := recognizer.SelectDevFileFromTypes(localpath, types)
-				if err != nil && err.Error() != fmt.Sprintf("No valid devfile found for project in %s", localpath) {
-					// if a dir can be a component but we get an unrelated err, err out
-					return nil, nil, err
-				} else if !reflect.DeepEqual(detectedType, recognizer.DevFileType{}) {
-					log.Info(fmt.Sprintf("Detected Devfile Name: %s", detectedType.Name))
-
-					detectedDevfileEndpoint := DevfileStageRegistryEndpoint + "/devfiles/" + detectedType.Name
-
-					log.Info(fmt.Sprintf("Curling Endpoint: %s", detectedDevfileEndpoint))
-					devfileBytes, err = CurlEndpoint(detectedDevfileEndpoint)
-					if err != nil {
-						return nil, nil, err
-					}
-
-					var context string
-					currentPath := localpath
-					for i := 0; i < currentLevel; i++ {
-						context = path.Join(filepath.Base(currentPath), context)
-						currentPath = filepath.Dir(currentPath)
-					}
-
-					devfileMapFromRepo[context] = devfileBytes
-					devfilesURLMapFromRepo[context] = detectedDevfileEndpoint
-					break
-				}
+			if _, ok := err.(*NoDevfileFound); !ok {
+				return nil, nil, err
 			}
+		}
+
+		if len(devfileBytes) > 0 {
+			context := getContext(localpath, currentLevel)
+			devfileMapFromRepo[context] = devfileBytes
+			devfilesURLMapFromRepo[context] = detectedDevfileEndpoint
 		}
 
 	}
@@ -293,7 +250,7 @@ func searchDevfiles(log logr.Logger, localpath string, currentLevel, depth int) 
 	return devfileMapFromRepo, devfilesURLMapFromRepo, err
 }
 
-func GetAlizerDevfileTypes() ([]recognizer.DevFileType, error) {
+func getAlizerDevfileTypes() ([]recognizer.DevFileType, error) {
 	types := []recognizer.DevFileType{}
 	registryIndex, err := registryLibrary.GetRegistryIndex(DevfileStageRegistryEndpoint, registryLibrary.RegistryOptions{
 		Telemetry: registryLibrary.TelemetryData{},
@@ -312,4 +269,59 @@ func GetAlizerDevfileTypes() ([]recognizer.DevFileType, error) {
 	}
 
 	return types, nil
+}
+
+// getContext returns the context backtracking from the end of the localpath
+func getContext(localpath string, currentLevel int) string {
+	var context string
+	currentPath := localpath
+	for i := 0; i < currentLevel; i++ {
+		context = path.Join(filepath.Base(currentPath), context)
+		currentPath = filepath.Dir(currentPath)
+	}
+
+	return context
+}
+
+func AnalyzeAndDetectDevfile(path string) ([]byte, string, error) {
+	var devfileBytes []byte
+
+	alizerLanguages, err := recognizer.Analyze(path)
+	if err != nil {
+		return nil, "", err
+	}
+
+	alizerTypes, err := getAlizerDevfileTypes()
+	if err != nil {
+		return nil, "", err
+	}
+
+	for _, language := range alizerLanguages {
+		if language.CanBeComponent {
+			// if we get one language analysis that can be a component
+			// we can then determine a devfile from the registry and return
+
+			detectedType, err := recognizer.SelectDevFileFromTypes(path, alizerTypes)
+			if err != nil && err.Error() != fmt.Sprintf("No valid devfile found for project in %s", path) {
+				// No need to check for err, if a path does not have a detected devfile, ignore err
+				// if a dir can be a component but we get an unrelated err, err out
+				return nil, "", err
+			} else if !reflect.DeepEqual(detectedType, recognizer.DevFileType{}) {
+				detectedDevfileEndpoint := DevfileStageRegistryEndpoint + "/devfiles/" + detectedType.Name
+
+				devfileBytes, err = CurlEndpoint(detectedDevfileEndpoint)
+				if err != nil {
+					return nil, "", err
+				}
+
+				if len(devfileBytes) > 0 {
+					return devfileBytes, detectedDevfileEndpoint, nil
+				}
+
+				// break
+			}
+		}
+	}
+
+	return nil, "", &NoDevfileFound{location: path}
 }
