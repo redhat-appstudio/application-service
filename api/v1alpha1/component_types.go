@@ -85,6 +85,9 @@ type ComponentSpec struct {
 	// Application to add the component to
 	Application string `json:"application"`
 
+	// Release strategies to apply when releasing this component
+	ReleaseStrategies []string `json:"releaseStrategies,omitempty"`
+
 	// Source describes the Component source
 	Source ComponentSource `json:"source"`
 

@@ -166,6 +166,11 @@ spec:
                   - name
                   type: object
                 type: array
+              releaseStrategies:
+                description: Release strategies to apply when releasing this component
+                items:
+                  type: string
+                type: array
               replicas:
                 description: The number of replicas to deploy the component with
                 type: integer
