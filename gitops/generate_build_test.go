@@ -16,6 +16,7 @@ limitations under the License.
 package gitops
 
 import (
+	"context"
 	"reflect"
 	"testing"
 
@@ -261,6 +262,57 @@ func TestGetParamsForComponentWebhookBuilds(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			if got := getParamsForComponentWebhookBuilds(tt.args.component); !reflect.DeepEqual(got, tt.want) {
 				t.Errorf("getParamsForComponentWebhookBuilds() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestUpdateServiceAccountIfSecretNotLinked(t *testing.T) {
+	type args struct {
+		ctx              context.Context
+		sourceSecretName string
+		serviceAccount   *corev1.ServiceAccount
+	}
+	tests := []struct {
+		name string
+		args args
+		want bool
+	}{
+		{
+			name: "present",
+			args: args{
+				ctx:              context.Background(),
+				sourceSecretName: "present",
+				serviceAccount: &corev1.ServiceAccount{
+					Secrets: []corev1.ObjectReference{
+						{
+							Name: "present",
+						},
+					},
+				},
+			},
+			want: false, // since it was present, this implies the SA wasn't updated.
+		},
+		{
+			name: "not present",
+			args: args{
+				ctx:              context.Background(),
+				sourceSecretName: "not-present",
+				serviceAccount: &corev1.ServiceAccount{
+					Secrets: []corev1.ObjectReference{
+						{
+							Name: "something-else",
+						},
+					},
+				},
+			},
+			want: true, // since it wasn't present, this implies the SA was updated.
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := UpdateServiceAccountIfSecretNotLinked(tt.args.ctx, tt.args.sourceSecretName, tt.args.serviceAccount); got != tt.want {
+				t.Errorf("UpdateServiceAccountIfSecretNotLinked() = %v, want %v", got, tt.want)
 			}
 		})
 	}
