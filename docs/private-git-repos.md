@@ -37,6 +37,8 @@ In order to use HAS resources (e.g. `Applications`, `Components`, `ComponentDete
           clientSecret: fake-client-secret
         baseUrl: https://spi-oauth-route-spi-system.apps.mycluster.com
         ```
+    
+    d) Create the secret in the `spi-system` namespace: `kubectl create secret generic oauth-config --from-file=components/spi/config.yaml -n spi-system` 
 
 ## Creating a Token
 
