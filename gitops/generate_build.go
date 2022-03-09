@@ -20,10 +20,13 @@ import (
 	"encoding/json"
 	"strings"
 
+	devfilev1alpha2 "github.com/devfile/api/v2/pkg/apis/workspaces/v1alpha2"
+	devfilecommon "github.com/devfile/library/pkg/devfile/parser/data/v2/common"
 	routev1 "github.com/openshift/api/route/v1"
 	appstudiov1alpha1 "github.com/redhat-appstudio/application-service/api/v1alpha1"
 	"github.com/redhat-appstudio/application-service/gitops/resources"
 	yaml "github.com/redhat-appstudio/application-service/gitops/yaml"
+	"github.com/redhat-appstudio/application-service/pkg/devfile"
 	"github.com/spf13/afero"
 	tektonapi "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	triggersapi "github.com/tektoncd/triggers/pkg/apis/triggers/v1alpha1"
@@ -78,11 +81,7 @@ func DetermineBuildExecution(component appstudiov1alpha1.Component, params []tek
 	pipelineRunSpec := tektonapi.PipelineRunSpec{
 		Params: params,
 		PipelineRef: &tektonapi.PipelineRef{
-
-			// This can't be hardcoded to devfile-build.
-			// The logic should determine if it is a
-			// nodejs build, java build, dockerfile build or a devfile build.
-			Name:   determineBuildDefinition(component),
+			Name:   determineBuildPipeline(component),
 			Bundle: determineBuildCatalog(component.Namespace),
 		},
 
@@ -105,8 +104,51 @@ func DetermineBuildExecution(component appstudiov1alpha1.Component, params []tek
 	return pipelineRunSpec
 }
 
-func determineBuildDefinition(component appstudiov1alpha1.Component) string {
-	return "devfile-build"
+// determineBuildPipeline should detect build pipeline to use for the component and return its name.
+// If it fails to autodetect right pipeline, noop pipeline will be returned.
+// If a repository consists of two parts (e.g. frontend and backend), it should be mapped to two components (see context field in CR).
+// Available build pipeleine are located here: https://github.com/redhat-appstudio/build-definitions/tree/main/pipelines
+func determineBuildPipeline(component appstudiov1alpha1.Component) string {
+	// It is possible to skip error checks here because the model is propogated by component controller
+	componentDevfileData, err := devfile.ParseDevfileModel(component.Status.Devfile)
+	if err != nil {
+		// Return dummy value for tests
+		return "noop"
+	}
+
+	// The only information about project is in language and projectType fileds under metadata of the devfile.
+	// They must be used to determine the right build pipeline.
+	devfileMetadata := componentDevfileData.GetMetadata()
+	language := devfileMetadata.Language
+	// TODO use projectType when build pipelines support frameworks
+	// projectType := devfileMetadata.ProjectType
+
+	switch strings.ToLower(language) {
+	case "java":
+		return "java-builder"
+	case "nodejs", "node":
+		return "nodejs-builder"
+	case "python":
+		// TODO return python-builder when the pipeline ready
+		return "noop"
+	}
+
+	// Failed to detect build pipeline
+	// Check for Dockerfile
+	filterOptions := devfilecommon.DevfileOptions{
+		ComponentOptions: devfilecommon.ComponentOptions{
+			ComponentType: devfilev1alpha2.ImageComponentType,
+		},
+	}
+	devfileComponents, _ := componentDevfileData.GetComponents(filterOptions)
+	for _, component := range devfileComponents {
+		if component.Image != nil && component.Image.Dockerfile != nil {
+			return "docker-build"
+		}
+	}
+
+	// Do nothing as we do not know how to build given component
+	return "noop"
 }
 
 func determineBuildCatalog(namespace string) string {

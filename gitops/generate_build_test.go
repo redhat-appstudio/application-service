@@ -19,10 +19,14 @@ import (
 	"reflect"
 	"testing"
 
+	"github.com/devfile/api/v2/pkg/apis/workspaces/v1alpha2"
+	"github.com/devfile/api/v2/pkg/devfile"
+	data "github.com/devfile/library/pkg/devfile/parser/data"
 	appstudiov1alpha1 "github.com/redhat-appstudio/application-service/api/v1alpha1"
 	tektonapi "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	corev1 "k8s.io/api/core/v1"
-	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"sigs.k8s.io/yaml"
 )
 
 func TestNormalizeOutputImageURL(t *testing.T) {
@@ -73,7 +77,7 @@ func TestDetermineBuildExecution(t *testing.T) {
 			name: "for non webhooks",
 			args: args{
 				component: appstudiov1alpha1.Component{
-					ObjectMeta: v1.ObjectMeta{
+					ObjectMeta: metav1.ObjectMeta{
 						Name:      "testcomponent",
 						Namespace: "kcpworkspacename",
 					},
@@ -84,7 +88,7 @@ func TestDetermineBuildExecution(t *testing.T) {
 			want: tektonapi.PipelineRunSpec{
 				PipelineRef: &tektonapi.PipelineRef{
 					Bundle: "quay.io/redhat-appstudio/build-templates-bundle@sha256:2205a29208fa686b47f841819f7abedb64adb93935493693892d0e18bbdbb77e",
-					Name:   "devfile-build",
+					Name:   "noop",
 				},
 				Params: []tektonapi.Param{},
 				Workspaces: []tektonapi.WorkspaceBinding{
@@ -108,7 +112,7 @@ func TestDetermineBuildExecution(t *testing.T) {
 			name: "for webhooks",
 			args: args{
 				component: appstudiov1alpha1.Component{
-					ObjectMeta: v1.ObjectMeta{
+					ObjectMeta: metav1.ObjectMeta{
 						Name:      "testcomponent",
 						Namespace: "kcpworkspacename",
 					},
@@ -119,7 +123,7 @@ func TestDetermineBuildExecution(t *testing.T) {
 			want: tektonapi.PipelineRunSpec{
 				PipelineRef: &tektonapi.PipelineRef{
 					Bundle: "quay.io/redhat-appstudio/build-templates-bundle@sha256:2205a29208fa686b47f841819f7abedb64adb93935493693892d0e18bbdbb77e",
-					Name:   "devfile-build",
+					Name:   "noop",
 				},
 				Params: []tektonapi.Param{},
 				Workspaces: []tektonapi.WorkspaceBinding{
@@ -149,6 +153,124 @@ func TestDetermineBuildExecution(t *testing.T) {
 	}
 }
 
+func TestDetermineBuildPipeline(t *testing.T) {
+	createDevfileWithBuildInfo := func(language string, projectType string) data.DevfileData {
+		devfileVersion := string(data.APISchemaVersion220)
+		devfileData, _ := data.NewDevfileData(devfileVersion)
+		devfileData.SetSchemaVersion(devfileVersion)
+		devfileData.SetMetadata(devfile.DevfileMetadata{
+			Name:        "test-devfile",
+			Language:    language,
+			ProjectType: projectType,
+		})
+		return devfileData
+	}
+	devfileToString := func(devfile data.DevfileData) string {
+		yamlDevfile, err := yaml.Marshal(devfile)
+		if err != nil {
+			panic("Invalid test devfile")
+		}
+		return string(yamlDevfile)
+	}
+	createDevfileStatusModelWithBuildInfo := func(language string, projectType string) string {
+		return devfileToString(createDevfileWithBuildInfo(language, projectType))
+	}
+	createDevfileWithoutBuildInfoButWithDockerfileComponent := func() string {
+		devfileData := createDevfileWithBuildInfo("unknown", "")
+		devfileData.AddComponents([]v1alpha2.Component{
+			{
+				Name: "outerloop-deploy",
+				ComponentUnion: v1alpha2.ComponentUnion{
+					Kubernetes: &v1alpha2.KubernetesComponent{
+						K8sLikeComponent: v1alpha2.K8sLikeComponent{
+							K8sLikeComponentLocation: v1alpha2.K8sLikeComponentLocation{
+								Uri: "test-uri",
+							},
+						},
+					},
+				},
+			},
+			{
+				Name: "outerloop-build",
+				ComponentUnion: v1alpha2.ComponentUnion{
+					Image: &v1alpha2.ImageComponent{
+						Image: v1alpha2.Image{
+							ImageUnion: v1alpha2.ImageUnion{
+								Dockerfile: &v1alpha2.DockerfileImage{
+									DockerfileSrc: v1alpha2.DockerfileSrc{
+										Uri: "dockerfile-uri",
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+		})
+		return devfileToString(devfileData)
+	}
+
+	tests := []struct {
+		name      string
+		component appstudiov1alpha1.Component
+		want      string
+	}{
+		{
+			name: "should use java builder",
+			component: appstudiov1alpha1.Component{
+				Status: appstudiov1alpha1.ComponentStatus{
+					Devfile: createDevfileStatusModelWithBuildInfo("java", "quarkus"),
+				},
+			},
+			want: "java-builder",
+		},
+		{
+			name: "should use nodejs builder",
+			component: appstudiov1alpha1.Component{
+				Status: appstudiov1alpha1.ComponentStatus{
+					Devfile: createDevfileStatusModelWithBuildInfo("nodejs", ""),
+				},
+			},
+			want: "nodejs-builder",
+		},
+		{
+			name: "should use python builder",
+			component: appstudiov1alpha1.Component{
+				Status: appstudiov1alpha1.ComponentStatus{
+					Devfile: createDevfileStatusModelWithBuildInfo("python", "django"),
+				},
+			},
+			// TODO fix when python builder is in place
+			want: "noop",
+		},
+		{
+			name: "should use noop builder if failed to determine pipeline",
+			component: appstudiov1alpha1.Component{
+				Status: appstudiov1alpha1.ComponentStatus{
+					Devfile: createDevfileStatusModelWithBuildInfo("unknown", ""),
+				},
+			},
+			want: "noop",
+		},
+		{
+			name: "should use docker builder if failed to determine pipeline but dockerfile present",
+			component: appstudiov1alpha1.Component{
+				Status: appstudiov1alpha1.ComponentStatus{
+					Devfile: createDevfileWithoutBuildInfoButWithDockerfileComponent(),
+				},
+			},
+			want: "docker-build",
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := determineBuildPipeline(tt.component); got != tt.want {
+				t.Errorf("determineBuildPipeline() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
 func TestGetParamsForComponentInitialBuild(t *testing.T) {
 	type args struct {
 		component appstudiov1alpha1.Component
@@ -162,7 +284,7 @@ func TestGetParamsForComponentInitialBuild(t *testing.T) {
 			name: "use the image as is",
 			args: args{
 				component: appstudiov1alpha1.Component{
-					ObjectMeta: v1.ObjectMeta{
+					ObjectMeta: metav1.ObjectMeta{
 						Name:      "testcomponent",
 						Namespace: "kcpworkspacename",
 					},
@@ -220,7 +342,7 @@ func TestGetParamsForComponentWebhookBuilds(t *testing.T) {
 			name: "use the updated image tag",
 			args: args{
 				component: appstudiov1alpha1.Component{
-					ObjectMeta: v1.ObjectMeta{
+					ObjectMeta: metav1.ObjectMeta{
 						Name:      "testcomponent",
 						Namespace: "kcpworkspacename",
 					},
