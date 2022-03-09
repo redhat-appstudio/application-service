@@ -31,6 +31,7 @@ import (
 	routev1 "github.com/openshift/api/route/v1"
 	appstudiov1alpha1 "github.com/redhat-appstudio/application-service/api/v1alpha1"
 	devfile "github.com/redhat-appstudio/application-service/pkg/devfile"
+	spiapi "github.com/redhat-appstudio/service-provider-integration-operator/api/v1beta1"
 	tektonapi "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	triggersapi "github.com/tektoncd/triggers/pkg/apis/triggers/v1alpha1"
 
@@ -79,6 +80,23 @@ var _ = Describe("Component controller", func() {
 			HASCompNameForBuild := "test-component-1234"
 
 			createAndFetchSimpleApp(HASAppNameForBuild, HASAppNamespace, DisplayName, Description)
+
+			spiTokenBinding := &spiapi.SPIAccessTokenBinding{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "doesntmatter",
+					Namespace: HASAppNamespace,
+				},
+				Spec: spiapi.SPIAccessTokenBindingSpec{
+					RepoUrl: SampleRepoLink,
+				},
+				Status: spiapi.SPIAccessTokenBindingStatus{
+					SyncedObjectRef: spiapi.TargetObjectRef{
+						Name: "doesmatter",
+					},
+				},
+			}
+			Expect(k8sClient.Create(ctx, spiTokenBinding)).Should(Succeed())
+			Expect(k8sClient.Status().Update(ctx, spiTokenBinding)).Should(Succeed())
 
 			hasComp := &appstudiov1alpha1.Component{
 				TypeMeta: metav1.TypeMeta{
@@ -222,6 +240,20 @@ var _ = Describe("Component controller", func() {
 				k8sClient.Get(context.Background(), hasCompLookupKey, createdHasComp)
 				return createdHasComp.Status.Webhook != ""
 			}, timeout, interval).Should(BeTrue())
+
+			// Validate that the pipeline service account has been linked with the
+			// Github authentication credentials.
+
+			var pipelineSA corev1.ServiceAccount
+			secretFound := false
+			Expect(k8sClient.Get(context.Background(), types.NamespacedName{Name: "pipeline", Namespace: HASAppNamespace}, &pipelineSA)).Should(BeNil())
+			for _, secret := range pipelineSA.Secrets {
+				if secret.Name == "doesmatter" {
+					secretFound = true
+					break
+				}
+			}
+			Expect(secretFound).To(BeTrue())
 
 			// Delete the specified HASComp resource
 			deleteHASCompCR(hasCompLookupKey)

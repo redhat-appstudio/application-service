@@ -17,6 +17,7 @@ limitations under the License.
 package gitops
 
 import (
+	"context"
 	"encoding/json"
 	"strings"
 
@@ -43,6 +44,7 @@ const (
 
 func GenerateBuild(fs afero.Fs, outputFolder string, component appstudiov1alpha1.Component) error {
 	commonStoragePVC := GenerateCommonStorage(component, "appstudio")
+
 	triggerTemplate, err := GenerateTriggerTemplate(component)
 	if err != nil {
 		return err
@@ -335,4 +337,23 @@ func GenerateEventListener(component appstudiov1alpha1.Component, triggerTemplat
 		},
 	}
 	return eventListener
+}
+
+func UpdateServiceAccountIfSecretNotLinked(ctx context.Context, sourceSecretName string, serviceAccount *corev1.ServiceAccount) *corev1.ServiceAccount {
+	isSecretPresent := false
+	for _, credentialSecret := range serviceAccount.Secrets {
+		if credentialSecret.Name == sourceSecretName {
+			isSecretPresent = true
+			break
+		}
+	}
+
+	if !isSecretPresent {
+		serviceAccount.Secrets = append(serviceAccount.Secrets, corev1.ObjectReference{
+			Name: sourceSecretName,
+		})
+		return serviceAccount
+	}
+
+	return serviceAccount
 }

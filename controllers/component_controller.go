@@ -41,6 +41,8 @@ import (
 	data "github.com/devfile/library/pkg/devfile/parser/data"
 	"github.com/go-logr/logr"
 	routev1 "github.com/openshift/api/route/v1"
+	spiapi "github.com/redhat-appstudio/service-provider-integration-operator/api/v1beta1"
+
 	appstudiov1alpha1 "github.com/redhat-appstudio/application-service/api/v1alpha1"
 	"github.com/redhat-appstudio/application-service/gitops"
 	devfile "github.com/redhat-appstudio/application-service/pkg/devfile"
@@ -346,6 +348,36 @@ func (r *ComponentReconciler) runBuild(ctx context.Context, component *appstudio
 		}
 	}
 	log.Info(fmt.Sprintf("PV is now present : %v", workspaceStorage.Name))
+
+	// Fetch the SPI Secret if available
+	spiTokenBindings := &spiapi.SPIAccessTokenBindingList{}
+	err = r.List(ctx, spiTokenBindings, &client.ListOptions{Namespace: component.Namespace})
+	if err != nil {
+		log.Error(err, fmt.Sprintf("Unable to list SPI Bindings in namespace %s", component.Namespace))
+	}
+
+	var sourceSecretName string
+	for _, spiTokenBinding := range spiTokenBindings.Items {
+		if spiTokenBinding.Spec.RepoUrl == component.Spec.Source.GitSource.URL {
+			sourceSecretName = spiTokenBinding.Status.SyncedObjectRef.Name
+			log.Info(fmt.Sprintf("Found SPITokenBinding for %s : %s", component.Spec.Source.GitSource.URL, sourceSecretName))
+		}
+	}
+
+	svcAccount := corev1.ServiceAccount{}
+	err = r.Get(ctx, types.NamespacedName{Name: "pipeline", Namespace: component.Namespace}, &svcAccount)
+	if err != nil {
+		log.Error(err, fmt.Sprintf("OpenShift Pipelines-created Service account 'pipeline' is missing in namespace %s", component.Namespace))
+		return err
+	} else {
+		svcAccount.Secrets = gitops.UpdateServiceAccountIfSecretNotLinked(ctx, sourceSecretName, &svcAccount).Secrets
+		err = r.Client.Update(ctx, &svcAccount)
+		if err != nil {
+			log.Error(err, fmt.Sprintf("Unable to update pipeline service account %v", svcAccount))
+			return err
+		}
+		log.Info(fmt.Sprintf("Service Account updated %v", svcAccount))
+	}
 
 	triggerTemplate, err := gitops.GenerateTriggerTemplate(*component)
 	if err != nil {
