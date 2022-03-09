@@ -128,7 +128,7 @@ lint:
 	GOMAXPROCS=2 golangci-lint run --fix --verbose --timeout 300s
 
 test: manifests generate fmt vet envtest ## Run tests.
-	KUBEBUILDER_ASSETS="$(shell $(ENVTEST) use $(ENVTEST_K8S_VERSION) -p path)" go test ./... -coverprofile cover.out -v
+	BUILD_CREDENTIALS="$(shell pwd)/gitops/testdata/.dockerconfigjson" KUBEBUILDER_ASSETS="$(shell $(ENVTEST) use $(ENVTEST_K8S_VERSION) -p path)" go test ./... -coverprofile cover.out -v
 
 ##@ Build
 

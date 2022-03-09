@@ -30,7 +30,7 @@ import (
 	"github.com/spf13/afero"
 	tektonapi "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	triggersapi "github.com/tektoncd/triggers/pkg/apis/triggers/v1alpha1"
-	v1 "k8s.io/api/core/v1"
+	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -79,7 +79,7 @@ func DefaultUserWorkloadPullSecret(component appstudiov1alpha1.Component, path s
 	if err != nil {
 		log.Fatal(err)
 	}
-	secret := v1.Secret{
+	secret := corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      component.Name,
 			Namespace: component.Namespace,
