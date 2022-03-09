@@ -661,6 +661,47 @@ var _ = Describe("Component Detection Query controller", func() {
 			deleteCompDetQueryCR(hasCompDetQueryLookupKey)
 		})
 	})
+
+	Context("Create Component Detection Query with URL set to repo with invalid devfile", func() {
+		It("Should detect a devfile but return an error", func() {
+			ctx := context.Background()
+
+			queryName := HASCompDetQuery + "12"
+
+			hasCompDetectionQuery := &appstudiov1alpha1.ComponentDetectionQuery{
+				TypeMeta: metav1.TypeMeta{
+					APIVersion: "appstudio.redhat.com/v1alpha1",
+					Kind:       "ComponentDetectionQuery",
+				},
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      queryName,
+					Namespace: HASNamespace,
+				},
+				Spec: appstudiov1alpha1.ComponentDetectionQuerySpec{
+					GitSource: appstudiov1alpha1.GitSource{
+						URL: "https://github.com/johnmcollier/test-bad-devfile",
+					},
+				},
+			}
+
+			Expect(k8sClient.Create(ctx, hasCompDetectionQuery)).Should(Succeed())
+
+			// Look up the has app resource that was created.
+			// num(conditions) may still be < 1 on the first try, so retry until at least _some_ condition is set
+			hasCompDetQueryLookupKey := types.NamespacedName{Name: queryName, Namespace: HASNamespace}
+			createdHasCompDetectionQuery := &appstudiov1alpha1.ComponentDetectionQuery{}
+			Eventually(func() bool {
+				k8sClient.Get(context.Background(), hasCompDetQueryLookupKey, createdHasCompDetectionQuery)
+				return len(createdHasCompDetectionQuery.Status.Conditions) > 0
+			}, timeout, interval).Should(BeTrue())
+
+			// Make sure that the proper error condition is set
+			Expect(createdHasCompDetectionQuery.Status.Conditions[0].Status).Should(Equal(metav1.ConditionFalse))
+			Expect(createdHasCompDetectionQuery.Status.Conditions[0].Message).Should(ContainSubstring("ComponentDetectionQuery failed: failed to decode devfile json: json: cannot unmarshal string into Go value of type map[string]"))
+			// Delete the specified Detection Query resource
+			deleteCompDetQueryCR(hasCompDetQueryLookupKey)
+		})
+	})
 })
 
 // deleteCompDetQueryCR deletes the specified Comp Detection Query resource and verifies it was properly deleted

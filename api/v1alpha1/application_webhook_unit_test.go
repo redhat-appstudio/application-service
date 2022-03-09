@@ -117,3 +117,29 @@ func TestApplicationValidatingWebhook(t *testing.T) {
 		})
 	}
 }
+
+func TestApplicationDeleteValidatingWebhook(t *testing.T) {
+
+	tests := []struct {
+		name string
+		app  Application
+		err  string
+	}{
+		{
+			name: "ValidateDelete should return nil, it's unimplimented",
+			err:  "",
+			app:  Application{},
+		},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			err := test.app.ValidateDelete()
+
+			if test.err == "" {
+				assert.Nil(t, err)
+			} else {
+				assert.Contains(t, err.Error(), test.err)
+			}
+		})
+	}
+}
