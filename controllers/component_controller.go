@@ -23,7 +23,6 @@ import (
 	"os"
 	"path"
 	"reflect"
-	"time"
 
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -47,7 +46,6 @@ import (
 	devfile "github.com/redhat-appstudio/application-service/pkg/devfile"
 	"github.com/redhat-appstudio/application-service/pkg/spi"
 	util "github.com/redhat-appstudio/application-service/pkg/util"
-	tektonapi "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	triggersapi "github.com/tektoncd/triggers/pkg/apis/triggers/v1alpha1"
 
 	"github.com/spf13/afero"
@@ -480,17 +478,7 @@ func (r *ComponentReconciler) runBuild(ctx context.Context, component *appstudio
 
 	log.Info(fmt.Sprintf("Eventlistener created/updated %v", eventListener.Name))
 
-	initialBuildSpec := gitops.DetermineBuildExecution(*component, gitops.GetParamsForComponentInitialBuild(*component), getInitialBuildWorkspaceSubpath())
-
-	initialBuild := tektonapi.PipelineRun{
-		ObjectMeta: v1.ObjectMeta{
-			GenerateName: component.Name + "-",
-			Namespace:    component.Namespace,
-			Labels:       gitops.GetBuildCommonLabelsForComponent(component),
-		},
-		Spec: initialBuildSpec,
-	}
-
+	initialBuild := gitops.GenerateInitialBuildPipelineRun(*component)
 	err = controllerutil.SetOwnerReference(component, &initialBuild, r.Scheme)
 	if err != nil {
 		log.Error(err, fmt.Sprintf("Unable to set owner reference for %v", initialBuild))
@@ -526,10 +514,6 @@ func (r *ComponentReconciler) runBuild(ctx context.Context, component *appstudio
 	}
 
 	return err
-}
-
-func getInitialBuildWorkspaceSubpath() string {
-	return "initialbuild-" + time.Now().Format("2006-Feb-02_15-04-05")
 }
 
 // getGitProvider takes a Git URL of the format https://github.com/foo/bar and returns

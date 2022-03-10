@@ -19,6 +19,7 @@ package gitops
 import (
 	"encoding/json"
 	"strings"
+	"time"
 
 	devfilev1alpha2 "github.com/devfile/api/v2/pkg/apis/workspaces/v1alpha2"
 	devfilecommon "github.com/devfile/library/pkg/devfile/parser/data/v2/common"
@@ -74,6 +75,24 @@ func GenerateBuild(fs afero.Fs, outputFolder string, component appstudiov1alpha1
 	return nil
 }
 
+// GenerateInitialBuildPipelineRun generates pipeline run for initial build of the component.
+func GenerateInitialBuildPipelineRun(component appstudiov1alpha1.Component) tektonapi.PipelineRun {
+	initialBuildSpec := DetermineBuildExecution(component, getParamsForComponentBuild(component, true), getInitialBuildWorkspaceSubpath())
+
+	return tektonapi.PipelineRun{
+		ObjectMeta: metav1.ObjectMeta{
+			GenerateName: component.Name + "-",
+			Namespace:    component.Namespace,
+			Labels:       getBuildCommonLabelsForComponent(&component),
+		},
+		Spec: initialBuildSpec,
+	}
+}
+
+func getInitialBuildWorkspaceSubpath() string {
+	return "initialbuild-" + time.Now().Format("2006-Feb-02_15-04-05")
+}
+
 // DetermineBuildExecution returns the pipelineRun spec that would be used
 // in webhooks-triggered pipelineRuns as well as user-triggered PipelineRuns
 func DetermineBuildExecution(component appstudiov1alpha1.Component, params []tektonapi.Param, workspaceSubPath string) tektonapi.PipelineRunSpec {
@@ -107,7 +126,7 @@ func DetermineBuildExecution(component appstudiov1alpha1.Component, params []tek
 // determineBuildPipeline should detect build pipeline to use for the component and return its name.
 // If it fails to autodetect right pipeline, noop pipeline will be returned.
 // If a repository consists of two parts (e.g. frontend and backend), it should be mapped to two components (see context field in CR).
-// Available build pipeleine are located here: https://github.com/redhat-appstudio/build-definitions/tree/main/pipelines
+// Available build pipeleines are located here: https://github.com/redhat-appstudio/build-definitions/tree/main/pipelines
 func determineBuildPipeline(component appstudiov1alpha1.Component) string {
 	// It is possible to skip error checks here because the model is propogated by component controller
 	componentDevfileData, err := devfile.ParseDevfileModel(component.Status.Devfile)
@@ -141,8 +160,8 @@ func determineBuildPipeline(component appstudiov1alpha1.Component) string {
 		},
 	}
 	devfileComponents, _ := componentDevfileData.GetComponents(filterOptions)
-	for _, component := range devfileComponents {
-		if component.Image != nil && component.Image.Dockerfile != nil {
+	for _, devfileComponent := range devfileComponents {
+		if devfileComponent.Image != nil && devfileComponent.Image.Dockerfile != nil {
 			return "docker-build"
 		}
 	}
@@ -175,12 +194,18 @@ func normalizeOutputImageURL(outputImage string) string {
 	return outputImage
 }
 
-// GetParamsForComponentInitialBuild would return the 'input' parameters for the initial PipelineRun
-// that would build an image from source right after a Component is imported.
-func GetParamsForComponentInitialBuild(component appstudiov1alpha1.Component) []tektonapi.Param {
+// getParamsForComponentBuild would return the 'input' parameters for the PipelineRun
+// that would build an image from source of the Component.
+// The key difference between webhook (regular) triggered PipelineRuns and user-triggered (initial) PipelineRuns
+// is that the git revision appended to the output image tag in case of webhook build.
+func getParamsForComponentBuild(component appstudiov1alpha1.Component, isInitialBuild bool) []tektonapi.Param {
 	sourceCode := component.Spec.Source.GitSource.URL
 	outputImage := component.Spec.Build.ContainerImage
+	if !isInitialBuild {
+		outputImage = normalizeOutputImageURL(component.Spec.Build.ContainerImage)
+	}
 
+	// Default required parameters
 	params := []tektonapi.Param{
 		{
 			Name: "git-url",
@@ -198,37 +223,33 @@ func GetParamsForComponentInitialBuild(component appstudiov1alpha1.Component) []
 		},
 	}
 
-	return params
-}
+	// Analyze component model for additional parameters
+	if componentDevfileData, err := devfile.ParseDevfileModel(component.Status.Devfile); err == nil {
 
-// getParamsForComponentWebhookBuilds returns the 'input' paramters for the webhook-triggered
-// PipelineRuns. The key difference between webhook triggered PipelineRuns and user-triggered
-// PipelineRuns would be that you'd have the git revision appended to the output image tag
-func getParamsForComponentWebhookBuilds(component appstudiov1alpha1.Component) []tektonapi.Param {
-	sourceCode := component.Spec.Source.GitSource.URL
-	outputImage := normalizeOutputImageURL(component.Spec.Build.ContainerImage)
+		// Check for dockerfile in outerloop-build devfile component
+		if devfileComponents, err := componentDevfileData.GetComponents(devfilecommon.DevfileOptions{}); err == nil {
+			for _, devfileComponent := range devfileComponents {
+				if devfileComponent.Name == "outerloop-build" {
+					if devfileComponent.Image != nil && devfileComponent.Image.Dockerfile != nil && devfileComponent.Image.Dockerfile.Uri != "" {
+						params = append(params, tektonapi.Param{
+							Name: "dockerfile",
+							Value: tektonapi.ArrayOrString{
+								Type:      tektonapi.ParamTypeString,
+								StringVal: devfileComponent.Image.Dockerfile.Uri,
+							},
+						})
+					}
+					break
+				}
+			}
+		}
 
-	params := []tektonapi.Param{
-		{
-			Name: "git-url",
-			Value: tektonapi.ArrayOrString{
-				Type:      tektonapi.ParamTypeString,
-				StringVal: sourceCode,
-			},
-		},
-		{
-			Name: "output-image",
-			Value: tektonapi.ArrayOrString{
-				Type:      tektonapi.ParamTypeString,
-				StringVal: outputImage,
-			},
-		},
 	}
 
 	return params
 }
 
-func GetBuildCommonLabelsForComponent(component *appstudiov1alpha1.Component) map[string]string {
+func getBuildCommonLabelsForComponent(component *appstudiov1alpha1.Component) map[string]string {
 	labels := map[string]string{
 		"pipelines.appstudio.openshift.io/type":    "build",
 		"build.appstudio.openshift.io/build":       "true",
@@ -253,7 +274,7 @@ func GenerateCommonStorage(component appstudiov1alpha1.Component, name string) c
 		ObjectMeta: metav1.ObjectMeta{
 			Name:        name,
 			Namespace:   component.Namespace,
-			Annotations: GetBuildCommonLabelsForComponent(&component),
+			Annotations: getBuildCommonLabelsForComponent(&component),
 		},
 		Spec: corev1.PersistentVolumeClaimSpec{
 			AccessModes: []corev1.PersistentVolumeAccessMode{
@@ -283,7 +304,7 @@ func GenerateBuildWebhookRoute(component appstudiov1alpha1.Component) routev1.Ro
 		ObjectMeta: metav1.ObjectMeta{
 			Name:        "el" + component.Name,
 			Namespace:   component.Namespace,
-			Annotations: GetBuildCommonLabelsForComponent(&component),
+			Annotations: getBuildCommonLabelsForComponent(&component),
 		},
 		Spec: routev1.RouteSpec{
 			Path: "/",
@@ -303,12 +324,12 @@ func GenerateBuildWebhookRoute(component appstudiov1alpha1.Component) routev1.Ro
 // which defines how a webhook-based trigger event would be handled -
 // In this case, a PipelineRun to build an image would be created.
 func GenerateTriggerTemplate(component appstudiov1alpha1.Component) (*triggersapi.TriggerTemplate, error) {
-	webhookBasedBuildTemplate := DetermineBuildExecution(component, getParamsForComponentWebhookBuilds(component), "$(tt.params.git-revision)")
+	webhookBasedBuildTemplate := DetermineBuildExecution(component, getParamsForComponentBuild(component, false), "$(tt.params.git-revision)")
 	resoureTemplatePipelineRun := tektonapi.PipelineRun{
 		ObjectMeta: metav1.ObjectMeta{
 			GenerateName: component.Name + "-",
 			Namespace:    component.Namespace,
-			Annotations:  GetBuildCommonLabelsForComponent(&component),
+			Annotations:  getBuildCommonLabelsForComponent(&component),
 		},
 		TypeMeta: metav1.TypeMeta{
 			Kind:       "PipelineRun",
@@ -358,7 +379,7 @@ func GenerateEventListener(component appstudiov1alpha1.Component, triggerTemplat
 		ObjectMeta: metav1.ObjectMeta{
 			Name:        component.Name,
 			Namespace:   component.Namespace,
-			Annotations: GetBuildCommonLabelsForComponent(&component),
+			Annotations: getBuildCommonLabelsForComponent(&component),
 		},
 		Spec: triggersapi.EventListenerSpec{
 			ServiceAccountName: "pipeline",

@@ -29,6 +29,47 @@ import (
 	"sigs.k8s.io/yaml"
 )
 
+func devfileToString(devfile data.DevfileData) string {
+	yamlDevfile, err := yaml.Marshal(devfile)
+	if err != nil {
+		panic("Invalid test devfile")
+	}
+	return string(yamlDevfile)
+}
+
+func getSampleDevfileComponents() []v1alpha2.Component {
+	return []v1alpha2.Component{
+		{
+			Name: "outerloop-deploy",
+			ComponentUnion: v1alpha2.ComponentUnion{
+				Kubernetes: &v1alpha2.KubernetesComponent{
+					K8sLikeComponent: v1alpha2.K8sLikeComponent{
+						K8sLikeComponentLocation: v1alpha2.K8sLikeComponentLocation{
+							Uri: "test-uri",
+						},
+					},
+				},
+			},
+		},
+		{
+			Name: "outerloop-build",
+			ComponentUnion: v1alpha2.ComponentUnion{
+				Image: &v1alpha2.ImageComponent{
+					Image: v1alpha2.Image{
+						ImageUnion: v1alpha2.ImageUnion{
+							Dockerfile: &v1alpha2.DockerfileImage{
+								DockerfileSrc: v1alpha2.DockerfileSrc{
+									Uri: "dockerfile-uri",
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+	}
+}
+
 func TestNormalizeOutputImageURL(t *testing.T) {
 	type args struct {
 		outputImage string
@@ -165,48 +206,12 @@ func TestDetermineBuildPipeline(t *testing.T) {
 		})
 		return devfileData
 	}
-	devfileToString := func(devfile data.DevfileData) string {
-		yamlDevfile, err := yaml.Marshal(devfile)
-		if err != nil {
-			panic("Invalid test devfile")
-		}
-		return string(yamlDevfile)
-	}
 	createDevfileStatusModelWithBuildInfo := func(language string, projectType string) string {
 		return devfileToString(createDevfileWithBuildInfo(language, projectType))
 	}
 	createDevfileWithoutBuildInfoButWithDockerfileComponent := func() string {
 		devfileData := createDevfileWithBuildInfo("unknown", "")
-		devfileData.AddComponents([]v1alpha2.Component{
-			{
-				Name: "outerloop-deploy",
-				ComponentUnion: v1alpha2.ComponentUnion{
-					Kubernetes: &v1alpha2.KubernetesComponent{
-						K8sLikeComponent: v1alpha2.K8sLikeComponent{
-							K8sLikeComponentLocation: v1alpha2.K8sLikeComponentLocation{
-								Uri: "test-uri",
-							},
-						},
-					},
-				},
-			},
-			{
-				Name: "outerloop-build",
-				ComponentUnion: v1alpha2.ComponentUnion{
-					Image: &v1alpha2.ImageComponent{
-						Image: v1alpha2.Image{
-							ImageUnion: v1alpha2.ImageUnion{
-								Dockerfile: &v1alpha2.DockerfileImage{
-									DockerfileSrc: v1alpha2.DockerfileSrc{
-										Uri: "dockerfile-uri",
-									},
-								},
-							},
-						},
-					},
-				},
-			},
-		})
+		devfileData.AddComponents(getSampleDevfileComponents())
 		return devfileToString(devfileData)
 	}
 
@@ -271,34 +276,39 @@ func TestDetermineBuildPipeline(t *testing.T) {
 	}
 }
 
-func TestGetParamsForComponentInitialBuild(t *testing.T) {
-	type args struct {
-		component appstudiov1alpha1.Component
+func TestGetParamsForComponentBuild(t *testing.T) {
+	getDevfileWithOuterloopBuildDockerfile := func() string {
+		devfileVersion := string(data.APISchemaVersion220)
+		devfileData, _ := data.NewDevfileData(devfileVersion)
+		devfileData.SetSchemaVersion(devfileVersion)
+		devfileData.AddComponents(getSampleDevfileComponents())
+		return devfileToString(devfileData)
 	}
+
 	tests := []struct {
-		name string
-		args args
-		want []tektonapi.Param
+		name           string
+		IsInitialBuild bool
+		component      appstudiov1alpha1.Component
+		want           []tektonapi.Param
 	}{
 		{
-			name: "use the image as is",
-			args: args{
-				component: appstudiov1alpha1.Component{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      "testcomponent",
-						Namespace: "kcpworkspacename",
-					},
-					Spec: appstudiov1alpha1.ComponentSpec{
-						Source: appstudiov1alpha1.ComponentSource{
-							ComponentSourceUnion: appstudiov1alpha1.ComponentSourceUnion{
-								GitSource: &appstudiov1alpha1.GitSource{
-									URL: "https://a/b/c",
-								},
+			name:           "use the image as is",
+			IsInitialBuild: true,
+			component: appstudiov1alpha1.Component{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "testcomponent",
+					Namespace: "kcpworkspacename",
+				},
+				Spec: appstudiov1alpha1.ComponentSpec{
+					Source: appstudiov1alpha1.ComponentSource{
+						ComponentSourceUnion: appstudiov1alpha1.ComponentSourceUnion{
+							GitSource: &appstudiov1alpha1.GitSource{
+								URL: "https://a/b/c",
 							},
 						},
-						Build: appstudiov1alpha1.Build{
-							ContainerImage: "whatever-is-set",
-						},
+					},
+					Build: appstudiov1alpha1.Build{
+						ContainerImage: "whatever-is-set",
 					},
 				},
 			},
@@ -319,44 +329,25 @@ func TestGetParamsForComponentInitialBuild(t *testing.T) {
 				},
 			},
 		},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			if got := GetParamsForComponentInitialBuild(tt.args.component); !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("GetParamsForComponentInitialBuild() = %v, want %v", got, tt.want)
-			}
-		})
-	}
-}
 
-func TestGetParamsForComponentWebhookBuilds(t *testing.T) {
-	type args struct {
-		component appstudiov1alpha1.Component
-	}
-	tests := []struct {
-		name string
-		args args
-		want []tektonapi.Param
-	}{
 		{
-			name: "use the updated image tag",
-			args: args{
-				component: appstudiov1alpha1.Component{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      "testcomponent",
-						Namespace: "kcpworkspacename",
-					},
-					Spec: appstudiov1alpha1.ComponentSpec{
-						Source: appstudiov1alpha1.ComponentSource{
-							ComponentSourceUnion: appstudiov1alpha1.ComponentSourceUnion{
-								GitSource: &appstudiov1alpha1.GitSource{
-									URL: "https://a/b/c",
-								},
+			name:           "use the updated image tag",
+			IsInitialBuild: false,
+			component: appstudiov1alpha1.Component{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "testcomponent",
+					Namespace: "kcpworkspacename",
+				},
+				Spec: appstudiov1alpha1.ComponentSpec{
+					Source: appstudiov1alpha1.ComponentSource{
+						ComponentSourceUnion: appstudiov1alpha1.ComponentSourceUnion{
+							GitSource: &appstudiov1alpha1.GitSource{
+								URL: "https://a/b/c",
 							},
 						},
-						Build: appstudiov1alpha1.Build{
-							ContainerImage: "docker.io/foo/bar:tag",
-						},
+					},
+					Build: appstudiov1alpha1.Build{
+						ContainerImage: "docker.io/foo/bar:tag",
 					},
 				},
 			},
@@ -377,11 +368,61 @@ func TestGetParamsForComponentWebhookBuilds(t *testing.T) {
 				},
 			},
 		},
+
+		{
+			name:           "set dockerfile path",
+			IsInitialBuild: false,
+			component: appstudiov1alpha1.Component{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "testcomponent",
+					Namespace: "kcpworkspacename",
+				},
+				Spec: appstudiov1alpha1.ComponentSpec{
+					Source: appstudiov1alpha1.ComponentSource{
+						ComponentSourceUnion: appstudiov1alpha1.ComponentSourceUnion{
+							GitSource: &appstudiov1alpha1.GitSource{
+								URL: "https://a/b/c",
+							},
+						},
+					},
+					Build: appstudiov1alpha1.Build{
+						ContainerImage: "docker.io/foo/bar:tag",
+					},
+				},
+				Status: appstudiov1alpha1.ComponentStatus{
+					Devfile: getDevfileWithOuterloopBuildDockerfile(),
+				},
+			},
+			want: []tektonapi.Param{
+				{
+					Name: "git-url",
+					Value: tektonapi.ArrayOrString{
+						Type:      tektonapi.ParamTypeString,
+						StringVal: "https://a/b/c",
+					},
+				},
+				{
+					Name: "output-image",
+					Value: tektonapi.ArrayOrString{
+						Type:      tektonapi.ParamTypeString,
+						StringVal: "docker.io/foo/bar:tag-$(tt.params.git-revision)",
+					},
+				},
+				{
+					Name: "dockerfile",
+					Value: tektonapi.ArrayOrString{
+						Type:      tektonapi.ParamTypeString,
+						StringVal: "dockerfile-uri",
+					},
+				},
+			},
+		},
 	}
+
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := getParamsForComponentWebhookBuilds(tt.args.component); !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("getParamsForComponentWebhookBuilds() = %v, want %v", got, tt.want)
+			if got := getParamsForComponentBuild(tt.component, tt.IsInitialBuild); !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("GetParamsForComponentBuild() = %v, want %v", got, tt.want)
 			}
 		})
 	}
