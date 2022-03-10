@@ -78,6 +78,40 @@ func TestUpdateApplicationDevfileModel(t *testing.T) {
 				},
 			},
 		},
+		{
+			name: "Git source in Component is nil",
+			projects: []devfileAPIV1.Project{
+				{
+					Name: "present",
+				},
+			},
+			component: appstudiov1alpha1.Component{
+				Spec: appstudiov1alpha1.ComponentSpec{
+					ComponentName: "new",
+					Source: appstudiov1alpha1.ComponentSource{
+						ComponentSourceUnion: appstudiov1alpha1.ComponentSourceUnion{
+							GitSource: nil,
+						},
+					},
+				},
+			},
+			wantErr: true,
+		},
+		{
+			name:     "Devfile Projects list is nil",
+			projects: nil,
+			component: appstudiov1alpha1.Component{
+				Spec: appstudiov1alpha1.ComponentSpec{
+					ComponentName: "new",
+					Source: appstudiov1alpha1.ComponentSource{
+						ComponentSourceUnion: appstudiov1alpha1.ComponentSourceUnion{
+							GitSource: nil,
+						},
+					},
+				},
+			},
+			wantErr: true,
+		},
 	}
 
 	for _, tt := range tests {
@@ -301,6 +335,99 @@ func TestUpdateComponentDevfileModel(t *testing.T) {
 				},
 			},
 			updateExpected: true,
+		},
+		{
+			name: "No container component",
+			components: []devfileAPIV1.Component{
+				{
+					Name: "component1",
+					ComponentUnion: devfileAPIV1.ComponentUnion{
+						Kubernetes: &devfileAPIV1.KubernetesComponent{},
+					},
+				},
+			},
+			component: appstudiov1alpha1.Component{
+				Spec: appstudiov1alpha1.ComponentSpec{
+					ComponentName: "componentName",
+				},
+			},
+		},
+		{
+			name: "Component with envFrom component - should error out as it's not supported right now",
+			components: []devfileAPIV1.Component{
+				{
+					Name: "component1",
+					ComponentUnion: devfileAPIV1.ComponentUnion{
+						Container: &devfileAPIV1.ContainerComponent{
+							Container: devfileAPIV1.Container{
+								Env: []devfileAPIV1.EnvVar{
+									{
+										Name:  "FOO",
+										Value: "foo",
+									},
+								},
+							},
+							Endpoints: []devfileAPIV1.Endpoint{
+								{
+									Name:       "endpoint1",
+									TargetPort: 1001,
+								},
+								{
+									Name:       "endpoint2",
+									TargetPort: 1002,
+								},
+							},
+						},
+					},
+				},
+			},
+			component: appstudiov1alpha1.Component{
+				Spec: appstudiov1alpha1.ComponentSpec{
+					ComponentName: "component1",
+					Env: []corev1.EnvVar{
+						{
+							Name:  "FOO",
+							Value: "foo",
+						},
+						{
+							ValueFrom: &corev1.EnvVarSource{
+								SecretKeyRef: &corev1.SecretKeySelector{
+									Key: "test",
+								},
+							},
+						},
+					},
+				},
+			},
+			wantErr: true,
+		},
+		{
+			name: "Component with invalid component type - should error out",
+			components: []devfileAPIV1.Component{
+				{
+					Name:           "component1",
+					ComponentUnion: devfileAPIV1.ComponentUnion{},
+				},
+			},
+			component: appstudiov1alpha1.Component{
+				Spec: appstudiov1alpha1.ComponentSpec{
+					ComponentName: "component1",
+					Env: []corev1.EnvVar{
+						{
+							Name:  "FOO",
+							Value: "foo",
+						},
+						{
+							ValueFrom: &corev1.EnvVarSource{
+								SecretKeyRef: &corev1.SecretKeySelector{
+									Key: "test",
+								},
+							},
+						},
+					},
+				},
+			},
+			wantErr: true,
 		},
 	}
 

@@ -56,10 +56,7 @@ func IsExist(path string) (bool, error) {
 func ConvertGitHubURL(URL string) (string, error) {
 	// If the URL ends with .git, remove it
 	// The regex will only instances of '.git' if it is at the end of the given string
-	reg, err := regexp.Compile(".git$")
-	if err != nil {
-		return "", err
-	}
+	reg := regexp.MustCompile(".git$")
 	URL = reg.ReplaceAllString(URL, "")
 
 	url, err := url.Parse(URL)
