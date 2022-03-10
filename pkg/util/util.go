@@ -27,6 +27,7 @@ import (
 	"strings"
 
 	"github.com/go-git/go-git/v5"
+	transportHttp "github.com/go-git/go-git/v5/plumbing/transport/http"
 	"github.com/redhat-appstudio/application-service/pkg/devfile"
 )
 
@@ -123,7 +124,7 @@ func CurlEndpoint(endpoint string) ([]byte, error) {
 }
 
 // CloneRepo clones the repoURL to clonePath
-func CloneRepo(clonePath, repoURL string) error {
+func CloneRepo(clonePath, repoURL string, token string) error {
 	// Check if the clone path is empty, if not delete it
 	isDirExist, err := IsExist(clonePath)
 	if err != nil {
@@ -134,10 +135,20 @@ func CloneRepo(clonePath, repoURL string) error {
 		os.RemoveAll(clonePath)
 	}
 
-	// Clone the repo
-	_, err = git.PlainClone(clonePath, false, &git.CloneOptions{
+	// Set up the Clone options
+	cloneOpts := &git.CloneOptions{
 		URL: repoURL,
-	})
+	}
+
+	// If a token was passed in, configure token auth for the git client
+	if token != "" {
+		cloneOpts.Auth = &transportHttp.BasicAuth{
+			Username: "token",
+			Password: token,
+		}
+	}
+	// Clone the repo
+	_, err = git.PlainClone(clonePath, false, cloneOpts)
 	if err != nil {
 		return err
 	}

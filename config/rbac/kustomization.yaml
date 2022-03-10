@@ -28,3 +28,6 @@ resources:
 
 ## Tekton Builds
 - role_build.yaml
+
+## SPI Roles
+- role_spi.yaml

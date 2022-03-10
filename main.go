@@ -43,6 +43,7 @@ import (
 	"github.com/redhat-appstudio/application-service/controllers"
 	"github.com/redhat-appstudio/application-service/gitops"
 	"github.com/redhat-appstudio/application-service/gitops/ioutils"
+	"github.com/redhat-appstudio/application-service/pkg/spi"
 	//+kubebuilder:scaffold:imports
 )
 
@@ -142,14 +143,16 @@ func main() {
 		AppFS:           ioutils.NewFilesystem(),
 		GitToken:        ghToken,
 		ImageRepository: imageRepository,
+		SPIClient:       spi.SPIClient{},
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "Component")
 		os.Exit(1)
 	}
 	if err = (&controllers.ComponentDetectionQueryReconciler{
-		Client: mgr.GetClient(),
-		Scheme: mgr.GetScheme(),
-		Log:    ctrl.Log.WithName("controllers").WithName("ComponentDetectionQuery"),
+		Client:    mgr.GetClient(),
+		Scheme:    mgr.GetScheme(),
+		Log:       ctrl.Log.WithName("controllers").WithName("ComponentDetectionQuery"),
+		SPIClient: spi.SPIClient{},
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "ComponentDetectionQuery")
 		os.Exit(1)
