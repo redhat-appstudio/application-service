@@ -128,10 +128,6 @@ func (r *ComponentReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 			var devfileBytes []byte
 			var gitURL string
 			if source.GitSource.DevfileURL == "" {
-
-				// append context to the path if present
-				// context is usually set when the git repo is a multi-component repo (example - contains both frontend & backend)
-
 				if gitToken == "" {
 					gitURL, err = util.ConvertGitHubURL(source.GitSource.URL)
 					if err != nil {
@@ -140,6 +136,8 @@ func (r *ComponentReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 						return ctrl.Result{}, nil
 					}
 
+					// append context to the path if present
+					// context is usually set when the git repo is a multi-component repo (example - contains both frontend & backend)
 					var devfileDir string
 					if context == "" {
 						devfileDir = gitURL
