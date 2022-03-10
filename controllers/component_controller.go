@@ -361,6 +361,26 @@ func (r *ComponentReconciler) runBuild(ctx context.Context, component *appstudio
 		if spiTokenBinding.Spec.RepoUrl == component.Spec.Source.GitSource.URL {
 			sourceSecretName = spiTokenBinding.Status.SyncedObjectRef.Name
 			log.Info(fmt.Sprintf("Found SPITokenBinding for %s : %s", component.Spec.Source.GitSource.URL, sourceSecretName))
+
+			// Make the Secret ready for consumption by Tekton.
+			gitSecret := corev1.Secret{}
+			err = r.Get(ctx, types.NamespacedName{Name: sourceSecretName, Namespace: component.Namespace}, &gitSecret)
+			if err != nil {
+				log.Error(err, fmt.Sprintf("Secret %s is missing", sourceSecretName))
+				return err
+			} else {
+				if gitSecret.Annotations == nil {
+					gitSecret.Annotations = map[string]string{}
+				}
+				// TODO: Support generic Git providers.
+				gitSecret.Annotations["tekton.dev/git-0"] = "https://github.com"
+				err = r.Update(ctx, &gitSecret)
+				if err != nil {
+					log.Error(err, fmt.Sprintf("Secret %s  update failed", sourceSecretName))
+					return err
+				}
+			}
+
 		}
 	}
 

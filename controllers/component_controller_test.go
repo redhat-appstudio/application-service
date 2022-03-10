@@ -98,6 +98,14 @@ var _ = Describe("Component controller", func() {
 			Expect(k8sClient.Create(ctx, spiTokenBinding)).Should(Succeed())
 			Expect(k8sClient.Status().Update(ctx, spiTokenBinding)).Should(Succeed())
 
+			spiSecret := corev1.Secret{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "doesmatter",
+					Namespace: HASAppNamespace,
+				},
+			}
+			Expect(k8sClient.Create(ctx, &spiSecret)).Should(Succeed())
+
 			hasComp := &appstudiov1alpha1.Component{
 				TypeMeta: metav1.TypeMeta{
 					APIVersion: "appstudio.redhat.com/v1alpha1",
