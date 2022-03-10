@@ -362,7 +362,7 @@ func (r *ComponentReconciler) runBuild(ctx context.Context, component *appstudio
 				gitSecret.Annotations = map[string]string{}
 			}
 
-			gitHost, _ := getGitProvider(ctx, component.Spec.Source.GitSource.URL)
+			gitHost, _ := getGitProvider(component.Spec.Source.GitSource.URL)
 
 			// doesn't matter if it was present, we will always override.
 			gitSecret.Annotations["tekton.dev/git-0"] = gitHost
@@ -502,13 +502,13 @@ func getInitialBuildWorkspaceSubpath() string {
 
 // getGitProvider takes a Git URL of the format https://github.com/foo/bar and returns
 // https://github.com
-func getGitProvider(ctx context.Context, gitURL string) (string, error) {
+func getGitProvider(gitURL string) (string, error) {
 	u, err := url.Parse(gitURL)
-	if err != nil {
-		return "", fmt.Errorf("failed to parse string into a URL: %v", err)
-	}
-	if u.Scheme == "" {
-		return u.Host, nil
+
+	// We really need the format of the string to be correct.
+	// We'll not do any autocorrection.
+	if err != nil || u.Scheme == "" {
+		return "", fmt.Errorf("failed to parse string into a URL: %v or scheme is empty", err)
 	}
 	return u.Scheme + "://" + u.Host, nil
 }
@@ -521,7 +521,6 @@ func updateServiceAccountIfSecretNotLinked(ctx context.Context, sourceSecretName
 			break
 		}
 	}
-
 	if !isSecretPresent {
 		serviceAccount.Secrets = append(serviceAccount.Secrets, corev1.ObjectReference{
 			Name: sourceSecretName,

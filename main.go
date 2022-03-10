@@ -101,7 +101,6 @@ func main() {
 		setupLog.Error(err, "unable to add triggers api to the scheme")
 		os.Exit(1)
 	}
-
 	// Retrieve the GitHub Auth Token to use, error out if not found
 	ghToken := os.Getenv("GITHUB_AUTH_TOKEN")
 	if ghToken == "" {

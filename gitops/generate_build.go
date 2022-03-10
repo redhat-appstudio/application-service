@@ -43,7 +43,6 @@ const (
 
 func GenerateBuild(fs afero.Fs, outputFolder string, component appstudiov1alpha1.Component) error {
 	commonStoragePVC := GenerateCommonStorage(component, "appstudio")
-
 	triggerTemplate, err := GenerateTriggerTemplate(component)
 	if err != nil {
 		return err

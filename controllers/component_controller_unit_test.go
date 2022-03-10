@@ -368,8 +368,8 @@ func TestGetGitProvider(t *testing.T) {
 				ctx:    context.Background(),
 				gitURL: "git@github.com:redhat-appstudio/application-service.git",
 			},
-			wantErr:    false,
-			wantString: "github.com",
+			wantErr:    true, //unsupported
+			wantString: "",
 		},
 		{
 			name: "github https",
@@ -389,11 +389,22 @@ func TestGetGitProvider(t *testing.T) {
 			wantErr:    false,
 			wantString: "https://bitbucket.org",
 		},
+		{
+			name: "no scheme",
+			args: args{
+				ctx:    context.Background(),
+				gitURL: "github.com/redhat-appstudio/application-service.git",
+			},
+			wantErr:    true, //fully qualified URL is a must
+			wantString: "",
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got, err := getGitProvider(tt.args.ctx, tt.args.gitURL); got != tt.wantString && (err != nil) == tt.wantErr {
-				t.Errorf("UpdateServiceAccountIfSecretNotLinked() = %v, want %v, = %v , want %v", err, tt.wantErr, got, tt.wantString)
+			if got, err := getGitProvider(tt.args.gitURL); (got != tt.wantString) ||
+				(tt.wantErr == true && err == nil) ||
+				(tt.wantErr == false && err != nil) {
+				t.Errorf("UpdateServiceAccountIfSecretNotLinked() Got Error: = %v, want %v ; Got String:  = %v , want %v", err, tt.wantErr, got, tt.wantString)
 			}
 		})
 	}
