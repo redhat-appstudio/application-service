@@ -400,6 +400,11 @@ func (in *ComponentSourceUnion) DeepCopy() *ComponentSourceUnion {
 func (in *ComponentSpec) DeepCopyInto(out *ComponentSpec) {
 	*out = *in
 	in.Source.DeepCopyInto(&out.Source)
+	if in.ReleaseStrategies != nil {
+		in, out := &in.ReleaseStrategies, &out.ReleaseStrategies
+		*out = make([]string, len(*in))
+		copy(*out, *in)
+	}
 	in.Resources.DeepCopyInto(&out.Resources)
 	if in.Env != nil {
 		in, out := &in.Env, &out.Env

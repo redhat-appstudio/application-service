@@ -217,6 +217,12 @@ spec:
                             - name
                             type: object
                           type: array
+                        releaseStrategies:
+                          description: List of references to ReleaseStrategies to
+                            use when releasing the component
+                          items:
+                            type: string
+                          type: array
                         replicas:
                           description: The number of replicas to deploy the component
                             with
