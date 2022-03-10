@@ -300,6 +300,48 @@ var _ = Describe("Application controller", func() {
 		})
 	})
 
+	Context("Application CR with gitops repo creation failure", func() {
+		It("Should update successfully with updated description", func() {
+			ctx := context.Background()
+
+			applicationName := HASAppName + "5"
+
+			hasApp := &appstudiov1alpha1.Application{
+				TypeMeta: metav1.TypeMeta{
+					APIVersion: "appstudio.redhat.com/v1alpha1",
+					Kind:       "Application",
+				},
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      applicationName,
+					Namespace: HASAppNamespace,
+				},
+				Spec: appstudiov1alpha1.ApplicationSpec{
+					DisplayName: "test-error-response",
+					Description: Description,
+					AppModelRepository: appstudiov1alpha1.ApplicationGitRepository{
+						URL: "https://github.com/testorg/petclinic-app",
+					},
+				},
+			}
+
+			Expect(k8sClient.Create(ctx, hasApp)).Should(Succeed())
+
+			// Look up the has app resource that was created.
+			// num(conditions) may still be < 1 on the first try, so retry until at least _some_ condition is set
+			hasAppLookupKey := types.NamespacedName{Name: applicationName, Namespace: HASAppNamespace}
+			fetchedHasApp := &appstudiov1alpha1.Application{}
+			Eventually(func() bool {
+				k8sClient.Get(context.Background(), hasAppLookupKey, fetchedHasApp)
+				return len(fetchedHasApp.Status.Conditions) > 0
+			}, timeout, interval).Should(BeTrue())
+
+			Expect(fetchedHasApp.Status.Conditions[0].Status).Should(Equal(metav1.ConditionFalse))
+
+			// Delete the specified resource
+			deleteHASAppCR(hasAppLookupKey)
+		})
+	})
+
 })
 
 // deleteHASAppCR deletes the specified hasApp resource and verifies it was properly deleted

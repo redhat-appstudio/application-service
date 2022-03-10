@@ -241,3 +241,29 @@ func TestComponentUpdateValidatingWebhook(t *testing.T) {
 		})
 	}
 }
+
+func TestComponentDeleteValidatingWebhook(t *testing.T) {
+
+	tests := []struct {
+		name    string
+		newComp Component
+		err     string
+	}{
+		{
+			name:    "ValidateDelete should return nil, it's unimplimented",
+			err:     "",
+			newComp: Component{},
+		},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			err := test.newComp.ValidateDelete()
+
+			if test.err == "" {
+				assert.Nil(t, err)
+			} else {
+				assert.Contains(t, err.Error(), test.err)
+			}
+		})
+	}
+}
