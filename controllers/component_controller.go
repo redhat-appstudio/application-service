@@ -380,13 +380,15 @@ func (r *ComponentReconciler) runBuild(ctx context.Context, component *appstudio
 		log.Error(err, fmt.Sprintf("OpenShift Pipelines-created Service account 'pipeline' is missing in namespace %s", component.Namespace))
 		return err
 	} else {
-		updateServiceAccountIfSecretNotLinked(ctx, sourceSecretName, &svcAccount)
-		err = r.Client.Update(ctx, &svcAccount)
-		if err != nil {
-			log.Error(err, fmt.Sprintf("Unable to update pipeline service account %v", svcAccount))
-			return err
+		updatedRequired := updateServiceAccountIfSecretNotLinked(ctx, sourceSecretName, &svcAccount)
+		if updatedRequired {
+			err = r.Client.Update(ctx, &svcAccount)
+			if err != nil {
+				log.Error(err, fmt.Sprintf("Unable to update pipeline service account %v", svcAccount))
+				return err
+			}
+			log.Info(fmt.Sprintf("Service Account updated %v", svcAccount))
 		}
-		log.Info(fmt.Sprintf("Service Account updated %v", svcAccount))
 	}
 
 	triggerTemplate, err := gitops.GenerateTriggerTemplate(*component)
