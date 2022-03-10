@@ -64,7 +64,6 @@ func TestDetermineBuildExecution(t *testing.T) {
 		component        appstudiov1alpha1.Component
 		params           []tektonapi.Param
 		workspaceSubPath string
-		sourceSecret     string
 	}
 	tests := []struct {
 		name string
