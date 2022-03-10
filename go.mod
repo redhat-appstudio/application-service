@@ -1,4 +1,4 @@
-module github.com/redhat-appstudio/application-service
+module github.com/davidmogar/application-service
 
 go 1.16
 
