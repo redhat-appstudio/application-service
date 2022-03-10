@@ -17,7 +17,6 @@ limitations under the License.
 package gitops
 
 import (
-	"context"
 	"encoding/json"
 	"strings"
 
@@ -337,22 +336,4 @@ func GenerateEventListener(component appstudiov1alpha1.Component, triggerTemplat
 		},
 	}
 	return eventListener
-}
-
-func UpdateServiceAccountIfSecretNotLinked(ctx context.Context, sourceSecretName string, serviceAccount *corev1.ServiceAccount) bool {
-	isSecretPresent := false
-	for _, credentialSecret := range serviceAccount.Secrets {
-		if credentialSecret.Name == sourceSecretName {
-			isSecretPresent = true
-			break
-		}
-	}
-
-	if !isSecretPresent {
-		serviceAccount.Secrets = append(serviceAccount.Secrets, corev1.ObjectReference{
-			Name: sourceSecretName,
-		})
-		return true
-	}
-	return false
 }

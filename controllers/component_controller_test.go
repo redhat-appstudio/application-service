@@ -31,7 +31,6 @@ import (
 	routev1 "github.com/openshift/api/route/v1"
 	appstudiov1alpha1 "github.com/redhat-appstudio/application-service/api/v1alpha1"
 	devfile "github.com/redhat-appstudio/application-service/pkg/devfile"
-	spiapi "github.com/redhat-appstudio/service-provider-integration-operator/api/v1beta1"
 	tektonapi "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	triggersapi "github.com/tektoncd/triggers/pkg/apis/triggers/v1alpha1"
 
@@ -79,32 +78,11 @@ var _ = Describe("Component controller", func() {
 			HASAppNameForBuild := "test-application-1234"
 			HASCompNameForBuild := "test-component-1234"
 
+			Expect(k8sClient.Create(context.TODO(), &corev1.Secret{
+				ObjectMeta: metav1.ObjectMeta{Name: "doesmatter",
+					Namespace: HASAppNamespace}})).Should(Succeed())
+
 			createAndFetchSimpleApp(HASAppNameForBuild, HASAppNamespace, DisplayName, Description)
-
-			spiTokenBinding := &spiapi.SPIAccessTokenBinding{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "doesntmatter",
-					Namespace: HASAppNamespace,
-				},
-				Spec: spiapi.SPIAccessTokenBindingSpec{
-					RepoUrl: SampleRepoLink,
-				},
-				Status: spiapi.SPIAccessTokenBindingStatus{
-					SyncedObjectRef: spiapi.TargetObjectRef{
-						Name: "doesmatter",
-					},
-				},
-			}
-			Expect(k8sClient.Create(ctx, spiTokenBinding)).Should(Succeed())
-			Expect(k8sClient.Status().Update(ctx, spiTokenBinding)).Should(Succeed())
-
-			spiSecret := corev1.Secret{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "doesmatter",
-					Namespace: HASAppNamespace,
-				},
-			}
-			Expect(k8sClient.Create(ctx, &spiSecret)).Should(Succeed())
 
 			hasComp := &appstudiov1alpha1.Component{
 				TypeMeta: metav1.TypeMeta{
@@ -121,7 +99,8 @@ var _ = Describe("Component controller", func() {
 					Source: appstudiov1alpha1.ComponentSource{
 						ComponentSourceUnion: appstudiov1alpha1.ComponentSourceUnion{
 							GitSource: &appstudiov1alpha1.GitSource{
-								URL: SampleRepoLink,
+								URL:    SampleRepoLink,
+								Secret: "doesmatter",
 							},
 						},
 					},
@@ -260,8 +239,14 @@ var _ = Describe("Component controller", func() {
 					secretFound = true
 					break
 				}
+				// check if the secret has been annotated
 			}
 			Expect(secretFound).To(BeTrue())
+
+			retrievedSecret := &corev1.Secret{}
+			Expect(k8sClient.Get(context.Background(), types.NamespacedName{Name: "doesmatter", Namespace: HASAppNamespace}, retrievedSecret)).Should(BeNil())
+			tektonAnnotation := retrievedSecret.ObjectMeta.Annotations["tekton.dev/git-0"]
+			Expect(tektonAnnotation).To(Equal("https://github.com"))
 
 			// Delete the specified HASComp resource
 			deleteHASCompCR(hasCompLookupKey)

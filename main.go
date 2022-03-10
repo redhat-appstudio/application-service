@@ -35,7 +35,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 
 	routev1 "github.com/openshift/api/route/v1"
-	spiapi "github.com/redhat-appstudio/service-provider-integration-operator/api/v1beta1"
 	taskrunapi "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	triggersapi "github.com/tektoncd/triggers/pkg/apis/triggers/v1alpha1"
 
@@ -100,11 +99,6 @@ func main() {
 
 	if err := routev1.AddToScheme(mgr.GetScheme()); err != nil {
 		setupLog.Error(err, "unable to add triggers api to the scheme")
-		os.Exit(1)
-	}
-
-	if err := spiapi.AddToScheme(mgr.GetScheme()); err != nil {
-		setupLog.Error(err, "unable to add SPI api to the scheme")
 		os.Exit(1)
 	}
 
