@@ -188,6 +188,7 @@ func getParamsForComponentWebhookBuilds(component appstudiov1alpha1.Component) [
 
 func GetBuildCommonLabelsForComponent(component *appstudiov1alpha1.Component) map[string]string {
 	labels := map[string]string{
+		"pipelines.appstudio.openshift.io/type":    "build",
 		"build.appstudio.openshift.io/build":       "true",
 		"build.appstudio.openshift.io/type":        "build",
 		"build.appstudio.openshift.io/version":     "0.1",
