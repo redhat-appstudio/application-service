@@ -44,6 +44,7 @@ import (
 	"github.com/redhat-appstudio/application-service/gitops/ioutils"
 	"github.com/redhat-appstudio/application-service/gitops/testutils"
 	github "github.com/redhat-appstudio/application-service/pkg/github"
+	"github.com/redhat-appstudio/application-service/pkg/spi"
 	//+kubebuilder:scaffold:imports
 )
 
@@ -76,7 +77,7 @@ var _ = BeforeSuite(func() {
 			filepath.Join("..", "config", "crd", "bases"),
 			filepath.Join("..", "hack", "routecrd"),
 			filepath.Join(build.Default.GOPATH, "pkg", "mod", "github.com", "tektoncd", "triggers@v0.17.1", "config"),
-			filepath.Join(build.Default.GOPATH, "pkg", "mod", "github.com", "tektoncd", "pipeline@v0.30.0", "config")},
+			filepath.Join(build.Default.GOPATH, "pkg", "mod", "github.com", "tektoncd", "pipeline@v0.32.1", "config")},
 		ErrorIfCRDPathMissing: true,
 	}
 
@@ -135,13 +136,15 @@ var _ = BeforeSuite(func() {
 		Executor:        testutils.NewMockExecutor(),
 		AppFS:           ioutils.NewMemoryFilesystem(),
 		ImageRepository: "docker.io/foo/customized",
+		SPIClient:       spi.MockSPIClient{},
 	}).SetupWithManager(k8sManager)
 	Expect(err).ToNot(HaveOccurred())
 
 	err = (&ComponentDetectionQueryReconciler{
-		Client: k8sManager.GetClient(),
-		Scheme: k8sManager.GetScheme(),
-		Log:    ctrl.Log.WithName("controllers").WithName("ComponentDetectionQuery"),
+		Client:    k8sManager.GetClient(),
+		Scheme:    k8sManager.GetScheme(),
+		Log:       ctrl.Log.WithName("controllers").WithName("ComponentDetectionQuery"),
+		SPIClient: spi.MockSPIClient{},
 	}).SetupWithManager(k8sManager)
 	Expect(err).ToNot(HaveOccurred())
 

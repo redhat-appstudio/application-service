@@ -184,6 +184,7 @@ func TestCloneRepo(t *testing.T) {
 		name      string
 		clonePath string
 		repo      string
+		token     string
 		wantErr   bool
 	}{
 		{
@@ -208,11 +209,18 @@ func TestCloneRepo(t *testing.T) {
 			repo:      "https://github.com/devfile-samples/devfile-sample-java-springboot-basic",
 			wantErr:   false,
 		},
+		{
+			name:      "Invalid token, should err out",
+			clonePath: "/tmp/alreadyexistingdir",
+			repo:      "https://github.com/devfile-samples/devfile-sample-java-springboot-basic",
+			token:     "fake-token",
+			wantErr:   true,
+		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			err := CloneRepo(tt.clonePath, tt.repo)
+			err := CloneRepo(tt.clonePath, tt.repo, tt.token)
 			if tt.wantErr && (err == nil) {
 				t.Error("wanted error but got nil")
 			} else if !tt.wantErr && err != nil {
@@ -227,6 +235,7 @@ func TestConvertGitHubURL(t *testing.T) {
 	tests := []struct {
 		name    string
 		url     string
+		useAPI  bool
 		wantUrl string
 		wantErr bool
 	}{
@@ -282,6 +291,7 @@ func TestReadDevfilesFromRepo(t *testing.T) {
 		clonePath              string
 		depth                  int
 		repo                   string
+		token                  string
 		wantErr                bool
 		expectedDevfileContext []string
 	}{
@@ -310,7 +320,7 @@ func TestReadDevfilesFromRepo(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			err := CloneRepo(tt.clonePath, tt.repo)
+			err := CloneRepo(tt.clonePath, tt.repo, tt.token)
 			if err != nil {
 				t.Errorf("got unexpected error %v", err)
 			} else {
