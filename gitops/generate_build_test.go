@@ -106,6 +106,91 @@ func TestNormalizeOutputImageURL(t *testing.T) {
 	}
 }
 
+func TestGenerateInitialBuildPipelineRun(t *testing.T) {
+	component := appstudiov1alpha1.Component{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "testcomponent",
+			Namespace: "kcpworkspacename",
+		},
+		Spec: appstudiov1alpha1.ComponentSpec{
+			Source: appstudiov1alpha1.ComponentSource{
+				ComponentSourceUnion: appstudiov1alpha1.ComponentSourceUnion{
+					GitSource: &appstudiov1alpha1.GitSource{
+						URL: "https://host/git-repo",
+					},
+				},
+			},
+		},
+	}
+
+	type args struct {
+		component appstudiov1alpha1.Component
+	}
+	tests := []struct {
+		name string
+		args args
+		want tektonapi.PipelineRun
+	}{
+		{
+			name: "generate initial build pipelien run",
+			args: args{
+				component: component,
+			},
+			want: tektonapi.PipelineRun{
+				ObjectMeta: metav1.ObjectMeta{
+					GenerateName: "testcomponent-",
+					Namespace:    "kcpworkspacename",
+					Labels:       getBuildCommonLabelsForComponent(&component),
+				},
+				Spec: tektonapi.PipelineRunSpec{
+					PipelineRef: &tektonapi.PipelineRef{
+						Bundle: "quay.io/redhat-appstudio/build-templates-bundle@sha256:2205a29208fa686b47f841819f7abedb64adb93935493693892d0e18bbdbb77e",
+						Name:   "noop",
+					},
+					Params: []tektonapi.Param{
+						{
+							Name: "git-url",
+							Value: tektonapi.ArrayOrString{
+								Type:      tektonapi.ParamTypeString,
+								StringVal: "https://host/git-repo",
+							},
+						},
+						{
+							Name: "output-image",
+							Value: tektonapi.ArrayOrString{
+								Type:      tektonapi.ParamTypeString,
+								StringVal: "",
+							},
+						},
+					},
+					Workspaces: []tektonapi.WorkspaceBinding{
+						{
+							Name: "workspace",
+							PersistentVolumeClaim: &corev1.PersistentVolumeClaimVolumeSource{
+								ClaimName: "appstudio",
+							},
+							SubPath: "testcomponent/" + getInitialBuildWorkspaceSubpath(),
+						},
+						{
+							Name: "registry-auth",
+							Secret: &corev1.SecretVolumeSource{
+								SecretName: "redhat-appstudio-registry-pull-secret",
+							},
+						},
+					},
+				},
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := GenerateInitialBuildPipelineRun(tt.args.component); !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("GenerateInitialBuildPipelineRun() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
 func TestDetermineBuildExecution(t *testing.T) {
 	type args struct {
 		component        appstudiov1alpha1.Component
