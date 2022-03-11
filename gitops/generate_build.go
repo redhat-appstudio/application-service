@@ -135,6 +135,19 @@ func determineBuildPipeline(component appstudiov1alpha1.Component) string {
 		return "noop"
 	}
 
+	// Check for Dockerfile
+	filterOptions := devfilecommon.DevfileOptions{
+		ComponentOptions: devfilecommon.ComponentOptions{
+			ComponentType: devfilev1alpha2.ImageComponentType,
+		},
+	}
+	devfileComponents, _ := componentDevfileData.GetComponents(filterOptions)
+	for _, devfileComponent := range devfileComponents {
+		if devfileComponent.Image != nil && devfileComponent.Image.Dockerfile != nil {
+			return "docker-build"
+		}
+	}
+
 	// The only information about project is in language and projectType fileds under metadata of the devfile.
 	// They must be used to determine the right build pipeline.
 	devfileMetadata := componentDevfileData.GetMetadata()
@@ -153,19 +166,6 @@ func determineBuildPipeline(component appstudiov1alpha1.Component) string {
 	}
 
 	// Failed to detect build pipeline
-	// Check for Dockerfile
-	filterOptions := devfilecommon.DevfileOptions{
-		ComponentOptions: devfilecommon.ComponentOptions{
-			ComponentType: devfilev1alpha2.ImageComponentType,
-		},
-	}
-	devfileComponents, _ := componentDevfileData.GetComponents(filterOptions)
-	for _, devfileComponent := range devfileComponents {
-		if devfileComponent.Image != nil && devfileComponent.Image.Dockerfile != nil {
-			return "docker-build"
-		}
-	}
-
 	// Do nothing as we do not know how to build given component
 	return "noop"
 }

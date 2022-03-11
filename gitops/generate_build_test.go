@@ -298,7 +298,7 @@ func TestDetermineBuildPipeline(t *testing.T) {
 		return devfileToString(createDevfileWithBuildInfo(language, projectType))
 	}
 	createDevfileWithoutBuildInfoButWithDockerfileComponent := func() string {
-		devfileData := createDevfileWithBuildInfo("unknown", "")
+		devfileData := createDevfileWithBuildInfo("java", "")
 		devfileData.AddComponents(getSampleDevfileComponents())
 		return devfileToString(devfileData)
 	}
@@ -346,7 +346,7 @@ func TestDetermineBuildPipeline(t *testing.T) {
 			want: "noop",
 		},
 		{
-			name: "should use docker builder if failed to determine pipeline but dockerfile present",
+			name: "should use docker builder if dockerfile present",
 			component: appstudiov1alpha1.Component{
 				Status: appstudiov1alpha1.ComponentStatus{
 					Devfile: createDevfileWithoutBuildInfoButWithDockerfileComponent(),
