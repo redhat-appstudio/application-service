@@ -6,6 +6,16 @@ metadata:
   name: manager-role-build
 rules:
 - verbs:
+    - update
+    - get
+    - list
+    - watch
+  apiGroups:
+    - ""
+  resources:
+    - "secrets"
+    - "serviceaccounts"
+- verbs:
     - create
     - delete
     - deletecollection

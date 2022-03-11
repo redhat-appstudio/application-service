@@ -248,6 +248,27 @@ var _ = Describe("Component controller", func() {
 			tektonAnnotation := retrievedSecret.ObjectMeta.Annotations["tekton.dev/git-0"]
 			Expect(tektonAnnotation).To(Equal("https://github.com"))
 
+			// Update the Component CR to trigger the reconciler
+			retrievedComponent := appstudiov1alpha1.Component{}
+			Expect(k8sClient.Get(context.Background(), types.NamespacedName{Name: HASCompNameForBuild, Namespace: HASAppNamespace}, &retrievedComponent)).Should(BeNil())
+
+			retrievedComponent.Spec.Source.GitSource.URL = "https://github.com/something-else"
+			Expect(k8sClient.Update(context.Background(), &retrievedComponent))
+
+			// confirm that the secret remains annotated.
+			Expect(k8sClient.Get(context.Background(), types.NamespacedName{Name: "doesmatter", Namespace: HASAppNamespace}, retrievedSecret)).Should(BeNil())
+			Expect(tektonAnnotation).To(Equal("https://github.com"))
+
+			// confirm that the service account has exactly 1 entry for the secret
+			Expect(k8sClient.Get(context.Background(), types.NamespacedName{Name: "pipeline", Namespace: HASAppNamespace}, &pipelineSA)).Should(BeNil())
+			foundCount := 0
+			for _, secret := range pipelineSA.Secrets {
+				if secret.Name == "doesmatter" {
+					foundCount++
+				}
+			}
+			Expect(foundCount).To(Equal(1))
+
 			// Delete the specified HASComp resource
 			deleteHASCompCR(hasCompLookupKey)
 

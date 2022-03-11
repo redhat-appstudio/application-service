@@ -398,6 +398,15 @@ func TestGetGitProvider(t *testing.T) {
 			wantErr:    true, //fully qualified URL is a must
 			wantString: "",
 		},
+		{
+			name: "invalid url",
+			args: args{
+				ctx:    context.Background(),
+				gitURL: "not-even-a-url",
+			},
+			wantErr:    true, //fully qualified URL is a must
+			wantString: "",
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
