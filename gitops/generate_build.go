@@ -231,6 +231,7 @@ func getParamsForComponentBuild(component appstudiov1alpha1.Component, isInitial
 			for _, devfileComponent := range devfileComponents {
 				if devfileComponent.Name == "outerloop-build" {
 					if devfileComponent.Image != nil && devfileComponent.Image.Dockerfile != nil && devfileComponent.Image.Dockerfile.Uri != "" {
+						// Set dockerfile location
 						params = append(params, tektonapi.Param{
 							Name: "dockerfile",
 							Value: tektonapi.ArrayOrString{
@@ -238,6 +239,17 @@ func getParamsForComponentBuild(component appstudiov1alpha1.Component, isInitial
 								StringVal: devfileComponent.Image.Dockerfile.Uri,
 							},
 						})
+
+						// Check for docker build context
+						if devfileComponent.Image.Dockerfile.BuildContext != "" {
+							params = append(params, tektonapi.Param{
+								Name: "path-context",
+								Value: tektonapi.ArrayOrString{
+									Type:      tektonapi.ParamTypeString,
+									StringVal: devfileComponent.Image.Dockerfile.BuildContext,
+								},
+							})
+						}
 					}
 					break
 				}

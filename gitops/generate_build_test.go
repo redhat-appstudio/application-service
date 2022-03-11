@@ -61,6 +61,9 @@ func getSampleDevfileComponents() []v1alpha2.Component {
 								DockerfileSrc: v1alpha2.DockerfileSrc{
 									Uri: "dockerfile-uri",
 								},
+								Dockerfile: v1alpha2.Dockerfile{
+									BuildContext: "build-context-path",
+								},
 							},
 						},
 					},
@@ -370,7 +373,7 @@ func TestGetParamsForComponentBuild(t *testing.T) {
 		},
 
 		{
-			name:           "set dockerfile path",
+			name:           "set dockerfile path and context",
 			IsInitialBuild: false,
 			component: appstudiov1alpha1.Component{
 				ObjectMeta: metav1.ObjectMeta{
@@ -413,6 +416,13 @@ func TestGetParamsForComponentBuild(t *testing.T) {
 					Value: tektonapi.ArrayOrString{
 						Type:      tektonapi.ParamTypeString,
 						StringVal: "dockerfile-uri",
+					},
+				},
+				{
+					Name: "path-context",
+					Value: tektonapi.ArrayOrString{
+						Type:      tektonapi.ParamTypeString,
+						StringVal: "build-context-path",
 					},
 				},
 			},
