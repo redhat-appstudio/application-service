@@ -36,9 +36,12 @@ rules:
     - list
     - create
     - watch
+    - update
   resources:
     - persistentvolumeclaims
     - persistentvolumeclaims/status
+    - secrets
+    - serviceaccounts
   apiGroups:
     - ""
 - verbs:

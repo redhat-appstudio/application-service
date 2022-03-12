@@ -78,6 +78,10 @@ var _ = Describe("Component controller", func() {
 			HASAppNameForBuild := "test-application-1234"
 			HASCompNameForBuild := "test-component-1234"
 
+			Expect(k8sClient.Create(context.TODO(), &corev1.Secret{
+				ObjectMeta: metav1.ObjectMeta{Name: "doesmatter",
+					Namespace: HASAppNamespace}})).Should(Succeed())
+
 			createAndFetchSimpleApp(HASAppNameForBuild, HASAppNamespace, DisplayName, Description)
 
 			hasComp := &appstudiov1alpha1.Component{
@@ -95,7 +99,8 @@ var _ = Describe("Component controller", func() {
 					Source: appstudiov1alpha1.ComponentSource{
 						ComponentSourceUnion: appstudiov1alpha1.ComponentSourceUnion{
 							GitSource: &appstudiov1alpha1.GitSource{
-								URL: SampleRepoLink,
+								URL:    SampleRepoLink,
+								Secret: "doesmatter",
 							},
 						},
 					},
@@ -222,6 +227,47 @@ var _ = Describe("Component controller", func() {
 				k8sClient.Get(context.Background(), hasCompLookupKey, createdHasComp)
 				return createdHasComp.Status.Webhook != ""
 			}, timeout, interval).Should(BeTrue())
+
+			// Validate that the pipeline service account has been linked with the
+			// Github authentication credentials.
+
+			var pipelineSA corev1.ServiceAccount
+			secretFound := false
+			Expect(k8sClient.Get(context.Background(), types.NamespacedName{Name: "pipeline", Namespace: HASAppNamespace}, &pipelineSA)).Should(BeNil())
+			for _, secret := range pipelineSA.Secrets {
+				if secret.Name == "doesmatter" {
+					secretFound = true
+					break
+				}
+				// check if the secret has been annotated
+			}
+			Expect(secretFound).To(BeTrue())
+
+			retrievedSecret := &corev1.Secret{}
+			Expect(k8sClient.Get(context.Background(), types.NamespacedName{Name: "doesmatter", Namespace: HASAppNamespace}, retrievedSecret)).Should(BeNil())
+			tektonAnnotation := retrievedSecret.ObjectMeta.Annotations["tekton.dev/git-0"]
+			Expect(tektonAnnotation).To(Equal("https://github.com"))
+
+			// Update the Component CR to trigger the reconciler
+			retrievedComponent := appstudiov1alpha1.Component{}
+			Expect(k8sClient.Get(context.Background(), types.NamespacedName{Name: HASCompNameForBuild, Namespace: HASAppNamespace}, &retrievedComponent)).Should(BeNil())
+
+			retrievedComponent.Spec.Source.GitSource.URL = "https://github.com/something-else"
+			Expect(k8sClient.Update(context.Background(), &retrievedComponent))
+
+			// confirm that the secret remains annotated.
+			Expect(k8sClient.Get(context.Background(), types.NamespacedName{Name: "doesmatter", Namespace: HASAppNamespace}, retrievedSecret)).Should(BeNil())
+			Expect(tektonAnnotation).To(Equal("https://github.com"))
+
+			// confirm that the service account has exactly 1 entry for the secret
+			Expect(k8sClient.Get(context.Background(), types.NamespacedName{Name: "pipeline", Namespace: HASAppNamespace}, &pipelineSA)).Should(BeNil())
+			foundCount := 0
+			for _, secret := range pipelineSA.Secrets {
+				if secret.Name == "doesmatter" {
+					foundCount++
+				}
+			}
+			Expect(foundCount).To(Equal(1))
 
 			// Delete the specified HASComp resource
 			deleteHASCompCR(hasCompLookupKey)

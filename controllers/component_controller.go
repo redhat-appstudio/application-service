@@ -41,6 +41,7 @@ import (
 	data "github.com/devfile/library/pkg/devfile/parser/data"
 	"github.com/go-logr/logr"
 	routev1 "github.com/openshift/api/route/v1"
+
 	appstudiov1alpha1 "github.com/redhat-appstudio/application-service/api/v1alpha1"
 	"github.com/redhat-appstudio/application-service/gitops"
 	devfile "github.com/redhat-appstudio/application-service/pkg/devfile"
@@ -379,6 +380,49 @@ func (r *ComponentReconciler) runBuild(ctx context.Context, component *appstudio
 	}
 	log.Info(fmt.Sprintf("PV is now present : %v", workspaceStorage.Name))
 
+	sourceSecretName := component.Spec.Source.GitSource.Secret
+
+	// Make the Secret ready for consumption by Tekton.
+	if sourceSecretName != "" {
+		gitSecret := corev1.Secret{}
+		err = r.Get(ctx, types.NamespacedName{Name: sourceSecretName, Namespace: component.Namespace}, &gitSecret)
+		if err != nil {
+			log.Error(err, fmt.Sprintf("Secret %s is missing", sourceSecretName))
+			return err
+		} else {
+			if gitSecret.Annotations == nil {
+				gitSecret.Annotations = map[string]string{}
+			}
+
+			gitHost, _ := getGitProvider(component.Spec.Source.GitSource.URL)
+
+			// doesn't matter if it was present, we will always override.
+			gitSecret.Annotations["tekton.dev/git-0"] = gitHost
+			err = r.Update(ctx, &gitSecret)
+			if err != nil {
+				log.Error(err, fmt.Sprintf("Secret %s  update failed", sourceSecretName))
+				return err
+			}
+		}
+	}
+
+	svcAccount := corev1.ServiceAccount{}
+	err = r.Get(ctx, types.NamespacedName{Name: "pipeline", Namespace: component.Namespace}, &svcAccount)
+	if err != nil {
+		log.Error(err, fmt.Sprintf("OpenShift Pipelines-created Service account 'pipeline' is missing in namespace %s", component.Namespace))
+		return err
+	} else {
+		updatedRequired := updateServiceAccountIfSecretNotLinked(ctx, sourceSecretName, &svcAccount)
+		if updatedRequired {
+			err = r.Client.Update(ctx, &svcAccount)
+			if err != nil {
+				log.Error(err, fmt.Sprintf("Unable to update pipeline service account %v", svcAccount))
+				return err
+			}
+			log.Info(fmt.Sprintf("Service Account updated %v", svcAccount))
+		}
+	}
+
 	triggerTemplate, err := gitops.GenerateTriggerTemplate(*component)
 	if err != nil {
 		log.Error(err, "Unable to generate triggerTemplate ")
@@ -486,6 +530,36 @@ func (r *ComponentReconciler) runBuild(ctx context.Context, component *appstudio
 
 func getInitialBuildWorkspaceSubpath() string {
 	return "initialbuild-" + time.Now().Format("2006-Feb-02_15-04-05")
+}
+
+// getGitProvider takes a Git URL of the format https://github.com/foo/bar and returns
+// https://github.com
+func getGitProvider(gitURL string) (string, error) {
+	u, err := url.Parse(gitURL)
+
+	// We really need the format of the string to be correct.
+	// We'll not do any autocorrection.
+	if err != nil || u.Scheme == "" {
+		return "", fmt.Errorf("failed to parse string into a URL: %v or scheme is empty", err)
+	}
+	return u.Scheme + "://" + u.Host, nil
+}
+
+func updateServiceAccountIfSecretNotLinked(ctx context.Context, sourceSecretName string, serviceAccount *corev1.ServiceAccount) bool {
+	isSecretPresent := false
+	for _, credentialSecret := range serviceAccount.Secrets {
+		if credentialSecret.Name == sourceSecretName {
+			isSecretPresent = true
+			break
+		}
+	}
+	if !isSecretPresent {
+		serviceAccount.Secrets = append(serviceAccount.Secrets, corev1.ObjectReference{
+			Name: sourceSecretName,
+		})
+		return true
+	}
+	return false
 }
 
 // generateGitops retrieves the necessary information about a Component's gitops repository (URL, branch, context)
