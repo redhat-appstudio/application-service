@@ -185,11 +185,14 @@ spec:
           resources:
           - persistentvolumeclaims
           - persistentvolumeclaims/status
+          - secrets
+          - serviceaccounts
           verbs:
           - get
           - list
           - create
           - watch
+          - update
         - apiGroups:
           - route.openshift.io
           resources:
@@ -198,6 +201,23 @@ spec:
           - get
           - list
           - create
+          - watch
+        - apiGroups:
+          - appstudio.redhat.com
+          resources:
+          - spiaccesstokenbindings
+          - spiaccesstokens
+          verbs:
+          - '*'
+        - apiGroups:
+          - ""
+          resources:
+          - secrets
+          verbs:
+          - create
+          - delete
+          - list
+          - get
           - watch
         - apiGroups:
           - authentication.k8s.io

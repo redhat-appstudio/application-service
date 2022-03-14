@@ -32,6 +32,7 @@ import (
 
 	"github.com/go-logr/logr"
 	appstudiov1alpha1 "github.com/redhat-appstudio/application-service/api/v1alpha1"
+	devfile "github.com/redhat-appstudio/application-service/pkg/devfile"
 	"github.com/redhat-appstudio/application-service/pkg/spi"
 	util "github.com/redhat-appstudio/application-service/pkg/util"
 )
@@ -119,9 +120,9 @@ func (r *ComponentDetectionQueryReconciler) Reconcile(ctx context.Context, req c
 				}
 				log.Info(fmt.Sprintf("cloned from %s to path %s... %v", source.URL, clonePath, req.NamespacedName))
 
-				devfilesMap, devfilesURLMap, err = util.ReadDevfilesFromRepo(clonePath, maxDevfileDiscoveryDepth)
+				devfilesMap, devfilesURLMap, err = devfile.ReadDevfilesFromRepo(clonePath, maxDevfileDiscoveryDepth)
 				if err != nil {
-					if _, ok := err.(*util.NoDevfileFound); !ok {
+					if _, ok := err.(*devfile.NoDevfileFound); !ok {
 						log.Error(err, fmt.Sprintf("Unable to find devfile(s) in repo %s due to an error %s, exiting reconcile loop %v", source.URL, err.Error(), req.NamespacedName))
 						r.SetCompleteConditionAndUpdateCR(ctx, &componentDetectionQuery, err)
 						return ctrl.Result{}, nil
@@ -138,9 +139,9 @@ func (r *ComponentDetectionQueryReconciler) Reconcile(ctx context.Context, req c
 						return ctrl.Result{}, nil
 					}
 
-					devfileBytes, err = util.DownloadDevfile(gitURL)
+					devfileBytes, err = devfile.DownloadDevfile(gitURL)
 					if err != nil {
-						if _, ok := err.(*util.NoDevfileFound); !ok {
+						if _, ok := err.(*devfile.NoDevfileFound); !ok {
 							log.Error(err, fmt.Sprintf("Unable to curl for any known devfile locations from %s due to an error %s,  %v", source.URL, err.Error(), req.NamespacedName))
 							r.SetCompleteConditionAndUpdateCR(ctx, &componentDetectionQuery, err)
 							return ctrl.Result{}, nil
@@ -159,7 +160,7 @@ func (r *ComponentDetectionQueryReconciler) Reconcile(ctx context.Context, req c
 				if len(devfileBytes) != 0 {
 					devfilesMap["./"] = devfileBytes
 				} else {
-					err = util.CloneRepo(clonePath, source.URL)
+					err = util.CloneRepo(clonePath, source.URL, gitToken)
 					if err != nil {
 						log.Error(err, fmt.Sprintf("Unable to clone repo %s to path %s, exiting reconcile loop %v", source.URL, clonePath, req.NamespacedName))
 						r.SetCompleteConditionAndUpdateCR(ctx, &componentDetectionQuery, err)
@@ -171,9 +172,9 @@ func (r *ComponentDetectionQueryReconciler) Reconcile(ctx context.Context, req c
 
 					// if we didnt find any devfile upto our desired depth, then use alizer
 					var detectedDevfileEndpoint string
-					devfileBytes, detectedDevfileEndpoint, err = util.AnalyzeAndDetectDevfile(clonePath)
+					devfileBytes, detectedDevfileEndpoint, err = devfile.AnalyzeAndDetectDevfile(clonePath)
 					if err != nil {
-						if _, ok := err.(*util.NoDevfileFound); !ok {
+						if _, ok := err.(*devfile.NoDevfileFound); !ok {
 							log.Error(err, fmt.Sprintf("unable to detect devfile in path %s %v", clonePath, req.NamespacedName))
 							r.SetCompleteConditionAndUpdateCR(ctx, &componentDetectionQuery, err)
 							return ctrl.Result{}, nil
