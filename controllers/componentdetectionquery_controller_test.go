@@ -18,6 +18,7 @@ package controllers
 
 import (
 	"context"
+	"fmt"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -226,8 +227,8 @@ var _ = Describe("Component Detection Query controller", func() {
 		})
 	})
 
-	Context("Create Component Detection Query with multi comp repo that has no devfile", func() {
-		It("Should err out", func() {
+	Context("Create Component Detection Query with a non component devfile repo", func() {
+		It("Should complete without any devfile detected", func() {
 			ctx := context.Background()
 
 			queryName := HASCompDetQuery + "5"
@@ -261,15 +262,15 @@ var _ = Describe("Component Detection Query controller", func() {
 			}, timeout, interval).Should(BeTrue())
 
 			// Make sure the right err is set
-			Expect(createdHasCompDetectionQuery.Status.Conditions[0].Message).Should(ContainSubstring("unable to find any devfile"))
+			Expect(createdHasCompDetectionQuery.Status.Conditions[0].Message).Should(ContainSubstring("ComponentDetectionQuery has successfully finished"))
 
 			// Delete the specified Detection Query resource
 			deleteCompDetQueryCR(hasCompDetQueryLookupKey)
 		})
 	})
 
-	Context("Create Component Detection Query with repo that has no devfile", func() {
-		It("Should err out", func() {
+	Context("Create Component Detection Query with multi component repo that has no devfile", func() {
+		It("Should match a devfile with alizer if it can be a component", func() {
 			ctx := context.Background()
 
 			queryName := HASCompDetQuery + "6"
@@ -284,8 +285,9 @@ var _ = Describe("Component Detection Query controller", func() {
 					Namespace: HASNamespace,
 				},
 				Spec: appstudiov1alpha1.ComponentDetectionQuerySpec{
+					IsMultiComponent: true,
 					GitSource: appstudiov1alpha1.GitSource{
-						URL: "https://github.com/octocat/Hello-World",
+						URL: "https://github.com/maysunfaisal/multi-components-none",
 					},
 				},
 			}
@@ -302,7 +304,64 @@ var _ = Describe("Component Detection Query controller", func() {
 			}, timeout, interval).Should(BeTrue())
 
 			// Make sure the right err is set
-			Expect(createdHasCompDetectionQuery.Status.Conditions[0].Message).Should(ContainSubstring("unable to find any devfiles"))
+			Expect(createdHasCompDetectionQuery.Status.Conditions[0].Message).Should(ContainSubstring("ComponentDetectionQuery has successfully finished"))
+
+			// Make sure the a devfile is detected
+			Expect(len(createdHasCompDetectionQuery.Status.ComponentDetected)).Should(Equal(2))
+
+			for devfileName, devfileDesc := range createdHasCompDetectionQuery.Status.ComponentDetected {
+				Expect(devfileName).Should(BeElementOf([]string{"java-springboot", "python"}))
+				Expect(devfileDesc.ComponentStub.Context).Should(BeElementOf([]string{"devfile-sample-java-springboot-basic", "devfile-sample-python-basic"}))
+			}
+
+			// Delete the specified Detection Query resource
+			deleteCompDetQueryCR(hasCompDetQueryLookupKey)
+		})
+	})
+
+	Context("Create Component Detection Query with repo that has no devfile", func() {
+		It("Should match a devfile with alizer if it can be a component", func() {
+			ctx := context.Background()
+
+			queryName := HASCompDetQuery + "7"
+
+			hasCompDetectionQuery := &appstudiov1alpha1.ComponentDetectionQuery{
+				TypeMeta: metav1.TypeMeta{
+					APIVersion: "appstudio.redhat.com/v1alpha1",
+					Kind:       "ComponentDetectionQuery",
+				},
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      queryName,
+					Namespace: HASNamespace,
+				},
+				Spec: appstudiov1alpha1.ComponentDetectionQuerySpec{
+					GitSource: appstudiov1alpha1.GitSource{
+						URL: "https://github.com/maysunfaisal/devfile-sample-java-springboot-basic-1",
+					},
+				},
+			}
+
+			Expect(k8sClient.Create(ctx, hasCompDetectionQuery)).Should(Succeed())
+
+			// Look up the has app resource that was created.
+			// num(conditions) may still be < 1 on the first try, so retry until at least _some_ condition is set
+			hasCompDetQueryLookupKey := types.NamespacedName{Name: queryName, Namespace: HASNamespace}
+			createdHasCompDetectionQuery := &appstudiov1alpha1.ComponentDetectionQuery{}
+			Eventually(func() bool {
+				k8sClient.Get(context.Background(), hasCompDetQueryLookupKey, createdHasCompDetectionQuery)
+				return len(createdHasCompDetectionQuery.Status.Conditions) > 0
+			}, timeout, interval).Should(BeTrue())
+
+			// Make sure the right err is set
+			Expect(createdHasCompDetectionQuery.Status.Conditions[0].Message).Should(ContainSubstring("ComponentDetectionQuery has successfully finished"))
+
+			// Make sure the a devfile is detected
+			Expect(len(createdHasCompDetectionQuery.Status.ComponentDetected)).Should(Equal(1))
+
+			for devfileName, devfileDesc := range createdHasCompDetectionQuery.Status.ComponentDetected {
+				Expect(devfileName).Should(BeElementOf([]string{"java-springboot"}))
+				Expect(devfileDesc.ComponentStub.Context).Should(BeElementOf([]string{"./"}))
+			}
 
 			// Delete the specified Detection Query resource
 			deleteCompDetQueryCR(hasCompDetQueryLookupKey)
@@ -313,7 +372,7 @@ var _ = Describe("Component Detection Query controller", func() {
 		It("Should err out", func() {
 			ctx := context.Background()
 
-			queryName := HASCompDetQuery + "5"
+			queryName := HASCompDetQuery + "8"
 
 			hasCompDetectionQuery := &appstudiov1alpha1.ComponentDetectionQuery{
 				TypeMeta: metav1.TypeMeta{
@@ -355,7 +414,7 @@ var _ = Describe("Component Detection Query controller", func() {
 		It("Should err out", func() {
 			ctx := context.Background()
 
-			queryName := HASCompDetQuery + "6"
+			queryName := HASCompDetQuery + "9"
 
 			hasCompDetectionQuery := &appstudiov1alpha1.ComponentDetectionQuery{
 				TypeMeta: metav1.TypeMeta{
@@ -396,7 +455,7 @@ var _ = Describe("Component Detection Query controller", func() {
 		It("Should err out due to authentication required error", func() {
 			ctx := context.Background()
 
-			queryName := HASCompDetQuery + "7"
+			queryName := HASCompDetQuery + "10"
 
 			hasCompDetectionQuery := &appstudiov1alpha1.ComponentDetectionQuery{
 				TypeMeta: metav1.TypeMeta{
@@ -439,7 +498,7 @@ var _ = Describe("Component Detection Query controller", func() {
 		It("Should successfully get token and run", func() {
 			ctx := context.Background()
 
-			queryName := HASCompDetQuery + "8"
+			queryName := HASCompDetQuery + "11"
 
 			// Create a git secret
 			tokenSecret := &corev1.Secret{
@@ -502,7 +561,7 @@ var _ = Describe("Component Detection Query controller", func() {
 		It("Should error out due to invalid token", func() {
 			ctx := context.Background()
 
-			queryName := HASCompDetQuery + "9"
+			queryName := HASCompDetQuery + "12"
 
 			// Create a git secret
 			tokenSecret := &corev1.Secret{
@@ -564,7 +623,7 @@ var _ = Describe("Component Detection Query controller", func() {
 		It("Should error out", func() {
 			ctx := context.Background()
 
-			queryName := HASCompDetQuery + "10"
+			queryName := HASCompDetQuery + "13"
 
 			// Create a git secret
 			tokenSecret := &corev1.Secret{
@@ -623,7 +682,7 @@ var _ = Describe("Component Detection Query controller", func() {
 		It("Should error out since specified secret does not exist", func() {
 			ctx := context.Background()
 
-			queryName := HASCompDetQuery + "11"
+			queryName := HASCompDetQuery + "14"
 
 			hasCompDetectionQuery := &appstudiov1alpha1.ComponentDetectionQuery{
 				TypeMeta: metav1.TypeMeta{
@@ -655,7 +714,7 @@ var _ = Describe("Component Detection Query controller", func() {
 
 			// Make sure the a devfile is detected
 			Expect(createdHasCompDetectionQuery.Status.Conditions[0].Status).Should(Equal(metav1.ConditionFalse))
-			Expect(createdHasCompDetectionQuery.Status.Conditions[0].Message).Should(ContainSubstring("ComponentDetectionQuery failed: Secret \"test-componentdetectionquery11\" not found"))
+			Expect(createdHasCompDetectionQuery.Status.Conditions[0].Message).Should(ContainSubstring(fmt.Sprintf("ComponentDetectionQuery failed: Secret %q not found", queryName)))
 
 			// Delete the specified Detection Query resource
 			deleteCompDetQueryCR(hasCompDetQueryLookupKey)
@@ -666,7 +725,7 @@ var _ = Describe("Component Detection Query controller", func() {
 		It("Should detect a devfile but return an error", func() {
 			ctx := context.Background()
 
-			queryName := HASCompDetQuery + "12"
+			queryName := HASCompDetQuery + "15"
 
 			hasCompDetectionQuery := &appstudiov1alpha1.ComponentDetectionQuery{
 				TypeMeta: metav1.TypeMeta{

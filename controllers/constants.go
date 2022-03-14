@@ -33,4 +33,7 @@ const (
 
 	// ephemeralStorageRequestKey is the key to reference ephemeral storage request
 	ephemeralStorageRequestKey = "appstudio.has/ephemeralStorageRequest"
+
+	// maxDevfileDiscoveryDepth is the depth of the directory to detect devfiles
+	maxDevfileDiscoveryDepth = 1
 )

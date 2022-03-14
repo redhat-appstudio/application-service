@@ -32,6 +32,7 @@ import (
 
 	"github.com/go-logr/logr"
 	appstudiov1alpha1 "github.com/redhat-appstudio/application-service/api/v1alpha1"
+	devfile "github.com/redhat-appstudio/application-service/pkg/devfile"
 	"github.com/redhat-appstudio/application-service/pkg/spi"
 	util "github.com/redhat-appstudio/application-service/pkg/util"
 )
@@ -101,6 +102,9 @@ func (r *ComponentDetectionQueryReconciler) Reconcile(ctx context.Context, req c
 		source := componentDetectionQuery.Spec.GitSource
 		var devfileBytes []byte
 		devfilesMap := make(map[string][]byte)
+		devfilesURLMap := make(map[string]string)
+
+		clonePath := path.Join(clonePathPrefix, componentDetectionQuery.Namespace, componentDetectionQuery.Name)
 
 		if source.DevfileURL == "" {
 			log.Info(fmt.Sprintf("Attempting to read a devfile from the URL %s... %v", source.URL, req.NamespacedName))
@@ -108,21 +112,21 @@ func (r *ComponentDetectionQueryReconciler) Reconcile(ctx context.Context, req c
 			if componentDetectionQuery.Spec.IsMultiComponent {
 				log.Info(fmt.Sprintf("Since this is a multi-component, attempt will be made to read only level 1 dir for devfiles... %v", req.NamespacedName))
 
-				clonePath := path.Join(clonePathPrefix, componentDetectionQuery.Namespace, componentDetectionQuery.Name)
-
 				err = util.CloneRepo(clonePath, source.URL, gitToken)
 				if err != nil {
-					log.Error(err, fmt.Sprintf("Unable to clone repo %s and read devfile(s) in path %s, exiting reconcile loop %v", source.URL, clonePath, req.NamespacedName))
+					log.Error(err, fmt.Sprintf("Unable to clone repo %s to path %s, exiting reconcile loop %v", source.URL, clonePath, req.NamespacedName))
 					r.SetCompleteConditionAndUpdateCR(ctx, &componentDetectionQuery, err)
 					return ctrl.Result{}, nil
 				}
 				log.Info(fmt.Sprintf("cloned from %s to path %s... %v", source.URL, clonePath, req.NamespacedName))
 
-				devfilesMap, err = util.ReadDevfilesFromRepo(clonePath, 1)
+				devfilesMap, devfilesURLMap, err = devfile.ReadDevfilesFromRepo(clonePath, maxDevfileDiscoveryDepth)
 				if err != nil {
-					log.Error(err, fmt.Sprintf("Unable to find devfile(s) in repo %s, exiting reconcile loop %v", source.URL, req.NamespacedName))
-					r.SetCompleteConditionAndUpdateCR(ctx, &componentDetectionQuery, err)
-					return ctrl.Result{}, nil
+					if _, ok := err.(*devfile.NoDevfileFound); !ok {
+						log.Error(err, fmt.Sprintf("Unable to find devfile(s) in repo %s due to an error %s, exiting reconcile loop %v", source.URL, err.Error(), req.NamespacedName))
+						r.SetCompleteConditionAndUpdateCR(ctx, &componentDetectionQuery, err)
+						return ctrl.Result{}, nil
+					}
 				}
 			} else {
 				log.Info(fmt.Sprintf("Since this is not a multi-component, attempt will be made to read devfile at the root dir... %v", req.NamespacedName))
@@ -135,11 +139,13 @@ func (r *ComponentDetectionQueryReconciler) Reconcile(ctx context.Context, req c
 						return ctrl.Result{}, nil
 					}
 
-					devfileBytes, err = util.DownloadDevfile(gitURL)
+					devfileBytes, err = devfile.DownloadDevfile(gitURL)
 					if err != nil {
-						log.Error(err, fmt.Sprintf("Unable to curl for any known devfile locations from %s %v", source.URL, req.NamespacedName))
-						r.SetCompleteConditionAndUpdateCR(ctx, &componentDetectionQuery, err)
-						return ctrl.Result{}, nil
+						if _, ok := err.(*devfile.NoDevfileFound); !ok {
+							log.Error(err, fmt.Sprintf("Unable to curl for any known devfile locations from %s due to an error %s,  %v", source.URL, err.Error(), req.NamespacedName))
+							r.SetCompleteConditionAndUpdateCR(ctx, &componentDetectionQuery, err)
+							return ctrl.Result{}, nil
+						}
 					}
 				} else {
 					// Use SPI to retrieve the devfile from the private repository
@@ -151,7 +157,35 @@ func (r *ComponentDetectionQueryReconciler) Reconcile(ctx context.Context, req c
 					}
 				}
 
-				devfilesMap["./"] = devfileBytes
+				if len(devfileBytes) != 0 {
+					devfilesMap["./"] = devfileBytes
+				} else {
+					err = util.CloneRepo(clonePath, source.URL, gitToken)
+					if err != nil {
+						log.Error(err, fmt.Sprintf("Unable to clone repo %s to path %s, exiting reconcile loop %v", source.URL, clonePath, req.NamespacedName))
+						r.SetCompleteConditionAndUpdateCR(ctx, &componentDetectionQuery, err)
+						return ctrl.Result{}, nil
+					}
+
+					log.Info(fmt.Sprintf("cloned from %s to path %s... %v", source.URL, clonePath, req.NamespacedName))
+					log.Info(fmt.Sprintf("analyzing path %s", clonePath))
+
+					// if we didnt find any devfile upto our desired depth, then use alizer
+					var detectedDevfileEndpoint string
+					devfileBytes, detectedDevfileEndpoint, err = devfile.AnalyzeAndDetectDevfile(clonePath)
+					if err != nil {
+						if _, ok := err.(*devfile.NoDevfileFound); !ok {
+							log.Error(err, fmt.Sprintf("unable to detect devfile in path %s %v", clonePath, req.NamespacedName))
+							r.SetCompleteConditionAndUpdateCR(ctx, &componentDetectionQuery, err)
+							return ctrl.Result{}, nil
+						}
+					}
+
+					if len(devfileBytes) > 0 {
+						devfilesMap["./"] = devfileBytes
+						devfilesURLMap["./"] = detectedDevfileEndpoint
+					}
+				}
 			}
 		} else {
 			if componentDetectionQuery.Spec.IsMultiComponent {
@@ -165,6 +199,7 @@ func (r *ComponentDetectionQueryReconciler) Reconcile(ctx context.Context, req c
 			log.Info(fmt.Sprintf("devfile was explicitly specified at %s %v", source.DevfileURL, req.NamespacedName))
 			devfileBytes, err = util.CurlEndpoint(source.DevfileURL)
 			if err != nil {
+				// if a direct devfileURL is provided and errors out, we dont do an alizer detection
 				log.Error(err, fmt.Sprintf("Unable to GET %s, exiting reconcile loop %v", source.DevfileURL, req.NamespacedName))
 				err := fmt.Errorf("unable to GET from %s", source.DevfileURL)
 				r.SetCompleteConditionAndUpdateCR(ctx, &componentDetectionQuery, err)
@@ -173,7 +208,7 @@ func (r *ComponentDetectionQueryReconciler) Reconcile(ctx context.Context, req c
 			devfilesMap["./"] = devfileBytes
 		}
 
-		err := r.updateComponentStub(&componentDetectionQuery, devfilesMap)
+		err := r.updateComponentStub(&componentDetectionQuery, devfilesMap, devfilesURLMap)
 		if err != nil {
 			log.Error(err, fmt.Sprintf("Unable to update the component stub %v", req.NamespacedName))
 			r.SetCompleteConditionAndUpdateCR(ctx, &componentDetectionQuery, err)
