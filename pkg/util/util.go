@@ -174,8 +174,6 @@ func ReadDevfilesFromRepo(localpath string, depth int) (map[string][]byte, map[s
 
 func searchDevfiles(localpath string, currentLevel, depth int) (map[string][]byte, map[string]string, error) {
 
-	// var devfileBytes []byte
-	// var detectedDevfileEndpoint string
 	devfileMapFromRepo := make(map[string][]byte)
 	devfilesURLMapFromRepo := make(map[string]string)
 
@@ -250,9 +248,9 @@ func searchDevfiles(localpath string, currentLevel, depth int) (map[string][]byt
 	return devfileMapFromRepo, devfilesURLMapFromRepo, err
 }
 
-func getAlizerDevfileTypes() ([]recognizer.DevFileType, error) {
+func getAlizerDevfileTypes(registryURL string) ([]recognizer.DevFileType, error) {
 	types := []recognizer.DevFileType{}
-	registryIndex, err := registryLibrary.GetRegistryIndex(DevfileStageRegistryEndpoint, registryLibrary.RegistryOptions{
+	registryIndex, err := registryLibrary.GetRegistryIndex(registryURL, registryLibrary.RegistryOptions{
 		Telemetry: registryLibrary.TelemetryData{},
 	}, schema.SampleDevfileType)
 	if err != nil {
@@ -273,7 +271,7 @@ func getAlizerDevfileTypes() ([]recognizer.DevFileType, error) {
 
 // getContext returns the context backtracking from the end of the localpath
 func getContext(localpath string, currentLevel int) string {
-	var context string
+	context := "./"
 	currentPath := localpath
 	for i := 0; i < currentLevel; i++ {
 		context = path.Join(filepath.Base(currentPath), context)
@@ -283,6 +281,7 @@ func getContext(localpath string, currentLevel int) string {
 	return context
 }
 
+// AnalyzeAndDetectDevfile analyzes and attempts to detect a devfile from the devfile registry for a given local path
 func AnalyzeAndDetectDevfile(path string) ([]byte, string, error) {
 	var devfileBytes []byte
 
@@ -291,7 +290,7 @@ func AnalyzeAndDetectDevfile(path string) ([]byte, string, error) {
 		return nil, "", err
 	}
 
-	alizerTypes, err := getAlizerDevfileTypes()
+	alizerTypes, err := getAlizerDevfileTypes(DevfileStageRegistryEndpoint)
 	if err != nil {
 		return nil, "", err
 	}
@@ -317,8 +316,6 @@ func AnalyzeAndDetectDevfile(path string) ([]byte, string, error) {
 				if len(devfileBytes) > 0 {
 					return devfileBytes, detectedDevfileEndpoint, nil
 				}
-
-				// break
 			}
 		}
 	}

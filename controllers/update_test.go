@@ -745,6 +745,7 @@ func TestUpdateComponentStub(t *testing.T) {
 	tests := []struct {
 		name            string
 		devfilesDataMap map[string]*v2.DevfileV2
+		devfilesURLMap  map[string]string
 		isNil           bool
 		wantErr         bool
 	}{
@@ -768,6 +769,31 @@ func TestUpdateComponentStub(t *testing.T) {
 						},
 					},
 				},
+			},
+		},
+		{
+			name: "Container Components present with a devfile URL",
+			devfilesDataMap: map[string]*v2.DevfileV2{
+				"./": {
+					Devfile: devfileAPIV1.Devfile{
+						DevfileHeader: devfile.DevfileHeader{
+							SchemaVersion: "2.1.0",
+							Metadata: devfile.DevfileMetadata{
+								Name:        "test-devfile",
+								Language:    "language",
+								ProjectType: "project",
+							},
+						},
+						DevWorkspaceTemplateSpec: devfileAPIV1.DevWorkspaceTemplateSpec{
+							DevWorkspaceTemplateSpecContent: devfileAPIV1.DevWorkspaceTemplateSpecContent{
+								Components: componentsValid,
+							},
+						},
+					},
+				},
+			},
+			devfilesURLMap: map[string]string{
+				"./": "http://somelink",
 			},
 		},
 		{
@@ -1166,7 +1192,7 @@ func TestUpdateComponentStub(t *testing.T) {
 			if tt.isNil {
 				err = r.updateComponentStub(nil, devfilesMap, nil)
 			} else {
-				err = r.updateComponentStub(&componentDetectionQuery, devfilesMap, nil)
+				err = r.updateComponentStub(&componentDetectionQuery, devfilesMap, tt.devfilesURLMap)
 			}
 
 			if tt.wantErr && (err == nil) {
@@ -1183,6 +1209,11 @@ func TestUpdateComponentStub(t *testing.T) {
 						assert.Equal(t, hasCompDetection.DevfileFound, true, "The devfile found should be true")
 						assert.Equal(t, hasCompDetection.ComponentStub.ComponentName, tt.devfilesDataMap[hasCompDetection.ComponentStub.Context].Metadata.Name, "The component name should be the same")
 						assert.Equal(t, hasCompDetection.ComponentStub.Application, "insert-application-name", "The application name should match the generic name")
+
+						if len(tt.devfilesURLMap) > 0 {
+							assert.NotNil(t, hasCompDetection.ComponentStub.Source.GitSource, "The git source cannot be nil for this test")
+							assert.Equal(t, hasCompDetection.ComponentStub.Source.GitSource.DevfileURL, tt.devfilesURLMap[hasCompDetection.ComponentStub.Context], "The devfile URL should match")
+						}
 
 						for _, devfileComponent := range tt.devfilesDataMap[hasCompDetection.ComponentStub.Context].Components {
 							if devfileComponent.Container != nil {
