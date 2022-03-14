@@ -65,7 +65,7 @@ func TestGetContext(t *testing.T) {
 }
 
 func TestGetAlizerDevfileTypes(t *testing.T) {
-	const serverIP = "127.0.0.1:8080"
+	const serverIP = "127.0.0.1:9080"
 
 	sampleFilteredIndex := []indexSchema.Schema{
 		{

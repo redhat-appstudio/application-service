@@ -24,6 +24,7 @@ import (
 	"github.com/redhat-developer/alizer/go/pkg/apis/recognizer"
 )
 
+// getAlizerDevfileTypes gets the Alizer devfile types for a specified registry
 func getAlizerDevfileTypes(registryURL string) ([]recognizer.DevFileType, error) {
 	types := []recognizer.DevFileType{}
 	registryIndex, err := registryLibrary.GetRegistryIndex(registryURL, registryLibrary.RegistryOptions{
