@@ -132,6 +132,9 @@ type ComponentStatus struct {
 
 	// GitOps specific status for the Component CR
 	GitOps GitOpsStatus `json:"gitops,omitempty"`
+
+	// Tekton bundle for the Component CR
+	BuildBundle string `json:"buildBundle,omitempty"`
 }
 
 // GitOpsStatus contains GitOps repository-specific status for the component

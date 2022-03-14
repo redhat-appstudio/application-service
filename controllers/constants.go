@@ -36,4 +36,16 @@ const (
 
 	// maxDevfileDiscoveryDepth is the depth of the directory to detect devfiles
 	maxDevfileDiscoveryDepth = 1
+
+	// namespace where the bundle configuration will be searched in case it is not found in the component's namespace
+	buildBundleDefaultNamepace = "build-templates"
+
+	// name for a configMap that holds the URL to a build bundle
+	buildBundleConfigMapName = "build-pipelines-defaults"
+
+	// data key within a configMap that holds the URL to a build bundle
+	buildBundleConfigMapKey = "default_build_bundle"
+
+	// fallback bundle that will be used in case the bundle resolution fails
+	fallbackBuildBundle = "quay.io/redhat-appstudio/build-templates-bundle:8201a567956ba6d2095d615ea2c0f6ab35f9ba5f"
 )

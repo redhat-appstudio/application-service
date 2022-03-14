@@ -101,7 +101,7 @@ func DetermineBuildExecution(component appstudiov1alpha1.Component, params []tek
 		Params: params,
 		PipelineRef: &tektonapi.PipelineRef{
 			Name:   determineBuildPipeline(component),
-			Bundle: determineBuildCatalog(component.Namespace),
+			Bundle: component.Status.BuildBundle,
 		},
 
 		Workspaces: []tektonapi.WorkspaceBinding{
@@ -168,12 +168,6 @@ func determineBuildPipeline(component appstudiov1alpha1.Component) string {
 	// Failed to detect build pipeline
 	// Do nothing as we do not know how to build given component
 	return "noop"
-}
-
-func determineBuildCatalog(namespace string) string {
-	// TODO: If there's a namespace/workspace specific catalog, we got
-	// to respect that.
-	return "quay.io/redhat-appstudio/build-templates-bundle:8201a567956ba6d2095d615ea2c0f6ab35f9ba5f"
 }
 
 func normalizeOutputImageURL(outputImage string) string {

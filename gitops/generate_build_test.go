@@ -112,6 +112,9 @@ func TestGenerateInitialBuildPipelineRun(t *testing.T) {
 			Name:      "testcomponent",
 			Namespace: "kcpworkspacename",
 		},
+		Status: appstudiov1alpha1.ComponentStatus{
+			BuildBundle: "quay.io/redhat-appstudio/build-templates-bundle:latest",
+		},
 		Spec: appstudiov1alpha1.ComponentSpec{
 			Source: appstudiov1alpha1.ComponentSource{
 				ComponentSourceUnion: appstudiov1alpha1.ComponentSourceUnion{
@@ -144,7 +147,7 @@ func TestGenerateInitialBuildPipelineRun(t *testing.T) {
 				},
 				Spec: tektonapi.PipelineRunSpec{
 					PipelineRef: &tektonapi.PipelineRef{
-						Bundle: "quay.io/redhat-appstudio/build-templates-bundle:8201a567956ba6d2095d615ea2c0f6ab35f9ba5f",
+						Bundle: "quay.io/redhat-appstudio/build-templates-bundle:latest",
 						Name:   "noop",
 					},
 					Params: []tektonapi.Param{
@@ -210,13 +213,16 @@ func TestDetermineBuildExecution(t *testing.T) {
 						Name:      "testcomponent",
 						Namespace: "kcpworkspacename",
 					},
+					Status: appstudiov1alpha1.ComponentStatus{
+						BuildBundle: "quay.io/redhat-appstudio/build-templates-bundle:latest",
+					},
 				},
 				workspaceSubPath: "initialbuild",
 				params:           []tektonapi.Param{},
 			},
 			want: tektonapi.PipelineRunSpec{
 				PipelineRef: &tektonapi.PipelineRef{
-					Bundle: "quay.io/redhat-appstudio/build-templates-bundle:8201a567956ba6d2095d615ea2c0f6ab35f9ba5f",
+					Bundle: "quay.io/redhat-appstudio/build-templates-bundle:latest",
 					Name:   "noop",
 				},
 				Params: []tektonapi.Param{},
@@ -245,13 +251,16 @@ func TestDetermineBuildExecution(t *testing.T) {
 						Name:      "testcomponent",
 						Namespace: "kcpworkspacename",
 					},
+					Status: appstudiov1alpha1.ComponentStatus{
+						BuildBundle: "quay.io/redhat-appstudio/build-templates-bundle:latest",
+					},
 				},
 				workspaceSubPath: "a-long-git-reference",
 				params:           []tektonapi.Param{},
 			},
 			want: tektonapi.PipelineRunSpec{
 				PipelineRef: &tektonapi.PipelineRef{
-					Bundle: "quay.io/redhat-appstudio/build-templates-bundle:8201a567956ba6d2095d615ea2c0f6ab35f9ba5f",
+					Bundle: "quay.io/redhat-appstudio/build-templates-bundle:latest",
 					Name:   "noop",
 				},
 				Params: []tektonapi.Param{},

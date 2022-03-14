@@ -18,6 +18,7 @@ package controllers
 
 import (
 	"context"
+	coreErrors "errors"
 	"fmt"
 	"net/url"
 	"os"
@@ -67,6 +68,7 @@ type ComponentReconciler struct {
 //+kubebuilder:rbac:groups=appstudio.redhat.com,resources=components,verbs=get;list;watch;create;update;patch;delete
 //+kubebuilder:rbac:groups=appstudio.redhat.com,resources=components/status,verbs=get;update;patch
 //+kubebuilder:rbac:groups=appstudio.redhat.com,resources=components/finalizers,verbs=update
+//+kubebuilder:rbac:groups=core,resources=configmaps,verbs=get;list;watch
 
 // Reconcile is part of the main kubernetes reconciliation loop which aims to
 // move the current state of the cluster closer to the desired state.
@@ -239,6 +241,20 @@ func (r *ComponentReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 				if component.Spec.Build.ContainerImage != "" {
 					// Set the container image in the status
 					component.Status.ContainerImage = component.Spec.Build.ContainerImage
+				}
+
+				// resolve the build bundle to be used by the component
+				if component.Status.BuildBundle == "" {
+					buildBundle, errs := r.resolveBuildBundle(ctx, component)
+					component.Status.BuildBundle = buildBundle
+
+					for _, err := range errs {
+						if !errors.IsNotFound(err) {
+							log.Error(err, "Error loading build bundle from configmap.")
+						}
+					}
+
+					log.Info(fmt.Sprintf("Setting the bundle %v for component %v", component.Status.BuildBundle, req.NamespacedName))
 				}
 
 				log.Info(fmt.Sprintf("Adding the GitOps repository information to the status for component %v", req.NamespacedName))
@@ -544,6 +560,42 @@ func updateServiceAccountIfSecretNotLinked(ctx context.Context, sourceSecretName
 		return true
 	}
 	return false
+}
+
+// Tries to load a custom build bundle path from a configmap.
+// The following priority is used: component's namespace -> default namespace -> fallback path.
+func (r *ComponentReconciler) resolveBuildBundle(ctx context.Context, component appstudiov1alpha1.Component) (string, []error) {
+	bundle, localNamespaceErr := r.fetchBuildBundlePath(ctx, component.Namespace)
+
+	if localNamespaceErr != nil {
+		bundle, defaultNamespaceErr := r.fetchBuildBundlePath(ctx, buildBundleDefaultNamepace)
+
+		if defaultNamespaceErr != nil {
+			return fallbackBuildBundle, []error{localNamespaceErr, defaultNamespaceErr}
+		}
+
+		return bundle, []error{localNamespaceErr}
+	}
+
+	return bundle, []error{}
+}
+
+// Looks for a configmap containing build bundle definitions in a namespace and returns a build bundle path.
+// In case the configmap is not found, is invalid or it fails to load, an empty string is returned.
+func (r *ComponentReconciler) fetchBuildBundlePath(ctx context.Context, namespace string) (string, error) {
+	var configMap = corev1.ConfigMap{}
+
+	err := r.Get(ctx, types.NamespacedName{Name: buildBundleConfigMapName, Namespace: namespace}, &configMap)
+
+	if err != nil {
+		return "", err
+	}
+
+	if value, isPresent := configMap.Data[buildBundleConfigMapKey]; isPresent && value != "" {
+		return value, nil
+	}
+
+	return "", coreErrors.New("%v key is not present in the configMap or is empty")
 }
 
 // generateGitops retrieves the necessary information about a Component's gitops repository (URL, branch, context)
