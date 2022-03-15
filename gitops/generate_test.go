@@ -311,8 +311,8 @@ func TestGenerateRoute(t *testing.T) {
 			},
 			wantRoute: routev1.Route{
 				TypeMeta: v1.TypeMeta{
-					APIVersion: "v1",
 					Kind:       "Route",
+					APIVersion: "route.openshift.io/v1",
 				},
 				ObjectMeta: v1.ObjectMeta{
 					Name:      componentName,
@@ -351,8 +351,8 @@ func TestGenerateRoute(t *testing.T) {
 			},
 			wantRoute: routev1.Route{
 				TypeMeta: v1.TypeMeta{
-					APIVersion: "v1",
 					Kind:       "Route",
+					APIVersion: "route.openshift.io/v1",
 				},
 				ObjectMeta: v1.ObjectMeta{
 					Name:      componentName,
