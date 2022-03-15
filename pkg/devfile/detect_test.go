@@ -42,9 +42,9 @@ func TestAnalyzeAndDetectDevfile(t *testing.T) {
 			wantDevfileEndpoint: "https://registry.stage.devfile.io/devfiles/java-springboot-basic",
 		},
 		{
-			name:      "Cannot detect a devfile for a Go repository",
+			name:      "Cannot detect a devfile for a Scala repository",
 			clonePath: "/tmp/testclone",
-			repo:      "https://github.com/devfile/devworkspace-operator",
+			repo:      "https://github.com/johnmcollier/scalatemplate",
 			wantErr:   true,
 		},
 	}
