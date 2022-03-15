@@ -19,11 +19,59 @@ import (
 	"reflect"
 	"testing"
 
+	"github.com/devfile/api/v2/pkg/apis/workspaces/v1alpha2"
+	"github.com/devfile/api/v2/pkg/devfile"
+	data "github.com/devfile/library/pkg/devfile/parser/data"
 	appstudiov1alpha1 "github.com/redhat-appstudio/application-service/api/v1alpha1"
 	tektonapi "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	corev1 "k8s.io/api/core/v1"
-	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"sigs.k8s.io/yaml"
 )
+
+func devfileToString(devfile data.DevfileData) string {
+	yamlDevfile, err := yaml.Marshal(devfile)
+	if err != nil {
+		panic("Invalid test devfile")
+	}
+	return string(yamlDevfile)
+}
+
+func getSampleDevfileComponents() []v1alpha2.Component {
+	return []v1alpha2.Component{
+		{
+			Name: "outerloop-deploy",
+			ComponentUnion: v1alpha2.ComponentUnion{
+				Kubernetes: &v1alpha2.KubernetesComponent{
+					K8sLikeComponent: v1alpha2.K8sLikeComponent{
+						K8sLikeComponentLocation: v1alpha2.K8sLikeComponentLocation{
+							Uri: "test-uri",
+						},
+					},
+				},
+			},
+		},
+		{
+			Name: "outerloop-build",
+			ComponentUnion: v1alpha2.ComponentUnion{
+				Image: &v1alpha2.ImageComponent{
+					Image: v1alpha2.Image{
+						ImageUnion: v1alpha2.ImageUnion{
+							Dockerfile: &v1alpha2.DockerfileImage{
+								DockerfileSrc: v1alpha2.DockerfileSrc{
+									Uri: "dockerfile-uri",
+								},
+								Dockerfile: v1alpha2.Dockerfile{
+									BuildContext: "build-context-path",
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+	}
+}
 
 func TestNormalizeOutputImageURL(t *testing.T) {
 	type args struct {
@@ -58,6 +106,91 @@ func TestNormalizeOutputImageURL(t *testing.T) {
 	}
 }
 
+func TestGenerateInitialBuildPipelineRun(t *testing.T) {
+	component := appstudiov1alpha1.Component{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "testcomponent",
+			Namespace: "kcpworkspacename",
+		},
+		Spec: appstudiov1alpha1.ComponentSpec{
+			Source: appstudiov1alpha1.ComponentSource{
+				ComponentSourceUnion: appstudiov1alpha1.ComponentSourceUnion{
+					GitSource: &appstudiov1alpha1.GitSource{
+						URL: "https://host/git-repo",
+					},
+				},
+			},
+		},
+	}
+
+	type args struct {
+		component appstudiov1alpha1.Component
+	}
+	tests := []struct {
+		name string
+		args args
+		want tektonapi.PipelineRun
+	}{
+		{
+			name: "generate initial build pipelien run",
+			args: args{
+				component: component,
+			},
+			want: tektonapi.PipelineRun{
+				ObjectMeta: metav1.ObjectMeta{
+					GenerateName: "testcomponent-",
+					Namespace:    "kcpworkspacename",
+					Labels:       getBuildCommonLabelsForComponent(&component),
+				},
+				Spec: tektonapi.PipelineRunSpec{
+					PipelineRef: &tektonapi.PipelineRef{
+						Bundle: "quay.io/redhat-appstudio/build-templates-bundle@sha256:c36c9216b7740f4acd755d9167dacf559fc1d2ce67fd108cffdedbfb2b1d2fae",
+						Name:   "noop",
+					},
+					Params: []tektonapi.Param{
+						{
+							Name: "git-url",
+							Value: tektonapi.ArrayOrString{
+								Type:      tektonapi.ParamTypeString,
+								StringVal: "https://host/git-repo",
+							},
+						},
+						{
+							Name: "output-image",
+							Value: tektonapi.ArrayOrString{
+								Type:      tektonapi.ParamTypeString,
+								StringVal: "",
+							},
+						},
+					},
+					Workspaces: []tektonapi.WorkspaceBinding{
+						{
+							Name: "workspace",
+							PersistentVolumeClaim: &corev1.PersistentVolumeClaimVolumeSource{
+								ClaimName: "appstudio",
+							},
+							SubPath: "testcomponent/" + getInitialBuildWorkspaceSubpath(),
+						},
+						{
+							Name: "registry-auth",
+							Secret: &corev1.SecretVolumeSource{
+								SecretName: "redhat-appstudio-registry-pull-secret",
+							},
+						},
+					},
+				},
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := GenerateInitialBuildPipelineRun(tt.args.component); !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("GenerateInitialBuildPipelineRun() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
 func TestDetermineBuildExecution(t *testing.T) {
 	type args struct {
 		component        appstudiov1alpha1.Component
@@ -73,7 +206,7 @@ func TestDetermineBuildExecution(t *testing.T) {
 			name: "for non webhooks",
 			args: args{
 				component: appstudiov1alpha1.Component{
-					ObjectMeta: v1.ObjectMeta{
+					ObjectMeta: metav1.ObjectMeta{
 						Name:      "testcomponent",
 						Namespace: "kcpworkspacename",
 					},
@@ -83,8 +216,8 @@ func TestDetermineBuildExecution(t *testing.T) {
 			},
 			want: tektonapi.PipelineRunSpec{
 				PipelineRef: &tektonapi.PipelineRef{
-					Bundle: "quay.io/redhat-appstudio/build-templates-bundle@sha256:2205a29208fa686b47f841819f7abedb64adb93935493693892d0e18bbdbb77e",
-					Name:   "devfile-build",
+					Bundle: "quay.io/redhat-appstudio/build-templates-bundle@sha256:c36c9216b7740f4acd755d9167dacf559fc1d2ce67fd108cffdedbfb2b1d2fae",
+					Name:   "noop",
 				},
 				Params: []tektonapi.Param{},
 				Workspaces: []tektonapi.WorkspaceBinding{
@@ -108,7 +241,7 @@ func TestDetermineBuildExecution(t *testing.T) {
 			name: "for webhooks",
 			args: args{
 				component: appstudiov1alpha1.Component{
-					ObjectMeta: v1.ObjectMeta{
+					ObjectMeta: metav1.ObjectMeta{
 						Name:      "testcomponent",
 						Namespace: "kcpworkspacename",
 					},
@@ -118,8 +251,8 @@ func TestDetermineBuildExecution(t *testing.T) {
 			},
 			want: tektonapi.PipelineRunSpec{
 				PipelineRef: &tektonapi.PipelineRef{
-					Bundle: "quay.io/redhat-appstudio/build-templates-bundle@sha256:2205a29208fa686b47f841819f7abedb64adb93935493693892d0e18bbdbb77e",
-					Name:   "devfile-build",
+					Bundle: "quay.io/redhat-appstudio/build-templates-bundle@sha256:c36c9216b7740f4acd755d9167dacf559fc1d2ce67fd108cffdedbfb2b1d2fae",
+					Name:   "noop",
 				},
 				Params: []tektonapi.Param{},
 				Workspaces: []tektonapi.WorkspaceBinding{
@@ -149,34 +282,121 @@ func TestDetermineBuildExecution(t *testing.T) {
 	}
 }
 
-func TestGetParamsForComponentInitialBuild(t *testing.T) {
-	type args struct {
-		component appstudiov1alpha1.Component
+func TestDetermineBuildPipeline(t *testing.T) {
+	createDevfileWithBuildInfo := func(language string, projectType string) data.DevfileData {
+		devfileVersion := string(data.APISchemaVersion220)
+		devfileData, _ := data.NewDevfileData(devfileVersion)
+		devfileData.SetSchemaVersion(devfileVersion)
+		devfileData.SetMetadata(devfile.DevfileMetadata{
+			Name:        "test-devfile",
+			Language:    language,
+			ProjectType: projectType,
+		})
+		return devfileData
 	}
+	createDevfileStatusModelWithBuildInfo := func(language string, projectType string) string {
+		return devfileToString(createDevfileWithBuildInfo(language, projectType))
+	}
+	createDevfileWithoutBuildInfoButWithDockerfileComponent := func() string {
+		devfileData := createDevfileWithBuildInfo("java", "")
+		devfileData.AddComponents(getSampleDevfileComponents())
+		return devfileToString(devfileData)
+	}
+
 	tests := []struct {
-		name string
-		args args
-		want []tektonapi.Param
+		name      string
+		component appstudiov1alpha1.Component
+		want      string
 	}{
 		{
-			name: "use the image as is",
-			args: args{
-				component: appstudiov1alpha1.Component{
-					ObjectMeta: v1.ObjectMeta{
-						Name:      "testcomponent",
-						Namespace: "kcpworkspacename",
-					},
-					Spec: appstudiov1alpha1.ComponentSpec{
-						Source: appstudiov1alpha1.ComponentSource{
-							ComponentSourceUnion: appstudiov1alpha1.ComponentSourceUnion{
-								GitSource: &appstudiov1alpha1.GitSource{
-									URL: "https://a/b/c",
-								},
+			name: "should use java builder",
+			component: appstudiov1alpha1.Component{
+				Status: appstudiov1alpha1.ComponentStatus{
+					Devfile: createDevfileStatusModelWithBuildInfo("java", "quarkus"),
+				},
+			},
+			want: "java-builder",
+		},
+		{
+			name: "should use nodejs builder",
+			component: appstudiov1alpha1.Component{
+				Status: appstudiov1alpha1.ComponentStatus{
+					Devfile: createDevfileStatusModelWithBuildInfo("nodejs", ""),
+				},
+			},
+			want: "nodejs-builder",
+		},
+		{
+			name: "should use python builder",
+			component: appstudiov1alpha1.Component{
+				Status: appstudiov1alpha1.ComponentStatus{
+					Devfile: createDevfileStatusModelWithBuildInfo("python", "django"),
+				},
+			},
+			// TODO fix when python builder is in place
+			want: "noop",
+		},
+		{
+			name: "should use noop builder if failed to determine pipeline",
+			component: appstudiov1alpha1.Component{
+				Status: appstudiov1alpha1.ComponentStatus{
+					Devfile: createDevfileStatusModelWithBuildInfo("unknown", ""),
+				},
+			},
+			want: "noop",
+		},
+		{
+			name: "should use docker builder if dockerfile present",
+			component: appstudiov1alpha1.Component{
+				Status: appstudiov1alpha1.ComponentStatus{
+					Devfile: createDevfileWithoutBuildInfoButWithDockerfileComponent(),
+				},
+			},
+			want: "docker-build",
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := determineBuildPipeline(tt.component); got != tt.want {
+				t.Errorf("determineBuildPipeline() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestGetParamsForComponentBuild(t *testing.T) {
+	getDevfileWithOuterloopBuildDockerfile := func() string {
+		devfileVersion := string(data.APISchemaVersion220)
+		devfileData, _ := data.NewDevfileData(devfileVersion)
+		devfileData.SetSchemaVersion(devfileVersion)
+		devfileData.AddComponents(getSampleDevfileComponents())
+		return devfileToString(devfileData)
+	}
+
+	tests := []struct {
+		name           string
+		IsInitialBuild bool
+		component      appstudiov1alpha1.Component
+		want           []tektonapi.Param
+	}{
+		{
+			name:           "use the image as is",
+			IsInitialBuild: true,
+			component: appstudiov1alpha1.Component{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "testcomponent",
+					Namespace: "kcpworkspacename",
+				},
+				Spec: appstudiov1alpha1.ComponentSpec{
+					Source: appstudiov1alpha1.ComponentSource{
+						ComponentSourceUnion: appstudiov1alpha1.ComponentSourceUnion{
+							GitSource: &appstudiov1alpha1.GitSource{
+								URL: "https://a/b/c",
 							},
 						},
-						Build: appstudiov1alpha1.Build{
-							ContainerImage: "whatever-is-set",
-						},
+					},
+					Build: appstudiov1alpha1.Build{
+						ContainerImage: "whatever-is-set",
 					},
 				},
 			},
@@ -197,44 +417,25 @@ func TestGetParamsForComponentInitialBuild(t *testing.T) {
 				},
 			},
 		},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			if got := GetParamsForComponentInitialBuild(tt.args.component); !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("GetParamsForComponentInitialBuild() = %v, want %v", got, tt.want)
-			}
-		})
-	}
-}
 
-func TestGetParamsForComponentWebhookBuilds(t *testing.T) {
-	type args struct {
-		component appstudiov1alpha1.Component
-	}
-	tests := []struct {
-		name string
-		args args
-		want []tektonapi.Param
-	}{
 		{
-			name: "use the updated image tag",
-			args: args{
-				component: appstudiov1alpha1.Component{
-					ObjectMeta: v1.ObjectMeta{
-						Name:      "testcomponent",
-						Namespace: "kcpworkspacename",
-					},
-					Spec: appstudiov1alpha1.ComponentSpec{
-						Source: appstudiov1alpha1.ComponentSource{
-							ComponentSourceUnion: appstudiov1alpha1.ComponentSourceUnion{
-								GitSource: &appstudiov1alpha1.GitSource{
-									URL: "https://a/b/c",
-								},
+			name:           "use the updated image tag",
+			IsInitialBuild: false,
+			component: appstudiov1alpha1.Component{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "testcomponent",
+					Namespace: "kcpworkspacename",
+				},
+				Spec: appstudiov1alpha1.ComponentSpec{
+					Source: appstudiov1alpha1.ComponentSource{
+						ComponentSourceUnion: appstudiov1alpha1.ComponentSourceUnion{
+							GitSource: &appstudiov1alpha1.GitSource{
+								URL: "https://a/b/c",
 							},
 						},
-						Build: appstudiov1alpha1.Build{
-							ContainerImage: "docker.io/foo/bar:tag",
-						},
+					},
+					Build: appstudiov1alpha1.Build{
+						ContainerImage: "docker.io/foo/bar:tag",
 					},
 				},
 			},
@@ -255,11 +456,68 @@ func TestGetParamsForComponentWebhookBuilds(t *testing.T) {
 				},
 			},
 		},
+
+		{
+			name:           "set dockerfile path and context",
+			IsInitialBuild: false,
+			component: appstudiov1alpha1.Component{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "testcomponent",
+					Namespace: "kcpworkspacename",
+				},
+				Spec: appstudiov1alpha1.ComponentSpec{
+					Source: appstudiov1alpha1.ComponentSource{
+						ComponentSourceUnion: appstudiov1alpha1.ComponentSourceUnion{
+							GitSource: &appstudiov1alpha1.GitSource{
+								URL: "https://a/b/c",
+							},
+						},
+					},
+					Build: appstudiov1alpha1.Build{
+						ContainerImage: "docker.io/foo/bar:tag",
+					},
+				},
+				Status: appstudiov1alpha1.ComponentStatus{
+					Devfile: getDevfileWithOuterloopBuildDockerfile(),
+				},
+			},
+			want: []tektonapi.Param{
+				{
+					Name: "git-url",
+					Value: tektonapi.ArrayOrString{
+						Type:      tektonapi.ParamTypeString,
+						StringVal: "https://a/b/c",
+					},
+				},
+				{
+					Name: "output-image",
+					Value: tektonapi.ArrayOrString{
+						Type:      tektonapi.ParamTypeString,
+						StringVal: "docker.io/foo/bar:tag-$(tt.params.git-revision)",
+					},
+				},
+				{
+					Name: "dockerfile",
+					Value: tektonapi.ArrayOrString{
+						Type:      tektonapi.ParamTypeString,
+						StringVal: "dockerfile-uri",
+					},
+				},
+				{
+					Name: "path-context",
+					Value: tektonapi.ArrayOrString{
+						Type:      tektonapi.ParamTypeString,
+						StringVal: "build-context-path",
+					},
+				},
+			},
+		},
 	}
+
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := getParamsForComponentWebhookBuilds(tt.args.component); !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("getParamsForComponentWebhookBuilds() = %v, want %v", got, tt.want)
+			if got := getParamsForComponentBuild(tt.component, tt.IsInitialBuild); !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("GetParamsForComponentBuild() = %v, want %v", got, tt.want)
 			}
 		})
 	}

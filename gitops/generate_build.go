@@ -19,11 +19,15 @@ package gitops
 import (
 	"encoding/json"
 	"strings"
+	"time"
 
+	devfilev1alpha2 "github.com/devfile/api/v2/pkg/apis/workspaces/v1alpha2"
+	devfilecommon "github.com/devfile/library/pkg/devfile/parser/data/v2/common"
 	routev1 "github.com/openshift/api/route/v1"
 	appstudiov1alpha1 "github.com/redhat-appstudio/application-service/api/v1alpha1"
 	"github.com/redhat-appstudio/application-service/gitops/resources"
 	yaml "github.com/redhat-appstudio/application-service/gitops/yaml"
+	"github.com/redhat-appstudio/application-service/pkg/devfile"
 	"github.com/spf13/afero"
 	tektonapi "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	triggersapi "github.com/tektoncd/triggers/pkg/apis/triggers/v1alpha1"
@@ -71,6 +75,24 @@ func GenerateBuild(fs afero.Fs, outputFolder string, component appstudiov1alpha1
 	return nil
 }
 
+// GenerateInitialBuildPipelineRun generates pipeline run for initial build of the component.
+func GenerateInitialBuildPipelineRun(component appstudiov1alpha1.Component) tektonapi.PipelineRun {
+	initialBuildSpec := DetermineBuildExecution(component, getParamsForComponentBuild(component, true), getInitialBuildWorkspaceSubpath())
+
+	return tektonapi.PipelineRun{
+		ObjectMeta: metav1.ObjectMeta{
+			GenerateName: component.Name + "-",
+			Namespace:    component.Namespace,
+			Labels:       getBuildCommonLabelsForComponent(&component),
+		},
+		Spec: initialBuildSpec,
+	}
+}
+
+func getInitialBuildWorkspaceSubpath() string {
+	return "initialbuild-" + time.Now().Format("2006-Feb-02_15-04-05")
+}
+
 // DetermineBuildExecution returns the pipelineRun spec that would be used
 // in webhooks-triggered pipelineRuns as well as user-triggered PipelineRuns
 func DetermineBuildExecution(component appstudiov1alpha1.Component, params []tektonapi.Param, workspaceSubPath string) tektonapi.PipelineRunSpec {
@@ -78,11 +100,7 @@ func DetermineBuildExecution(component appstudiov1alpha1.Component, params []tek
 	pipelineRunSpec := tektonapi.PipelineRunSpec{
 		Params: params,
 		PipelineRef: &tektonapi.PipelineRef{
-
-			// This can't be hardcoded to devfile-build.
-			// The logic should determine if it is a
-			// nodejs build, java build, dockerfile build or a devfile build.
-			Name:   determineBuildDefinition(component),
+			Name:   determineBuildPipeline(component),
 			Bundle: determineBuildCatalog(component.Namespace),
 		},
 
@@ -105,14 +123,57 @@ func DetermineBuildExecution(component appstudiov1alpha1.Component, params []tek
 	return pipelineRunSpec
 }
 
-func determineBuildDefinition(component appstudiov1alpha1.Component) string {
-	return "devfile-build"
+// determineBuildPipeline should detect build pipeline to use for the component and return its name.
+// If it fails to autodetect right pipeline, noop pipeline will be returned.
+// If a repository consists of two parts (e.g. frontend and backend), it should be mapped to two components (see context field in CR).
+// Available build pipeleines are located here: https://github.com/redhat-appstudio/build-definitions/tree/main/pipelines
+func determineBuildPipeline(component appstudiov1alpha1.Component) string {
+	// It is possible to skip error checks here because the model is propogated by component controller
+	componentDevfileData, err := devfile.ParseDevfileModel(component.Status.Devfile)
+	if err != nil {
+		// Return dummy value for tests
+		return "noop"
+	}
+
+	// Check for Dockerfile
+	filterOptions := devfilecommon.DevfileOptions{
+		ComponentOptions: devfilecommon.ComponentOptions{
+			ComponentType: devfilev1alpha2.ImageComponentType,
+		},
+	}
+	devfileComponents, _ := componentDevfileData.GetComponents(filterOptions)
+	for _, devfileComponent := range devfileComponents {
+		if devfileComponent.Image != nil && devfileComponent.Image.Dockerfile != nil {
+			return "docker-build"
+		}
+	}
+
+	// The only information about project is in language and projectType fileds under metadata of the devfile.
+	// They must be used to determine the right build pipeline.
+	devfileMetadata := componentDevfileData.GetMetadata()
+	language := devfileMetadata.Language
+	// TODO use projectType when build pipelines support frameworks
+	// projectType := devfileMetadata.ProjectType
+
+	switch strings.ToLower(language) {
+	case "java":
+		return "java-builder"
+	case "nodejs", "node":
+		return "nodejs-builder"
+	case "python":
+		// TODO return python-builder when the pipeline ready
+		return "noop"
+	}
+
+	// Failed to detect build pipeline
+	// Do nothing as we do not know how to build given component
+	return "noop"
 }
 
 func determineBuildCatalog(namespace string) string {
 	// TODO: If there's a namespace/workspace specific catalog, we got
 	// to respect that.
-	return "quay.io/redhat-appstudio/build-templates-bundle@sha256:2205a29208fa686b47f841819f7abedb64adb93935493693892d0e18bbdbb77e"
+	return "quay.io/redhat-appstudio/build-templates-bundle@sha256:c36c9216b7740f4acd755d9167dacf559fc1d2ce67fd108cffdedbfb2b1d2fae"
 }
 
 func normalizeOutputImageURL(outputImage string) string {
@@ -133,12 +194,18 @@ func normalizeOutputImageURL(outputImage string) string {
 	return outputImage
 }
 
-// GetParamsForComponentInitialBuild would return the 'input' parameters for the initial PipelineRun
-// that would build an image from source right after a Component is imported.
-func GetParamsForComponentInitialBuild(component appstudiov1alpha1.Component) []tektonapi.Param {
+// getParamsForComponentBuild would return the 'input' parameters for the PipelineRun
+// that would build an image from source of the Component.
+// The key difference between webhook (regular) triggered PipelineRuns and user-triggered (initial) PipelineRuns
+// is that the git revision appended to the output image tag in case of webhook build.
+func getParamsForComponentBuild(component appstudiov1alpha1.Component, isInitialBuild bool) []tektonapi.Param {
 	sourceCode := component.Spec.Source.GitSource.URL
 	outputImage := component.Spec.Build.ContainerImage
+	if !isInitialBuild {
+		outputImage = normalizeOutputImageURL(component.Spec.Build.ContainerImage)
+	}
 
+	// Default required parameters
 	params := []tektonapi.Param{
 		{
 			Name: "git-url",
@@ -156,37 +223,45 @@ func GetParamsForComponentInitialBuild(component appstudiov1alpha1.Component) []
 		},
 	}
 
-	return params
-}
+	// Analyze component model for additional parameters
+	if componentDevfileData, err := devfile.ParseDevfileModel(component.Status.Devfile); err == nil {
 
-// getParamsForComponentWebhookBuilds returns the 'input' paramters for the webhook-triggered
-// PipelineRuns. The key difference between webhook triggered PipelineRuns and user-triggered
-// PipelineRuns would be that you'd have the git revision appended to the output image tag
-func getParamsForComponentWebhookBuilds(component appstudiov1alpha1.Component) []tektonapi.Param {
-	sourceCode := component.Spec.Source.GitSource.URL
-	outputImage := normalizeOutputImageURL(component.Spec.Build.ContainerImage)
+		// Check for dockerfile in outerloop-build devfile component
+		if devfileComponents, err := componentDevfileData.GetComponents(devfilecommon.DevfileOptions{}); err == nil {
+			for _, devfileComponent := range devfileComponents {
+				if devfileComponent.Name == "outerloop-build" {
+					if devfileComponent.Image != nil && devfileComponent.Image.Dockerfile != nil && devfileComponent.Image.Dockerfile.Uri != "" {
+						// Set dockerfile location
+						params = append(params, tektonapi.Param{
+							Name: "dockerfile",
+							Value: tektonapi.ArrayOrString{
+								Type:      tektonapi.ParamTypeString,
+								StringVal: devfileComponent.Image.Dockerfile.Uri,
+							},
+						})
 
-	params := []tektonapi.Param{
-		{
-			Name: "git-url",
-			Value: tektonapi.ArrayOrString{
-				Type:      tektonapi.ParamTypeString,
-				StringVal: sourceCode,
-			},
-		},
-		{
-			Name: "output-image",
-			Value: tektonapi.ArrayOrString{
-				Type:      tektonapi.ParamTypeString,
-				StringVal: outputImage,
-			},
-		},
+						// Check for docker build context
+						if devfileComponent.Image.Dockerfile.BuildContext != "" {
+							params = append(params, tektonapi.Param{
+								Name: "path-context",
+								Value: tektonapi.ArrayOrString{
+									Type:      tektonapi.ParamTypeString,
+									StringVal: devfileComponent.Image.Dockerfile.BuildContext,
+								},
+							})
+						}
+					}
+					break
+				}
+			}
+		}
+
 	}
 
 	return params
 }
 
-func GetBuildCommonLabelsForComponent(component *appstudiov1alpha1.Component) map[string]string {
+func getBuildCommonLabelsForComponent(component *appstudiov1alpha1.Component) map[string]string {
 	labels := map[string]string{
 		"pipelines.appstudio.openshift.io/type":    "build",
 		"build.appstudio.openshift.io/build":       "true",
@@ -211,7 +286,7 @@ func GenerateCommonStorage(component appstudiov1alpha1.Component, name string) c
 		ObjectMeta: metav1.ObjectMeta{
 			Name:        name,
 			Namespace:   component.Namespace,
-			Annotations: GetBuildCommonLabelsForComponent(&component),
+			Annotations: getBuildCommonLabelsForComponent(&component),
 		},
 		Spec: corev1.PersistentVolumeClaimSpec{
 			AccessModes: []corev1.PersistentVolumeAccessMode{
@@ -241,7 +316,7 @@ func GenerateBuildWebhookRoute(component appstudiov1alpha1.Component) routev1.Ro
 		ObjectMeta: metav1.ObjectMeta{
 			Name:        "el" + component.Name,
 			Namespace:   component.Namespace,
-			Annotations: GetBuildCommonLabelsForComponent(&component),
+			Annotations: getBuildCommonLabelsForComponent(&component),
 		},
 		Spec: routev1.RouteSpec{
 			Path: "/",
@@ -261,12 +336,12 @@ func GenerateBuildWebhookRoute(component appstudiov1alpha1.Component) routev1.Ro
 // which defines how a webhook-based trigger event would be handled -
 // In this case, a PipelineRun to build an image would be created.
 func GenerateTriggerTemplate(component appstudiov1alpha1.Component) (*triggersapi.TriggerTemplate, error) {
-	webhookBasedBuildTemplate := DetermineBuildExecution(component, getParamsForComponentWebhookBuilds(component), "$(tt.params.git-revision)")
+	webhookBasedBuildTemplate := DetermineBuildExecution(component, getParamsForComponentBuild(component, false), "$(tt.params.git-revision)")
 	resoureTemplatePipelineRun := tektonapi.PipelineRun{
 		ObjectMeta: metav1.ObjectMeta{
 			GenerateName: component.Name + "-",
 			Namespace:    component.Namespace,
-			Annotations:  GetBuildCommonLabelsForComponent(&component),
+			Annotations:  getBuildCommonLabelsForComponent(&component),
 		},
 		TypeMeta: metav1.TypeMeta{
 			Kind:       "PipelineRun",
@@ -316,7 +391,7 @@ func GenerateEventListener(component appstudiov1alpha1.Component, triggerTemplat
 		ObjectMeta: metav1.ObjectMeta{
 			Name:        component.Name,
 			Namespace:   component.Namespace,
-			Annotations: GetBuildCommonLabelsForComponent(&component),
+			Annotations: getBuildCommonLabelsForComponent(&component),
 		},
 		Spec: triggersapi.EventListenerSpec{
 			ServiceAccountName: "pipeline",
