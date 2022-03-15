@@ -8,9 +8,9 @@ In order to use HAS resources (e.g. `Applications`, `Components`, `ComponentDete
 
    a) Install RBAC for App Studio: `kustomize build openshift-gitops/cluster-rbac | oc apply -f -`
 
-   b) Install Build component`oc apply -n openshift-gitops argo-cd-apps/base/build.yaml`
+   b) Install Build component`oc apply -n openshift-gitops -f argo-cd-apps/base/build.yaml`
 
-   c) Install SPI component`oc apply -n openshift-gitops argo-cd-apps/base/spi.yaml`
+   c) Install SPI component`oc apply -n openshift-gitops -f argo-cd-apps/base/spi.yaml`
 
 2) Set up SPI
 

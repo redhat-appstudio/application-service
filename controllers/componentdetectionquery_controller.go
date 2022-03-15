@@ -64,7 +64,6 @@ const (
 // - https://pkg.go.dev/sigs.k8s.io/controller-runtime@v0.9.2/pkg/reconcile
 func (r *ComponentDetectionQueryReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
 	log := r.Log.WithValues("ComponentDetectionQuery", req.NamespacedName)
-	log.Info(fmt.Sprintf("Starting reconcile loop for %v", req.NamespacedName))
 
 	// Fetch the ComponentDetectionQuery instance
 	var componentDetectionQuery appstudiov1alpha1.ComponentDetectionQuery
@@ -80,8 +79,8 @@ func (r *ComponentDetectionQueryReconciler) Reconcile(ctx context.Context, req c
 		return ctrl.Result{}, err
 	}
 
-	// If there is no component list in the map, the CR was just created
-	if len(componentDetectionQuery.Status.ComponentDetected) == 0 {
+	// If there are no conditions attached to the CDQ, the resource was just created
+	if len(componentDetectionQuery.Status.Conditions) == 0 {
 		log.Info(fmt.Sprintf("Checking to see if a component can be detected %v", req.NamespacedName))
 		var gitToken string
 		if componentDetectionQuery.Spec.GitSource.Secret != "" {
@@ -216,8 +215,6 @@ func (r *ComponentDetectionQueryReconciler) Reconcile(ctx context.Context, req c
 		}
 
 		r.SetCompleteConditionAndUpdateCR(ctx, &componentDetectionQuery, nil)
-	} else {
-		log.Info(fmt.Sprintf("No update scenario yet... %v", req.NamespacedName))
 	}
 
 	return ctrl.Result{}, nil
