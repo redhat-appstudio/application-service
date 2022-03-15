@@ -170,8 +170,8 @@ func generateRoute(component appstudiov1alpha1.Component) *routev1.Route {
 	weight := int32(100)
 	route := routev1.Route{
 		TypeMeta: v1.TypeMeta{
-			APIVersion: "v1",
 			Kind:       "Route",
+			APIVersion: "route.openshift.io/v1",
 		},
 		ObjectMeta: v1.ObjectMeta{
 			Name:      component.Name,
