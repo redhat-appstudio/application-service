@@ -41,6 +41,7 @@ BUNDLE_IMG ?= $(IMAGE_TAG_BASE)-bundle:$(TAG_NAME)
 IMG ?= $(IMAGE_TAG_BASE):$(TAG_NAME)
 
 GITHUB_ORG ?= redhat-appstudio-appdata
+DEVFILE_REGISTRY_URL ?= https://registry.devfile.io
 ENABLE_WEBHOOKS ?= true
 
 # Produce CRDs that work back to Kubernetes 1.11 (no version conversion)
@@ -163,7 +164,7 @@ uninstall: manifests kustomize #uninstall-cert ## Uninstall CRDs from the K8s cl
 
 deploy: manifests kustomize ## Deploy controller to the K8s cluster specified in ~/.kube/config.
 	cd config/manager && $(KUSTOMIZE) edit set image controller=${IMG}
-	GITHUB_ORG=${GITHUB_ORG} $(KUSTOMIZE) build config/default | kubectl apply -f -
+	GITHUB_ORG=${GITHUB_ORG} DEVFILE_REGISTRY_URL=${DEVFILE_REGISTRY_URL} $(KUSTOMIZE) build config/default | kubectl apply -f -
 
 undeploy: ## Undeploy controller from the K8s cluster specified in ~/.kube/config.
 	$(KUSTOMIZE) build config/default | kubectl delete -f -

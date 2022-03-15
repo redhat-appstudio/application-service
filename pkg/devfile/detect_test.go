@@ -59,7 +59,7 @@ func TestAnalyzeAndDetectDevfile(t *testing.T) {
 				if tt.name == "Invalid Path" {
 					path = ""
 				}
-				devfileBytes, detectedDevfileEndpoint, err := AnalyzeAndDetectDevfile(path)
+				devfileBytes, detectedDevfileEndpoint, err := AnalyzeAndDetectDevfile(path, DevfileStageRegistryEndpoint)
 				if !tt.wantErr && err != nil {
 					t.Errorf("Unexpected err: %+v", err)
 				} else if tt.wantErr && err == nil {

@@ -43,6 +43,7 @@ import (
 	"github.com/redhat-appstudio/application-service/controllers"
 	"github.com/redhat-appstudio/application-service/gitops"
 	"github.com/redhat-appstudio/application-service/gitops/ioutils"
+	"github.com/redhat-appstudio/application-service/pkg/devfile"
 	"github.com/redhat-appstudio/application-service/pkg/spi"
 	//+kubebuilder:scaffold:imports
 )
@@ -120,6 +121,12 @@ func main() {
 		imageRepository = "quay.io/redhat-appstudio/user-workload"
 	}
 
+	// Retrieve the option to specify a custom devfile registry
+	devfileRegistryURL := os.Getenv("DEVFILE_REGISTRY_URL")
+	if devfileRegistryURL == "" {
+		devfileRegistryURL = devfile.DevfileRegistryEndpoint
+	}
+
 	ctx := context.Background()
 	ts := oauth2.StaticTokenSource(&oauth2.Token{AccessToken: ghToken})
 	tc := oauth2.NewClient(ctx, ts)
@@ -149,10 +156,11 @@ func main() {
 		os.Exit(1)
 	}
 	if err = (&controllers.ComponentDetectionQueryReconciler{
-		Client:    mgr.GetClient(),
-		Scheme:    mgr.GetScheme(),
-		Log:       ctrl.Log.WithName("controllers").WithName("ComponentDetectionQuery"),
-		SPIClient: spi.SPIClient{},
+		Client:             mgr.GetClient(),
+		Scheme:             mgr.GetScheme(),
+		Log:                ctrl.Log.WithName("controllers").WithName("ComponentDetectionQuery"),
+		SPIClient:          spi.SPIClient{},
+		DevfileRegistryURL: devfileRegistryURL,
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "ComponentDetectionQuery")
 		os.Exit(1)

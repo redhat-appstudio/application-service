@@ -66,5 +66,11 @@ spec:
               name: has-github-token
               key: token
               optional: true
+        - name: DEVFILE_REGISTRY_URL
+          valueFrom:
+            configMapKeyRef:
+              name: devfile-registry-config
+              key: DEVFILE_REGISTRY_URL
+              optional: true
       serviceAccountName: controller-manager
       terminationGracePeriodSeconds: 10

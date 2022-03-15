@@ -11,6 +11,9 @@ configMapGenerator:
 - envs:
   - github.properties
   name: github-config
+- envs:
+  - devfile_registry.properties
+  name: devfile-registry-config
   
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization

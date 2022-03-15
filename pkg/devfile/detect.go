@@ -32,7 +32,7 @@ import (
 // searchDevfiles searches a given localpath for a devfile upto the specified depth. If no devfile is present until
 // the depth, alizer is used to analyze and detect a devfile from the registry. It returns a map of repo context to the devfile
 // bytes, a map of repo context to the devfile detected(if any) and an error
-func searchDevfiles(localpath string, currentLevel, depth int) (map[string][]byte, map[string]string, error) {
+func searchDevfiles(localpath string, currentLevel, depth int, devfileRegistryURL string) (map[string][]byte, map[string]string, error) {
 
 	devfileMapFromRepo := make(map[string][]byte)
 	devfilesURLMapFromRepo := make(map[string]string)
@@ -57,7 +57,7 @@ func searchDevfiles(localpath string, currentLevel, depth int) (map[string][]byt
 		} else if f.IsDir() && f.Name() == HiddenDevfileDir {
 			// if the dir is .devfile, we dont increment currentLevel
 			// consider devfile.yaml and .devfile/devfile.yaml as the same level
-			recursiveDevfileMap, recursiveDevfileURLMap, err := searchDevfiles(path.Join(localpath, f.Name()), currentLevel, depth)
+			recursiveDevfileMap, recursiveDevfileURLMap, err := searchDevfiles(path.Join(localpath, f.Name()), currentLevel, depth, devfileRegistryURL)
 			if err != nil {
 				return nil, nil, err
 			}
@@ -72,7 +72,7 @@ func searchDevfiles(localpath string, currentLevel, depth int) (map[string][]byt
 			}
 		} else if f.IsDir() {
 			if currentLevel+1 <= depth {
-				recursiveDevfileMap, recursiveDevfileURLMap, err := searchDevfiles(path.Join(localpath, f.Name()), currentLevel+1, depth)
+				recursiveDevfileMap, recursiveDevfileURLMap, err := searchDevfiles(path.Join(localpath, f.Name()), currentLevel+1, depth, devfileRegistryURL)
 				if err != nil {
 					return nil, nil, err
 				}
@@ -90,7 +90,7 @@ func searchDevfiles(localpath string, currentLevel, depth int) (map[string][]byt
 		err = &NoDevfileFound{location: localpath}
 	} else if !isDevfilePresent && currentLevel == depth {
 		// if we didnt find any devfile upto our desired depth, then use alizer
-		devfileBytes, detectedDevfileEndpoint, err := AnalyzeAndDetectDevfile(localpath)
+		devfileBytes, detectedDevfileEndpoint, err := AnalyzeAndDetectDevfile(localpath, devfileRegistryURL)
 		if err != nil {
 			if _, ok := err.(*NoDevfileFound); !ok {
 				return nil, nil, err
@@ -109,7 +109,7 @@ func searchDevfiles(localpath string, currentLevel, depth int) (map[string][]byt
 }
 
 // AnalyzeAndDetectDevfile analyzes and attempts to detect a devfile from the devfile registry for a given local path
-func AnalyzeAndDetectDevfile(path string) ([]byte, string, error) {
+func AnalyzeAndDetectDevfile(path, devfileRegistryURL string) ([]byte, string, error) {
 	var devfileBytes []byte
 
 	alizerLanguages, err := recognizer.Analyze(path)
@@ -117,7 +117,7 @@ func AnalyzeAndDetectDevfile(path string) ([]byte, string, error) {
 		return nil, "", err
 	}
 
-	alizerTypes, err := getAlizerDevfileTypes(DevfileStageRegistryEndpoint)
+	alizerTypes, err := getAlizerDevfileTypes(devfileRegistryURL)
 	if err != nil {
 		return nil, "", err
 	}
@@ -133,7 +133,7 @@ func AnalyzeAndDetectDevfile(path string) ([]byte, string, error) {
 				// if a dir can be a component but we get an unrelated err, err out
 				return nil, "", err
 			} else if !reflect.DeepEqual(detectedType, recognizer.DevFileType{}) {
-				detectedDevfileEndpoint := DevfileStageRegistryEndpoint + "/devfiles/" + detectedType.Name
+				detectedDevfileEndpoint := devfileRegistryURL + "/devfiles/" + detectedType.Name
 
 				devfileBytes, err = util.CurlEndpoint(detectedDevfileEndpoint)
 				if err != nil {

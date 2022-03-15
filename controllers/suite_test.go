@@ -43,6 +43,7 @@ import (
 
 	"github.com/redhat-appstudio/application-service/gitops/ioutils"
 	"github.com/redhat-appstudio/application-service/gitops/testutils"
+	"github.com/redhat-appstudio/application-service/pkg/devfile"
 	github "github.com/redhat-appstudio/application-service/pkg/github"
 	"github.com/redhat-appstudio/application-service/pkg/spi"
 	//+kubebuilder:scaffold:imports
@@ -141,10 +142,11 @@ var _ = BeforeSuite(func() {
 	Expect(err).ToNot(HaveOccurred())
 
 	err = (&ComponentDetectionQueryReconciler{
-		Client:    k8sManager.GetClient(),
-		Scheme:    k8sManager.GetScheme(),
-		Log:       ctrl.Log.WithName("controllers").WithName("ComponentDetectionQuery"),
-		SPIClient: spi.MockSPIClient{},
+		Client:             k8sManager.GetClient(),
+		Scheme:             k8sManager.GetScheme(),
+		Log:                ctrl.Log.WithName("controllers").WithName("ComponentDetectionQuery"),
+		SPIClient:          spi.MockSPIClient{},
+		DevfileRegistryURL: devfile.DevfileStageRegistryEndpoint, // Use the staging devfile registry for tests
 	}).SetupWithManager(k8sManager)
 	Expect(err).ToNot(HaveOccurred())
 
