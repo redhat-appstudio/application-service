@@ -144,7 +144,7 @@ func TestGenerateInitialBuildPipelineRun(t *testing.T) {
 				},
 				Spec: tektonapi.PipelineRunSpec{
 					PipelineRef: &tektonapi.PipelineRef{
-						Bundle: "quay.io/redhat-appstudio/build-templates-bundle@sha256:c36c9216b7740f4acd755d9167dacf559fc1d2ce67fd108cffdedbfb2b1d2fae",
+						Bundle: "quay.io/redhat-appstudio/build-templates-bundle:8201a567956ba6d2095d615ea2c0f6ab35f9ba5f",
 						Name:   "noop",
 					},
 					Params: []tektonapi.Param{
@@ -216,7 +216,7 @@ func TestDetermineBuildExecution(t *testing.T) {
 			},
 			want: tektonapi.PipelineRunSpec{
 				PipelineRef: &tektonapi.PipelineRef{
-					Bundle: "quay.io/redhat-appstudio/build-templates-bundle@sha256:c36c9216b7740f4acd755d9167dacf559fc1d2ce67fd108cffdedbfb2b1d2fae",
+					Bundle: "quay.io/redhat-appstudio/build-templates-bundle:8201a567956ba6d2095d615ea2c0f6ab35f9ba5f",
 					Name:   "noop",
 				},
 				Params: []tektonapi.Param{},
@@ -251,7 +251,7 @@ func TestDetermineBuildExecution(t *testing.T) {
 			},
 			want: tektonapi.PipelineRunSpec{
 				PipelineRef: &tektonapi.PipelineRef{
-					Bundle: "quay.io/redhat-appstudio/build-templates-bundle@sha256:c36c9216b7740f4acd755d9167dacf559fc1d2ce67fd108cffdedbfb2b1d2fae",
+					Bundle: "quay.io/redhat-appstudio/build-templates-bundle:8201a567956ba6d2095d615ea2c0f6ab35f9ba5f",
 					Name:   "noop",
 				},
 				Params: []tektonapi.Param{},
