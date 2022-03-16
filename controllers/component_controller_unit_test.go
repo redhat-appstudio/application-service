@@ -27,9 +27,9 @@ import (
 	data "github.com/devfile/library/pkg/devfile/parser/data"
 	v2 "github.com/devfile/library/pkg/devfile/parser/data/v2"
 	appstudiov1alpha1 "github.com/redhat-appstudio/application-service/api/v1alpha1"
-	"github.com/redhat-appstudio/application-service/gitops/ioutils"
 	"github.com/redhat-appstudio/application-service/gitops/testutils"
 	"github.com/redhat-appstudio/application-service/pkg/github"
+	"github.com/redhat-appstudio/application-service/pkg/util"
 	"github.com/spf13/afero"
 	ctrl "sigs.k8s.io/controller-runtime"
 
@@ -150,8 +150,8 @@ func TestSetGitOpsStatus(t *testing.T) {
 
 func TestGenerateGitops(t *testing.T) {
 	executor := testutils.NewMockExecutor()
-	appFS := ioutils.NewMemoryFilesystem()
-	readOnlyFs := ioutils.NewReadOnlyFs()
+	appFS := util.NewMemoryFilesystem()
+	readOnlyFs := util.NewReadOnlyFs()
 
 	r := &ComponentReconciler{
 		Log:       ctrl.Log.WithName("controllers").WithName("Component"),

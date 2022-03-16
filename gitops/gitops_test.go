@@ -21,8 +21,8 @@ import (
 	"testing"
 
 	appstudiov1alpha1 "github.com/redhat-appstudio/application-service/api/v1alpha1"
-	"github.com/redhat-appstudio/application-service/gitops/ioutils"
 	"github.com/redhat-appstudio/application-service/gitops/testutils"
+	"github.com/redhat-appstudio/application-service/pkg/util"
 	"github.com/spf13/afero"
 )
 
@@ -47,8 +47,8 @@ func TestGenerateAndPush(t *testing.T) {
 		},
 	}
 	component.Name = "test-component"
-	fs := ioutils.NewMemoryFilesystem()
-	readOnlyFs := ioutils.NewReadOnlyFs()
+	fs := util.NewMemoryFilesystem()
+	readOnlyFs := util.NewReadOnlyFs()
 	tests := []struct {
 		name          string
 		fs            afero.Afero

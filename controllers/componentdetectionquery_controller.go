@@ -19,7 +19,6 @@ package controllers
 import (
 	"context"
 	"fmt"
-	"path"
 
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -35,6 +34,7 @@ import (
 	devfile "github.com/redhat-appstudio/application-service/pkg/devfile"
 	"github.com/redhat-appstudio/application-service/pkg/spi"
 	util "github.com/redhat-appstudio/application-service/pkg/util"
+	"github.com/spf13/afero"
 )
 
 // ComponentDetectionQueryReconciler reconciles a ComponentDetectionQuery object
@@ -44,6 +44,7 @@ type ComponentDetectionQueryReconciler struct {
 	SPIClient          spi.SPI
 	Log                logr.Logger
 	DevfileRegistryURL string
+	AppFS              afero.Afero
 }
 
 const (
@@ -99,18 +100,25 @@ func (r *ComponentDetectionQueryReconciler) Reconcile(ctx context.Context, req c
 			}
 			gitToken = string(gitSecret.Data["password"])
 		}
+
 		source := componentDetectionQuery.Spec.GitSource
 		var devfileBytes []byte
+		var clonePath string
 		devfilesMap := make(map[string][]byte)
 		devfilesURLMap := make(map[string]string)
-
-		clonePath := path.Join(clonePathPrefix, componentDetectionQuery.Namespace, componentDetectionQuery.Name)
 
 		if source.DevfileURL == "" {
 			log.Info(fmt.Sprintf("Attempting to read a devfile from the URL %s... %v", source.URL, req.NamespacedName))
 			// Logic to read multiple components in from git
 			if componentDetectionQuery.Spec.IsMultiComponent {
 				log.Info(fmt.Sprintf("Since this is a multi-component, attempt will be made to read only level 1 dir for devfiles... %v", req.NamespacedName))
+
+				clonePath, err = util.CreateTempPath(componentDetectionQuery.Name, r.AppFS)
+				if err != nil {
+					log.Error(err, fmt.Sprintf("Unable to create a temp path %s for cloning %v", clonePath, req.NamespacedName))
+					r.SetCompleteConditionAndUpdateCR(ctx, &componentDetectionQuery, err)
+					return ctrl.Result{}, nil
+				}
 
 				err = util.CloneRepo(clonePath, source.URL, gitToken)
 				if err != nil {
@@ -160,6 +168,13 @@ func (r *ComponentDetectionQueryReconciler) Reconcile(ctx context.Context, req c
 				if len(devfileBytes) != 0 {
 					devfilesMap["./"] = devfileBytes
 				} else {
+					clonePath, err = util.CreateTempPath(componentDetectionQuery.Name, r.AppFS)
+					if err != nil {
+						log.Error(err, fmt.Sprintf("Unable to create a temp path %s for cloning %v", clonePath, req.NamespacedName))
+						r.SetCompleteConditionAndUpdateCR(ctx, &componentDetectionQuery, err)
+						return ctrl.Result{}, nil
+					}
+
 					err = util.CloneRepo(clonePath, source.URL, gitToken)
 					if err != nil {
 						log.Error(err, fmt.Sprintf("Unable to clone repo %s to path %s, exiting reconcile loop %v", source.URL, clonePath, req.NamespacedName))
@@ -187,6 +202,19 @@ func (r *ComponentDetectionQueryReconciler) Reconcile(ctx context.Context, req c
 					}
 				}
 			}
+
+			// Remove the cloned path if present
+			if isExist, err := util.IsExisting(r.AppFS, clonePath); isExist {
+				if err := r.AppFS.RemoveAll(clonePath); err != nil {
+					log.Error(err, fmt.Sprintf("Unable to remove the clonepath %s %v", clonePath, req.NamespacedName))
+					r.SetCompleteConditionAndUpdateCR(ctx, &componentDetectionQuery, err)
+					return ctrl.Result{}, nil
+				}
+			} else if err != nil {
+				log.Error(err, fmt.Sprintf("Unable to check if path %s exist for deletion %v", clonePath, req.NamespacedName))
+				r.SetCompleteConditionAndUpdateCR(ctx, &componentDetectionQuery, err)
+				return ctrl.Result{}, nil
+			}
 		} else {
 			if componentDetectionQuery.Spec.IsMultiComponent {
 				errMsg := fmt.Sprintf("cannot set IsMultiComponent to %v and set DevfileURL to %s as well... %v", componentDetectionQuery.Spec.IsMultiComponent, source.DevfileURL, req.NamespacedName)
@@ -208,7 +236,7 @@ func (r *ComponentDetectionQueryReconciler) Reconcile(ctx context.Context, req c
 			devfilesMap["./"] = devfileBytes
 		}
 
-		err := r.updateComponentStub(&componentDetectionQuery, devfilesMap, devfilesURLMap)
+		err = r.updateComponentStub(&componentDetectionQuery, devfilesMap, devfilesURLMap)
 		if err != nil {
 			log.Error(err, fmt.Sprintf("Unable to update the component stub %v", req.NamespacedName))
 			r.SetCompleteConditionAndUpdateCR(ctx, &componentDetectionQuery, err)

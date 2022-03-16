@@ -20,7 +20,6 @@ import (
 	"context"
 	"fmt"
 	"net/url"
-	"os"
 	"path"
 	"reflect"
 
@@ -582,7 +581,7 @@ func (r *ComponentReconciler) generateGitops(component *appstudiov1alpha1.Compon
 	remoteURL := parsedURL.String()
 
 	// Create a temp folder to create the gitops resources in
-	tempDir, err := r.AppFS.TempDir(os.TempDir(), component.Name)
+	tempDir, err := util.CreateTempPath(component.Name, r.AppFS)
 	if err != nil {
 		log.Error(err, "unable to create temp directory for gitops resources due to error")
 		return fmt.Errorf("unable to create temp directory for gitops resources due to error: %v", err)

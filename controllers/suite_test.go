@@ -41,11 +41,11 @@ import (
 	taskrunapi "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	triggersapi "github.com/tektoncd/triggers/pkg/apis/triggers/v1alpha1"
 
-	"github.com/redhat-appstudio/application-service/gitops/ioutils"
 	"github.com/redhat-appstudio/application-service/gitops/testutils"
 	"github.com/redhat-appstudio/application-service/pkg/devfile"
 	github "github.com/redhat-appstudio/application-service/pkg/github"
 	"github.com/redhat-appstudio/application-service/pkg/spi"
+	"github.com/redhat-appstudio/application-service/pkg/util"
 	//+kubebuilder:scaffold:imports
 )
 
@@ -135,7 +135,7 @@ var _ = BeforeSuite(func() {
 		Scheme:          k8sManager.GetScheme(),
 		Log:             ctrl.Log.WithName("controllers").WithName("Component"),
 		Executor:        testutils.NewMockExecutor(),
-		AppFS:           ioutils.NewMemoryFilesystem(),
+		AppFS:           util.NewMemoryFilesystem(),
 		ImageRepository: "docker.io/foo/customized",
 		SPIClient:       spi.MockSPIClient{},
 	}).SetupWithManager(k8sManager)
@@ -147,6 +147,7 @@ var _ = BeforeSuite(func() {
 		Log:                ctrl.Log.WithName("controllers").WithName("ComponentDetectionQuery"),
 		SPIClient:          spi.MockSPIClient{},
 		DevfileRegistryURL: devfile.DevfileStageRegistryEndpoint, // Use the staging devfile registry for tests
+		AppFS:              util.NewMemoryFilesystem(),
 	}).SetupWithManager(k8sManager)
 	Expect(err).ToNot(HaveOccurred())
 
