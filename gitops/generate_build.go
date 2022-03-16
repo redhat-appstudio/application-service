@@ -173,7 +173,7 @@ func determineBuildPipeline(component appstudiov1alpha1.Component) string {
 func determineBuildCatalog(namespace string) string {
 	// TODO: If there's a namespace/workspace specific catalog, we got
 	// to respect that.
-	return "quay.io/redhat-appstudio/build-templates-bundle@sha256:c36c9216b7740f4acd755d9167dacf559fc1d2ce67fd108cffdedbfb2b1d2fae"
+	return "quay.io/redhat-appstudio/build-templates-bundle:8201a567956ba6d2095d615ea2c0f6ab35f9ba5f"
 }
 
 func normalizeOutputImageURL(outputImage string) string {
