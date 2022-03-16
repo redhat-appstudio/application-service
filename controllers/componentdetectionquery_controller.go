@@ -47,10 +47,6 @@ type ComponentDetectionQueryReconciler struct {
 	AppFS              afero.Afero
 }
 
-const (
-	clonePathPrefix = "/tmp/appstudio/has"
-)
-
 //+kubebuilder:rbac:groups=appstudio.redhat.com,resources=componentdetectionqueries,verbs=get;list;watch;create;update;patch;delete
 //+kubebuilder:rbac:groups=appstudio.redhat.com,resources=componentdetectionqueries/status,verbs=get;update;patch
 //+kubebuilder:rbac:groups=appstudio.redhat.com,resources=componentdetectionqueries/finalizers,verbs=update
