@@ -16,9 +16,12 @@
 package util
 
 import (
+	"os"
+	"strings"
 	"testing"
 
 	"github.com/spf13/afero"
+	"github.com/stretchr/testify/assert"
 )
 
 func TestIsExisting(t *testing.T) {
@@ -31,7 +34,7 @@ func TestIsExisting(t *testing.T) {
 
 	// Make sure at least one file and one dir exists in each file system for testing
 	fs.Create(fileName)
-	fs.Mkdir(dirName, 0755)
+	// fs.Mkdir(dirName, 0755)
 	inmemoryFs.Create(fileName)
 	inmemoryFs.Mkdir(dirName, 0755)
 
@@ -96,6 +99,57 @@ func TestIsExisting(t *testing.T) {
 				t.Errorf("TestIsExisting() expected: %v, got: %v", tt.want, exists)
 			}
 
+		})
+	}
+}
+
+func TestCreateTempPath(t *testing.T) {
+	fs := NewFilesystem()
+	inmemoryFs := NewMemoryFilesystem()
+	readOnlyFs := NewReadOnlyFs()
+
+	tests := []struct {
+		name    string
+		fs      afero.Afero
+		wantErr bool
+	}{
+		{
+			name: "inmemory fs",
+			fs:   inmemoryFs,
+		},
+		{
+			name:    "read only fs",
+			fs:      readOnlyFs,
+			wantErr: true,
+		},
+		{
+			name: "local fs",
+			fs:   fs,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			path, err := CreateTempPath("TestCreateTempPath", tt.fs)
+			if tt.wantErr && (err == nil) {
+				t.Error("wanted error but got nil")
+			} else if !tt.wantErr && err != nil {
+				t.Errorf("got unexpected error: %v", err)
+			} else if err == nil {
+				if !strings.Contains(path, os.TempDir()) {
+					t.Errorf("TestCreateTempPath error: the temp path should be in the OS temp dir")
+				}
+
+				if !strings.Contains(path, "TestCreateTempPath") {
+					t.Errorf("TestCreateTempPath error: the temp path should contain the prefix")
+				}
+
+				if isExist, err := IsExisting(tt.fs, path); isExist {
+					assert.NoError(t, tt.fs.RemoveAll(path), "unable to delete the temp path")
+				} else if err != nil {
+					t.Errorf("TestCreateTempPath unexpected error: %v", err)
+				}
+			}
 		})
 	}
 }
