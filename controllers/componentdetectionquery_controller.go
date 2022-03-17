@@ -42,6 +42,7 @@ type ComponentDetectionQueryReconciler struct {
 	client.Client
 	Scheme             *runtime.Scheme
 	SPIClient          spi.SPI
+	AlizerClient       devfile.Alizer
 	Log                logr.Logger
 	DevfileRegistryURL string
 	AppFS              afero.Afero
@@ -124,7 +125,7 @@ func (r *ComponentDetectionQueryReconciler) Reconcile(ctx context.Context, req c
 				}
 				log.Info(fmt.Sprintf("cloned from %s to path %s... %v", source.URL, clonePath, req.NamespacedName))
 
-				devfilesMap, devfilesURLMap, err = devfile.ReadDevfilesFromRepo(clonePath, maxDevfileDiscoveryDepth, r.DevfileRegistryURL)
+				devfilesMap, devfilesURLMap, err = devfile.ReadDevfilesFromRepo(r.AlizerClient, clonePath, maxDevfileDiscoveryDepth, r.DevfileRegistryURL)
 				if err != nil {
 					if _, ok := err.(*devfile.NoDevfileFound); !ok {
 						log.Error(err, fmt.Sprintf("Unable to find devfile(s) in repo %s due to an error %s, exiting reconcile loop %v", source.URL, err.Error(), req.NamespacedName))
@@ -183,7 +184,7 @@ func (r *ComponentDetectionQueryReconciler) Reconcile(ctx context.Context, req c
 
 					// if we didnt find any devfile upto our desired depth, then use alizer
 					var detectedDevfileEndpoint string
-					devfileBytes, detectedDevfileEndpoint, err = devfile.AnalyzeAndDetectDevfile(clonePath, r.DevfileRegistryURL)
+					devfileBytes, detectedDevfileEndpoint, err = devfile.AnalyzeAndDetectDevfile(r.AlizerClient, clonePath, r.DevfileRegistryURL)
 					if err != nil {
 						if _, ok := err.(*devfile.NoDevfileFound); !ok {
 							log.Error(err, fmt.Sprintf("unable to detect devfile in path %s %v", clonePath, req.NamespacedName))

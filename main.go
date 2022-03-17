@@ -160,6 +160,7 @@ func main() {
 		Scheme:             mgr.GetScheme(),
 		Log:                ctrl.Log.WithName("controllers").WithName("ComponentDetectionQuery"),
 		SPIClient:          spi.SPIClient{},
+		AlizerClient:       devfile.AlizerClient{},
 		DevfileRegistryURL: devfileRegistryURL,
 		AppFS:              util.NewFilesystem(),
 	}).SetupWithManager(mgr); err != nil {
