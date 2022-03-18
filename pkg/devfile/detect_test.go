@@ -68,14 +68,14 @@ func TestAnalyzeAndDetectDevfile(t *testing.T) {
 		},
 		{
 			name:        "Test err condition for Alizer SelectDevFileFromTypes",
-			clonePath:   "/tmp/error/SelectDevFileFromTypes",
+			clonePath:   "/tmp/springboot/error/SelectDevFileFromTypes",
 			repo:        "https://github.com/maysunfaisal/devfile-sample-java-springboot-basic-1",
 			registryURL: DevfileStageRegistryEndpoint,
 			wantErr:     true,
 		},
 		{
 			name:        "Test err condition for failing to hit the devfile endpoint",
-			clonePath:   "/tmp/error/devfileendpoint",
+			clonePath:   "/tmp/springboot/error/devfileendpoint",
 			repo:        "https://github.com/maysunfaisal/devfile-sample-java-springboot-basic-1",
 			registryURL: DevfileStageRegistryEndpoint,
 			wantErr:     true,

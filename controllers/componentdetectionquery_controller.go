@@ -201,16 +201,12 @@ func (r *ComponentDetectionQueryReconciler) Reconcile(ctx context.Context, req c
 			}
 
 			// Remove the cloned path if present
-			if isExist, err := util.IsExisting(r.AppFS, clonePath); isExist {
+			if isExist, _ := util.IsExisting(r.AppFS, clonePath); isExist {
 				if err := r.AppFS.RemoveAll(clonePath); err != nil {
 					log.Error(err, fmt.Sprintf("Unable to remove the clonepath %s %v", clonePath, req.NamespacedName))
 					r.SetCompleteConditionAndUpdateCR(ctx, &componentDetectionQuery, err)
 					return ctrl.Result{}, nil
 				}
-			} else if err != nil {
-				log.Error(err, fmt.Sprintf("Unable to check if path %s exist for deletion %v", clonePath, req.NamespacedName))
-				r.SetCompleteConditionAndUpdateCR(ctx, &componentDetectionQuery, err)
-				return ctrl.Result{}, nil
 			}
 		} else {
 			if componentDetectionQuery.Spec.IsMultiComponent {

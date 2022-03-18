@@ -28,36 +28,41 @@ type MockAlizerClient struct {
 
 // Analyze is a wrapper call to Alizer's Analyze()
 func (a MockAlizerClient) Analyze(path string) ([]language.Language, error) {
-	if strings.Contains(path, "/error/Analyze") {
-		return nil, fmt.Errorf("dummy err")
+	if strings.Contains(path, "error") {
+		return nil, fmt.Errorf("dummy Analyze err")
+	} else if !strings.Contains(path, "springboot") && !strings.Contains(path, "python") {
+		return nil, nil
 	}
-	languages := []language.Language{
+
+	return []language.Language{
 		{
-			Name:              "nodejs-basic",
+			Name:              "springboot",
 			UsageInPercentage: 60.4,
 			CanBeComponent:    true,
 		},
 		{
-			Name:              "java",
+			Name:              "python",
 			UsageInPercentage: 22.4,
 			CanBeComponent:    true,
 		},
-	}
-
-	return languages, nil
+	}, nil
 }
 
 // SelectDevFileFromTypes is a wrapper call to Alizer's SelectDevFileFromTypes()
 func (a MockAlizerClient) SelectDevFileFromTypes(path string, devFileTypes []recognizer.DevFileType) (recognizer.DevFileType, error) {
 	if strings.Contains(path, "/error/SelectDevFileFromTypes") {
-		return recognizer.DevFileType{}, fmt.Errorf("dummy err")
-	} else if strings.Contains(path, "/java-springboot-basic") {
-		return recognizer.DevFileType{
-			Name: "java-springboot-basic",
-		}, nil
+		return recognizer.DevFileType{}, fmt.Errorf("dummy SelectDevFileFromTypes err")
 	} else if strings.Contains(path, "/error/devfileendpoint") {
 		return recognizer.DevFileType{
 			Name: "fake",
+		}, nil
+	} else if strings.Contains(path, "java-springboot-basic") || strings.Contains(path, "springboot") {
+		return recognizer.DevFileType{
+			Name: "java-springboot-basic",
+		}, nil
+	} else if strings.Contains(path, "python-basic") {
+		return recognizer.DevFileType{
+			Name: "python-basic",
 		}, nil
 	}
 
