@@ -146,11 +146,7 @@ func (r *ComponentDetectionQueryReconciler) Reconcile(ctx context.Context, req c
 
 					devfileBytes, err = devfile.DownloadDevfile(gitURL)
 					if err != nil {
-						if _, ok := err.(*devfile.NoDevfileFound); !ok {
-							log.Error(err, fmt.Sprintf("Unable to curl for any known devfile locations from %s due to an error %s,  %v", source.URL, err.Error(), req.NamespacedName))
-							r.SetCompleteConditionAndUpdateCR(ctx, &componentDetectionQuery, err)
-							return ctrl.Result{}, nil
-						}
+						log.Error(err, fmt.Sprintf("Unable to curl for any known devfile locations from %s, repo will be cloned and analyzed %v", source.URL, req.NamespacedName))
 					}
 				} else {
 					// Use SPI to retrieve the devfile from the private repository
