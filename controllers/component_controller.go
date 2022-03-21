@@ -102,28 +102,30 @@ func (r *ComponentReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 	// If the devfile hasn't been populated, the CR was just created
 	var gitToken string
 	if component.Status.Devfile == "" {
-		// If a Git secret was passed in, retrieve it for use in our Git operations
-		// The secret needs to be in the same namespace as the Component
-		if component.Spec.Source.GitSource.Secret != "" {
-			gitSecret := corev1.Secret{}
-			namespacedName := types.NamespacedName{
-				Name:      component.Spec.Source.GitSource.Secret,
-				Namespace: component.Namespace,
-			}
 
-			err = r.Client.Get(ctx, namespacedName, &gitSecret)
-			if err != nil {
-				log.Error(err, fmt.Sprintf("Unable to retrieve Git secret %v, exiting reconcile loop %v", component.Spec.Source.GitSource.Secret, req.NamespacedName))
-				r.SetCreateConditionAndUpdateCR(ctx, &component, err)
-				return ctrl.Result{}, nil
-			}
-
-			gitToken = string(gitSecret.Data["password"])
-		}
 		source := component.Spec.Source
 		context := component.Spec.Context
 
 		if source.GitSource != nil && source.GitSource.URL != "" {
+			// If a Git secret was passed in, retrieve it for use in our Git operations
+			// The secret needs to be in the same namespace as the Component
+			if source.GitSource.Secret != "" {
+				gitSecret := corev1.Secret{}
+				namespacedName := types.NamespacedName{
+					Name:      source.GitSource.Secret,
+					Namespace: component.Namespace,
+				}
+
+				err = r.Client.Get(ctx, namespacedName, &gitSecret)
+				if err != nil {
+					log.Error(err, fmt.Sprintf("Unable to retrieve Git secret %v, exiting reconcile loop %v", component.Spec.Source.GitSource.Secret, req.NamespacedName))
+					r.SetCreateConditionAndUpdateCR(ctx, &component, err)
+					return ctrl.Result{}, nil
+				}
+
+				gitToken = string(gitSecret.Data["password"])
+			}
+
 			var devfileBytes []byte
 			var gitURL string
 			if source.GitSource.DevfileURL == "" {
@@ -268,7 +270,11 @@ func (r *ComponentReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 			}
 
 		} else if source.ImageSource != nil && source.ImageSource.ContainerImage != "" {
-			log.Info(fmt.Sprintf("container image is not supported at the moment, please use github links for adding a component to an application for %v", req.NamespacedName))
+			errMsg := fmt.Sprintf("container image is not supported at the moment, please use github links for adding a component to an application for %v", component.Name)
+			log.Info(fmt.Sprintf("%s %v", errMsg, req.NamespacedName))
+			err := fmt.Errorf(errMsg)
+			r.SetCreateConditionAndUpdateCR(ctx, &component, err)
+			return ctrl.Result{}, nil
 		}
 
 	} else {

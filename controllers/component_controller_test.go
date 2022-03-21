@@ -1653,6 +1653,72 @@ var _ = Describe("Component controller", func() {
 		})
 	})
 
+	Context("Create Component with basic field set", func() {
+		It("Should err out on an image source because it is not implemented yet", func() {
+			ctx := context.Background()
+
+			applicationName := HASAppName + "17"
+			componentName := HASCompName + "17"
+
+			createAndFetchSimpleApp(applicationName, HASAppNamespace, DisplayName, Description)
+
+			hasComp := &appstudiov1alpha1.Component{
+				TypeMeta: metav1.TypeMeta{
+					APIVersion: "appstudio.redhat.com/v1alpha1",
+					Kind:       "Component",
+				},
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      componentName,
+					Namespace: HASAppNamespace,
+				},
+				Spec: appstudiov1alpha1.ComponentSpec{
+					ComponentName: ComponentName,
+					Application:   applicationName,
+					Source: appstudiov1alpha1.ComponentSource{
+						ComponentSourceUnion: appstudiov1alpha1.ComponentSourceUnion{
+							ImageSource: &appstudiov1alpha1.ImageSource{
+								ContainerImage: "an-image",
+							},
+						},
+					},
+				},
+			}
+			Expect(k8sClient.Create(ctx, hasComp)).Should(Succeed())
+
+			// Look up the has app resource that was created.
+			// num(conditions) may still be < 1 on the first try, so retry until at least _some_ condition is set
+			hasCompLookupKey := types.NamespacedName{Name: componentName, Namespace: HASAppNamespace}
+			createdHasComp := &appstudiov1alpha1.Component{}
+			Eventually(func() bool {
+				k8sClient.Get(context.Background(), hasCompLookupKey, createdHasComp)
+				return len(createdHasComp.Status.Conditions) > 0
+			}, timeout, interval).Should(BeTrue())
+
+			// Make sure the devfile model was properly set in Component
+			Expect(createdHasComp.Status.Devfile).Should(Equal(""))
+
+			// Make sure the component resource has been updated properly
+			Expect(createdHasComp.Status.Conditions[len(createdHasComp.Status.Conditions)-1].Message).Should(ContainSubstring("not supported at the moment"))
+			Expect(createdHasComp.Status.Conditions[len(createdHasComp.Status.Conditions)-1].Reason).Should(Equal("Error"))
+
+			hasAppLookupKey := types.NamespacedName{Name: applicationName, Namespace: HASAppNamespace}
+			createdHasApp := &appstudiov1alpha1.Application{}
+			Eventually(func() bool {
+				k8sClient.Get(context.Background(), hasAppLookupKey, createdHasApp)
+				return len(createdHasApp.Status.Conditions) > 0
+			}, timeout, interval).Should(BeTrue())
+
+			// Make sure the devfile model was properly set in Application
+			Expect(createdHasApp.Status.Devfile).Should(Not(Equal("")))
+
+			// Delete the specified HASComp resource
+			deleteHASCompCR(hasCompLookupKey)
+
+			// Delete the specified HASApp resource
+			deleteHASAppCR(hasAppLookupKey)
+		})
+	})
+
 })
 
 type updateChecklist struct {
