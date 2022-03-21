@@ -1654,7 +1654,7 @@ var _ = Describe("Component controller", func() {
 	})
 
 	Context("Create Component with basic field set", func() {
-		It("Should err out on an image source because it is not implemented yet", func() {
+		It("Should complete with an image source even if it is not implemented yet", func() {
 			ctx := context.Background()
 
 			applicationName := HASAppName + "17"
@@ -1698,8 +1698,8 @@ var _ = Describe("Component controller", func() {
 			Expect(createdHasComp.Status.Devfile).Should(Equal(""))
 
 			// Make sure the component resource has been updated properly
-			Expect(createdHasComp.Status.Conditions[len(createdHasComp.Status.Conditions)-1].Message).Should(ContainSubstring("not supported at the moment"))
-			Expect(createdHasComp.Status.Conditions[len(createdHasComp.Status.Conditions)-1].Reason).Should(Equal("Error"))
+			Expect(createdHasComp.Status.Conditions[len(createdHasComp.Status.Conditions)-1].Message).Should(ContainSubstring("successfully created"))
+			Expect(createdHasComp.Status.Conditions[len(createdHasComp.Status.Conditions)-1].Reason).Should(Equal("OK"))
 
 			hasAppLookupKey := types.NamespacedName{Name: applicationName, Namespace: HASAppNamespace}
 			createdHasApp := &appstudiov1alpha1.Application{}

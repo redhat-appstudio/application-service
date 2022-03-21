@@ -270,10 +270,8 @@ func (r *ComponentReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 			}
 
 		} else if source.ImageSource != nil && source.ImageSource.ContainerImage != "" {
-			errMsg := fmt.Sprintf("container image is not supported at the moment, please use github links for adding a component to an application for %v", component.Name)
-			log.Info(fmt.Sprintf("%s %v", errMsg, req.NamespacedName))
-			err := fmt.Errorf(errMsg)
-			r.SetCreateConditionAndUpdateCR(ctx, &component, err)
+			log.Info(fmt.Sprintf("container image is not supported at the moment, please use github links for adding a component to an application for %s %v", component.Name, req.NamespacedName))
+			r.SetCreateConditionAndUpdateCR(ctx, &component, nil)
 			return ctrl.Result{}, nil
 		}
 
