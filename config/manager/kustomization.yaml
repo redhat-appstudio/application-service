@@ -9,8 +9,11 @@ configMapGenerator:
   - controller_manager_config.yaml
   name: manager-config
 - envs:
-  - has.properties
-  name: has-config
+  - github.properties
+  name: github-config
+- envs:
+  - devfile_registry.properties
+  name: devfile-registry-config
   
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization

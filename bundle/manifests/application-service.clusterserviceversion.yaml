@@ -265,23 +265,23 @@ spec:
                 command:
                 - /manager
                 env:
+                - name: GITHUB_ORG
+                  valueFrom:
+                    configMapKeyRef:
+                      key: GITHUB_ORG
+                      name: application-service-github-config
+                      optional: true
                 - name: GITHUB_AUTH_TOKEN
                   valueFrom:
                     secretKeyRef:
                       key: token
                       name: has-github-token
                       optional: true
-                - name: GITHUB_ORG
-                  valueFrom:
-                    configMapKeyRef:
-                      key: GITHUB_ORG
-                      name: application-service-has-config
-                      optional: true
                 - name: DEVFILE_REGISTRY_URL
                   valueFrom:
                     configMapKeyRef:
                       key: DEVFILE_REGISTRY_URL
-                      name: application-service-has-config
+                      name: application-service-devfile-registry-config
                       optional: true
                 image: quay.io/redhat-appstudio/application-service:next
                 imagePullPolicy: Always

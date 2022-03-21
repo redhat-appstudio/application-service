@@ -54,22 +54,22 @@ spec:
             cpu: 100m
             memory: 20Mi
         env:
+        - name: GITHUB_ORG
+          valueFrom:
+            configMapKeyRef:
+              name: github-config
+              key: GITHUB_ORG
+              optional: true
         - name: GITHUB_AUTH_TOKEN
           valueFrom:
             secretKeyRef:
               name: has-github-token
               key: token
               optional: true
-        - name: GITHUB_ORG
-          valueFrom:
-            configMapKeyRef:
-              name: has-config
-              key: GITHUB_ORG
-              optional: true
         - name: DEVFILE_REGISTRY_URL
           valueFrom:
             configMapKeyRef:
-              name: has-config
+              name: devfile-registry-config
               key: DEVFILE_REGISTRY_URL
               optional: true
       serviceAccountName: controller-manager
