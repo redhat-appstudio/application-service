@@ -44,7 +44,8 @@ import (
 	"github.com/redhat-appstudio/application-service/gitops"
 	devfile "github.com/redhat-appstudio/application-service/pkg/devfile"
 	"github.com/redhat-appstudio/application-service/pkg/spi"
-	util "github.com/redhat-appstudio/application-service/pkg/util"
+	"github.com/redhat-appstudio/application-service/pkg/util"
+	"github.com/redhat-appstudio/application-service/pkg/util/ioutils"
 	triggersapi "github.com/tektoncd/triggers/pkg/apis/triggers/v1alpha1"
 
 	"github.com/spf13/afero"
@@ -581,7 +582,7 @@ func (r *ComponentReconciler) generateGitops(component *appstudiov1alpha1.Compon
 	remoteURL := parsedURL.String()
 
 	// Create a temp folder to create the gitops resources in
-	tempDir, err := util.CreateTempPath(component.Name, r.AppFS)
+	tempDir, err := ioutils.CreateTempPath(component.Name, r.AppFS)
 	if err != nil {
 		log.Error(err, "unable to create temp directory for gitops resources due to error")
 		return fmt.Errorf("unable to create temp directory for gitops resources due to error: %v", err)

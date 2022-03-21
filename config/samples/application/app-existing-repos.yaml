@@ -6,7 +6,7 @@ spec:
   # Add fields here
   displayName: "petclinic"
   description: "application definition for petclinic-app"
-  gitOpsRepository: 
-    url: "https://github.com/johnmcollier/petclinic-gitops"
-  appModelRepository: 
-    url: "https://github.com/johnmcollier/petclinic-app"
+  # gitOpsRepository: 
+  #   url: "https://github.com/johnmcollier/petclinic-gitops"
+  # appModelRepository: 
+  #   url: "https://github.com/johnmcollier/petclinic-app"

@@ -26,7 +26,7 @@ import (
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/redhat-appstudio/application-service/gitops/resources"
-	"github.com/redhat-appstudio/application-service/pkg/util"
+	"github.com/redhat-appstudio/application-service/pkg/util/ioutils"
 	"github.com/spf13/afero"
 	appsv1 "k8s.io/api/apps/v1"
 	"sigs.k8s.io/yaml"
@@ -35,8 +35,8 @@ import (
 type Resources map[string]interface{}
 
 func TestWriteResources(t *testing.T) {
-	fs := util.NewFilesystem()
-	readOnlyFs := util.NewReadOnlyFs()
+	fs := ioutils.NewFilesystem()
+	readOnlyFs := ioutils.NewReadOnlyFs()
 	homeEnv := "HOME"
 	originalHome := os.Getenv(homeEnv)
 	defer os.Setenv(homeEnv, originalHome)
@@ -97,8 +97,8 @@ func TestWriteResources(t *testing.T) {
 }
 
 func TestMarshalItemToFile(t *testing.T) {
-	fs := util.NewFilesystem()
-	readOnlyFs := util.NewReadOnlyFs()
+	fs := ioutils.NewFilesystem()
+	readOnlyFs := ioutils.NewReadOnlyFs()
 
 	// Create a regexpfs for test cases where we need to mock file creation failures
 	// If a given file name doesn't match the given regex, file creation will fail, so it makes it easy to mock file creation failures
@@ -148,7 +148,7 @@ func TestMarshalItemToFile(t *testing.T) {
 }
 
 func TestMarshallOutput(t *testing.T) {
-	fs := util.NewMemoryFilesystem()
+	fs := ioutils.NewMemoryFilesystem()
 	readOnlyFs := afero.NewReadOnlyFs(afero.NewMemMapFs())
 
 	f, _ := fs.Create("/test/file")

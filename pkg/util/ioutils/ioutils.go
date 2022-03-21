@@ -15,7 +15,7 @@
 
 // Originally from https://github.com/redhat-developer/kam/blob/master/pkg/pipelines/ioutils/file_utils.go
 
-package util
+package ioutils
 
 import (
 	"fmt"

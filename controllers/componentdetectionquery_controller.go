@@ -33,7 +33,8 @@ import (
 	appstudiov1alpha1 "github.com/redhat-appstudio/application-service/api/v1alpha1"
 	devfile "github.com/redhat-appstudio/application-service/pkg/devfile"
 	"github.com/redhat-appstudio/application-service/pkg/spi"
-	util "github.com/redhat-appstudio/application-service/pkg/util"
+	"github.com/redhat-appstudio/application-service/pkg/util"
+	"github.com/redhat-appstudio/application-service/pkg/util/ioutils"
 	"github.com/spf13/afero"
 )
 
@@ -110,7 +111,7 @@ func (r *ComponentDetectionQueryReconciler) Reconcile(ctx context.Context, req c
 			if componentDetectionQuery.Spec.IsMultiComponent {
 				log.Info(fmt.Sprintf("Since this is a multi-component, attempt will be made to read only level 1 dir for devfiles... %v", req.NamespacedName))
 
-				clonePath, err = util.CreateTempPath(componentDetectionQuery.Name, r.AppFS)
+				clonePath, err = ioutils.CreateTempPath(componentDetectionQuery.Name, r.AppFS)
 				if err != nil {
 					log.Error(err, fmt.Sprintf("Unable to create a temp path %s for cloning %v", clonePath, req.NamespacedName))
 					r.SetCompleteConditionAndUpdateCR(ctx, &componentDetectionQuery, err)
@@ -146,7 +147,7 @@ func (r *ComponentDetectionQueryReconciler) Reconcile(ctx context.Context, req c
 
 					devfileBytes, err = devfile.DownloadDevfile(gitURL)
 					if err != nil {
-						log.Error(err, fmt.Sprintf("Unable to curl for any known devfile locations from %s, repo will be cloned and analyzed %v", source.URL, req.NamespacedName))
+						log.Info(fmt.Sprintf("Unable to curl for any known devfile locations from %s due to %v, repo will be cloned and analyzed %v", source.URL, err, req.NamespacedName))
 					}
 				} else {
 					// Use SPI to retrieve the devfile from the private repository
@@ -161,7 +162,7 @@ func (r *ComponentDetectionQueryReconciler) Reconcile(ctx context.Context, req c
 				if len(devfileBytes) != 0 {
 					devfilesMap["./"] = devfileBytes
 				} else {
-					clonePath, err = util.CreateTempPath(componentDetectionQuery.Name, r.AppFS)
+					clonePath, err = ioutils.CreateTempPath(componentDetectionQuery.Name, r.AppFS)
 					if err != nil {
 						log.Error(err, fmt.Sprintf("Unable to create a temp path %s for cloning %v", clonePath, req.NamespacedName))
 						r.SetCompleteConditionAndUpdateCR(ctx, &componentDetectionQuery, err)
@@ -197,7 +198,7 @@ func (r *ComponentDetectionQueryReconciler) Reconcile(ctx context.Context, req c
 			}
 
 			// Remove the cloned path if present
-			if isExist, _ := util.IsExisting(r.AppFS, clonePath); isExist {
+			if isExist, _ := ioutils.IsExisting(r.AppFS, clonePath); isExist {
 				if err := r.AppFS.RemoveAll(clonePath); err != nil {
 					log.Error(err, fmt.Sprintf("Unable to remove the clonepath %s %v", clonePath, req.NamespacedName))
 					r.SetCompleteConditionAndUpdateCR(ctx, &componentDetectionQuery, err)

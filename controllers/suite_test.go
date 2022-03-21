@@ -45,7 +45,7 @@ import (
 	"github.com/redhat-appstudio/application-service/pkg/devfile"
 	github "github.com/redhat-appstudio/application-service/pkg/github"
 	"github.com/redhat-appstudio/application-service/pkg/spi"
-	"github.com/redhat-appstudio/application-service/pkg/util"
+	"github.com/redhat-appstudio/application-service/pkg/util/ioutils"
 	//+kubebuilder:scaffold:imports
 )
 
@@ -135,7 +135,7 @@ var _ = BeforeSuite(func() {
 		Scheme:          k8sManager.GetScheme(),
 		Log:             ctrl.Log.WithName("controllers").WithName("Component"),
 		Executor:        testutils.NewMockExecutor(),
-		AppFS:           util.NewMemoryFilesystem(),
+		AppFS:           ioutils.NewMemoryFilesystem(),
 		ImageRepository: "docker.io/foo/customized",
 		SPIClient:       spi.MockSPIClient{},
 	}).SetupWithManager(k8sManager)
@@ -148,7 +148,7 @@ var _ = BeforeSuite(func() {
 		SPIClient:          spi.MockSPIClient{},
 		AlizerClient:       devfile.MockAlizerClient{},
 		DevfileRegistryURL: devfile.DevfileStageRegistryEndpoint, // Use the staging devfile registry for tests
-		AppFS:              util.NewMemoryFilesystem(),
+		AppFS:              ioutils.NewMemoryFilesystem(),
 	}).SetupWithManager(k8sManager)
 	Expect(err).ToNot(HaveOccurred())
 

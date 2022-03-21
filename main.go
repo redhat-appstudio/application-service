@@ -44,7 +44,7 @@ import (
 	"github.com/redhat-appstudio/application-service/gitops"
 	"github.com/redhat-appstudio/application-service/pkg/devfile"
 	"github.com/redhat-appstudio/application-service/pkg/spi"
-	"github.com/redhat-appstudio/application-service/pkg/util"
+	"github.com/redhat-appstudio/application-service/pkg/util/ioutils"
 	//+kubebuilder:scaffold:imports
 )
 
@@ -147,7 +147,7 @@ func main() {
 		Scheme:          mgr.GetScheme(),
 		Log:             ctrl.Log.WithName("controllers").WithName("Component"),
 		Executor:        gitops.NewCmdExecutor(),
-		AppFS:           util.NewFilesystem(),
+		AppFS:           ioutils.NewFilesystem(),
 		GitToken:        ghToken,
 		ImageRepository: imageRepository,
 		SPIClient:       spi.SPIClient{},
@@ -162,7 +162,7 @@ func main() {
 		SPIClient:          spi.SPIClient{},
 		AlizerClient:       devfile.AlizerClient{},
 		DevfileRegistryURL: devfileRegistryURL,
-		AppFS:              util.NewFilesystem(),
+		AppFS:              ioutils.NewFilesystem(),
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "ComponentDetectionQuery")
 		os.Exit(1)
