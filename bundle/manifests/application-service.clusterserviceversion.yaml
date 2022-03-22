@@ -277,6 +277,12 @@ spec:
                       key: token
                       name: has-github-token
                       optional: true
+                - name: DEVFILE_REGISTRY_URL
+                  valueFrom:
+                    configMapKeyRef:
+                      key: DEVFILE_REGISTRY_URL
+                      name: application-service-devfile-registry-config
+                      optional: true
                 image: quay.io/redhat-appstudio/application-service:next
                 imagePullPolicy: Always
                 livenessProbe:

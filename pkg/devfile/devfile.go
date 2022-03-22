@@ -36,10 +36,14 @@ const (
 	HiddenDirDevfile       = HiddenDevfileDir + "/" + DevfileName       // .devfile/devfile.yaml
 	HiddenDirHiddenDevfile = HiddenDevfileDir + "/" + HiddenDevfileName // .devfile/.devfile.yaml
 
+	// DevfileRegistryEndpoint is the endpoint of the devfile registry
+	DevfileRegistryEndpoint = "https://registry.devfile.io"
+
 	// DevfileStageRegistryEndpoint is the endpoint of the staging devfile registry
 	DevfileStageRegistryEndpoint = "https://registry.stage.devfile.io"
 )
 
+// ParseDevfileModel calls the devfile library's parse and returns the devfile data
 func ParseDevfileModel(devfileModel string) (data.DevfileData, error) {
 	// Retrieve the devfile from the body of the resource
 	devfileBytes := []byte(devfileModel)
@@ -105,6 +109,7 @@ func DownloadDevfile(dir string) ([]byte, error) {
 }
 
 // ReadDevfilesFromRepo attempts to read and return devfiles from the local path upto the specified depth
-func ReadDevfilesFromRepo(localpath string, depth int) (map[string][]byte, map[string]string, error) {
-	return searchDevfiles(localpath, 0, depth)
+// If no devfile(s) is found, then the Alizer tool is used to detect and match a devfile from the devfile registry
+func ReadDevfilesFromRepo(a Alizer, localpath string, depth int, devfileRegistryURL string) (map[string][]byte, map[string]string, error) {
+	return searchDevfiles(a, localpath, 0, depth, devfileRegistryURL)
 }

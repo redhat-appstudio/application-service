@@ -104,16 +104,6 @@ func CurlEndpoint(endpoint string) ([]byte, error) {
 
 // CloneRepo clones the repoURL to clonePath
 func CloneRepo(clonePath, repoURL string, token string) error {
-	// Check if the clone path is empty, if not delete it
-	isDirExist, err := IsExist(clonePath)
-	if err != nil {
-		return err
-	}
-
-	if isDirExist {
-		os.RemoveAll(clonePath)
-	}
-
 	// Set up the Clone options
 	cloneOpts := &git.CloneOptions{
 		URL: repoURL,
@@ -127,7 +117,7 @@ func CloneRepo(clonePath, repoURL string, token string) error {
 		}
 	}
 	// Clone the repo
-	_, err = git.PlainClone(clonePath, false, cloneOpts)
+	_, err := git.PlainClone(clonePath, false, cloneOpts)
 	if err != nil {
 		return err
 	}

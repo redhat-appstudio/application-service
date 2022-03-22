@@ -20,7 +20,6 @@ import (
 	"context"
 	"fmt"
 	"net/url"
-	"os"
 	"path"
 	"reflect"
 
@@ -45,7 +44,8 @@ import (
 	"github.com/redhat-appstudio/application-service/gitops"
 	devfile "github.com/redhat-appstudio/application-service/pkg/devfile"
 	"github.com/redhat-appstudio/application-service/pkg/spi"
-	util "github.com/redhat-appstudio/application-service/pkg/util"
+	"github.com/redhat-appstudio/application-service/pkg/util"
+	"github.com/redhat-appstudio/application-service/pkg/util/ioutils"
 	triggersapi "github.com/tektoncd/triggers/pkg/apis/triggers/v1alpha1"
 
 	"github.com/spf13/afero"
@@ -102,28 +102,30 @@ func (r *ComponentReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 	// If the devfile hasn't been populated, the CR was just created
 	var gitToken string
 	if component.Status.Devfile == "" {
-		// If a Git secret was passed in, retrieve it for use in our Git operations
-		// The secret needs to be in the same namespace as the Component
-		if component.Spec.Source.GitSource.Secret != "" {
-			gitSecret := corev1.Secret{}
-			namespacedName := types.NamespacedName{
-				Name:      component.Spec.Source.GitSource.Secret,
-				Namespace: component.Namespace,
-			}
 
-			err = r.Client.Get(ctx, namespacedName, &gitSecret)
-			if err != nil {
-				log.Error(err, fmt.Sprintf("Unable to retrieve Git secret %v, exiting reconcile loop %v", component.Spec.Source.GitSource.Secret, req.NamespacedName))
-				r.SetCreateConditionAndUpdateCR(ctx, &component, err)
-				return ctrl.Result{}, nil
-			}
-
-			gitToken = string(gitSecret.Data["password"])
-		}
 		source := component.Spec.Source
 		context := component.Spec.Context
 
 		if source.GitSource != nil && source.GitSource.URL != "" {
+			// If a Git secret was passed in, retrieve it for use in our Git operations
+			// The secret needs to be in the same namespace as the Component
+			if source.GitSource.Secret != "" {
+				gitSecret := corev1.Secret{}
+				namespacedName := types.NamespacedName{
+					Name:      source.GitSource.Secret,
+					Namespace: component.Namespace,
+				}
+
+				err = r.Client.Get(ctx, namespacedName, &gitSecret)
+				if err != nil {
+					log.Error(err, fmt.Sprintf("Unable to retrieve Git secret %v, exiting reconcile loop %v", component.Spec.Source.GitSource.Secret, req.NamespacedName))
+					r.SetCreateConditionAndUpdateCR(ctx, &component, err)
+					return ctrl.Result{}, nil
+				}
+
+				gitToken = string(gitSecret.Data["password"])
+			}
+
 			var devfileBytes []byte
 			var gitURL string
 			if source.GitSource.DevfileURL == "" {
@@ -268,7 +270,9 @@ func (r *ComponentReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 			}
 
 		} else if source.ImageSource != nil && source.ImageSource.ContainerImage != "" {
-			log.Info(fmt.Sprintf("container image is not supported at the moment, please use github links for adding a component to an application for %v", req.NamespacedName))
+			log.Info(fmt.Sprintf("container image is not supported at the moment, please use github links for adding a component to an application for %s %v", component.Name, req.NamespacedName))
+			r.SetCreateConditionAndUpdateCR(ctx, &component, nil)
+			return ctrl.Result{}, nil
 		}
 
 	} else {
@@ -582,7 +586,7 @@ func (r *ComponentReconciler) generateGitops(component *appstudiov1alpha1.Compon
 	remoteURL := parsedURL.String()
 
 	// Create a temp folder to create the gitops resources in
-	tempDir, err := r.AppFS.TempDir(os.TempDir(), component.Name)
+	tempDir, err := ioutils.CreateTempPath(component.Name, r.AppFS)
 	if err != nil {
 		log.Error(err, "unable to create temp directory for gitops resources due to error")
 		return fmt.Errorf("unable to create temp directory for gitops resources due to error: %v", err)

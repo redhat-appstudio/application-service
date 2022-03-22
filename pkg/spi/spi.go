@@ -32,6 +32,7 @@ type SPI interface {
 type SPIClient struct {
 }
 
+// GetFileContents is a wrapper call to scm file retriever's GetFileContents()
 func (s SPIClient) GetFileContents(ctx context.Context, namespace string, repoUrl string, filepath string, ref string, callback func(ctx context.Context, url string)) (io.ReadCloser, error) {
 	return gitfile.Default().GetFileContents(ctx, namespace, repoUrl, filepath, ref, callback)
 }

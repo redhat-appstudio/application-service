@@ -101,6 +101,14 @@ For example:
 
 `GITHUB_ORG=fake-organization make deploy` would deploy HAS configured to use github.com/fake-organization.
 
+### Specifying Alternate Devfile Registry URL
+
+By default, the production devfile registry URL will be used for `ComponentDetectionQuery`. If you wish to use a different devfile registry, setting `DEVFILE_REGISTRY_URL=<devfile registry url>`  before deploying will ensure that an alternate devfile registry is used.
+
+For example:
+
+`DEVFILE_REGISTRY_URL=https://myregistry make deploy` would deploy HAS configured to use github.com/fake-organization.
+
 ### Disabling Webhooks for Local Dev
 
 Webhooks require self-signed certificates to validate the resources. To disable webhooks during local dev and testing, export `ENABLE_WEBHOOKS=false`
