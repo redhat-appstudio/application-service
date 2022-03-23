@@ -14,6 +14,16 @@ export TEST_SUITE="has-suite"
 export APPLICATION_NAMESPACE="openshift-gitops"
 export APPLICATION_NAME="all-components-staging"
 
+# HAS_CONTROLLER_IMAGE it is application-service controller image builded in openshift CI job workflow. More info about how works image dependencies in ci:https://github.com/openshift/ci-tools/blob/master/TEMPLATES.md#parameters-available-to-templates
+# Container env defined at: https://github.com/openshift/release/blob/master/ci-operator/config/redhat-appstudio/application-service/redhat-appstudio-application-service-main.yaml#L6-L7
+# Openshift CI generate the application service container value as registry.build01.ci.openshift.org/ci-op-83gwcnmk/pipeline@sha256:8812e26b50b262d0cc45da7912970a205add4bd4e4ff3fed421baf3120027206. Need to get the image without sha.
+export OPENSHIFT_CI_CONTROLLER_IMAGE=${HAS_CONTROLLER_IMAGE%@*}
+# Tag defined at: https://github.com/openshift/release/blob/master/ci-operator/config/redhat-appstudio/application-service/redhat-appstudio-application-service-main.yaml#L8
+export OPENSHIFT_CI_CONTROLLER_TAG=${HAS_CONTROLLER_IMAGE_TAG:-"redhat-appstudio-has-image"}
+
+export HAS_IMAGE_REPO=${OPENSHIFT_CI_CONTROLLER_IMAGE:-"quay.io/redhat-appstudio/application-service"}
+export HAS_IMAGE_TAG=${OPENSHIFT_CI_CONTROLLER_TAG:-"next"}
+
 # Available openshift ci environments https://docs.ci.openshift.org/docs/architecture/step-registry/#available-environment-variables
 export ARTIFACTS_DIR=${ARTIFACT_DIR:-"/tmp/appstudio"}
 
@@ -43,7 +53,7 @@ function waitBuildToBeReady() {
 function executeE2ETests() {
     # E2E instructions can be found: https://github.com/redhat-appstudio/e2e-tests
     # The e2e binary is included in Openshift CI test container from the dockerfile: https://github.com/redhat-appstudio/infra-deployments/blob/main/.ci/openshift-ci/Dockerfile
-    e2e-appstudio --ginkgo.junit-report="${ARTIFACTS_DIR}"/e2e-report.xml --ginkgo.focus="has-suite"
+    e2e-appstudio --ginkgo.junit-report="${ARTIFACTS_DIR}"/e2e-report.xml --ginkgo.focus="${TEST_SUITE}"
 }
 
 curl https://raw.githubusercontent.com/redhat-appstudio/e2e-tests/main/scripts/install-appstudio-e2e-mode.sh | bash -s install
