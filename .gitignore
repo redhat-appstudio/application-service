@@ -4,3 +4,4 @@ setup-envtest
 bin/*
 cover.out
 __debug_bin
+tmp
