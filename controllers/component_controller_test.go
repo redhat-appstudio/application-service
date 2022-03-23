@@ -78,6 +78,10 @@ var _ = Describe("Component controller", func() {
 			HASAppNameForBuild := "test-application-1234"
 			HASCompNameForBuild := "test-component-1234"
 
+			Expect(k8sClient.Create(context.TODO(), &corev1.Secret{
+				ObjectMeta: metav1.ObjectMeta{Name: "doesmatter",
+					Namespace: HASAppNamespace}})).Should(Succeed())
+
 			createAndFetchSimpleApp(HASAppNameForBuild, HASAppNamespace, DisplayName, Description)
 
 			hasComp := &appstudiov1alpha1.Component{
@@ -95,7 +99,8 @@ var _ = Describe("Component controller", func() {
 					Source: appstudiov1alpha1.ComponentSource{
 						ComponentSourceUnion: appstudiov1alpha1.ComponentSourceUnion{
 							GitSource: &appstudiov1alpha1.GitSource{
-								URL: SampleRepoLink,
+								URL:    SampleRepoLink,
+								Secret: "doesmatter",
 							},
 						},
 					},
@@ -157,7 +162,7 @@ var _ = Describe("Component controller", func() {
 				}
 			}
 
-			Expect(pipelineRun.Spec.PipelineRef.Bundle).To(Equal("quay.io/redhat-appstudio/build-templates-bundle@sha256:2205a29208fa686b47f841819f7abedb64adb93935493693892d0e18bbdbb77e"))
+			Expect(pipelineRun.Spec.PipelineRef.Bundle).To(Equal("quay.io/redhat-appstudio/build-templates-bundle:8201a567956ba6d2095d615ea2c0f6ab35f9ba5f"))
 
 			Expect(pipelineRun.Spec.Workspaces).To(Not(BeEmpty()))
 			for _, w := range pipelineRun.Spec.Workspaces {
@@ -222,6 +227,47 @@ var _ = Describe("Component controller", func() {
 				k8sClient.Get(context.Background(), hasCompLookupKey, createdHasComp)
 				return createdHasComp.Status.Webhook != ""
 			}, timeout, interval).Should(BeTrue())
+
+			// Validate that the pipeline service account has been linked with the
+			// Github authentication credentials.
+
+			var pipelineSA corev1.ServiceAccount
+			secretFound := false
+			Expect(k8sClient.Get(context.Background(), types.NamespacedName{Name: "pipeline", Namespace: HASAppNamespace}, &pipelineSA)).Should(BeNil())
+			for _, secret := range pipelineSA.Secrets {
+				if secret.Name == "doesmatter" {
+					secretFound = true
+					break
+				}
+				// check if the secret has been annotated
+			}
+			Expect(secretFound).To(BeTrue())
+
+			retrievedSecret := &corev1.Secret{}
+			Expect(k8sClient.Get(context.Background(), types.NamespacedName{Name: "doesmatter", Namespace: HASAppNamespace}, retrievedSecret)).Should(BeNil())
+			tektonAnnotation := retrievedSecret.ObjectMeta.Annotations["tekton.dev/git-0"]
+			Expect(tektonAnnotation).To(Equal("https://github.com"))
+
+			// Update the Component CR to trigger the reconciler
+			retrievedComponent := appstudiov1alpha1.Component{}
+			Expect(k8sClient.Get(context.Background(), types.NamespacedName{Name: HASCompNameForBuild, Namespace: HASAppNamespace}, &retrievedComponent)).Should(BeNil())
+
+			retrievedComponent.Spec.Source.GitSource.URL = "https://github.com/something-else"
+			Expect(k8sClient.Update(context.Background(), &retrievedComponent))
+
+			// confirm that the secret remains annotated.
+			Expect(k8sClient.Get(context.Background(), types.NamespacedName{Name: "doesmatter", Namespace: HASAppNamespace}, retrievedSecret)).Should(BeNil())
+			Expect(tektonAnnotation).To(Equal("https://github.com"))
+
+			// confirm that the service account has exactly 1 entry for the secret
+			Expect(k8sClient.Get(context.Background(), types.NamespacedName{Name: "pipeline", Namespace: HASAppNamespace}, &pipelineSA)).Should(BeNil())
+			foundCount := 0
+			for _, secret := range pipelineSA.Secrets {
+				if secret.Name == "doesmatter" {
+					foundCount++
+				}
+			}
+			Expect(foundCount).To(Equal(1))
 
 			// Delete the specified HASComp resource
 			deleteHASCompCR(hasCompLookupKey)
@@ -1338,6 +1384,332 @@ var _ = Describe("Component controller", func() {
 			Expect(errCondition.Message).Should(ContainSubstring("Component create failed: schemaVersion not present in devfile"))
 
 			hasAppLookupKey := types.NamespacedName{Name: applicationName, Namespace: HASAppNamespace}
+
+			// Delete the specified HASComp resource
+			deleteHASCompCR(hasCompLookupKey)
+
+			// Delete the specified HASApp resource
+			deleteHASAppCR(hasAppLookupKey)
+		})
+	})
+
+	// Private Git Repo tests
+	Context("Create Component with git secret field set to non-existent secret", func() {
+		It("Should error out since the secret doesn't exist", func() {
+			ctx := context.Background()
+
+			applicationName := HASAppName + "13"
+			componentName := HASCompName + "13"
+
+			createAndFetchSimpleApp(applicationName, HASAppNamespace, DisplayName, Description)
+
+			hasComp := &appstudiov1alpha1.Component{
+				TypeMeta: metav1.TypeMeta{
+					APIVersion: "appstudio.redhat.com/v1alpha1",
+					Kind:       "Component",
+				},
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      componentName,
+					Namespace: HASAppNamespace,
+				},
+				Spec: appstudiov1alpha1.ComponentSpec{
+					ComponentName: ComponentName,
+					Application:   applicationName,
+					Source: appstudiov1alpha1.ComponentSource{
+						ComponentSourceUnion: appstudiov1alpha1.ComponentSourceUnion{
+							GitSource: &appstudiov1alpha1.GitSource{
+								URL:        SampleRepoLink,
+								DevfileURL: "https://github.com/test/repo",
+								Secret:     "fake-secret",
+							},
+						},
+					},
+				},
+			}
+			Expect(k8sClient.Create(ctx, hasComp)).Should(Succeed())
+
+			// Look up the has app resource that was created.
+			// num(conditions) may still be < 1 on the first try, so retry until at least _some_ condition is set
+			hasCompLookupKey := types.NamespacedName{Name: componentName, Namespace: HASAppNamespace}
+			createdHasComp := &appstudiov1alpha1.Component{}
+			Eventually(func() bool {
+				k8sClient.Get(context.Background(), hasCompLookupKey, createdHasComp)
+				return len(createdHasComp.Status.Conditions) > 0
+			}, timeout, interval).Should(BeTrue())
+
+			// Make sure the err was set
+			Expect(createdHasComp.Status.Devfile).Should(Equal(""))
+			Expect(createdHasComp.Status.Conditions[len(createdHasComp.Status.Conditions)-1].Reason).Should(Equal("Error"))
+			Expect(strings.ToLower(createdHasComp.Status.Conditions[len(createdHasComp.Status.Conditions)-1].Message)).Should(ContainSubstring("component create failed: secret \"fake-secret\" not found"))
+
+			hasAppLookupKey := types.NamespacedName{Name: applicationName, Namespace: HASAppNamespace}
+
+			// Delete the specified HASComp resource
+			deleteHASCompCR(hasCompLookupKey)
+
+			// Delete the specified HASApp resource
+			deleteHASAppCR(hasAppLookupKey)
+		})
+	})
+
+	Context("Create Component with git secret field set to valid secret", func() {
+		It("Should create successfully", func() {
+			ctx := context.Background()
+
+			applicationName := HASAppName + "14"
+			componentName := HASCompName + "14"
+
+			// Create a git secret
+			tokenSecret := &corev1.Secret{
+				TypeMeta: metav1.TypeMeta{
+					Kind: "Secret",
+				},
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      componentName,
+					Namespace: HASAppNamespace,
+				},
+				StringData: map[string]string{
+					"password": "sometoken",
+				},
+			}
+
+			Expect(k8sClient.Create(ctx, tokenSecret)).Should(Succeed())
+
+			createAndFetchSimpleApp(applicationName, HASAppNamespace, DisplayName, Description)
+
+			hasComp := &appstudiov1alpha1.Component{
+				TypeMeta: metav1.TypeMeta{
+					APIVersion: "appstudio.redhat.com/v1alpha1",
+					Kind:       "Component",
+				},
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      componentName,
+					Namespace: HASAppNamespace,
+				},
+				Spec: appstudiov1alpha1.ComponentSpec{
+					ComponentName: ComponentName,
+					Application:   applicationName,
+					Source: appstudiov1alpha1.ComponentSource{
+						ComponentSourceUnion: appstudiov1alpha1.ComponentSourceUnion{
+							GitSource: &appstudiov1alpha1.GitSource{
+								URL:    SampleRepoLink,
+								Secret: componentName,
+							},
+						},
+					},
+				},
+			}
+			Expect(k8sClient.Create(ctx, hasComp)).Should(Succeed())
+
+			// Look up the has app resource that was created.
+			// num(conditions) may still be < 1 on the first try, so retry until at least _some_ condition is set
+			hasCompLookupKey := types.NamespacedName{Name: componentName, Namespace: HASAppNamespace}
+			createdHasComp := &appstudiov1alpha1.Component{}
+			Eventually(func() bool {
+				k8sClient.Get(context.Background(), hasCompLookupKey, createdHasComp)
+				return len(createdHasComp.Status.Conditions) > 0
+			}, timeout, interval).Should(BeTrue())
+
+			// Make sure the err was set
+			Expect(createdHasComp.Status.Devfile).Should(Not(Equal("")))
+			Expect(createdHasComp.Status.Conditions[len(createdHasComp.Status.Conditions)-1].Status).Should(Equal(metav1.ConditionTrue))
+
+			hasAppLookupKey := types.NamespacedName{Name: applicationName, Namespace: HASAppNamespace}
+
+			// Delete the specified HASComp resource
+			deleteHASCompCR(hasCompLookupKey)
+
+			// Delete the specified HASApp resource
+			deleteHASAppCR(hasAppLookupKey)
+		})
+	})
+
+	Context("Create Component with private repo, but no devfile", func() {
+		It("Should error out since no devfile exists", func() {
+			ctx := context.Background()
+
+			applicationName := HASAppName + "15"
+			componentName := HASCompName + "15"
+
+			// Create a git secret
+			tokenSecret := &corev1.Secret{
+				TypeMeta: metav1.TypeMeta{
+					Kind: "Secret",
+				},
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      componentName,
+					Namespace: HASAppNamespace,
+				},
+				StringData: map[string]string{
+					"password": "sometoken",
+				},
+			}
+
+			Expect(k8sClient.Create(ctx, tokenSecret)).Should(Succeed())
+
+			createAndFetchSimpleApp(applicationName, HASAppNamespace, DisplayName, Description)
+
+			hasComp := &appstudiov1alpha1.Component{
+				TypeMeta: metav1.TypeMeta{
+					APIVersion: "appstudio.redhat.com/v1alpha1",
+					Kind:       "Component",
+				},
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      componentName,
+					Namespace: HASAppNamespace,
+				},
+				Spec: appstudiov1alpha1.ComponentSpec{
+					ComponentName: ComponentName,
+					Application:   applicationName,
+					Source: appstudiov1alpha1.ComponentSource{
+						ComponentSourceUnion: appstudiov1alpha1.ComponentSourceUnion{
+							GitSource: &appstudiov1alpha1.GitSource{
+								URL:    "https://github.com/johnmcollier/test-error-response",
+								Secret: componentName,
+							},
+						},
+					},
+				},
+			}
+			Expect(k8sClient.Create(ctx, hasComp)).Should(Succeed())
+
+			// Look up the has app resource that was created.
+			// num(conditions) may still be < 1 on the first try, so retry until at least _some_ condition is set
+			hasCompLookupKey := types.NamespacedName{Name: componentName, Namespace: HASAppNamespace}
+			createdHasComp := &appstudiov1alpha1.Component{}
+			Eventually(func() bool {
+				k8sClient.Get(context.Background(), hasCompLookupKey, createdHasComp)
+				return len(createdHasComp.Status.Conditions) > 0
+			}, timeout, interval).Should(BeTrue())
+
+			// Make sure the err was set
+			Expect(createdHasComp.Status.Devfile).Should(Equal(""))
+			Expect(createdHasComp.Status.Conditions[len(createdHasComp.Status.Conditions)-1].Status).Should(Equal(metav1.ConditionFalse))
+			Expect(strings.ToLower(createdHasComp.Status.Conditions[len(createdHasComp.Status.Conditions)-1].Message)).Should(ContainSubstring("component create failed: unable to find any devfiles in repo https://github.com/johnmcollier/test-error-response"))
+
+			hasAppLookupKey := types.NamespacedName{Name: applicationName, Namespace: HASAppNamespace}
+
+			// Delete the specified HASComp resource
+			deleteHASCompCR(hasCompLookupKey)
+
+			// Delete the specified HASApp resource
+			deleteHASAppCR(hasAppLookupKey)
+		})
+	})
+
+	Context("Create Component with with context folder containing no devfile", func() {
+		It("Should error out because a devfile cannot be found", func() {
+			ctx := context.Background()
+
+			applicationName := HASAppName + "16"
+			componentName := HASCompName + "16"
+
+			createAndFetchSimpleApp(applicationName, HASAppNamespace, DisplayName, Description)
+
+			hasComp := &appstudiov1alpha1.Component{
+				TypeMeta: metav1.TypeMeta{
+					APIVersion: "appstudio.redhat.com/v1alpha1",
+					Kind:       "Component",
+				},
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      componentName,
+					Namespace: HASAppNamespace,
+				},
+				Spec: appstudiov1alpha1.ComponentSpec{
+					ComponentName: ComponentName,
+					Application:   applicationName,
+					Source: appstudiov1alpha1.ComponentSource{
+						ComponentSourceUnion: appstudiov1alpha1.ComponentSourceUnion{
+							GitSource: &appstudiov1alpha1.GitSource{
+								URL: "https://github.com/devfile-samples/devfile-sample-python-basic",
+							},
+						},
+					},
+					Context: "/docker",
+				},
+			}
+			Expect(k8sClient.Create(ctx, hasComp)).Should(Succeed())
+
+			// Look up the has app resource that was created.
+			// num(conditions) may still be < 1 on the first try, so retry until at least _some_ condition is set
+			hasCompLookupKey := types.NamespacedName{Name: componentName, Namespace: HASAppNamespace}
+			createdHasComp := &appstudiov1alpha1.Component{}
+			Eventually(func() bool {
+				k8sClient.Get(context.Background(), hasCompLookupKey, createdHasComp)
+				return len(createdHasComp.Status.Conditions) > 0
+			}, timeout, interval).Should(BeTrue())
+
+			// Make sure the err was set
+			Expect(createdHasComp.Status.Conditions[len(createdHasComp.Status.Conditions)-1].Reason).Should(Equal("Error"))
+			Expect(strings.ToLower(createdHasComp.Status.Conditions[len(createdHasComp.Status.Conditions)-1].Message)).Should(ContainSubstring("unable to find devfile in the specified location https:/raw.githubusercontent.com/devfile-samples/devfile-sample-python-basic/main/docker"))
+
+			hasAppLookupKey := types.NamespacedName{Name: applicationName, Namespace: HASAppNamespace}
+
+			// Delete the specified HASComp resource
+			deleteHASCompCR(hasCompLookupKey)
+
+			// Delete the specified HASApp resource
+			deleteHASAppCR(hasAppLookupKey)
+		})
+	})
+
+	Context("Create Component with basic field set", func() {
+		It("Should complete with an image source even if it is not implemented yet", func() {
+			ctx := context.Background()
+
+			applicationName := HASAppName + "17"
+			componentName := HASCompName + "17"
+
+			createAndFetchSimpleApp(applicationName, HASAppNamespace, DisplayName, Description)
+
+			hasComp := &appstudiov1alpha1.Component{
+				TypeMeta: metav1.TypeMeta{
+					APIVersion: "appstudio.redhat.com/v1alpha1",
+					Kind:       "Component",
+				},
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      componentName,
+					Namespace: HASAppNamespace,
+				},
+				Spec: appstudiov1alpha1.ComponentSpec{
+					ComponentName: ComponentName,
+					Application:   applicationName,
+					Source: appstudiov1alpha1.ComponentSource{
+						ComponentSourceUnion: appstudiov1alpha1.ComponentSourceUnion{
+							ImageSource: &appstudiov1alpha1.ImageSource{
+								ContainerImage: "an-image",
+							},
+						},
+					},
+				},
+			}
+			Expect(k8sClient.Create(ctx, hasComp)).Should(Succeed())
+
+			// Look up the has app resource that was created.
+			// num(conditions) may still be < 1 on the first try, so retry until at least _some_ condition is set
+			hasCompLookupKey := types.NamespacedName{Name: componentName, Namespace: HASAppNamespace}
+			createdHasComp := &appstudiov1alpha1.Component{}
+			Eventually(func() bool {
+				k8sClient.Get(context.Background(), hasCompLookupKey, createdHasComp)
+				return len(createdHasComp.Status.Conditions) > 0
+			}, timeout, interval).Should(BeTrue())
+
+			// Make sure the devfile model was properly set in Component
+			Expect(createdHasComp.Status.Devfile).Should(Equal(""))
+
+			// Make sure the component resource has been updated properly
+			Expect(createdHasComp.Status.Conditions[len(createdHasComp.Status.Conditions)-1].Message).Should(ContainSubstring("successfully created"))
+			Expect(createdHasComp.Status.Conditions[len(createdHasComp.Status.Conditions)-1].Reason).Should(Equal("OK"))
+
+			hasAppLookupKey := types.NamespacedName{Name: applicationName, Namespace: HASAppNamespace}
+			createdHasApp := &appstudiov1alpha1.Application{}
+			Eventually(func() bool {
+				k8sClient.Get(context.Background(), hasAppLookupKey, createdHasApp)
+				return len(createdHasApp.Status.Conditions) > 0
+			}, timeout, interval).Should(BeTrue())
+
+			// Make sure the devfile model was properly set in Application
+			Expect(createdHasApp.Status.Devfile).Should(Not(Equal("")))
 
 			// Delete the specified HASComp resource
 			deleteHASCompCR(hasCompLookupKey)

@@ -35,7 +35,7 @@ func GenerateNewRepositoryName(displayName string, namespace string) string {
 }
 
 func GenerateNewRepository(client *github.Client, ctx context.Context, orgName string, repoName string, description string) (string, error) {
-	isPrivate := true
+	isPrivate := false
 	appStudioAppDataURL := "https://github.com/" + orgName + "/"
 
 	r := &github.Repository{Name: &repoName, Private: &isPrivate, Description: &description}

@@ -20,10 +20,8 @@ import (
 	"context"
 	"fmt"
 	"net/url"
-	"os"
 	"path"
 	"reflect"
-	"time"
 
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -41,11 +39,13 @@ import (
 	data "github.com/devfile/library/pkg/devfile/parser/data"
 	"github.com/go-logr/logr"
 	routev1 "github.com/openshift/api/route/v1"
+
 	appstudiov1alpha1 "github.com/redhat-appstudio/application-service/api/v1alpha1"
 	"github.com/redhat-appstudio/application-service/gitops"
 	devfile "github.com/redhat-appstudio/application-service/pkg/devfile"
-	util "github.com/redhat-appstudio/application-service/pkg/util"
-	tektonapi "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
+	"github.com/redhat-appstudio/application-service/pkg/spi"
+	"github.com/redhat-appstudio/application-service/pkg/util"
+	"github.com/redhat-appstudio/application-service/pkg/util/ioutils"
 	triggersapi "github.com/tektoncd/triggers/pkg/apis/triggers/v1alpha1"
 
 	"github.com/spf13/afero"
@@ -61,6 +61,7 @@ type ComponentReconciler struct {
 	ImageRepository string
 	Executor        gitops.Executor
 	AppFS           afero.Afero
+	SPIClient       spi.SPI
 }
 
 //+kubebuilder:rbac:groups=appstudio.redhat.com,resources=components,verbs=get;list;watch;create;update;patch;delete
@@ -99,36 +100,68 @@ func (r *ComponentReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 	}
 
 	// If the devfile hasn't been populated, the CR was just created
+	var gitToken string
 	if component.Status.Devfile == "" {
+
 		source := component.Spec.Source
 		context := component.Spec.Context
 
 		if source.GitSource != nil && source.GitSource.URL != "" {
+			// If a Git secret was passed in, retrieve it for use in our Git operations
+			// The secret needs to be in the same namespace as the Component
+			if source.GitSource.Secret != "" {
+				gitSecret := corev1.Secret{}
+				namespacedName := types.NamespacedName{
+					Name:      source.GitSource.Secret,
+					Namespace: component.Namespace,
+				}
+
+				err = r.Client.Get(ctx, namespacedName, &gitSecret)
+				if err != nil {
+					log.Error(err, fmt.Sprintf("Unable to retrieve Git secret %v, exiting reconcile loop %v", component.Spec.Source.GitSource.Secret, req.NamespacedName))
+					r.SetCreateConditionAndUpdateCR(ctx, &component, err)
+					return ctrl.Result{}, nil
+				}
+
+				gitToken = string(gitSecret.Data["password"])
+			}
+
 			var devfileBytes []byte
-
+			var gitURL string
 			if source.GitSource.DevfileURL == "" {
-				rawURL, err := util.ConvertGitHubURL(source.GitSource.URL)
-				if err != nil {
-					log.Error(err, fmt.Sprintf("Unable to convert Github URL to raw format, exiting reconcile loop %v", req.NamespacedName))
-					r.SetCreateConditionAndUpdateCR(ctx, &component, err)
-					return ctrl.Result{}, nil
-				}
+				if gitToken == "" {
+					gitURL, err = util.ConvertGitHubURL(source.GitSource.URL)
+					if err != nil {
+						log.Error(err, fmt.Sprintf("Unable to convert Github URL to raw format, exiting reconcile loop %v", req.NamespacedName))
+						r.SetCreateConditionAndUpdateCR(ctx, &component, err)
+						return ctrl.Result{}, nil
+					}
 
-				// append context to the path if present
-				// context is usually set when the git repo is a multi-component repo (example - contains both frontend & backend)
-				var devfileDir string
-				if context == "" {
-					devfileDir = rawURL
+					// append context to the path if present
+					// context is usually set when the git repo is a multi-component repo (example - contains both frontend & backend)
+					var devfileDir string
+					if context == "" {
+						devfileDir = gitURL
+					} else {
+						devfileDir = path.Join(gitURL, context)
+					}
+
+					devfileBytes, err = devfile.DownloadDevfile(devfileDir)
+					if err != nil {
+						log.Error(err, fmt.Sprintf("Unable to read the devfile from dir %s %v", devfileDir, req.NamespacedName))
+						r.SetCreateConditionAndUpdateCR(ctx, &component, err)
+						return ctrl.Result{}, nil
+					}
 				} else {
-					devfileDir = path.Join(rawURL, context)
+					// Use SPI to retrieve the devfile from the private repository
+					devfileBytes, err = spi.DownloadDevfileUsingSPI(r.SPIClient, ctx, component.Namespace, source.GitSource.URL, "main", context)
+					if err != nil {
+						log.Error(err, fmt.Sprintf("Unable to download from any known devfile locations from %s %v", source.GitSource.URL, req.NamespacedName))
+						r.SetCreateConditionAndUpdateCR(ctx, &component, err)
+						return ctrl.Result{}, nil
+					}
 				}
 
-				devfileBytes, err = util.DownloadDevfile(devfileDir)
-				if err != nil {
-					log.Error(err, fmt.Sprintf("Unable to read the devfile from dir %s %v", devfileDir, req.NamespacedName))
-					r.SetCreateConditionAndUpdateCR(ctx, &component, err)
-					return ctrl.Result{}, nil
-				}
 			} else {
 				devfileBytes, err = util.CurlEndpoint(source.GitSource.DevfileURL)
 				if err != nil {
@@ -160,7 +193,7 @@ func (r *ComponentReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 			if err != nil {
 				log.Error(err, fmt.Sprintf("Unable to get the Application %s, exiting reconcile loop %v", component.Spec.Application, req.NamespacedName))
 				r.SetCreateConditionAndUpdateCR(ctx, &component, err)
-				return ctrl.Result{}, err
+				return ctrl.Result{}, nil
 			}
 
 			if hasApplication.Status.Devfile != "" {
@@ -237,7 +270,9 @@ func (r *ComponentReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 			}
 
 		} else if source.ImageSource != nil && source.ImageSource.ContainerImage != "" {
-			log.Info(fmt.Sprintf("container image is not supported at the moment, please use github links for adding a component to an application for %v", req.NamespacedName))
+			log.Info(fmt.Sprintf("container image is not supported at the moment, please use github links for adding a component to an application for %s %v", component.Name, req.NamespacedName))
+			r.SetCreateConditionAndUpdateCR(ctx, &component, nil)
+			return ctrl.Result{}, nil
 		}
 
 	} else {
@@ -347,6 +382,49 @@ func (r *ComponentReconciler) runBuild(ctx context.Context, component *appstudio
 	}
 	log.Info(fmt.Sprintf("PV is now present : %v", workspaceStorage.Name))
 
+	sourceSecretName := component.Spec.Source.GitSource.Secret
+
+	// Make the Secret ready for consumption by Tekton.
+	if sourceSecretName != "" {
+		gitSecret := corev1.Secret{}
+		err = r.Get(ctx, types.NamespacedName{Name: sourceSecretName, Namespace: component.Namespace}, &gitSecret)
+		if err != nil {
+			log.Error(err, fmt.Sprintf("Secret %s is missing", sourceSecretName))
+			return err
+		} else {
+			if gitSecret.Annotations == nil {
+				gitSecret.Annotations = map[string]string{}
+			}
+
+			gitHost, _ := getGitProvider(component.Spec.Source.GitSource.URL)
+
+			// doesn't matter if it was present, we will always override.
+			gitSecret.Annotations["tekton.dev/git-0"] = gitHost
+			err = r.Update(ctx, &gitSecret)
+			if err != nil {
+				log.Error(err, fmt.Sprintf("Secret %s  update failed", sourceSecretName))
+				return err
+			}
+		}
+	}
+
+	svcAccount := corev1.ServiceAccount{}
+	err = r.Get(ctx, types.NamespacedName{Name: "pipeline", Namespace: component.Namespace}, &svcAccount)
+	if err != nil {
+		log.Error(err, fmt.Sprintf("OpenShift Pipelines-created Service account 'pipeline' is missing in namespace %s", component.Namespace))
+		return err
+	} else {
+		updatedRequired := updateServiceAccountIfSecretNotLinked(ctx, sourceSecretName, &svcAccount)
+		if updatedRequired {
+			err = r.Client.Update(ctx, &svcAccount)
+			if err != nil {
+				log.Error(err, fmt.Sprintf("Unable to update pipeline service account %v", svcAccount))
+				return err
+			}
+			log.Info(fmt.Sprintf("Service Account updated %v", svcAccount))
+		}
+	}
+
 	triggerTemplate, err := gitops.GenerateTriggerTemplate(*component)
 	if err != nil {
 		log.Error(err, "Unable to generate triggerTemplate ")
@@ -404,17 +482,7 @@ func (r *ComponentReconciler) runBuild(ctx context.Context, component *appstudio
 
 	log.Info(fmt.Sprintf("Eventlistener created/updated %v", eventListener.Name))
 
-	initialBuildSpec := gitops.DetermineBuildExecution(*component, gitops.GetParamsForComponentInitialBuild(*component), getInitialBuildWorkspaceSubpath())
-
-	initialBuild := tektonapi.PipelineRun{
-		ObjectMeta: v1.ObjectMeta{
-			GenerateName: component.Name + "-",
-			Namespace:    component.Namespace,
-			Labels:       gitops.GetBuildCommonLabelsForComponent(component),
-		},
-		Spec: initialBuildSpec,
-	}
-
+	initialBuild := gitops.GenerateInitialBuildPipelineRun(*component)
 	err = controllerutil.SetOwnerReference(component, &initialBuild, r.Scheme)
 	if err != nil {
 		log.Error(err, fmt.Sprintf("Unable to set owner reference for %v", initialBuild))
@@ -452,8 +520,34 @@ func (r *ComponentReconciler) runBuild(ctx context.Context, component *appstudio
 	return err
 }
 
-func getInitialBuildWorkspaceSubpath() string {
-	return "initialbuild-" + time.Now().Format("2006-Feb-02_15-04-05")
+// getGitProvider takes a Git URL of the format https://github.com/foo/bar and returns
+// https://github.com
+func getGitProvider(gitURL string) (string, error) {
+	u, err := url.Parse(gitURL)
+
+	// We really need the format of the string to be correct.
+	// We'll not do any autocorrection.
+	if err != nil || u.Scheme == "" {
+		return "", fmt.Errorf("failed to parse string into a URL: %v or scheme is empty", err)
+	}
+	return u.Scheme + "://" + u.Host, nil
+}
+
+func updateServiceAccountIfSecretNotLinked(ctx context.Context, sourceSecretName string, serviceAccount *corev1.ServiceAccount) bool {
+	isSecretPresent := false
+	for _, credentialSecret := range serviceAccount.Secrets {
+		if credentialSecret.Name == sourceSecretName {
+			isSecretPresent = true
+			break
+		}
+	}
+	if !isSecretPresent {
+		serviceAccount.Secrets = append(serviceAccount.Secrets, corev1.ObjectReference{
+			Name: sourceSecretName,
+		})
+		return true
+	}
+	return false
 }
 
 // generateGitops retrieves the necessary information about a Component's gitops repository (URL, branch, context)
@@ -492,7 +586,7 @@ func (r *ComponentReconciler) generateGitops(component *appstudiov1alpha1.Compon
 	remoteURL := parsedURL.String()
 
 	// Create a temp folder to create the gitops resources in
-	tempDir, err := r.AppFS.TempDir(os.TempDir(), component.Name)
+	tempDir, err := ioutils.CreateTempPath(component.Name, r.AppFS)
 	if err != nil {
 		log.Error(err, "unable to create temp directory for gitops resources due to error")
 		return fmt.Errorf("unable to create temp directory for gitops resources due to error: %v", err)

@@ -16,6 +16,7 @@
 package devfile
 
 import (
+	"os"
 	"reflect"
 	"testing"
 
@@ -25,6 +26,7 @@ import (
 	data "github.com/devfile/library/pkg/devfile/parser/data"
 	v2 "github.com/devfile/library/pkg/devfile/parser/data/v2"
 	appstudiov1alpha1 "github.com/redhat-appstudio/application-service/api/v1alpha1"
+	"github.com/redhat-appstudio/application-service/pkg/util"
 )
 
 func TestParseDevfileModel(t *testing.T) {
@@ -140,6 +142,121 @@ func TestConvertApplicationToDevfile(t *testing.T) {
 			} else if !reflect.DeepEqual(convertedDevfile, tt.wantDevfile) {
 				t.Errorf("TestConvertApplicationToDevfile() error: expected %v got %v", tt.wantDevfile, convertedDevfile)
 			}
+		})
+	}
+}
+
+func TestDownloadDevfile(t *testing.T) {
+	tests := []struct {
+		name    string
+		url     string
+		wantErr bool
+	}{
+		{
+			name: "Curl devfile.yaml",
+			url:  "https://raw.githubusercontent.com/devfile-samples/devfile-sample-java-springboot-basic/main",
+		},
+		{
+			name: "Curl .devfile.yaml",
+			url:  "https://raw.githubusercontent.com/maysunfaisal/hiddendevfile/main",
+		},
+		{
+			name: "Curl .devfile/devfile.yaml",
+			url:  "https://raw.githubusercontent.com/maysunfaisal/hiddendirdevfile/main",
+		},
+		{
+			name: "Curl .devfile/.devfile.yaml",
+			url:  "https://raw.githubusercontent.com/maysunfaisal/hiddendirhiddendevfile/main",
+		},
+		{
+			name:    "Cannot curl for a devfile",
+			url:     "https://github.com/octocat/Hello-World",
+			wantErr: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			contents, err := DownloadDevfile(tt.url)
+			if tt.wantErr && (err == nil) {
+				t.Error("wanted error but got nil")
+			} else if !tt.wantErr && err != nil {
+				t.Errorf("got unexpected error %v", err)
+			} else if err == nil && contents == nil {
+				t.Errorf("unable to read body")
+			}
+		})
+	}
+}
+
+func TestReadDevfilesFromRepo(t *testing.T) {
+
+	var mockClient MockAlizerClient
+
+	tests := []struct {
+		name                   string
+		clonePath              string
+		depth                  int
+		repo                   string
+		token                  string
+		wantErr                bool
+		expectedDevfileContext []string
+	}{
+		{
+			name:      "Should return 0 devfiles as this is not a multi comp devfile",
+			clonePath: "/tmp/testclone",
+			depth:     1,
+			repo:      "https://github.com/devfile-samples/devfile-sample-java-springboot-basic",
+			wantErr:   true,
+		},
+		{
+			name:                   "Should return 1 devfiles as this is a multi comp devfile",
+			clonePath:              "/tmp/testclone",
+			depth:                  1,
+			repo:                   "https://github.com/maysunfaisal/multi-components-deep",
+			expectedDevfileContext: []string{"devfile-sample-java-springboot-basic", "python"},
+		},
+		// TODO - maysunfaisal
+		// Commenting out this test case, we hard code our depth to 1 for CDQ
+		// But there seems to a gap in the logic if we extend past depth 1 and discovering devfile logic
+		// Revisit post M4
+
+		// {
+		// 	name:                   "Should return 2 devfiles as this is a multi comp devfile",
+		// 	clonePath:              "/tmp/testclone",
+		// 	depth:                  2,
+		// 	repo:                   "https://github.com/maysunfaisal/multi-components-deep",
+		// 	expectedDevfileContext: []string{"devfile-sample-java-springboot-basic", "python/devfile-sample-python-basic"},
+		// },
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			err := util.CloneRepo(tt.clonePath, tt.repo, tt.token)
+			if err != nil {
+				t.Errorf("got unexpected error %v", err)
+			} else {
+				devfileMap, _, err := ReadDevfilesFromRepo(mockClient, tt.clonePath, tt.depth, DevfileStageRegistryEndpoint)
+				if tt.wantErr && (err == nil) {
+					t.Error("wanted error but got nil")
+				} else if !tt.wantErr && err != nil {
+					t.Errorf("got unexpected error %v", err)
+				} else {
+					for actualContext := range devfileMap {
+						matched := false
+						for _, context := range tt.expectedDevfileContext {
+							if context == actualContext {
+								matched = true
+							}
+						}
+
+						if !matched {
+							t.Errorf("found devfile at context %v but expected none", actualContext)
+						}
+					}
+				}
+			}
+			os.RemoveAll(tt.clonePath)
 		})
 	}
 }

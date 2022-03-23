@@ -19,6 +19,7 @@ package ioutils
 
 import (
 	"fmt"
+	"os"
 	"path/filepath"
 
 	"github.com/spf13/afero"
@@ -49,4 +50,9 @@ func IsExisting(fs afero.Fs, path string) (bool, error) {
 		return true, fmt.Errorf("%q: Dir already exists at %s", filepath.Base(path), path)
 	}
 	return true, fmt.Errorf("%q: File already exists at %s", filepath.Base(path), path)
+}
+
+// CreateTempPath creates a temp path with the prefix using the Afero FS
+func CreateTempPath(prefix string, appFs afero.Afero) (string, error) {
+	return appFs.TempDir(os.TempDir(), prefix)
 }

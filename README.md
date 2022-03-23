@@ -3,7 +3,7 @@
 [![codecov](https://codecov.io/gh/redhat-appstudio/application-service/branch/main/graph/badge.svg)](https://codecov.io/gh/redhat-appstudio/application-service)
 
 
-An Kubernetes operator to create and manage applications and control the lifecycle of applications.
+A Kubernetes operator to create and manage applications and control the lifecycle of applications.
 
 
 ## Building & Testing
@@ -78,6 +78,12 @@ In addition to this, the GitHub token must be associated with an account that ha
 For example, on OpenShift:
 <img width="862" alt="Screen Shot 2021-12-14 at 1 08 43 AM" src="https://user-images.githubusercontent.com/6880023/145942734-63422532-6fad-4017-9d26-79436fe241b8.png">
 
+### Using Private Git Repos
+
+HAS requires SPI to be set up in order to work with private git repositories.
+
+See [private-git-repos.md](docs/private-git-repos.md) for information on setting up HAS and SPI for use with private git repositories.
+
 ### Deploying HAS
 
 
@@ -94,6 +100,14 @@ By default, HAS will use the `redhat-appstudio-appdata` org for the creation of 
 For example:
 
 `GITHUB_ORG=fake-organization make deploy` would deploy HAS configured to use github.com/fake-organization.
+
+### Specifying Alternate Devfile Registry URL
+
+By default, the production devfile registry URL will be used for `ComponentDetectionQuery`. If you wish to use a different devfile registry, setting `DEVFILE_REGISTRY_URL=<devfile registry url>`  before deploying will ensure that an alternate devfile registry is used.
+
+For example:
+
+`DEVFILE_REGISTRY_URL=https://myregistry make deploy` would deploy HAS configured to use github.com/fake-organization.
 
 ### Disabling Webhooks for Local Dev
 

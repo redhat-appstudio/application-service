@@ -16,7 +16,9 @@
 package github
 
 import (
+	"io/ioutil"
 	"net/http"
+	"strings"
 
 	"github.com/google/go-github/v41/github"
 	"github.com/migueleliasweb/go-github-mock/src/mock"
@@ -41,10 +43,20 @@ func GetMockedClient() *github.Client {
 		),
 		mock.WithRequestMatchHandler(
 			mock.PostOrgsReposByOrg,
-			http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
-				w.Write(mock.MustMarshal(github.Repository{
-					Name: github.String("test-repo-1"),
-				}))
+			http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
+				b, _ := ioutil.ReadAll(req.Body)
+				reqBody := string(b)
+				// ToDo: Figure out a better way to dynamically mock errors
+				if strings.Contains(reqBody, "test-error-response") {
+					mock.WriteError(w,
+						http.StatusInternalServerError,
+						"github went belly up or something",
+					)
+				} else {
+					w.Write(mock.MustMarshal(github.Repository{
+						Name: github.String("test-repo-1"),
+					}))
+				}
 			}),
 		),
 		mock.WithRequestMatchHandler(

@@ -24,6 +24,8 @@ import (
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
+	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes/scheme"
 
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -39,9 +41,11 @@ import (
 	taskrunapi "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	triggersapi "github.com/tektoncd/triggers/pkg/apis/triggers/v1alpha1"
 
-	"github.com/redhat-appstudio/application-service/gitops/ioutils"
 	"github.com/redhat-appstudio/application-service/gitops/testutils"
+	"github.com/redhat-appstudio/application-service/pkg/devfile"
 	github "github.com/redhat-appstudio/application-service/pkg/github"
+	"github.com/redhat-appstudio/application-service/pkg/spi"
+	"github.com/redhat-appstudio/application-service/pkg/util/ioutils"
 	//+kubebuilder:scaffold:imports
 )
 
@@ -74,7 +78,7 @@ var _ = BeforeSuite(func() {
 			filepath.Join("..", "config", "crd", "bases"),
 			filepath.Join("..", "hack", "routecrd"),
 			filepath.Join(build.Default.GOPATH, "pkg", "mod", "github.com", "tektoncd", "triggers@v0.17.1", "config"),
-			filepath.Join(build.Default.GOPATH, "pkg", "mod", "github.com", "tektoncd", "pipeline@v0.30.0", "config")},
+			filepath.Join(build.Default.GOPATH, "pkg", "mod", "github.com", "tektoncd", "pipeline@v0.32.1", "config")},
 		ErrorIfCRDPathMissing: true,
 	}
 
@@ -100,6 +104,17 @@ var _ = BeforeSuite(func() {
 	Expect(err).NotTo(HaveOccurred())
 	Expect(k8sClient).NotTo(BeNil())
 
+	// Setup the equivalent of what OpenShift Pipelines
+	// would do.
+	svcAccount := corev1.ServiceAccount{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "pipeline",
+			Namespace: "default",
+		},
+	}
+
+	Expect(k8sClient.Create(context.Background(), &svcAccount)).Should(Succeed())
+
 	k8sManager, err := ctrl.NewManager(cfg, ctrl.Options{
 		Scheme: scheme.Scheme,
 	})
@@ -122,13 +137,18 @@ var _ = BeforeSuite(func() {
 		Executor:        testutils.NewMockExecutor(),
 		AppFS:           ioutils.NewMemoryFilesystem(),
 		ImageRepository: "docker.io/foo/customized",
+		SPIClient:       spi.MockSPIClient{},
 	}).SetupWithManager(k8sManager)
 	Expect(err).ToNot(HaveOccurred())
 
 	err = (&ComponentDetectionQueryReconciler{
-		Client: k8sManager.GetClient(),
-		Scheme: k8sManager.GetScheme(),
-		Log:    ctrl.Log.WithName("controllers").WithName("ComponentDetectionQuery"),
+		Client:             k8sManager.GetClient(),
+		Scheme:             k8sManager.GetScheme(),
+		Log:                ctrl.Log.WithName("controllers").WithName("ComponentDetectionQuery"),
+		SPIClient:          spi.MockSPIClient{},
+		AlizerClient:       devfile.MockAlizerClient{},
+		DevfileRegistryURL: devfile.DevfileStageRegistryEndpoint, // Use the staging devfile registry for tests
+		AppFS:              ioutils.NewMemoryFilesystem(),
 	}).SetupWithManager(k8sManager)
 	Expect(err).ToNot(HaveOccurred())
 

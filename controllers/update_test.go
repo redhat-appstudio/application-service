@@ -78,6 +78,40 @@ func TestUpdateApplicationDevfileModel(t *testing.T) {
 				},
 			},
 		},
+		{
+			name: "Git source in Component is nil",
+			projects: []devfileAPIV1.Project{
+				{
+					Name: "present",
+				},
+			},
+			component: appstudiov1alpha1.Component{
+				Spec: appstudiov1alpha1.ComponentSpec{
+					ComponentName: "new",
+					Source: appstudiov1alpha1.ComponentSource{
+						ComponentSourceUnion: appstudiov1alpha1.ComponentSourceUnion{
+							GitSource: nil,
+						},
+					},
+				},
+			},
+			wantErr: true,
+		},
+		{
+			name:     "Devfile Projects list is nil",
+			projects: nil,
+			component: appstudiov1alpha1.Component{
+				Spec: appstudiov1alpha1.ComponentSpec{
+					ComponentName: "new",
+					Source: appstudiov1alpha1.ComponentSource{
+						ComponentSourceUnion: appstudiov1alpha1.ComponentSourceUnion{
+							GitSource: nil,
+						},
+					},
+				},
+			},
+			wantErr: true,
+		},
 	}
 
 	for _, tt := range tests {
@@ -301,6 +335,99 @@ func TestUpdateComponentDevfileModel(t *testing.T) {
 				},
 			},
 			updateExpected: true,
+		},
+		{
+			name: "No container component",
+			components: []devfileAPIV1.Component{
+				{
+					Name: "component1",
+					ComponentUnion: devfileAPIV1.ComponentUnion{
+						Kubernetes: &devfileAPIV1.KubernetesComponent{},
+					},
+				},
+			},
+			component: appstudiov1alpha1.Component{
+				Spec: appstudiov1alpha1.ComponentSpec{
+					ComponentName: "componentName",
+				},
+			},
+		},
+		{
+			name: "Component with envFrom component - should error out as it's not supported right now",
+			components: []devfileAPIV1.Component{
+				{
+					Name: "component1",
+					ComponentUnion: devfileAPIV1.ComponentUnion{
+						Container: &devfileAPIV1.ContainerComponent{
+							Container: devfileAPIV1.Container{
+								Env: []devfileAPIV1.EnvVar{
+									{
+										Name:  "FOO",
+										Value: "foo",
+									},
+								},
+							},
+							Endpoints: []devfileAPIV1.Endpoint{
+								{
+									Name:       "endpoint1",
+									TargetPort: 1001,
+								},
+								{
+									Name:       "endpoint2",
+									TargetPort: 1002,
+								},
+							},
+						},
+					},
+				},
+			},
+			component: appstudiov1alpha1.Component{
+				Spec: appstudiov1alpha1.ComponentSpec{
+					ComponentName: "component1",
+					Env: []corev1.EnvVar{
+						{
+							Name:  "FOO",
+							Value: "foo",
+						},
+						{
+							ValueFrom: &corev1.EnvVarSource{
+								SecretKeyRef: &corev1.SecretKeySelector{
+									Key: "test",
+								},
+							},
+						},
+					},
+				},
+			},
+			wantErr: true,
+		},
+		{
+			name: "Component with invalid component type - should error out",
+			components: []devfileAPIV1.Component{
+				{
+					Name:           "component1",
+					ComponentUnion: devfileAPIV1.ComponentUnion{},
+				},
+			},
+			component: appstudiov1alpha1.Component{
+				Spec: appstudiov1alpha1.ComponentSpec{
+					ComponentName: "component1",
+					Env: []corev1.EnvVar{
+						{
+							Name:  "FOO",
+							Value: "foo",
+						},
+						{
+							ValueFrom: &corev1.EnvVarSource{
+								SecretKeyRef: &corev1.SecretKeySelector{
+									Key: "test",
+								},
+							},
+						},
+					},
+				},
+			},
+			wantErr: true,
 		},
 	}
 
@@ -618,6 +745,7 @@ func TestUpdateComponentStub(t *testing.T) {
 	tests := []struct {
 		name            string
 		devfilesDataMap map[string]*v2.DevfileV2
+		devfilesURLMap  map[string]string
 		isNil           bool
 		wantErr         bool
 	}{
@@ -641,6 +769,31 @@ func TestUpdateComponentStub(t *testing.T) {
 						},
 					},
 				},
+			},
+		},
+		{
+			name: "Container Components present with a devfile URL",
+			devfilesDataMap: map[string]*v2.DevfileV2{
+				"./": {
+					Devfile: devfileAPIV1.Devfile{
+						DevfileHeader: devfile.DevfileHeader{
+							SchemaVersion: "2.1.0",
+							Metadata: devfile.DevfileMetadata{
+								Name:        "test-devfile",
+								Language:    "language",
+								ProjectType: "project",
+							},
+						},
+						DevWorkspaceTemplateSpec: devfileAPIV1.DevWorkspaceTemplateSpec{
+							DevWorkspaceTemplateSpecContent: devfileAPIV1.DevWorkspaceTemplateSpecContent{
+								Components: componentsValid,
+							},
+						},
+					},
+				},
+			},
+			devfilesURLMap: map[string]string{
+				"./": "http://somelink",
 			},
 		},
 		{
@@ -1037,9 +1190,9 @@ func TestUpdateComponentStub(t *testing.T) {
 			}
 			var err error
 			if tt.isNil {
-				err = r.updateComponentStub(nil, devfilesMap)
+				err = r.updateComponentStub(nil, devfilesMap, nil)
 			} else {
-				err = r.updateComponentStub(&componentDetectionQuery, devfilesMap)
+				err = r.updateComponentStub(&componentDetectionQuery, devfilesMap, tt.devfilesURLMap)
 			}
 
 			if tt.wantErr && (err == nil) {
@@ -1056,6 +1209,11 @@ func TestUpdateComponentStub(t *testing.T) {
 						assert.Equal(t, hasCompDetection.DevfileFound, true, "The devfile found should be true")
 						assert.Equal(t, hasCompDetection.ComponentStub.ComponentName, tt.devfilesDataMap[hasCompDetection.ComponentStub.Context].Metadata.Name, "The component name should be the same")
 						assert.Equal(t, hasCompDetection.ComponentStub.Application, "insert-application-name", "The application name should match the generic name")
+
+						if len(tt.devfilesURLMap) > 0 {
+							assert.NotNil(t, hasCompDetection.ComponentStub.Source.GitSource, "The git source cannot be nil for this test")
+							assert.Equal(t, hasCompDetection.ComponentStub.Source.GitSource.DevfileURL, tt.devfilesURLMap[hasCompDetection.ComponentStub.Context], "The devfile URL should match")
+						}
 
 						for _, devfileComponent := range tt.devfilesDataMap[hasCompDetection.ComponentStub.Context].Components {
 							if devfileComponent.Container != nil {

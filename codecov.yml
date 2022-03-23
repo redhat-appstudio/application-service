@@ -1,2 +1,4 @@
 ignore:
   - "api/v1alpha1/zz_generated.deepcopy.go" # generated file, does not need to be included in the coverage
+  - "pkg/spi/spi_mock.go" # mock file for testing
+  - "pkg/devfile/detect_mock.go" #mock file for testing

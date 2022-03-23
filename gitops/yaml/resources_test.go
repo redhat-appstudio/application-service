@@ -25,8 +25,8 @@ import (
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
-	"github.com/redhat-appstudio/application-service/gitops/ioutils"
 	"github.com/redhat-appstudio/application-service/gitops/resources"
+	"github.com/redhat-appstudio/application-service/pkg/util/ioutils"
 	"github.com/spf13/afero"
 	appsv1 "k8s.io/api/apps/v1"
 	"sigs.k8s.io/yaml"

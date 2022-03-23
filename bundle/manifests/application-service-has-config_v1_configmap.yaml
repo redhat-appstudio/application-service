@@ -1,0 +1,7 @@
+apiVersion: v1
+data:
+  DEVFILE_REGISTRY_URL: ""
+  GITHUB_ORG: ""
+kind: ConfigMap
+metadata:
+  name: application-service-has-config

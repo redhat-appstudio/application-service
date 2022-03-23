@@ -23,6 +23,7 @@ import (
 	data "github.com/devfile/library/pkg/devfile/parser/data"
 
 	appstudiov1alpha1 "github.com/redhat-appstudio/application-service/api/v1alpha1"
+	"github.com/redhat-appstudio/application-service/pkg/util"
 )
 
 const (
@@ -34,8 +35,15 @@ const (
 	HiddenDevfile          = HiddenDevfileName                          // .devfile.yaml
 	HiddenDirDevfile       = HiddenDevfileDir + "/" + DevfileName       // .devfile/devfile.yaml
 	HiddenDirHiddenDevfile = HiddenDevfileDir + "/" + HiddenDevfileName // .devfile/.devfile.yaml
+
+	// DevfileRegistryEndpoint is the endpoint of the devfile registry
+	DevfileRegistryEndpoint = "https://registry.devfile.io"
+
+	// DevfileStageRegistryEndpoint is the endpoint of the staging devfile registry
+	DevfileStageRegistryEndpoint = "https://registry.stage.devfile.io"
 )
 
+// ParseDevfileModel calls the devfile library's parse and returns the devfile data
 func ParseDevfileModel(devfileModel string) (data.DevfileData, error) {
 	// Retrieve the devfile from the body of the resource
 	devfileBytes := []byte(devfileModel)
@@ -80,4 +88,28 @@ func ConvertApplicationToDevfile(hasApp appstudiov1alpha1.Application, gitOpsRep
 	})
 
 	return devfileData, nil
+}
+
+// DownloadDevfile downloads devfile from the various possible devfile locations in dir and returns the contents
+func DownloadDevfile(dir string) ([]byte, error) {
+	var devfileBytes []byte
+	var err error
+	validDevfileLocations := []string{Devfile, HiddenDevfile, HiddenDirDevfile, HiddenDirHiddenDevfile}
+
+	for _, path := range validDevfileLocations {
+		devfilePath := dir + "/" + path
+		devfileBytes, err = util.CurlEndpoint(devfilePath)
+		if err == nil {
+			// if we get a 200, return
+			return devfileBytes, err
+		}
+	}
+
+	return nil, &NoDevfileFound{location: dir}
+}
+
+// ReadDevfilesFromRepo attempts to read and return devfiles from the local path upto the specified depth
+// If no devfile(s) is found, then the Alizer tool is used to detect and match a devfile from the devfile registry
+func ReadDevfilesFromRepo(a Alizer, localpath string, depth int, devfileRegistryURL string) (map[string][]byte, map[string]string, error) {
+	return searchDevfiles(a, localpath, 0, depth, devfileRegistryURL)
 }
