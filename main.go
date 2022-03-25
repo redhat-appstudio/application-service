@@ -19,6 +19,7 @@ package main
 import (
 	"context"
 	"flag"
+	"fmt"
 	"log"
 	"os"
 
@@ -108,6 +109,10 @@ func main() {
 	if ghToken == "" {
 		log.Fatal("Unauthorized: No GitHub token present")
 	}
+
+	setupLog.Info("SOME NIIIICE LOOOGSSS")
+	fmt.Println("More logs")
+	fmt.Println("############################################################logs################################")
 
 	// Retrieve the name of the GitHub org to use
 	ghOrg := os.Getenv("GITHUB_ORG")
