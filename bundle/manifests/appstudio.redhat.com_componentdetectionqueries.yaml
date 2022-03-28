@@ -46,6 +46,10 @@ spec:
                     description: If specified, the devfile at the URL will be used
                       for the component.
                     type: string
+                  dockerfileUrl:
+                    description: If specified, the dockerfile at the URL will be used
+                      for the component.
+                    type: string
                   secret:
                     description: Secret containing a Person Access Token to clone
                       a sample, if using private repository
@@ -260,6 +264,10 @@ spec:
                                 devfileUrl:
                                   description: If specified, the devfile at the URL
                                     will be used for the component.
+                                  type: string
+                                dockerfileUrl:
+                                  description: If specified, the dockerfile at the
+                                    URL will be used for the component.
                                   type: string
                                 secret:
                                   description: Secret containing a Person Access Token

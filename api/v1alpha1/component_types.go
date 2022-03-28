@@ -38,6 +38,9 @@ type GitSource struct {
 
 	// If specified, the devfile at the URL will be used for the component.
 	DevfileURL string `json:"devfileUrl,omitempty"`
+
+	// If specified, the dockerfile at the URL will be used for the component.
+	DockerfileURL string `json:"dockerfileUrl,omitempty"`
 }
 
 type ImageSource struct {

@@ -16,11 +16,14 @@
 package devfile
 
 import (
+	"fmt"
 	"path"
 	"path/filepath"
+	"strings"
 
 	"github.com/devfile/registry-support/index/generator/schema"
 	registryLibrary "github.com/devfile/registry-support/registry-library/library"
+	"github.com/redhat-appstudio/application-service/pkg/util"
 	"github.com/redhat-developer/alizer/go/pkg/apis/recognizer"
 )
 
@@ -46,6 +49,24 @@ func getAlizerDevfileTypes(registryURL string) ([]recognizer.DevFileType, error)
 	return types, nil
 }
 
+// getRepoFromRegistry gets the sample repo link from the devfile registry
+func getRepoFromRegistry(name, registryURL string) (string, error) {
+	registryIndex, err := registryLibrary.GetRegistryIndex(registryURL, registryLibrary.RegistryOptions{
+		Telemetry: registryLibrary.TelemetryData{},
+	}, schema.SampleDevfileType)
+	if err != nil {
+		return "", err
+	}
+
+	for _, index := range registryIndex {
+		if index.Name == name && index.Git != nil && index.Git.Remotes["origin"] != "" {
+			return index.Git.Remotes["origin"], nil
+		}
+	}
+
+	return "", fmt.Errorf("unable to find sample with a name %s in the registry", name)
+}
+
 // getContext returns the context backtracking from the end of the localpath
 func getContext(localpath string, currentLevel int) string {
 	context := "./"
@@ -56,4 +77,20 @@ func getContext(localpath string, currentLevel int) string {
 	}
 
 	return context
+}
+
+func UpdateDockerfileLink(repo, context string) (string, error) {
+
+	link := context
+
+	if !strings.HasPrefix(context, "http") {
+		rawGitURL, err := util.ConvertGitHubURL(repo)
+		if err != nil {
+			return "", err
+		}
+
+		link = path.Join(rawGitURL, link)
+	}
+
+	return link, nil
 }

@@ -3,5 +3,6 @@ kind: ComponentDetectionQuery
 metadata:
   name: componentdetectionquery-sample
 spec:
+  isMultiComponent: true
   git:
-    url: https://github.com/devfile-samples/devfile-sample-java-springboot-basic
+    url: https://github.com/maysunfaisal/multi-components-dockerfile

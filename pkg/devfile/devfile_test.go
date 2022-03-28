@@ -299,7 +299,7 @@ func TestReadDevfilesFromRepo(t *testing.T) {
 			if err != nil {
 				t.Errorf("got unexpected error %v", err)
 			} else {
-				devfileMap, _, err := ReadDevfilesFromRepo(mockClient, tt.clonePath, tt.depth, DevfileStageRegistryEndpoint)
+				devfileMap, _, _, err := ReadDevfilesFromRepo(nil, mockClient, tt.clonePath, tt.depth, DevfileStageRegistryEndpoint)
 				if tt.wantErr && (err == nil) {
 					t.Error("wanted error but got nil")
 				} else if !tt.wantErr && err != nil {

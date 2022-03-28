@@ -25,12 +25,15 @@ import (
 
 	appstudiov1alpha1 "github.com/redhat-appstudio/application-service/api/v1alpha1"
 	"github.com/redhat-appstudio/application-service/pkg/util"
+
+	"github.com/go-logr/logr"
 )
 
 const (
 	DevfileName       = "devfile.yaml"
 	HiddenDevfileName = ".devfile.yaml"
 	HiddenDevfileDir  = ".devfile"
+	DockerfileName    = "Dockerfile"
 
 	Devfile                = DevfileName                                // devfile.yaml
 	HiddenDevfile          = HiddenDevfileName                          // .devfile.yaml
@@ -142,6 +145,6 @@ func DownloadDevfile(dir string) ([]byte, error) {
 
 // ReadDevfilesFromRepo attempts to read and return devfiles from the local path upto the specified depth
 // If no devfile(s) is found, then the Alizer tool is used to detect and match a devfile from the devfile registry
-func ReadDevfilesFromRepo(a Alizer, localpath string, depth int, devfileRegistryURL string) (map[string][]byte, map[string]string, error) {
-	return searchDevfiles(a, localpath, 0, depth, devfileRegistryURL)
+func ReadDevfilesFromRepo(log logr.Logger, a Alizer, localpath string, depth int, devfileRegistryURL string) (map[string][]byte, map[string]string, map[string]string, error) {
+	return searchDevfiles(log, a, localpath, 0, depth, devfileRegistryURL)
 }

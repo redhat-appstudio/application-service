@@ -1263,9 +1263,9 @@ func TestUpdateComponentStub(t *testing.T) {
 			}
 			var err error
 			if tt.isNil {
-				err = r.updateComponentStub(nil, devfilesMap, nil)
+				err = r.updateComponentStub(nil, devfilesMap, nil, nil)
 			} else {
-				err = r.updateComponentStub(&componentDetectionQuery, devfilesMap, tt.devfilesURLMap)
+				err = r.updateComponentStub(&componentDetectionQuery, devfilesMap, tt.devfilesURLMap, nil)
 			}
 
 			if tt.wantErr && (err == nil) {
@@ -1356,3 +1356,46 @@ func TestUpdateComponentStub(t *testing.T) {
 		})
 	}
 }
+
+// func TestUpdateDockerfileLink(t *testing.T) {
+// 	tests := []struct {
+// 		name                 string
+// 		repo                 string
+// 		dockerfileContextMap map[string]string
+// 		wantErr              bool
+// 	}{
+// 		{
+// 			name: "Project already present",
+// 			repo: "https://github.com/devfile-samples/devfile-sample-python-basic",
+// 			dockerfileContextMap: map[string]string{
+// 				"docker": "docker",
+// 			},
+// 		},
+// 	}
+
+// 	for _, tt := range tests {
+// 		t.Run(tt.name, func(t *testing.T) {
+// 			// devfileData := &v2.DevfileV2{
+// 			// 	Devfile: devfileAPIV1.Devfile{
+// 			// 		DevWorkspaceTemplateSpec: devfileAPIV1.DevWorkspaceTemplateSpec{
+// 			// 			DevWorkspaceTemplateSpecContent: devfileAPIV1.DevWorkspaceTemplateSpecContent{
+// 			// 				Projects: tt.projects,
+// 			// 			},
+// 			// 		},
+// 			// 	},
+// 			// }
+// 			r := ComponentDetectionQueryReconciler{}
+// 			err := r.updateDockerfileLink(tt.repo, tt.dockerfileContextMap)
+// 			if tt.wantErr && (err == nil) {
+// 				t.Error("wanted error but got nil")
+// 			} else if !tt.wantErr && err != nil {
+// 				t.Errorf("got unexpected error %v", err)
+// 			} else if err == nil {
+// 				for context, link := range tt.dockerfileContextMap {
+// 					t.Logf("context is %s", context)
+// 					t.Logf("link is %s", link)
+// 				}
+// 			}
+// 		})
+// 	}
+// }
