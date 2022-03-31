@@ -21,6 +21,7 @@ import (
 	"path/filepath"
 
 	appstudiov1alpha1 "github.com/redhat-appstudio/application-service/api/v1alpha1"
+	gitopsgen "github.com/redhat-appstudio/build-service/pkg/gitops"
 	"github.com/spf13/afero"
 )
 
@@ -58,7 +59,7 @@ func GenerateAndPush(outputPath string, remote string, component appstudiov1alph
 
 	// Generate the gitops resources
 	componentPath := filepath.Join(repoPath, context, "components", componentName, "base")
-	if err := Generate(appFs, componentPath, component); err != nil {
+	if err := gitopsgen.Generate(appFs, componentPath, component); err != nil {
 		return fmt.Errorf("failed to generate the gitops resources in %q for component %q: %s", componentPath, componentName, err)
 	}
 
