@@ -1,0 +1,32 @@
+apiVersion: tekton.dev/v1beta1
+kind: PipelineRun
+metadata:
+  name: pipeline-as-code-on-push
+  annotations:
+    pipelinesascode.tekton.dev/on-event: "[push]"
+    pipelinesascode.tekton.dev/on-target-branch: "[main]"
+    pipelinesascode.tekton.dev/max-keep-runs: "2"
+spec:
+  params:
+    - name: git-url
+      value: "{{repo_url}}"
+    - name: revision
+      value: "{{revision}}"
+    - name: output-image
+      value: 'quay.io/redhat-appstudio/application-service:{{revision}}'
+    - name: path-context
+      value: .
+    - name: dockerfile
+      value: Dockerfile
+  pipelineRef:
+    name: docker-build
+    bundle: quay.io/redhat-appstudio/build-templates-bundle:0866720a87aec4675074069cd16662d8e01237cf
+  workspaces:
+    - name: workspace
+      volumeClaimTemplate:
+        spec:
+          accessModes:
+            - ReadWriteOnce
+          resources:
+            requests:
+              storage: 200Mi
