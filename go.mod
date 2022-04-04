@@ -16,6 +16,7 @@ require (
 	github.com/onsi/ginkgo v1.16.5
 	github.com/onsi/gomega v1.17.0
 	github.com/openshift/api v3.9.0+incompatible
+	github.com/redhat-appstudio/build-service v0.0.0-20220330075120-4d8c279d5f71
 	github.com/redhat-appstudio/service-provider-integration-scm-file-retriever v0.2.5
 	github.com/redhat-developer/alizer/go v0.0.0-20220215154256-33df7feef4ae
 	github.com/spf13/afero v1.8.0
@@ -113,7 +114,6 @@ require (
 	github.com/prometheus/common v0.32.1 // indirect
 	github.com/prometheus/procfs v0.6.0 // indirect
 	github.com/prometheus/statsd_exporter v0.21.0 // indirect
-	github.com/redhat-appstudio/build-service v0.0.0-20220330075120-4d8c279d5f71 // indirect
 	github.com/redhat-appstudio/service-provider-integration-operator v0.2.3 // indirect
 	github.com/sergi/go-diff v1.1.0 // indirect
 	github.com/sirupsen/logrus v1.8.1 // indirect
@@ -159,5 +159,3 @@ require (
 	sigs.k8s.io/json v0.0.0-20211020170558-c049b76a60c6 // indirect
 	sigs.k8s.io/structured-merge-diff/v4 v4.2.1 // indirect
 )
-
-replace github.com/antlr/antlr4 => github.com/antlr/antlr4 v0.0.0-20211106181442-e4c1a74c66bd

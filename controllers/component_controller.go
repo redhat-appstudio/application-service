@@ -256,6 +256,7 @@ func (r *ComponentReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 					r.SetCreateConditionAndUpdateCR(ctx, &component, fmt.Errorf(errMsg))
 					return ctrl.Result{}, nil
 				}
+				r.SetCreateConditionAndUpdateCR(ctx, &component, nil)
 			} else {
 				log.Error(err, fmt.Sprintf("Application devfile model is empty. Before creating a Component, an instance of Application should be created, exiting reconcile loop %v", req.NamespacedName))
 				err := fmt.Errorf("application devfile model is empty. Before creating a Component, an instance of Application should be created")
