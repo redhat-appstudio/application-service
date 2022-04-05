@@ -89,7 +89,11 @@ func UpdateDockerfileLink(repo, context string) (string, error) {
 			return "", err
 		}
 
-		link = path.Join(rawGitURL, link)
+		if !strings.HasSuffix(rawGitURL, "/") {
+			rawGitURL = rawGitURL + "/"
+		}
+
+		link = rawGitURL + link
 	}
 
 	return link, nil

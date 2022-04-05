@@ -287,9 +287,10 @@ func (r *ComponentDetectionQueryReconciler) updateComponentStub(componentDetecti
 	log.Info(fmt.Sprintf("Devfiles detected: %v", len(devfilesMap)))
 
 	counter := 0
+	componentName := "component"
 
 	for context, devfileBytes := range devfilesMap {
-		log.Info(fmt.Sprintf("Currently reading the devfile from context %v", context))
+		log.Info(fmt.Sprintf("Currently reading the devfile for context %v", context))
 
 		// Parse the Component Devfile
 		compDevfileData, err := devfile.ParseDevfileModel(string(devfileBytes))
@@ -307,8 +308,14 @@ func (r *ComponentDetectionQueryReconciler) updateComponentStub(componentDetecti
 			return err
 		}
 
+		if len(devfileMetadata.Name) > 0 {
+			componentName = devfileMetadata.Name
+		}
+		counter++
+		componentName = fmt.Sprintf("%d", counter) + "-" + componentName
+
 		componentStub := appstudiov1alpha1.ComponentSpec{
-			ComponentName: devfileMetadata.Name,
+			ComponentName: componentName,
 			Application:   "insert-application-name",
 			Context:       context,
 			Source: appstudiov1alpha1.ComponentSource{
@@ -465,16 +472,8 @@ func (r *ComponentDetectionQueryReconciler) updateComponentStub(componentDetecti
 			}
 		}
 
-		componentName := devfileMetadata.Name
-		// if there is already another component in the detection with the same framework make sure to increment name so that
-		// we identify it as multiple components
-		if _, ok := componentDetectionQuery.Status.ComponentDetected[componentName]; ok {
-			counter++
-			componentName = componentName + "-" + fmt.Sprintf("%v", counter)
-		}
-
 		componentDetectionQuery.Status.ComponentDetected[componentName] = appstudiov1alpha1.ComponentDetectionDescription{
-			DevfileFound:  true,
+			DevfileFound:  len(devfilesURLMap[context]) == 0, // if we did not find a devfile URL map for the given context, it means a devfile was found in the context
 			Language:      devfileMetadata.Language,
 			ProjectType:   devfileMetadata.ProjectType,
 			ComponentStub: componentStub,
@@ -488,19 +487,23 @@ func (r *ComponentDetectionQueryReconciler) updateComponentStub(componentDetecti
 
 	// process the dockefileMap that does not have an associated devfile with it
 	for context, link := range dockerfileContextMap {
-		log.Info(fmt.Sprintf("Currently reading the Dockerfile from context %v", context))
+		log.Info(fmt.Sprintf("Currently reading the Dockerfile for context %v", context))
 
-		componentDetectionQuery.Status.ComponentDetected[context] = appstudiov1alpha1.ComponentDetectionDescription{
-			DevfileFound: true,
+		counter++
+		componentName = fmt.Sprintf("%d", counter) + "-dockerfile"
+
+		componentDetectionQuery.Status.ComponentDetected[componentName] = appstudiov1alpha1.ComponentDetectionDescription{
+			DevfileFound: false, // always false since there is only a dockerfile present for these contexts
 			Language:     "Dockerfile",
 			ProjectType:  "Dockerfile",
 			ComponentStub: appstudiov1alpha1.ComponentSpec{
-				ComponentName: context,
+				ComponentName: componentName,
 				Application:   "insert-application-name",
 				Context:       context,
 				Source: appstudiov1alpha1.ComponentSource{
 					ComponentSourceUnion: appstudiov1alpha1.ComponentSourceUnion{
 						GitSource: &appstudiov1alpha1.GitSource{
+							URL:           componentDetectionQuery.Spec.GitSource.URL,
 							DockerfileURL: link,
 						},
 					},
