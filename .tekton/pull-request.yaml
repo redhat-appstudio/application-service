@@ -8,84 +8,18 @@ metadata:
     pipelinesascode.tekton.dev/max-keep-runs: "2"
 spec:
   params:
-    - name: repo_url
+    - name: git-url
       value: "{{repo_url}}"
     - name: revision
       value: "{{revision}}"
-  pipelineSpec:
-    params:
-      - name: repo_url
-        type: string
-      - name: revision
-        type: string
-    tasks:
-      - name: git-clone
-        params:
-          - name: url
-            value: $(params.repo_url)
-          - name: revision
-            value: $(params.revision)
-        taskRef:
-          kind: ClusterTask
-          name: git-clone
-        workspaces:
-          - name: output
-            workspace: source
-
-      - name: test
-        runAfter:
-          - git-clone
-        workspaces:
-            - name: source
-              workspace: source
-        taskSpec:
-          metadata: {}
-          steps:
-            - image: >-
-                registry.access.redhat.com/ubi8/go-toolset
-              name: build
-              resources: {}
-              script: |
-                #!/usr/bin/env bash
-                set -eux
-
-                ls -ltr 
-
-                make build && make test
-              workingDir: $(workspaces.source.path)
-          workspaces:
-            - name: source
-
-      - name: build-container 
-        params:
-          - name: IMAGE
-            value: quay.io/redhat-appstudio/pull-request-builds:has-{{revision}}
-          - name: BUILDER_IMAGE
-            value: >-
-              registry.redhat.io/rhel8/buildah@sha256:99cae35f40c7ec050fed3765b2b27e0b8bbea2aa2da7c16408e2ca13c60ff8ee
-          - name: STORAGE_DRIVER
-            value: vfs
-          - name: DOCKERFILE
-            value: ./Dockerfile
-          - name: CONTEXT
-            value: .
-          - name: TLSVERIFY
-            value: 'true'
-          - name: FORMAT
-            value: oci
-        runAfter:
-          - git-clone
-        taskRef:
-          kind: ClusterTask
-          name: buildah
-        workspaces:
-          - name: source
-            workspace: source
-    workspaces:
-      - name: source
+    - name: output-image
+      value: "quay.io/redhat-appstudio/pull-request-builds:has-{{revision}}"
+  pipelineRef:
+    name: docker-build
+    bundle: quay.io/redhat-appstudio/build-templates-bundle:0866720a87aec4675074069cd16662d8e01237cf
   serviceAccountName: pipeline
   workspaces:
-    - name: source
+    - name: workspace
       volumeClaimTemplate:
         spec:
           accessModes:
