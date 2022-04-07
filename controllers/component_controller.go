@@ -236,10 +236,8 @@ func (r *ComponentReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 					return ctrl.Result{}, err
 				}
 
-				if component.Spec.Build.ContainerImage != "" {
-					// Set the container image in the status
-					component.Status.ContainerImage = component.Spec.Build.ContainerImage
-				}
+				// Set the container image in the status
+				component.Status.ContainerImage = component.Spec.Build.ContainerImage
 
 				log.Info(fmt.Sprintf("Adding the GitOps repository information to the status for component %v", req.NamespacedName))
 				err = setGitopsStatus(&component, hasAppDevfileData)
