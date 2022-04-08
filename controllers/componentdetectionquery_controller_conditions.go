@@ -30,9 +30,10 @@ func (r *ComponentDetectionQueryReconciler) SetDetectingConditionAndUpdateCR(ctx
 	log := r.Log.WithValues("ComponentDetectionQuery", componentDetectionQuery.Name)
 
 	meta.SetStatusCondition(&componentDetectionQuery.Status.Conditions, metav1.Condition{
-		Type:    "Detecting",
+		Type:    "Processing",
 		Status:  metav1.ConditionTrue,
-		Message: "ComponentDetectionQuery is progressing.",
+		Reason:  "Success",
+		Message: "ComponentDetectionQuery is processing",
 	})
 
 	err := r.Client.Status().Update(ctx, componentDetectionQuery)
