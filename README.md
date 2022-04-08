@@ -5,6 +5,7 @@
 
 A Kubernetes operator to create and manage applications and control the lifecycle of applications.
 
+Test
 
 ## Building & Testing
 This operator provides a `Makefile` to run all the usual development tasks. If you simply run `make` without any arguments, you'll get a list of available "targets".
