@@ -81,7 +81,10 @@ func (r *ComponentDetectionQueryReconciler) Reconcile(ctx context.Context, req c
 
 	// If there are no conditions attached to the CDQ, the resource was just created
 	if len(componentDetectionQuery.Status.Conditions) == 0 {
+		// Start the ComponentDetectionQuery, and update its status condition accordingly
 		log.Info(fmt.Sprintf("Checking to see if a component can be detected %v", req.NamespacedName))
+		r.SetDetectingConditionAndUpdateCR(ctx, &componentDetectionQuery)
+
 		var gitToken string
 		if componentDetectionQuery.Spec.GitSource.Secret != "" {
 			gitSecret := corev1.Secret{}
@@ -234,6 +237,14 @@ func (r *ComponentDetectionQueryReconciler) Reconcile(ctx context.Context, req c
 		}
 
 		r.SetCompleteConditionAndUpdateCR(ctx, &componentDetectionQuery, nil)
+	} else {
+		// CDQ resource has been requeued after it originally ran
+		// Delete the resource as it's no longer needed and can be cleaned up
+		log.Info(fmt.Sprintf("Deleting finished ComponentDetectionQuery resource %v", req.NamespacedName))
+		if err = r.Delete(ctx, &componentDetectionQuery); err != nil {
+			// Delete failed. Log the error but don't bother modifying the resource's status
+			log.Error(err, fmt.Sprintf("Unable to delete the ComponentDetectionQuery resource %v", req.NamespacedName))
+		}
 	}
 
 	return ctrl.Result{}, nil

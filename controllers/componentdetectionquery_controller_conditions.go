@@ -26,6 +26,22 @@ import (
 	appstudiov1alpha1 "github.com/redhat-appstudio/application-service/api/v1alpha1"
 )
 
+func (r *ComponentDetectionQueryReconciler) SetDetectingConditionAndUpdateCR(ctx context.Context, componentDetectionQuery *appstudiov1alpha1.ComponentDetectionQuery) {
+	log := r.Log.WithValues("ComponentDetectionQuery", componentDetectionQuery.Name)
+
+	meta.SetStatusCondition(&componentDetectionQuery.Status.Conditions, metav1.Condition{
+		Type:    "Processing",
+		Status:  metav1.ConditionTrue,
+		Reason:  "Success",
+		Message: "ComponentDetectionQuery is processing",
+	})
+
+	err := r.Client.Status().Update(ctx, componentDetectionQuery)
+	if err != nil {
+		log.Error(err, "Unable to update ComponentDetectionQuery")
+	}
+}
+
 func (r *ComponentDetectionQueryReconciler) SetCompleteConditionAndUpdateCR(ctx context.Context, componentDetectionQuery *appstudiov1alpha1.ComponentDetectionQuery, completeError error) {
 	log := r.Log.WithValues("ComponentDetectionQuery", componentDetectionQuery.Name)
 

@@ -47,7 +47,7 @@ func TestAnalyzeAndDetectDevfile(t *testing.T) {
 		},
 		{
 			name:        "Cannot detect a devfile for a Scala repository",
-			clonePath:   "/tmp/testclone",
+			clonePath:   "/tmp/testscala",
 			repo:        "https://github.com/johnmcollier/scalatemplate",
 			registryURL: DevfileStageRegistryEndpoint,
 			wantErr:     true,

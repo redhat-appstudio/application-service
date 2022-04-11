@@ -146,7 +146,7 @@ func TestCloneRepo(t *testing.T) {
 	}{
 		{
 			name:      "Clone Successfully",
-			clonePath: "/tmp/testclone",
+			clonePath: "/tmp/testspringboot",
 			repo:      "https://github.com/devfile-samples/devfile-sample-java-springboot-basic",
 		},
 		{
