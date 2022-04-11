@@ -74,7 +74,7 @@ var _ = Describe("Component Detection Query controller", func() {
 			createdHasCompDetectionQuery := &appstudiov1alpha1.ComponentDetectionQuery{}
 			Eventually(func() bool {
 				k8sClient.Get(context.Background(), hasCompDetQueryLookupKey, createdHasCompDetectionQuery)
-				return len(createdHasCompDetectionQuery.Status.Conditions) > 0
+				return len(createdHasCompDetectionQuery.Status.Conditions) > 1
 			}, timeout, interval).Should(BeTrue())
 
 			// Make sure the a devfile is detected
@@ -121,7 +121,7 @@ var _ = Describe("Component Detection Query controller", func() {
 			createdHasCompDetectionQuery := &appstudiov1alpha1.ComponentDetectionQuery{}
 			Eventually(func() bool {
 				k8sClient.Get(context.Background(), hasCompDetQueryLookupKey, createdHasCompDetectionQuery)
-				return len(createdHasCompDetectionQuery.Status.Conditions) > 0
+				return len(createdHasCompDetectionQuery.Status.Conditions) > 1
 			}, timeout, interval).Should(BeTrue())
 
 			// Make sure the a devfile is detected
@@ -169,11 +169,11 @@ var _ = Describe("Component Detection Query controller", func() {
 			createdHasCompDetectionQuery := &appstudiov1alpha1.ComponentDetectionQuery{}
 			Eventually(func() bool {
 				k8sClient.Get(context.Background(), hasCompDetQueryLookupKey, createdHasCompDetectionQuery)
-				return len(createdHasCompDetectionQuery.Status.Conditions) > 0
+				return len(createdHasCompDetectionQuery.Status.Conditions) > 1
 			}, timeout, interval).Should(BeTrue())
 
 			// Make sure the right err is set
-			Expect(createdHasCompDetectionQuery.Status.Conditions[0].Message).Should(ContainSubstring("cannot set IsMultiComponent"))
+			Expect(createdHasCompDetectionQuery.Status.Conditions[1].Message).Should(ContainSubstring("cannot set IsMultiComponent"))
 
 			// Delete the specified Detection Query resource
 			deleteCompDetQueryCR(hasCompDetQueryLookupKey)
@@ -211,7 +211,7 @@ var _ = Describe("Component Detection Query controller", func() {
 			createdHasCompDetectionQuery := &appstudiov1alpha1.ComponentDetectionQuery{}
 			Eventually(func() bool {
 				k8sClient.Get(context.Background(), hasCompDetQueryLookupKey, createdHasCompDetectionQuery)
-				return len(createdHasCompDetectionQuery.Status.Conditions) > 0
+				return len(createdHasCompDetectionQuery.Status.Conditions) > 1
 			}, timeout, interval).Should(BeTrue())
 
 			// Make sure the a devfile is detected
@@ -258,11 +258,11 @@ var _ = Describe("Component Detection Query controller", func() {
 			createdHasCompDetectionQuery := &appstudiov1alpha1.ComponentDetectionQuery{}
 			Eventually(func() bool {
 				k8sClient.Get(context.Background(), hasCompDetQueryLookupKey, createdHasCompDetectionQuery)
-				return len(createdHasCompDetectionQuery.Status.Conditions) > 0
+				return len(createdHasCompDetectionQuery.Status.Conditions) > 1
 			}, timeout, interval).Should(BeTrue())
 
 			// Make sure the right err is set
-			Expect(createdHasCompDetectionQuery.Status.Conditions[0].Message).Should(ContainSubstring("ComponentDetectionQuery has successfully finished"))
+			Expect(createdHasCompDetectionQuery.Status.Conditions[1].Message).Should(ContainSubstring("ComponentDetectionQuery has successfully finished"))
 
 			// Delete the specified Detection Query resource
 			deleteCompDetQueryCR(hasCompDetQueryLookupKey)
@@ -300,11 +300,11 @@ var _ = Describe("Component Detection Query controller", func() {
 			createdHasCompDetectionQuery := &appstudiov1alpha1.ComponentDetectionQuery{}
 			Eventually(func() bool {
 				k8sClient.Get(context.Background(), hasCompDetQueryLookupKey, createdHasCompDetectionQuery)
-				return len(createdHasCompDetectionQuery.Status.Conditions) > 0
+				return len(createdHasCompDetectionQuery.Status.Conditions) > 1
 			}, timeout, interval).Should(BeTrue())
 
 			// Make sure the right err is set
-			Expect(createdHasCompDetectionQuery.Status.Conditions[0].Message).Should(ContainSubstring("ComponentDetectionQuery has successfully finished"))
+			Expect(createdHasCompDetectionQuery.Status.Conditions[1].Message).Should(ContainSubstring("ComponentDetectionQuery has successfully finished"))
 
 			// Make sure the a devfile is detected
 			Expect(len(createdHasCompDetectionQuery.Status.ComponentDetected)).Should(Equal(2))
@@ -349,11 +349,11 @@ var _ = Describe("Component Detection Query controller", func() {
 			createdHasCompDetectionQuery := &appstudiov1alpha1.ComponentDetectionQuery{}
 			Eventually(func() bool {
 				k8sClient.Get(context.Background(), hasCompDetQueryLookupKey, createdHasCompDetectionQuery)
-				return len(createdHasCompDetectionQuery.Status.Conditions) > 0
+				return len(createdHasCompDetectionQuery.Status.Conditions) > 1
 			}, timeout, interval).Should(BeTrue())
 
 			// Make sure the right err is set
-			Expect(createdHasCompDetectionQuery.Status.Conditions[0].Message).Should(ContainSubstring("ComponentDetectionQuery has successfully finished"))
+			Expect(createdHasCompDetectionQuery.Status.Conditions[1].Message).Should(ContainSubstring("ComponentDetectionQuery has successfully finished"))
 
 			// Make sure the a devfile is detected
 			Expect(len(createdHasCompDetectionQuery.Status.ComponentDetected)).Should(Equal(1))
@@ -399,11 +399,11 @@ var _ = Describe("Component Detection Query controller", func() {
 			createdHasCompDetectionQuery := &appstudiov1alpha1.ComponentDetectionQuery{}
 			Eventually(func() bool {
 				k8sClient.Get(context.Background(), hasCompDetQueryLookupKey, createdHasCompDetectionQuery)
-				return len(createdHasCompDetectionQuery.Status.Conditions) > 0
+				return len(createdHasCompDetectionQuery.Status.Conditions) > 1
 			}, timeout, interval).Should(BeTrue())
 
 			// Make sure the right err is set
-			Expect(createdHasCompDetectionQuery.Status.Conditions[0].Message).Should(ContainSubstring("unable to GET from https://registry.devfile.io/devfiles/fake"))
+			Expect(createdHasCompDetectionQuery.Status.Conditions[1].Message).Should(ContainSubstring("unable to GET from https://registry.devfile.io/devfiles/fake"))
 
 			// Delete the specified Detection Query resource
 			deleteCompDetQueryCR(hasCompDetQueryLookupKey)
@@ -440,11 +440,11 @@ var _ = Describe("Component Detection Query controller", func() {
 			createdHasCompDetectionQuery := &appstudiov1alpha1.ComponentDetectionQuery{}
 			Eventually(func() bool {
 				k8sClient.Get(context.Background(), hasCompDetQueryLookupKey, createdHasCompDetectionQuery)
-				return len(createdHasCompDetectionQuery.Status.Conditions) > 0
+				return len(createdHasCompDetectionQuery.Status.Conditions) > 1
 			}, timeout, interval).Should(BeTrue())
 
 			// Make sure the right err is set
-			Expect(createdHasCompDetectionQuery.Status.Conditions[0].Message).Should(ContainSubstring("parse \"https://github.com/redhat-appstudio-appdata/!@#$%U%I$F    DFDN##\": invalid URL escape \"%U%\""))
+			Expect(createdHasCompDetectionQuery.Status.Conditions[1].Message).Should(ContainSubstring("parse \"https://github.com/redhat-appstudio-appdata/!@#$%U%I$F    DFDN##\": invalid URL escape \"%U%\""))
 
 			// Delete the specified Detection Query resource
 			deleteCompDetQueryCR(hasCompDetQueryLookupKey)
@@ -482,11 +482,11 @@ var _ = Describe("Component Detection Query controller", func() {
 			createdHasCompDetectionQuery := &appstudiov1alpha1.ComponentDetectionQuery{}
 			Eventually(func() bool {
 				k8sClient.Get(context.Background(), hasCompDetQueryLookupKey, createdHasCompDetectionQuery)
-				return len(createdHasCompDetectionQuery.Status.Conditions) > 0
+				return len(createdHasCompDetectionQuery.Status.Conditions) > 1
 			}, timeout, interval).Should(BeTrue())
 
 			// Make sure the right err is set
-			Expect(createdHasCompDetectionQuery.Status.Conditions[0].Message).Should(ContainSubstring("authentication required"))
+			Expect(createdHasCompDetectionQuery.Status.Conditions[1].Message).Should(ContainSubstring("authentication required"))
 
 			// Delete the specified Detection Query resource
 			deleteCompDetQueryCR(hasCompDetQueryLookupKey)
@@ -541,7 +541,7 @@ var _ = Describe("Component Detection Query controller", func() {
 			createdHasCompDetectionQuery := &appstudiov1alpha1.ComponentDetectionQuery{}
 			Eventually(func() bool {
 				k8sClient.Get(context.Background(), hasCompDetQueryLookupKey, createdHasCompDetectionQuery)
-				return len(createdHasCompDetectionQuery.Status.Conditions) > 0
+				return len(createdHasCompDetectionQuery.Status.Conditions) > 1
 			}, timeout, interval).Should(BeTrue())
 
 			// Make sure the a devfile is detected
@@ -605,12 +605,12 @@ var _ = Describe("Component Detection Query controller", func() {
 			createdHasCompDetectionQuery := &appstudiov1alpha1.ComponentDetectionQuery{}
 			Eventually(func() bool {
 				k8sClient.Get(context.Background(), hasCompDetQueryLookupKey, createdHasCompDetectionQuery)
-				return len(createdHasCompDetectionQuery.Status.Conditions) > 0
+				return len(createdHasCompDetectionQuery.Status.Conditions) > 1
 			}, timeout, interval).Should(BeTrue())
 
 			// Make sure the a devfile is detected
-			Expect(createdHasCompDetectionQuery.Status.Conditions[0].Status).Should(Equal(metav1.ConditionFalse))
-			Expect(createdHasCompDetectionQuery.Status.Conditions[0].Message).Should(ContainSubstring("ComponentDetectionQuery failed: authentication required"))
+			Expect(createdHasCompDetectionQuery.Status.Conditions[1].Status).Should(Equal(metav1.ConditionFalse))
+			Expect(createdHasCompDetectionQuery.Status.Conditions[1].Message).Should(ContainSubstring("ComponentDetectionQuery failed: authentication required"))
 
 			// Delete the specified Detection Query resource
 			deleteCompDetQueryCR(hasCompDetQueryLookupKey)
@@ -666,12 +666,12 @@ var _ = Describe("Component Detection Query controller", func() {
 			createdHasCompDetectionQuery := &appstudiov1alpha1.ComponentDetectionQuery{}
 			Eventually(func() bool {
 				k8sClient.Get(context.Background(), hasCompDetQueryLookupKey, createdHasCompDetectionQuery)
-				return len(createdHasCompDetectionQuery.Status.Conditions) > 0
+				return len(createdHasCompDetectionQuery.Status.Conditions) > 1
 			}, timeout, interval).Should(BeTrue())
 
 			// Make sure the a devfile is detected
-			Expect(createdHasCompDetectionQuery.Status.Conditions[0].Status).Should(Equal(metav1.ConditionFalse))
-			Expect(createdHasCompDetectionQuery.Status.Conditions[0].Message).Should(ContainSubstring("ComponentDetectionQuery failed: unable to find any devfiles in repo https://github.com/test-repo/test-error-response"))
+			Expect(createdHasCompDetectionQuery.Status.Conditions[1].Status).Should(Equal(metav1.ConditionFalse))
+			Expect(createdHasCompDetectionQuery.Status.Conditions[1].Message).Should(ContainSubstring("ComponentDetectionQuery failed: unable to find any devfiles in repo https://github.com/test-repo/test-error-response"))
 
 			// Delete the specified Detection Query resource
 			deleteCompDetQueryCR(hasCompDetQueryLookupKey)
@@ -709,12 +709,12 @@ var _ = Describe("Component Detection Query controller", func() {
 			createdHasCompDetectionQuery := &appstudiov1alpha1.ComponentDetectionQuery{}
 			Eventually(func() bool {
 				k8sClient.Get(context.Background(), hasCompDetQueryLookupKey, createdHasCompDetectionQuery)
-				return len(createdHasCompDetectionQuery.Status.Conditions) > 0
+				return len(createdHasCompDetectionQuery.Status.Conditions) > 1
 			}, timeout, interval).Should(BeTrue())
 
 			// Make sure the a devfile is detected
-			Expect(createdHasCompDetectionQuery.Status.Conditions[0].Status).Should(Equal(metav1.ConditionFalse))
-			Expect(createdHasCompDetectionQuery.Status.Conditions[0].Message).Should(ContainSubstring(fmt.Sprintf("ComponentDetectionQuery failed: Secret %q not found", queryName)))
+			Expect(createdHasCompDetectionQuery.Status.Conditions[1].Status).Should(Equal(metav1.ConditionFalse))
+			Expect(createdHasCompDetectionQuery.Status.Conditions[1].Message).Should(ContainSubstring(fmt.Sprintf("ComponentDetectionQuery failed: Secret %q not found", queryName)))
 
 			// Delete the specified Detection Query resource
 			deleteCompDetQueryCR(hasCompDetQueryLookupKey)
@@ -751,12 +751,12 @@ var _ = Describe("Component Detection Query controller", func() {
 			createdHasCompDetectionQuery := &appstudiov1alpha1.ComponentDetectionQuery{}
 			Eventually(func() bool {
 				k8sClient.Get(context.Background(), hasCompDetQueryLookupKey, createdHasCompDetectionQuery)
-				return len(createdHasCompDetectionQuery.Status.Conditions) > 0
+				return len(createdHasCompDetectionQuery.Status.Conditions) > 1
 			}, timeout, interval).Should(BeTrue())
 
 			// Make sure that the proper error condition is set
-			Expect(createdHasCompDetectionQuery.Status.Conditions[0].Status).Should(Equal(metav1.ConditionFalse))
-			Expect(createdHasCompDetectionQuery.Status.Conditions[0].Message).Should(ContainSubstring("ComponentDetectionQuery failed: failed to decode devfile json: json: cannot unmarshal string into Go value of type map[string]"))
+			Expect(createdHasCompDetectionQuery.Status.Conditions[1].Status).Should(Equal(metav1.ConditionFalse))
+			Expect(createdHasCompDetectionQuery.Status.Conditions[1].Message).Should(ContainSubstring("ComponentDetectionQuery failed: failed to decode devfile json: json: cannot unmarshal string into Go value of type map[string]"))
 			// Delete the specified Detection Query resource
 			deleteCompDetQueryCR(hasCompDetQueryLookupKey)
 		})
@@ -792,11 +792,11 @@ var _ = Describe("Component Detection Query controller", func() {
 			createdHasCompDetectionQuery := &appstudiov1alpha1.ComponentDetectionQuery{}
 			Eventually(func() bool {
 				k8sClient.Get(context.Background(), hasCompDetQueryLookupKey, createdHasCompDetectionQuery)
-				return len(createdHasCompDetectionQuery.Status.Conditions) > 0
+				return len(createdHasCompDetectionQuery.Status.Conditions) > 1
 			}, timeout, interval).Should(BeTrue())
 
 			// Make sure the right err is set
-			Expect(createdHasCompDetectionQuery.Status.Conditions[0].Message).Should(ContainSubstring("ComponentDetectionQuery failed: dummy Analyze err"))
+			Expect(createdHasCompDetectionQuery.Status.Conditions[1].Message).Should(ContainSubstring("ComponentDetectionQuery failed: dummy Analyze err"))
 
 			// Make sure the a devfile is detected
 			Expect(len(createdHasCompDetectionQuery.Status.ComponentDetected)).Should(Equal(0))
@@ -837,11 +837,11 @@ var _ = Describe("Component Detection Query controller", func() {
 			createdHasCompDetectionQuery := &appstudiov1alpha1.ComponentDetectionQuery{}
 			Eventually(func() bool {
 				k8sClient.Get(context.Background(), hasCompDetQueryLookupKey, createdHasCompDetectionQuery)
-				return len(createdHasCompDetectionQuery.Status.Conditions) > 0
+				return len(createdHasCompDetectionQuery.Status.Conditions) > 1
 			}, timeout, interval).Should(BeTrue())
 
 			// Make sure the right err is set
-			Expect(createdHasCompDetectionQuery.Status.Conditions[0].Message).Should(ContainSubstring("ComponentDetectionQuery failed: dummy Analyze err"))
+			Expect(createdHasCompDetectionQuery.Status.Conditions[1].Message).Should(ContainSubstring("ComponentDetectionQuery failed: dummy Analyze err"))
 
 			// Make sure the a devfile is detected
 			Expect(len(createdHasCompDetectionQuery.Status.ComponentDetected)).Should(Equal(0))
@@ -881,17 +881,70 @@ var _ = Describe("Component Detection Query controller", func() {
 			createdHasCompDetectionQuery := &appstudiov1alpha1.ComponentDetectionQuery{}
 			Eventually(func() bool {
 				k8sClient.Get(context.Background(), hasCompDetQueryLookupKey, createdHasCompDetectionQuery)
-				return len(createdHasCompDetectionQuery.Status.Conditions) > 0
+				return len(createdHasCompDetectionQuery.Status.Conditions) > 1
 			}, timeout, interval).Should(BeTrue())
 
 			// Make sure the a devfile is detected
 			Expect(len(createdHasCompDetectionQuery.Status.ComponentDetected)).Should(Equal(0))
 
 			// Make sure the right err is set
-			Expect(createdHasCompDetectionQuery.Status.Conditions[0].Message).Should(ContainSubstring("ComponentDetectionQuery failed: authentication required"))
+			Expect(createdHasCompDetectionQuery.Status.Conditions[1].Message).Should(ContainSubstring("ComponentDetectionQuery failed: authentication required"))
 
 			// Delete the specified Detection Query resource
 			deleteCompDetQueryCR(hasCompDetQueryLookupKey)
+		})
+	})
+
+	Context("A Requeued ComponentDetectionQuery", func() {
+		It("Should delete itself", func() {
+			ctx := context.Background()
+
+			queryName := HASCompDetQuery + "19"
+
+			hasCompDetectionQuery := &appstudiov1alpha1.ComponentDetectionQuery{
+				TypeMeta: metav1.TypeMeta{
+					APIVersion: "appstudio.redhat.com/v1alpha1",
+					Kind:       "ComponentDetectionQuery",
+				},
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      queryName,
+					Namespace: HASNamespace,
+				},
+				Spec: appstudiov1alpha1.ComponentDetectionQuerySpec{
+					GitSource: appstudiov1alpha1.GitSource{
+						URL: "https://github.com/devfile-samples/fake-sample",
+					},
+				},
+			}
+
+			Expect(k8sClient.Create(ctx, hasCompDetectionQuery)).Should(Succeed())
+
+			// Look up the has app resource that was created.
+			// num(conditions) may still be < 1 on the first try, so retry until at least _some_ condition is set
+			hasCompDetQueryLookupKey := types.NamespacedName{Name: queryName, Namespace: HASNamespace}
+			createdHasCompDetectionQuery := &appstudiov1alpha1.ComponentDetectionQuery{}
+			Eventually(func() bool {
+				k8sClient.Get(context.Background(), hasCompDetQueryLookupKey, createdHasCompDetectionQuery)
+				return len(createdHasCompDetectionQuery.Status.Conditions) > 1
+			}, timeout, interval).Should(BeTrue())
+
+			// Make sure no component was detected
+			Expect(len(createdHasCompDetectionQuery.Status.ComponentDetected)).Should(Equal(0))
+
+			// Make sure the right err is set
+			Expect(createdHasCompDetectionQuery.Status.Conditions[1].Message).Should(ContainSubstring("ComponentDetectionQuery failed: authentication required"))
+
+			// Trigger a requeue by updating the resource
+			createdHasCompDetectionQuery.Spec.GitSource.URL = SampleRepoLink
+			Expect(k8sClient.Update(ctx, createdHasCompDetectionQuery)).Should(Succeed())
+
+			// Validate that the resource has been deleted
+			hasCompDetQueryLookupKey = types.NamespacedName{Name: queryName, Namespace: HASNamespace}
+			deletedCompDetQuery := &appstudiov1alpha1.ComponentDetectionQuery{}
+			Eventually(func() bool {
+				err := k8sClient.Get(context.Background(), hasCompDetQueryLookupKey, deletedCompDetQuery)
+				return err != nil
+			}, timeout, interval).Should(BeTrue())
 		})
 	})
 
