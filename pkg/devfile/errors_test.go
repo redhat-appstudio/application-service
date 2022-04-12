@@ -32,15 +32,15 @@ func TestNoDevfileFoundErr(t *testing.T) {
 		{
 			name: "No Devfile Found at location",
 			args: NoDevfileFound{
-				location: "/path",
+				Location: "/path",
 			},
 			wantErrString: "unable to find devfile in the specified location /path",
 		},
 		{
 			name: "No Devfile Found at location due to an err",
 			args: NoDevfileFound{
-				location: "/path",
-				err:      fmt.Errorf("a dummy err"),
+				Location: "/path",
+				Err:      fmt.Errorf("a dummy err"),
 			},
 			wantErrString: "unable to find devfile in the specified location /path due to a dummy err",
 		},

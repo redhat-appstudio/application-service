@@ -49,8 +49,8 @@ func getAlizerDevfileTypes(registryURL string) ([]recognizer.DevFileType, error)
 	return types, nil
 }
 
-// getRepoFromRegistry gets the sample repo link from the devfile registry
-func getRepoFromRegistry(name, registryURL string) (string, error) {
+// GetRepoFromRegistry gets the sample repo link from the devfile registry
+func GetRepoFromRegistry(name, registryURL string) (string, error) {
 	registryIndex, err := registryLibrary.GetRegistryIndex(registryURL, registryLibrary.RegistryOptions{
 		Telemetry: registryLibrary.TelemetryData{},
 	}, schema.SampleDevfileType)

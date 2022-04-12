@@ -19,14 +19,28 @@ import "fmt"
 
 //NoDevfileFound returns an error if no devfile was found
 type NoDevfileFound struct {
-	location string
-	err      error
+	Location string
+	Err      error
 }
 
 func (e *NoDevfileFound) Error() string {
-	errMsg := fmt.Sprintf("unable to find devfile in the specified location %s", e.location)
-	if e.err != nil {
-		errMsg = fmt.Sprintf("%s due to %v", errMsg, e.err)
+	errMsg := fmt.Sprintf("unable to find devfile in the specified location %s", e.Location)
+	if e.Err != nil {
+		errMsg = fmt.Sprintf("%s due to %v", errMsg, e.Err)
+	}
+	return errMsg
+}
+
+//NoDockerfileFound returns an error if no dockerfile was found
+type NoDockerfileFound struct {
+	Location string
+	Err      error
+}
+
+func (e *NoDockerfileFound) Error() string {
+	errMsg := fmt.Sprintf("unable to find dockerfile in the specified location %s", e.Location)
+	if e.Err != nil {
+		errMsg = fmt.Sprintf("%s due to %v", errMsg, e.Err)
 	}
 	return errMsg
 }

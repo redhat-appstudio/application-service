@@ -37,10 +37,10 @@ type Alizer interface {
 type AlizerClient struct {
 }
 
-// searchDevfiles searches a given localpath for a devfile upto the specified depth. If no devfile is present until
+// search searches a given localpath for a devfile upto the specified depth. If no devfile is present until
 // the depth, alizer is used to analyze and detect a devfile from the registry. It returns a map of repo context to the devfile
 // bytes, a map of repo context to the devfile detected(if any) and an error
-func searchDevfiles(log logr.Logger, a Alizer, localpath string, currentLevel, depth int, devfileRegistryURL string) (map[string][]byte, map[string]string, map[string]string, error) {
+func search(log logr.Logger, a Alizer, localpath string, currentLevel, depth int, devfileRegistryURL string) (map[string][]byte, map[string]string, map[string]string, error) {
 	// TODO - maysunfaisal
 	// There seems to a gap in the logic if we extend past depth 1 and discovering devfile logic
 	// Revisit post M4
@@ -73,7 +73,7 @@ func searchDevfiles(log logr.Logger, a Alizer, localpath string, currentLevel, d
 			// Check for .devfile/devfile.yaml or .devfile/.devfile.yaml
 			// if the dir is .devfile, we dont increment currentLevel
 			// consider devfile.yaml and .devfile/devfile.yaml as the same level, for example
-			recursiveDevfileMap, recursiveDevfileURLMap, _, err := searchDevfiles(log, a, path.Join(localpath, f.Name()), currentLevel, depth, devfileRegistryURL)
+			recursiveDevfileMap, recursiveDevfileURLMap, _, err := search(log, a, path.Join(localpath, f.Name()), currentLevel, depth, devfileRegistryURL)
 			if err != nil {
 				return nil, nil, nil, err
 			}
@@ -96,7 +96,7 @@ func searchDevfiles(log logr.Logger, a Alizer, localpath string, currentLevel, d
 			isDockerfilePresent = true
 		} else if f.IsDir() {
 			if currentLevel+1 <= depth {
-				recursiveDevfileMap, recursiveDevfileURLMap, recursiveDockerfileContextMap, err := searchDevfiles(log, a, path.Join(localpath, f.Name()), currentLevel+1, depth, devfileRegistryURL)
+				recursiveDevfileMap, recursiveDevfileURLMap, recursiveDockerfileContextMap, err := search(log, a, path.Join(localpath, f.Name()), currentLevel+1, depth, devfileRegistryURL)
 				if err != nil {
 					return nil, nil, nil, err
 				}
@@ -123,67 +123,74 @@ func searchDevfiles(log logr.Logger, a Alizer, localpath string, currentLevel, d
 
 	if len(devfileMapFromRepo) == 0 && currentLevel == 0 {
 		// if we didnt find any devfile we should return an err
-		err = &NoDevfileFound{location: localpath}
+		err = &NoDevfileFound{Location: localpath}
 	} else if ((!isDevfilePresent && !isDockerfilePresent) || (isDevfilePresent && !isDockerfilePresent)) && currentLevel == depth {
-		// If devfile is present, check to see if we can determine a Dockerfile from it
-		if isDevfilePresent {
-			devfile := devfileMapFromRepo[context]
-
-			dockerfileUri, err := searchForDockerfile(devfile)
-			if err != nil {
-				return nil, nil, nil, err
-			}
-			if len(dockerfileUri) > 0 {
-				isDockerfilePresent = true
-			}
+		err := AnalyzePath(a, localpath, context, devfileRegistryURL, devfileMapFromRepo, devfilesURLMapFromRepo, dockerfileContextMapFromRepo, isDevfilePresent, isDockerfilePresent)
+		if err != nil {
+			return nil, nil, nil, err
 		}
-
-		if !isDockerfilePresent {
-			// if we didnt find any devfile/dockerfile upto our desired depth, then use alizer
-			devfile, detectedDevfileEndpoint, detectedSampleName, err := AnalyzeAndDetectDevfile(a, localpath, devfileRegistryURL)
-			if err != nil {
-				if _, ok := err.(*NoDevfileFound); !ok {
-					return nil, nil, nil, err
-				}
-			}
-
-			if !isDevfilePresent && len(devfile) > 0 {
-				// If a devfile is not present at this stage, just update devfileMapFromRepo and devfilesURLMapFromRepo
-				// Dockerfile is not needed because all the devfile registry samples will have a Dockerfile entry
-				devfileMapFromRepo[context] = devfile
-				devfilesURLMapFromRepo[context] = detectedDevfileEndpoint
-			} else if isDevfilePresent && len(devfile) > 0 {
-				// If a devfile is present but we could not determine a dockerfile, then update dockerfileContextMapFromRepo
-				// by looking up the devfile from the detected alizer sample from the devfile registry
-
-				sampleRepoURL, err := getRepoFromRegistry(detectedSampleName, devfileRegistryURL)
-				if err != nil {
-					return nil, nil, nil, err
-				}
-
-				dockerfileUri, err := searchForDockerfile(devfile)
-				if err != nil {
-					return nil, nil, nil, err
-				}
-
-				link, err := UpdateDockerfileLink(sampleRepoURL, dockerfileUri)
-				if err != nil {
-					return nil, nil, nil, err
-				}
-
-				dockerfileContextMapFromRepo[context] = link
-				isDockerfilePresent = true
-			}
-		}
-
 	}
 
 	return devfileMapFromRepo, devfilesURLMapFromRepo, dockerfileContextMapFromRepo, err
 }
 
-// searchForDockerfile searches for a Dockerfile from a devfile image component and
+// AnalyzePath checks if a devfile or a dockerfile can be found in the localpath for the given context, this is a helper func used by the CDQ controller
+func AnalyzePath(a Alizer, localpath, context, devfileRegistryURL string, devfileMapFromRepo map[string][]byte, devfilesURLMapFromRepo, dockerfileContextMapFromRepo map[string]string, isDevfilePresent, isDockerfilePresent bool) error {
+	if isDevfilePresent {
+		// If devfile is present, check to see if we can determine a Dockerfile from it
+		devfile := devfileMapFromRepo[context]
+
+		if dockerfileUri, err := SearchForDockerfile(devfile); err != nil {
+			return err
+		} else if len(dockerfileUri) > 0 {
+			isDockerfilePresent = true
+		}
+	}
+
+	if !isDockerfilePresent {
+		// if we didnt find any devfile/dockerfile upto our desired depth, then use alizer
+		devfile, detectedDevfileEndpoint, detectedSampleName, err := AnalyzeAndDetectDevfile(a, localpath, devfileRegistryURL)
+		if err != nil {
+			if _, ok := err.(*NoDevfileFound); !ok {
+				return err
+			}
+		}
+
+		if !isDevfilePresent && len(devfile) > 0 {
+			// If a devfile is not present at this stage, just update devfileMapFromRepo and devfilesURLMapFromRepo
+			// Dockerfile is not needed because all the devfile registry samples will have a Dockerfile entry
+			devfileMapFromRepo[context] = devfile
+			devfilesURLMapFromRepo[context] = detectedDevfileEndpoint
+		} else if isDevfilePresent && len(devfile) > 0 {
+			// If a devfile is present but we could not determine a dockerfile, then update dockerfileContextMapFromRepo
+			// by looking up the devfile from the detected alizer sample from the devfile registry
+
+			sampleRepoURL, err := GetRepoFromRegistry(detectedSampleName, devfileRegistryURL)
+			if err != nil {
+				return err
+			}
+
+			dockerfileUri, err := SearchForDockerfile(devfile)
+			if err != nil {
+				return err
+			}
+
+			link, err := UpdateDockerfileLink(sampleRepoURL, dockerfileUri)
+			if err != nil {
+				return err
+			}
+
+			dockerfileContextMapFromRepo[context] = link
+			isDockerfilePresent = true
+		}
+	}
+
+	return nil
+}
+
+// SearchForDockerfile searches for a Dockerfile from a devfile image component and
 // returns the dockerfile uri
-func searchForDockerfile(devfile []byte) (string, error) {
+func SearchForDockerfile(devfile []byte) (string, error) {
 	var dockerfile string
 
 	devfileData, err := ParseDevfileModel(string(devfile))
@@ -262,5 +269,5 @@ func AnalyzeAndDetectDevfile(a Alizer, path, devfileRegistryURL string) ([]byte,
 		}
 	}
 
-	return nil, "", "", &NoDevfileFound{location: path}
+	return nil, "", "", &NoDevfileFound{Location: path}
 }

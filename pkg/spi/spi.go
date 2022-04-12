@@ -17,7 +17,6 @@ package spi
 
 import (
 	"context"
-	"fmt"
 	"io"
 	"path/filepath"
 
@@ -54,5 +53,5 @@ func DownloadDevfileUsingSPI(s SPI, ctx context.Context, namespace string, repoU
 
 	}
 
-	return nil, fmt.Errorf("unable to find any devfiles in repo %s", repoURL)
+	return nil, &devfile.NoDevfileFound{Location: repoURL}
 }

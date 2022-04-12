@@ -12,6 +12,7 @@ require (
 	github.com/go-logr/logr v0.4.0
 	github.com/google/go-cmp v0.5.6
 	github.com/google/go-github/v41 v41.0.0
+	github.com/hashicorp/go-multierror v1.1.1
 	github.com/migueleliasweb/go-github-mock v0.0.5
 	github.com/mitchellh/go-homedir v1.1.0
 	github.com/onsi/ginkgo v1.16.5
