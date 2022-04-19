@@ -95,7 +95,7 @@ func (r *ComponentReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 		return ctrl.Result{}, err
 	}
 
-	if component.Spec.Build.ContainerImage == "" {
+	if component.Spec.Build.ContainerImage == "" && component.Spec.Source.ImageSource == nil {
 		component.Spec.Build.ContainerImage = r.ImageRepository + ":" + component.Namespace + "-" + component.Name
 	}
 
@@ -324,8 +324,13 @@ func (r *ComponentReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 			r.SetUpdateConditionAndUpdateCR(ctx, &component, err)
 			return ctrl.Result{}, nil
 		}
-
-		isUpdated := !reflect.DeepEqual(oldCompDevfileData, hasCompDevfileData) || component.Spec.Build.ContainerImage != component.Status.ContainerImage
+		var containerImage string
+		if component.Spec.Source.ImageSource != nil && component.Spec.Source.ImageSource.ContainerImage != "" {
+			containerImage = component.Spec.Source.ImageSource.ContainerImage
+		} else {
+			containerImage = component.Spec.Build.ContainerImage
+		}
+		isUpdated := !reflect.DeepEqual(oldCompDevfileData, hasCompDevfileData) || containerImage != component.Status.ContainerImage
 		if isUpdated {
 			log.Info(fmt.Sprintf("The Component was updated %v", req.NamespacedName))
 			yamlHASCompData, err := yaml.Marshal(hasCompDevfileData)
