@@ -213,34 +213,63 @@ func (r *ComponentReconciler) updateComponentDevfileModel(hasCompDevfileData dat
 
 func (r *ComponentReconciler) updateApplicationDevfileModel(hasAppDevfileData data.DevfileData, component appstudiov1alpha1.Component) error {
 
-	if component.Spec.Source.GitSource == nil {
-		return fmt.Errorf("component git source is nil")
-	}
-
-	newProject := devfileAPIV1.Project{
-		Name: component.Spec.ComponentName,
-		ProjectSource: devfileAPIV1.ProjectSource{
-			Git: &devfileAPIV1.GitProjectSource{
-				GitLikeProjectSource: devfileAPIV1.GitLikeProjectSource{
-					Remotes: map[string]string{
-						"origin": component.Spec.Source.GitSource.URL,
+	if component.Spec.Source.GitSource != nil {
+		newProject := devfileAPIV1.Project{
+			Name: component.Spec.ComponentName,
+			ProjectSource: devfileAPIV1.ProjectSource{
+				Git: &devfileAPIV1.GitProjectSource{
+					GitLikeProjectSource: devfileAPIV1.GitLikeProjectSource{
+						Remotes: map[string]string{
+							"origin": component.Spec.Source.GitSource.URL,
+						},
 					},
 				},
 			},
-		},
-	}
-	projects, err := hasAppDevfileData.GetProjects(common.DevfileOptions{})
-	if err != nil {
-		return err
-	}
-	for _, project := range projects {
-		if project.Name == newProject.Name {
-			return fmt.Errorf("application already has a project with name %s", newProject.Name)
 		}
-	}
-	err = hasAppDevfileData.AddProjects([]devfileAPIV1.Project{newProject})
-	if err != nil {
-		return err
+		projects, err := hasAppDevfileData.GetProjects(common.DevfileOptions{})
+		if err != nil {
+			return err
+		}
+		for _, project := range projects {
+			if project.Name == newProject.Name {
+				return fmt.Errorf("application already has a component with name %s", newProject.Name)
+			}
+		}
+		err = hasAppDevfileData.AddProjects([]devfileAPIV1.Project{newProject})
+		if err != nil {
+			return err
+		}
+	} else if component.Spec.Source.ImageSource != nil {
+		fmt.Println("*****")
+		fmt.Println(component.Spec.Source.ImageSource.ContainerImage)
+
+		var err error
+
+		// Initialize the attributes
+		devSpec := hasAppDevfileData.GetDevfileWorkspaceSpec()
+
+		// Add the image as a top level attribute
+		devfileAttributes := devSpec.Attributes
+		if devfileAttributes == nil {
+			devfileAttributes = attributes.Attributes{}
+			devSpec.Attributes = devfileAttributes
+			hasAppDevfileData.SetDevfileWorkspaceSpec(*devSpec)
+		}
+		imageAttrString := fmt.Sprintf("containerImage/%s", component.Spec.ComponentName)
+		componentImage := devfileAttributes.GetString(imageAttrString, &err)
+		if err != nil {
+			if _, ok := err.(*attributes.KeyNotFoundError); !ok {
+				return err
+			}
+		}
+		if componentImage != "" {
+			return fmt.Errorf("application already has a component with name %s", component.Name)
+		}
+		devSpec.Attributes = devfileAttributes.PutString(imageAttrString, component.Spec.Source.ImageSource.ContainerImage)
+		hasAppDevfileData.SetDevfileWorkspaceSpec(*devSpec)
+
+	} else {
+		return fmt.Errorf("component source is nil")
 	}
 
 	return nil

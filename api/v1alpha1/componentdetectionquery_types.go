@@ -31,6 +31,9 @@ type ComponentDetectionQuerySpec struct {
 
 	// IsMultiComponent specifies if the component specified has multiple services
 	IsMultiComponent bool `json:"isMultiComponent,omitempty"`
+
+	// Secret describes the name of a Kubernetes secret containing a Personal Access Token to access the git repostiory
+	Secret string `json:"secret,omitempty"`
 }
 
 // ComponentDetectionDescription holds all the information about the component being detected

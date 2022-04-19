@@ -96,11 +96,11 @@ var _ = Describe("Component controller", func() {
 				Spec: appstudiov1alpha1.ComponentSpec{
 					ComponentName: ComponentName,
 					Application:   HASAppNameForBuild,
+					Secret:        "doesmatter",
 					Source: appstudiov1alpha1.ComponentSource{
 						ComponentSourceUnion: appstudiov1alpha1.ComponentSourceUnion{
 							GitSource: &appstudiov1alpha1.GitSource{
-								URL:    SampleRepoLink,
-								Secret: "doesmatter",
+								URL: SampleRepoLink,
 							},
 						},
 					},
@@ -1415,12 +1415,12 @@ var _ = Describe("Component controller", func() {
 				Spec: appstudiov1alpha1.ComponentSpec{
 					ComponentName: ComponentName,
 					Application:   applicationName,
+					Secret:        "fake-secret",
 					Source: appstudiov1alpha1.ComponentSource{
 						ComponentSourceUnion: appstudiov1alpha1.ComponentSourceUnion{
 							GitSource: &appstudiov1alpha1.GitSource{
 								URL:        SampleRepoLink,
 								DevfileURL: "https://github.com/test/repo",
-								Secret:     "fake-secret",
 							},
 						},
 					},
@@ -1489,11 +1489,11 @@ var _ = Describe("Component controller", func() {
 				Spec: appstudiov1alpha1.ComponentSpec{
 					ComponentName: ComponentName,
 					Application:   applicationName,
+					Secret:        componentName,
 					Source: appstudiov1alpha1.ComponentSource{
 						ComponentSourceUnion: appstudiov1alpha1.ComponentSourceUnion{
 							GitSource: &appstudiov1alpha1.GitSource{
-								URL:    SampleRepoLink,
-								Secret: componentName,
+								URL: SampleRepoLink,
 							},
 						},
 					},
@@ -1561,11 +1561,11 @@ var _ = Describe("Component controller", func() {
 				Spec: appstudiov1alpha1.ComponentSpec{
 					ComponentName: ComponentName,
 					Application:   applicationName,
+					Secret:        componentName,
 					Source: appstudiov1alpha1.ComponentSource{
 						ComponentSourceUnion: appstudiov1alpha1.ComponentSourceUnion{
 							GitSource: &appstudiov1alpha1.GitSource{
-								URL:    "https://github.com/johnmcollier/test-error-response",
-								Secret: componentName,
+								URL: "https://github.com/johnmcollier/test-error-response",
 							},
 						},
 					},
@@ -1695,7 +1695,7 @@ var _ = Describe("Component controller", func() {
 			}, timeout, interval).Should(BeTrue())
 
 			// Make sure the devfile model was properly set in Component
-			Expect(createdHasComp.Status.Devfile).Should(Equal(""))
+			Expect(createdHasComp.Status.Devfile).Should(Not(Equal("")))
 
 			// Make sure the component resource has been updated properly
 			Expect(createdHasComp.Status.Conditions[len(createdHasComp.Status.Conditions)-1].Message).Should(ContainSubstring("successfully created"))
@@ -1705,11 +1705,12 @@ var _ = Describe("Component controller", func() {
 			createdHasApp := &appstudiov1alpha1.Application{}
 			Eventually(func() bool {
 				k8sClient.Get(context.Background(), hasAppLookupKey, createdHasApp)
-				return len(createdHasApp.Status.Conditions) > 0
+				return strings.Contains(createdHasApp.Status.Devfile, "containerImage/backend")
 			}, timeout, interval).Should(BeTrue())
 
 			// Make sure the devfile model was properly set in Application
 			Expect(createdHasApp.Status.Devfile).Should(Not(Equal("")))
+			Expect(createdHasApp.Status.Devfile).Should(ContainSubstring("containerImage/backend"))
 
 			// Delete the specified HASComp resource
 			deleteHASCompCR(hasCompLookupKey)

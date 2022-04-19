@@ -34,10 +34,12 @@ import (
 
 func TestUpdateApplicationDevfileModel(t *testing.T) {
 	tests := []struct {
-		name      string
-		projects  []devfileAPIV1.Project
-		component appstudiov1alpha1.Component
-		wantErr   bool
+		name           string
+		projects       []devfileAPIV1.Project
+		attributes     attributes.Attributes
+		containerImage string
+		component      appstudiov1alpha1.Component
+		wantErr        bool
 	}{
 		{
 			name: "Project already present",
@@ -90,7 +92,8 @@ func TestUpdateApplicationDevfileModel(t *testing.T) {
 					ComponentName: "new",
 					Source: appstudiov1alpha1.ComponentSource{
 						ComponentSourceUnion: appstudiov1alpha1.ComponentSourceUnion{
-							GitSource: nil,
+							GitSource:   nil,
+							ImageSource: nil,
 						},
 					},
 				},
@@ -105,7 +108,58 @@ func TestUpdateApplicationDevfileModel(t *testing.T) {
 					ComponentName: "new",
 					Source: appstudiov1alpha1.ComponentSource{
 						ComponentSourceUnion: appstudiov1alpha1.ComponentSourceUnion{
-							GitSource: nil,
+							GitSource:   nil,
+							ImageSource: nil,
+						},
+					},
+				},
+			},
+			wantErr: true,
+		},
+		{
+			name:       "Container image added successfully",
+			attributes: attributes.Attributes{}.PutString("containerImage/otherComponent", "other-image"),
+			component: appstudiov1alpha1.Component{
+				Spec: appstudiov1alpha1.ComponentSpec{
+					ComponentName: "new",
+					Source: appstudiov1alpha1.ComponentSource{
+						ComponentSourceUnion: appstudiov1alpha1.ComponentSourceUnion{
+							ImageSource: &appstudiov1alpha1.ImageSource{
+								ContainerImage: "an-image",
+							},
+						},
+					},
+				},
+			},
+		},
+		{
+			name:       "Container image already exists",
+			attributes: attributes.Attributes{}.PutString("containerImage/new", "an-image"),
+			component: appstudiov1alpha1.Component{
+				Spec: appstudiov1alpha1.ComponentSpec{
+					ComponentName: "new",
+					Source: appstudiov1alpha1.ComponentSource{
+						ComponentSourceUnion: appstudiov1alpha1.ComponentSourceUnion{
+							ImageSource: &appstudiov1alpha1.ImageSource{
+								ContainerImage: "an-image",
+							},
+						},
+					},
+				},
+			},
+			wantErr: true,
+		},
+		{
+			name:       "Container image already exists, but invalid entry",
+			attributes: attributes.Attributes{}.Put("containerImage/new", make(chan error), nil),
+			component: appstudiov1alpha1.Component{
+				Spec: appstudiov1alpha1.ComponentSpec{
+					ComponentName: "new",
+					Source: appstudiov1alpha1.ComponentSource{
+						ComponentSourceUnion: appstudiov1alpha1.ComponentSourceUnion{
+							ImageSource: &appstudiov1alpha1.ImageSource{
+								ContainerImage: "an-image",
+							},
 						},
 					},
 				},
@@ -120,7 +174,8 @@ func TestUpdateApplicationDevfileModel(t *testing.T) {
 				Devfile: devfileAPIV1.Devfile{
 					DevWorkspaceTemplateSpec: devfileAPIV1.DevWorkspaceTemplateSpec{
 						DevWorkspaceTemplateSpecContent: devfileAPIV1.DevWorkspaceTemplateSpecContent{
-							Projects: tt.projects,
+							Attributes: tt.attributes,
+							Projects:   tt.projects,
 						},
 					},
 				},
@@ -132,20 +187,38 @@ func TestUpdateApplicationDevfileModel(t *testing.T) {
 			} else if !tt.wantErr && err != nil {
 				t.Errorf("got unexpected error %v", err)
 			} else if err == nil {
-				projects, err := devfileData.GetProjects(common.DevfileOptions{})
-				if err != nil {
-					t.Errorf("got unexpected error: %v", err)
-				}
-				matched := false
-				for _, project := range projects {
-					projectGitSrc := project.ProjectSource.Git
-					if project.Name == tt.component.Spec.ComponentName && projectGitSrc != nil && projectGitSrc.Remotes["origin"] == tt.component.Spec.Source.GitSource.URL {
-						matched = true
+				if tt.component.Spec.Source.GitSource != nil {
+					projects, err := devfileData.GetProjects(common.DevfileOptions{})
+					if err != nil {
+						t.Errorf("got unexpected error: %v", err)
 					}
-				}
+					matched := false
+					for _, project := range projects {
+						projectGitSrc := project.ProjectSource.Git
+						if project.Name == tt.component.Spec.ComponentName && projectGitSrc != nil && projectGitSrc.Remotes["origin"] == tt.component.Spec.Source.GitSource.URL {
+							matched = true
+						}
+					}
 
-				if !matched {
-					t.Errorf("unable to find devfile with project: %s", tt.component.Spec.ComponentName)
+					if !matched {
+						t.Errorf("unable to find devfile with project: %s", tt.component.Spec.ComponentName)
+					}
+
+				} else {
+					devfileAttr, err := devfileData.GetAttributes()
+					if err != nil {
+						t.Errorf("got unexpected error: %v", err)
+					}
+					if devfileAttr == nil {
+						t.Errorf("devfile attributes should not be nil")
+					}
+					containerImage := devfileAttr.GetString("containerImage/new", &err)
+					if err != nil {
+						t.Errorf("got unexpected error: %v", err)
+					}
+					if containerImage != tt.component.Spec.Source.ImageSource.ContainerImage {
+						t.Errorf("unable to find component with container iamge: %s", tt.component.Spec.Source.ImageSource.ContainerImage)
+					}
 				}
 			}
 		})

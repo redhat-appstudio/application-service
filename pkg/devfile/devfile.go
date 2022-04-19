@@ -16,6 +16,7 @@
 package devfile
 
 import (
+	"github.com/devfile/api/v2/pkg/apis/workspaces/v1alpha2"
 	"github.com/devfile/api/v2/pkg/attributes"
 	"github.com/devfile/api/v2/pkg/devfile"
 	devfilePkg "github.com/devfile/library/pkg/devfile"
@@ -86,6 +87,37 @@ func ConvertApplicationToDevfile(hasApp appstudiov1alpha1.Application, gitOpsRep
 		Description: hasApp.Spec.Description,
 		Attributes:  devfileAttributes,
 	})
+
+	return devfileData, nil
+}
+
+func ConvertImageComponentToDevfile(comp appstudiov1alpha1.Component) (data.DevfileData, error) {
+	devfileVersion := string(data.APISchemaVersion210)
+	devfileData, err := data.NewDevfileData(devfileVersion)
+	if err != nil {
+		return nil, err
+	}
+
+	devfileData.SetSchemaVersion(devfileVersion)
+	devfileData.SetMetadata(devfile.DevfileMetadata{
+		Name: comp.Spec.ComponentName,
+	})
+
+	// Generate a stub container component for the devfile
+	components := []v1alpha2.Component{
+		{
+			Name: "container",
+			ComponentUnion: v1alpha2.ComponentUnion{
+				Container: &v1alpha2.ContainerComponent{
+					Container: v1alpha2.Container{
+						Image: comp.Spec.Source.ImageSource.ContainerImage,
+					},
+				},
+			},
+		},
+	}
+
+	devfileData.AddComponents(components)
 
 	return devfileData, nil
 }
