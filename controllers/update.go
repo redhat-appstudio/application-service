@@ -240,9 +240,6 @@ func (r *ComponentReconciler) updateApplicationDevfileModel(hasAppDevfileData da
 			return err
 		}
 	} else if component.Spec.Source.ImageSource != nil {
-		fmt.Println("*****")
-		fmt.Println(component.Spec.Source.ImageSource.ContainerImage)
-
 		var err error
 
 		// Initialize the attributes

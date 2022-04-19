@@ -245,10 +245,6 @@ func (r *ComponentReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 				return ctrl.Result{}, nil
 			}
 			hasApplication.Status.Devfile = string(yamlHASAppData)
-			if source.ImageSource != nil {
-				fmt.Println("*****")
-				fmt.Println(hasApplication.Status.Devfile)
-			}
 			err = r.Status().Update(ctx, &hasApplication)
 			if err != nil {
 				log.Error(err, "Unable to update Application")

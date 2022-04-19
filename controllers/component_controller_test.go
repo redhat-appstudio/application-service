@@ -141,12 +141,10 @@ var _ = Describe("Component controller", func() {
 			}, timeout, interval).Should(BeTrue())
 
 			Eventually(func() bool {
-				fmt.Println(createdHasComp.ResourceVersion)
 				labelSelectors := client.ListOptions{Raw: &metav1.ListOptions{
 					LabelSelector: "build.appstudio.openshift.io/component=" + createdHasComp.Name,
 				}}
 				k8sClient.List(context.Background(), &pipelineRuns, &labelSelectors)
-				fmt.Println(pipelineRuns.Items)
 				return len(pipelineRuns.Items) > 0
 			}, timeout, interval).Should(BeTrue())
 
