@@ -117,7 +117,7 @@ func generateDeployment(component appstudiov1alpha1.Component) *appsv1.Deploymen
 		deployment.Spec.Template.Spec.Containers[0].ReadinessProbe = &corev1.Probe{
 			InitialDelaySeconds: 10,
 			PeriodSeconds:       10,
-			Handler: corev1.Handler{
+			ProbeHandler: corev1.ProbeHandler{
 				TCPSocket: &corev1.TCPSocketAction{
 					Port: intstr.FromInt(component.Spec.TargetPort),
 				},
@@ -126,7 +126,7 @@ func generateDeployment(component appstudiov1alpha1.Component) *appsv1.Deploymen
 		deployment.Spec.Template.Spec.Containers[0].LivenessProbe = &corev1.Probe{
 			InitialDelaySeconds: 10,
 			PeriodSeconds:       10,
-			Handler: corev1.Handler{
+			ProbeHandler: corev1.ProbeHandler{
 				HTTPGet: &corev1.HTTPGetAction{
 					Port: intstr.FromInt(component.Spec.TargetPort),
 					Path: "/",

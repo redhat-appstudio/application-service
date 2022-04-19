@@ -165,7 +165,7 @@ func TestGenerateDeployment(t *testing.T) {
 									ReadinessProbe: &corev1.Probe{
 										InitialDelaySeconds: 10,
 										PeriodSeconds:       10,
-										Handler: corev1.Handler{
+										ProbeHandler: corev1.ProbeHandler{
 											TCPSocket: &corev1.TCPSocketAction{
 												Port: intstr.FromInt(5000),
 											},
@@ -174,7 +174,7 @@ func TestGenerateDeployment(t *testing.T) {
 									LivenessProbe: &corev1.Probe{
 										InitialDelaySeconds: 10,
 										PeriodSeconds:       10,
-										Handler: corev1.Handler{
+										ProbeHandler: corev1.ProbeHandler{
 											HTTPGet: &corev1.HTTPGetAction{
 												Port: intstr.FromInt(5000),
 												Path: "/",
