@@ -6,65 +6,21 @@ set -o pipefail
 # error on unset variables
 set -u
 
-command -v e2e-appstudio >/dev/null 2>&1 || { echo "e2e-appstudio bin is not installed. Please install it from: https://github.com/redhat-appstudio/e2e-tests."; exit 1; }
-command -v kubectl >/dev/null 2>&1 || { echo "kubectl is not installed. Aborting."; exit 1; }
+        # get branch ref of the fork the PR was created from
+        echo ${CLONEREFS_OPTIONS}
+        AUTHOR_LINK=$(jq -r '.refs[0].pulls[0].author_link' <<< ${CLONEREFS_OPTIONS} | tr -d '[:space:]')
+        PULL_PULL_SHA=${PULL_PULL_SHA:-$(jq -r '.refs[0].pulls[0].sha' <<< ${CLONEREFS_OPTIONS} | tr -d '[:space:]')}
+        echo "using author link ${AUTHOR_LINK}"
 
-export WORKSPACE=$(dirname $(dirname $(readlink -f "$0")));
-export TEST_SUITE="has-suite"
-export APPLICATION_NAMESPACE="openshift-gitops"
-export APPLICATION_NAME="all-components-staging"
-
-# HAS_CONTROLLER_IMAGE it is application-service controller image builded in openshift CI job workflow. More info about how works image dependencies in ci:https://github.com/openshift/ci-tools/blob/master/TEMPLATES.md#parameters-available-to-templates
-# Container env defined at: https://github.com/openshift/release/blob/master/ci-operator/config/redhat-appstudio/application-service/redhat-appstudio-application-service-main.yaml#L6-L7
-# Openshift CI generate the application service container value as registry.build01.ci.openshift.org/ci-op-83gwcnmk/pipeline@sha256:8812e26b50b262d0cc45da7912970a205add4bd4e4ff3fed421baf3120027206. Need to get the image without sha.
-export OPENSHIFT_CI_CONTROLLER_IMAGE=${HAS_CONTROLLER_IMAGE%@*}
-# Tag defined at: https://github.com/openshift/release/blob/master/ci-operator/config/redhat-appstudio/application-service/redhat-appstudio-application-service-main.yaml#L8
-export OPENSHIFT_CI_CONTROLLER_TAG=${HAS_CONTROLLER_IMAGE_TAG:-"redhat-appstudio-has-image"}
-
-export HAS_IMAGE_REPO=${OPENSHIFT_CI_CONTROLLER_IMAGE:-"quay.io/redhat-appstudio/application-service"}
-export HAS_IMAGE_TAG=${OPENSHIFT_CI_CONTROLLER_TAG:-"next"}
-
-# Available openshift ci environments https://docs.ci.openshift.org/docs/architecture/step-registry/#available-environment-variables
-export ARTIFACTS_DIR=${ARTIFACT_DIR:-"/tmp/appstudio"}
-
-function waitHASApplicationToBeReady() {
-    while [ "$(kubectl get applications.argoproj.io has -n openshift-gitops -o jsonpath='{.status.health.status}')" != "Healthy" ]; do
-        sleep 30s
-        echo "[INFO] Waiting for HAS to be ready."
-    done
-}
-
-function waitAppStudioToBeReady() {
-    while [ "$(kubectl get applications.argoproj.io ${APPLICATION_NAME} -n ${APPLICATION_NAMESPACE} -o jsonpath='{.status.health.status}')" != "Healthy" ] ||
-          [ "$(kubectl get applications.argoproj.io ${APPLICATION_NAME} -n ${APPLICATION_NAMESPACE} -o jsonpath='{.status.sync.status}')" != "Synced" ]; do
-        sleep 1m
-        echo "[INFO] Waiting for AppStudio to be ready."
-    done
-}
-
-function waitBuildToBeReady() {
-    while [ "$(kubectl get applications.argoproj.io build -n ${APPLICATION_NAMESPACE} -o jsonpath='{.status.health.status}')" != "Healthy" ] ||
-          [ "$(kubectl get applications.argoproj.io build -n ${APPLICATION_NAMESPACE} -o jsonpath='{.status.sync.status}')" != "Synced" ]; do
-        sleep 1m
-        echo "[INFO] Waiting for Build to be ready."
-    done
-}
-
-function executeE2ETests() {
-    # E2E instructions can be found: https://github.com/redhat-appstudio/e2e-tests
-    # The e2e binary is included in Openshift CI test container from the dockerfile: https://github.com/redhat-appstudio/infra-deployments/blob/main/.ci/openshift-ci/Dockerfile
-    e2e-appstudio --ginkgo.junit-report="${ARTIFACTS_DIR}"/e2e-report.xml --ginkgo.focus="${TEST_SUITE}"
-}
-
-curl https://raw.githubusercontent.com/redhat-appstudio/e2e-tests/main/scripts/install-appstudio-e2e-mode.sh | bash -s install
-
-export -f waitAppStudioToBeReady
-export -f waitBuildToBeReady
-export -f waitHASApplicationToBeReady
-
-# Install AppStudio Controllers and wait for HAS and other AppStudio application to be running.
-timeout --foreground 10m bash -c waitAppStudioToBeReady
-timeout --foreground 10m bash -c waitBuildToBeReady
-timeout --foreground 10m bash -c waitHASApplicationToBeReady
-
-executeE2ETests
+        REPO_URL=${AUTHOR_LINK}/e2e-tests
+        echo "branches of ${REPO_URL} - trying to detect the branch name we should use for pairing."
+        curl ${REPO_URL}.git/info/refs?service=git-upload-pack --output -
+        GET_BRANCH_NAME=$(curl ${REPO_URL}.git/info/refs?service=git-upload-pack --output - 2>/dev/null | grep -a ${PULL_PULL_SHA} || true)
+            
+        BRANCH_REF=$(echo ${GET_BRANCH_NAME} | awk '{print $2}')
+        echo "detected branch ref ${BRANCH_REF}"
+        # retrieve the branch name
+        BRANCH_NAME=$(echo ${BRANCH_REF} | awk -F'/' '{print $3}')
+        echo -e "AAAA"
+        echo $BRANCH_NAME
+        echo "######"
