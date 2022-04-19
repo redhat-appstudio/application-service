@@ -73,6 +73,12 @@ func Generate(fs afero.Fs, outputFolder string, component appstudiov1alpha1.Comp
 }
 
 func generateDeployment(component appstudiov1alpha1.Component) *appsv1.Deployment {
+	var containerImage string
+	if component.Spec.Source.ImageSource != nil && component.Spec.Source.ImageSource.ContainerImage != "" {
+		containerImage = component.Spec.Source.ImageSource.ContainerImage
+	} else {
+		containerImage = component.Spec.Build.ContainerImage
+	}
 	replicas := getReplicas(component)
 	k8sLabels := generateK8sLabels(component)
 	matchLabels := getMatchLabel(component)
@@ -99,7 +105,7 @@ func generateDeployment(component appstudiov1alpha1.Component) *appsv1.Deploymen
 					Containers: []corev1.Container{
 						{
 							Name:            "container-image",
-							Image:           component.Spec.Build.ContainerImage,
+							Image:           containerImage,
 							ImagePullPolicy: corev1.PullAlways,
 							Env:             component.Spec.Env,
 							Resources:       component.Spec.Resources,
