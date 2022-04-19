@@ -6,6 +6,13 @@ set -o pipefail
 # error on unset variables
 set -u
 
+#
+
+printenv
+
+
+
+
         # get branch ref of the fork the PR was created from
         echo ${CLONEREFS_OPTIONS}
         AUTHOR_LINK=$(jq -r '.refs[0].pulls[0].author_link' <<< ${CLONEREFS_OPTIONS} | tr -d '[:space:]')
