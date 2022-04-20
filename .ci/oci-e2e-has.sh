@@ -17,7 +17,7 @@ printenv
             echo "using author link ${AUTHOR_LINK}"
             echo "using pull sha ${PULL_PULL_SHA}"
             # get branch ref of the fork the PR was created from
-            REPO_URL=${AUTHOR_LINK}/toolchain-e2e
+            REPO_URL=${AUTHOR_LINK}/e2e-tests
             echo "branches of ${REPO_URL} - trying to detect the branch name we should use for pairing."
             curl ${REPO_URL}.git/info/refs?service=git-upload-pack --output -
             GET_BRANCH_NAME=$(curl ${REPO_URL}.git/info/refs?service=git-upload-pack --output - 2>/dev/null | grep -a ${PULL_PULL_SHA} || true)
