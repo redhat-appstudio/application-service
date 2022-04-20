@@ -23,10 +23,6 @@ spec:
     bundle: quay.io/redhat-appstudio/build-templates-bundle:0866720a87aec4675074069cd16662d8e01237cf
   workspaces:
     - name: workspace
-      volumeClaimTemplate:
-        spec:
-          accessModes:
-            - ReadWriteOnce
-          resources:
-            requests:
-              storage: 200Mi
+      persistentVolumeClaim:
+        claimName: app-studio-default-workspace
+      subPath: application-service-push-{{ revision }}
