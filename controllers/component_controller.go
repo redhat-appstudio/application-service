@@ -193,7 +193,7 @@ func (r *ComponentReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 			if err != nil {
 				log.Error(err, fmt.Sprintf("Unable to get the Application %s, exiting reconcile loop %v", component.Spec.Application, req.NamespacedName))
 				r.SetCreateConditionAndUpdateCR(ctx, &component, err)
-				return ctrl.Result{}, nil
+				return ctrl.Result{}, err
 			}
 
 			if hasApplication.Status.Devfile != "" {
@@ -266,7 +266,7 @@ func (r *ComponentReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 				log.Error(err, fmt.Sprintf("Application devfile model is empty. Before creating a Component, an instance of Application should be created, exiting reconcile loop %v", req.NamespacedName))
 				err := fmt.Errorf("application devfile model is empty. Before creating a Component, an instance of Application should be created")
 				r.SetCreateConditionAndUpdateCR(ctx, &component, err)
-				return ctrl.Result{}, nil
+				return ctrl.Result{}, err
 			}
 
 		} else if source.ImageSource != nil && source.ImageSource.ContainerImage != "" {
