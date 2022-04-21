@@ -91,9 +91,6 @@ type ComponentSpec struct {
 	// A relative path inside the git repo containing the component
 	Context string `json:"context,omitempty"`
 
-	// List of references to ReleaseStrategies to use when releasing the component
-	ReleaseStrategies []string `json:"releaseStrategies,omitempty"`
-
 	// Compute Resources required by this component
 	Resources corev1.ResourceRequirements `json:"resources,omitempty"`
 
