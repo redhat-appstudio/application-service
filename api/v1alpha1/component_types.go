@@ -36,9 +36,6 @@ type GitSource struct {
 	// If importing from git, the repository to create the component from
 	URL string `json:"url"`
 
-	// Secret containing a Person Access Token to clone a sample, if using private repository
-	Secret string `json:"secret,omitempty"`
-
 	// If specified, the devfile at the URL will be used for the component.
 	DevfileURL string `json:"devfileUrl,omitempty"`
 }
@@ -84,6 +81,11 @@ type ComponentSpec struct {
 	// +kubebuilder:validation:Pattern=^[a-z0-9]([-a-z0-9]*[a-z0-9])?$
 	// Application to add the component to
 	Application string `json:"application"`
+
+	// Secret describes the name of a Kubernetes secret containing either:
+	// 1. A Personal Access Token to access the Component's git repostiory (if using a Git-source component) or
+	// 2. An Image Pull Secret to access the Component's container image (if using an Image-source component).
+	Secret string `json:"secret,omitempty"`
 
 	// Source describes the Component source
 	Source ComponentSource `json:"source"`

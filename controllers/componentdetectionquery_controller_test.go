@@ -526,9 +526,9 @@ var _ = Describe("Component Detection Query controller", func() {
 					Namespace: HASNamespace,
 				},
 				Spec: appstudiov1alpha1.ComponentDetectionQuerySpec{
+					Secret: queryName,
 					GitSource: appstudiov1alpha1.GitSource{
-						URL:    SampleRepoLink,
-						Secret: queryName,
+						URL: SampleRepoLink,
 					},
 				},
 			}
@@ -590,9 +590,9 @@ var _ = Describe("Component Detection Query controller", func() {
 				},
 				Spec: appstudiov1alpha1.ComponentDetectionQuerySpec{
 					IsMultiComponent: true,
+					Secret:           queryName,
 					GitSource: appstudiov1alpha1.GitSource{
-						URL:    "https://github.com/maysunfaisal/multi-components",
-						Secret: queryName,
+						URL: "https://github.com/maysunfaisal/multi-components",
 					},
 				},
 			}
@@ -651,9 +651,9 @@ var _ = Describe("Component Detection Query controller", func() {
 					Namespace: HASNamespace,
 				},
 				Spec: appstudiov1alpha1.ComponentDetectionQuerySpec{
+					Secret: queryName,
 					GitSource: appstudiov1alpha1.GitSource{
-						URL:    "https://github.com/test-repo/test-error-response",
-						Secret: queryName,
+						URL: "https://github.com/test-repo/test-error-response",
 					},
 				},
 			}
@@ -694,9 +694,9 @@ var _ = Describe("Component Detection Query controller", func() {
 					Namespace: HASNamespace,
 				},
 				Spec: appstudiov1alpha1.ComponentDetectionQuerySpec{
+					Secret: queryName,
 					GitSource: appstudiov1alpha1.GitSource{
-						URL:    "https://github.com/test-repo/testrepo",
-						Secret: queryName,
+						URL: "https://github.com/test-repo/testrepo",
 					},
 				},
 			}

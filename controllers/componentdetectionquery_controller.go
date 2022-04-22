@@ -86,16 +86,16 @@ func (r *ComponentDetectionQueryReconciler) Reconcile(ctx context.Context, req c
 		r.SetDetectingConditionAndUpdateCR(ctx, &componentDetectionQuery)
 
 		var gitToken string
-		if componentDetectionQuery.Spec.GitSource.Secret != "" {
+		if componentDetectionQuery.Spec.Secret != "" {
 			gitSecret := corev1.Secret{}
 			namespacedName := types.NamespacedName{
-				Name:      componentDetectionQuery.Spec.GitSource.Secret,
+				Name:      componentDetectionQuery.Spec.Secret,
 				Namespace: componentDetectionQuery.Namespace,
 			}
 
 			err = r.Client.Get(ctx, namespacedName, &gitSecret)
 			if err != nil {
-				log.Error(err, fmt.Sprintf("Unable to retrieve Git secret %v, exiting reconcile loop %v", componentDetectionQuery.Spec.GitSource.Secret, req.NamespacedName))
+				log.Error(err, fmt.Sprintf("Unable to retrieve Git secret %v, exiting reconcile loop %v", componentDetectionQuery.Spec.Secret, req.NamespacedName))
 				r.SetCompleteConditionAndUpdateCR(ctx, &componentDetectionQuery, err)
 				return ctrl.Result{}, nil
 			}
