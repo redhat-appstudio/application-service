@@ -30,6 +30,10 @@ func (k *Kustomization) AddResources(s ...string) {
 	k.Resources = removeDuplicatesAndSort(append(k.Resources, s...))
 }
 
+func (k *Kustomization) AddBases(s ...string) {
+	k.Bases = removeDuplicatesAndSort(append(k.Bases, s...))
+}
+
 func removeDuplicatesAndSort(s []string) []string {
 	exists := make(map[string]bool)
 	out := []string{}
