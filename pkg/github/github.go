@@ -30,7 +30,7 @@ const AppStudioAppDataOrg = "redhat-appstudio-appdata"
 func GenerateNewRepositoryName(displayName string, namespace string) string {
 	sanitizedName := util.SanitizeName(displayName)
 
-	repoName := sanitizedName + "-" + namespace + "-" + util.SanitizeName(gofakeit.Verb()) + "-" + util.SanitizeName(gofakeit.Noun())
+	repoName := sanitizedName + "-" + namespace + "-" + util.SanitizeName(gofakeit.Verb()) + "-" + util.SanitizeName(gofakeit.Verb())
 	return repoName
 }
 
