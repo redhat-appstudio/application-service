@@ -22,7 +22,6 @@ import (
 	devfilePkg "github.com/devfile/library/pkg/devfile"
 	parser "github.com/devfile/library/pkg/devfile/parser"
 	data "github.com/devfile/library/pkg/devfile/parser/data"
-	"github.com/hashicorp/go-multierror"
 
 	appstudiov1alpha1 "github.com/redhat-appstudio/application-service/api/v1alpha1"
 	"github.com/redhat-appstudio/application-service/pkg/util"
@@ -202,7 +201,7 @@ func DownloadDevfile(dir string) ([]byte, error) {
 
 	for _, path := range validDevfileLocations {
 		devfilePath := dir + "/" + path
-		devfileBytes, err = util.CurlEndpoint(devfilePath)
+		devfileBytes, err = DownloadFile(devfilePath)
 		if err == nil {
 			// if we get a 200, return
 			return devfileBytes, err
@@ -212,38 +211,27 @@ func DownloadDevfile(dir string) ([]byte, error) {
 	return nil, &NoDevfileFound{Location: dir}
 }
 
-// DownloadDockerfile downloads dockerile
-func DownloadDockerfile(dir string) ([]byte, error) {
-	path := "Dockerfile"
-
-	dockerfilePath := dir + "/" + path
-	dockerfileBytes, err := util.CurlEndpoint(dockerfilePath)
-	if err == nil {
-		// if we get a 200, return
-		return dockerfileBytes, err
-	}
-
-	return nil, &NoDockerfileFound{Location: dir}
+// DownloadFile downloads the specified file
+func DownloadFile(file string) ([]byte, error) {
+	return util.CurlEndpoint(file)
 }
 
-func DownloadDevfileAndDockerfile(dir string) ([]byte, []byte, error) {
-	var returnErr error
+// DownloadDevfileAndDockerfile attempts to download the  devfile and dockerfile from the root of the specified url
+func DownloadDevfileAndDockerfile(url string) ([]byte, []byte) {
+	var devfileBytes, dockerfileBytes []byte
 
-	devfileBytes, err := DownloadDevfile(dir)
-	if err != nil {
-		returnErr = multierror.Append(returnErr, err)
-	}
+	devfileBytes, _ = DownloadDevfile(url)
+	dockerfileBytes, _ = DownloadFile(url + "/Dockerfile")
 
-	dockerfileBytes, err := DownloadDockerfile(dir)
-	if err != nil {
-		returnErr = multierror.Append(returnErr, err)
-	}
-
-	return devfileBytes, dockerfileBytes, nil
+	return devfileBytes, dockerfileBytes
 }
 
-// ScanRepo attempts to read and return devfiles from the local path upto the specified depth
-// If no devfile(s) is found, then the Alizer tool is used to detect and match a devfile from the devfile registry
+// ScanRepo attempts to read and return devfiles and dockerfiles from the local path upto the specified depth
+// If no devfile(s) or dockerfile(s) are found, then the Alizer tool is used to detect and match a devfile/dockerfile from the devfile registry
+// ScanRepo returns 3 maps and an error:
+// Map 1 returns a context to the devfile bytes if present.
+// Map 2 returns a context to the matched devfileURL from the devfile registry if no devfile is present in the context.
+// Map 3 returns a context to the dockerfile uri or a matched dockerfileURL from the devfile registry if no dockerfile is present in the context
 func ScanRepo(log logr.Logger, a Alizer, localpath string, depth int, devfileRegistryURL string) (map[string][]byte, map[string]string, map[string]string, error) {
 	return search(log, a, localpath, 0, depth, devfileRegistryURL)
 }

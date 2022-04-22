@@ -816,11 +816,12 @@ func TestUpdateComponentStub(t *testing.T) {
 	}
 
 	tests := []struct {
-		name            string
-		devfilesDataMap map[string]*v2.DevfileV2
-		devfilesURLMap  map[string]string
-		isNil           bool
-		wantErr         bool
+		name             string
+		devfilesDataMap  map[string]*v2.DevfileV2
+		devfilesURLMap   map[string]string
+		dockerfileURLMap map[string]string
+		isNil            bool
+		wantErr          bool
 	}{
 		{
 			name: "Container Components present",
@@ -867,6 +868,40 @@ func TestUpdateComponentStub(t *testing.T) {
 			},
 			devfilesURLMap: map[string]string{
 				"./": "http://somelink",
+			},
+		},
+		{
+			name: "Container Components present with a devfile & dockerfile URL",
+			devfilesDataMap: map[string]*v2.DevfileV2{
+				"./": {
+					Devfile: devfileAPIV1.Devfile{
+						DevfileHeader: devfile.DevfileHeader{
+							SchemaVersion: "2.1.0",
+							Metadata: devfile.DevfileMetadata{
+								Name:        "test-devfile",
+								Language:    "language",
+								ProjectType: "project",
+							},
+						},
+						DevWorkspaceTemplateSpec: devfileAPIV1.DevWorkspaceTemplateSpec{
+							DevWorkspaceTemplateSpecContent: devfileAPIV1.DevWorkspaceTemplateSpecContent{
+								Components: componentsValid,
+							},
+						},
+					},
+				},
+			},
+			devfilesURLMap: map[string]string{
+				"./": "http://somelink",
+			},
+			dockerfileURLMap: map[string]string{
+				"./": "http://someotherlink",
+			},
+		},
+		{
+			name: "dockerfile URL only",
+			dockerfileURLMap: map[string]string{
+				"./": "http://someotherlink",
 			},
 		},
 		{
@@ -1265,7 +1300,7 @@ func TestUpdateComponentStub(t *testing.T) {
 			if tt.isNil {
 				err = r.updateComponentStub(nil, devfilesMap, nil, nil)
 			} else {
-				err = r.updateComponentStub(&componentDetectionQuery, devfilesMap, tt.devfilesURLMap, nil)
+				err = r.updateComponentStub(&componentDetectionQuery, devfilesMap, tt.devfilesURLMap, tt.dockerfileURLMap)
 			}
 
 			if tt.wantErr && (err == nil) {
@@ -1273,19 +1308,39 @@ func TestUpdateComponentStub(t *testing.T) {
 			} else if !tt.wantErr && err != nil {
 				t.Errorf("got unexpected error %v", err)
 			} else if err == nil {
-				if len(componentDetectionQuery.Status.ComponentDetected) != len(tt.devfilesDataMap) {
-					t.Errorf("expected no of devfiles: %v, actual no of devfiles %v", len(tt.devfilesDataMap), len(componentDetectionQuery.Status.ComponentDetected))
-				} else {
-					for _, hasCompDetection := range componentDetectionQuery.Status.ComponentDetected {
-						assert.Equal(t, hasCompDetection.Language, tt.devfilesDataMap[hasCompDetection.ComponentStub.Context].Metadata.Language, "The language should be the same")
-						assert.Equal(t, hasCompDetection.ProjectType, tt.devfilesDataMap[hasCompDetection.ComponentStub.Context].Metadata.ProjectType, "The project type should be the same")
-						assert.Equal(t, hasCompDetection.DevfileFound, true, "The devfile found should be true")
-						assert.Equal(t, hasCompDetection.ComponentStub.ComponentName, tt.devfilesDataMap[hasCompDetection.ComponentStub.Context].Metadata.Name, "The component name should be the same")
-						assert.Equal(t, hasCompDetection.ComponentStub.Application, "insert-application-name", "The application name should match the generic name")
+				for _, hasCompDetection := range componentDetectionQuery.Status.ComponentDetected {
+					// Application Name
+					assert.Equal(t, hasCompDetection.ComponentStub.Application, "insert-application-name", "The application name should match the generic name")
 
+					if len(tt.devfilesDataMap) != 0 {
+						// Language
+						assert.Equal(t, hasCompDetection.Language, tt.devfilesDataMap[hasCompDetection.ComponentStub.Context].Metadata.Language, "The language should be the same")
+
+						// Project Type
+						assert.Equal(t, hasCompDetection.ProjectType, tt.devfilesDataMap[hasCompDetection.ComponentStub.Context].Metadata.ProjectType, "The project type should be the same")
+
+						// Devfile Found
+						assert.Equal(t, hasCompDetection.DevfileFound, len(tt.devfilesURLMap[hasCompDetection.ComponentStub.Context]) == 0, "The devfile found did not match expected")
+
+						// Component Name
+						if len(tt.devfilesDataMap[hasCompDetection.ComponentStub.Context].Metadata.Name) > 0 {
+							assert.Contains(t, hasCompDetection.ComponentStub.ComponentName, tt.devfilesDataMap[hasCompDetection.ComponentStub.Context].Metadata.Name, "The component name did not match the expected")
+						} else {
+							assert.Contains(t, hasCompDetection.ComponentStub.ComponentName, "component", "The component name did not match the expected")
+						}
+
+						// Devfile URL
 						if len(tt.devfilesURLMap) > 0 {
 							assert.NotNil(t, hasCompDetection.ComponentStub.Source.GitSource, "The git source cannot be nil for this test")
+							assert.Equal(t, hasCompDetection.ComponentStub.Source.GitSource.URL, "url", "The URL should match")
 							assert.Equal(t, hasCompDetection.ComponentStub.Source.GitSource.DevfileURL, tt.devfilesURLMap[hasCompDetection.ComponentStub.Context], "The devfile URL should match")
+						}
+
+						// Dockerfile URL
+						if len(tt.dockerfileURLMap) > 0 {
+							assert.NotNil(t, hasCompDetection.ComponentStub.Source.GitSource, "The git source cannot be nil for this test")
+							assert.Equal(t, hasCompDetection.ComponentStub.Source.GitSource.URL, "url", "The URL should match")
+							assert.Equal(t, hasCompDetection.ComponentStub.Source.GitSource.DockerfileURL, tt.dockerfileURLMap[hasCompDetection.ComponentStub.Context], "The dockerfile URL should match")
 						}
 
 						for _, devfileComponent := range tt.devfilesDataMap[hasCompDetection.ComponentStub.Context].Components {
@@ -1351,51 +1406,29 @@ func TestUpdateComponentStub(t *testing.T) {
 							}
 						}
 					}
+
+					if len(tt.dockerfileURLMap) != 0 {
+						// Language
+						assert.Equal(t, hasCompDetection.Language, "Dockerfile", "The language should be the same")
+
+						// Project Type
+						assert.Equal(t, hasCompDetection.ProjectType, "Dockerfile", "The project type should be the same")
+
+						// Devfile Found
+						assert.Equal(t, hasCompDetection.DevfileFound, false, "The devfile found did not match expected")
+
+						// Component Name
+						assert.Contains(t, hasCompDetection.ComponentStub.ComponentName, "dockerfile", "The component name did not match the expected")
+
+						// Dockerfile URL
+						if len(tt.dockerfileURLMap) > 0 {
+							assert.NotNil(t, hasCompDetection.ComponentStub.Source.GitSource, "The git source cannot be nil for this test")
+							assert.Equal(t, hasCompDetection.ComponentStub.Source.GitSource.URL, "url", "The URL should match")
+							assert.Equal(t, hasCompDetection.ComponentStub.Source.GitSource.DockerfileURL, tt.dockerfileURLMap[hasCompDetection.ComponentStub.Context], "The dockerfile URL should match")
+						}
+					}
 				}
 			}
 		})
 	}
 }
-
-// func TestUpdateDockerfileLink(t *testing.T) {
-// 	tests := []struct {
-// 		name                 string
-// 		repo                 string
-// 		dockerfileContextMap map[string]string
-// 		wantErr              bool
-// 	}{
-// 		{
-// 			name: "Project already present",
-// 			repo: "https://github.com/devfile-samples/devfile-sample-python-basic",
-// 			dockerfileContextMap: map[string]string{
-// 				"docker": "docker",
-// 			},
-// 		},
-// 	}
-
-// 	for _, tt := range tests {
-// 		t.Run(tt.name, func(t *testing.T) {
-// 			// devfileData := &v2.DevfileV2{
-// 			// 	Devfile: devfileAPIV1.Devfile{
-// 			// 		DevWorkspaceTemplateSpec: devfileAPIV1.DevWorkspaceTemplateSpec{
-// 			// 			DevWorkspaceTemplateSpecContent: devfileAPIV1.DevWorkspaceTemplateSpecContent{
-// 			// 				Projects: tt.projects,
-// 			// 			},
-// 			// 		},
-// 			// 	},
-// 			// }
-// 			r := ComponentDetectionQueryReconciler{}
-// 			err := r.updateDockerfileLink(tt.repo, tt.dockerfileContextMap)
-// 			if tt.wantErr && (err == nil) {
-// 				t.Error("wanted error but got nil")
-// 			} else if !tt.wantErr && err != nil {
-// 				t.Errorf("got unexpected error %v", err)
-// 			} else if err == nil {
-// 				for context, link := range tt.dockerfileContextMap {
-// 					t.Logf("context is %s", context)
-// 					t.Logf("link is %s", link)
-// 				}
-// 			}
-// 		})
-// 	}
-// }

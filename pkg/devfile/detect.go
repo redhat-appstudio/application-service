@@ -37,9 +37,12 @@ type Alizer interface {
 type AlizerClient struct {
 }
 
-// search searches a given localpath for a devfile upto the specified depth. If no devfile is present until
-// the depth, alizer is used to analyze and detect a devfile from the registry. It returns a map of repo context to the devfile
-// bytes, a map of repo context to the devfile detected(if any) and an error
+// search attempts to read and return devfiles and dockerfiles from the local path upto the specified depth
+// If no devfile(s) or dockerfile(s) are found, then the Alizer tool is used to detect and match a devfile/dockerfile from the devfile registry
+// search returns 3 maps and an error:
+// Map 1 returns a context to the devfile bytes if present.
+// Map 2 returns a context to the matched devfileURL from the devfile registry if no devfile is present in the context.
+// Map 3 returns a context to the dockerfile uri or a matched dockerfileURL from the devfile registry if no dockerfile is present in the context
 func search(log logr.Logger, a Alizer, localpath string, currentLevel, depth int, devfileRegistryURL string) (map[string][]byte, map[string]string, map[string]string, error) {
 	// TODO - maysunfaisal
 	// There seems to a gap in the logic if we extend past depth 1 and discovering devfile logic

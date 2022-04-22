@@ -153,18 +153,13 @@ func (r *ComponentDetectionQueryReconciler) Reconcile(ctx context.Context, req c
 						return ctrl.Result{}, nil
 					}
 
-					devfileBytes, dockerfileBytes, err = devfile.DownloadDevfileAndDockerfile(gitURL)
-					if err != nil {
-						log.Info(fmt.Sprintf("Unable to curl for any known devfile/dockerfile locations from %s due to %v, repo will be cloned and analyzed %v", source.URL, err, req.NamespacedName))
-					}
+					devfileBytes, dockerfileBytes = devfile.DownloadDevfileAndDockerfile(gitURL)
 				} else {
 					// Use SPI to retrieve the devfile from the private repository
 					// TODO - maysunfaisal also search for Dockerfile
 					devfileBytes, err = spi.DownloadDevfileUsingSPI(r.SPIClient, ctx, componentDetectionQuery.Namespace, source.URL, "main", "")
 					if err != nil {
 						log.Error(err, fmt.Sprintf("Unable to curl for any known devfile locations from %s %v", source.URL, req.NamespacedName))
-						// r.SetCompleteConditionAndUpdateCR(ctx, &componentDetectionQuery, err)
-						// return ctrl.Result{}, nil
 					}
 				}
 
