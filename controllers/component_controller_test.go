@@ -602,7 +602,7 @@ var _ = Describe("Component controller", func() {
 	})
 
 	Context("Create a Component before an Application", func() {
-		It("Should error out because an Application is missing", func() {
+		It("Should reconcile once the application is created", func() {
 			ctx := context.Background()
 
 			applicationName := HASAppName + "4"
@@ -645,7 +645,17 @@ var _ = Describe("Component controller", func() {
 			Expect(createdHasComp.Status.Conditions[len(createdHasComp.Status.Conditions)-1].Reason).Should(Equal("Error"))
 			Expect(createdHasComp.Status.Conditions[len(createdHasComp.Status.Conditions)-1].Message).Should(ContainSubstring(fmt.Sprintf("%q not found", hasComp.Spec.Application)))
 
+			// Now create the application resource that it references
+			createAndFetchSimpleApp(applicationName, HASAppNamespace, DisplayName, Description)
+
+			// Now fetch the Component resource and validate that eventually its status condition changes to succcess
+			Eventually(func() bool {
+				k8sClient.Get(context.Background(), hasCompLookupKey, createdHasComp)
+				return len(createdHasComp.Status.Conditions) > 0 && createdHasComp.Status.Conditions[0].Reason == "OK"
+			}, timeout, interval).Should(BeTrue())
+
 			// Delete the specified HASComp resource
+			deleteHASAppCR(types.NamespacedName{Name: applicationName, Namespace: HASAppNamespace})
 			deleteHASCompCR(hasCompLookupKey)
 
 		})

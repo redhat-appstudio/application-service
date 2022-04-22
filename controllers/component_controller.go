@@ -22,15 +22,18 @@ import (
 	"net/url"
 	"path"
 	"reflect"
+	"time"
 
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/client-go/util/workqueue"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/builder"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/controller"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	"sigs.k8s.io/controller-runtime/pkg/predicate"
 	"sigs.k8s.io/yaml"
@@ -207,9 +210,9 @@ func (r *ComponentReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 		hasApplication := appstudiov1alpha1.Application{}
 		err = r.Get(ctx, types.NamespacedName{Name: component.Spec.Application, Namespace: component.Namespace}, &hasApplication)
 		if err != nil {
-			log.Error(err, fmt.Sprintf("Unable to get the Application %s, exiting reconcile loop %v", component.Spec.Application, req.NamespacedName))
+			log.Error(err, fmt.Sprintf("Unable to get the Application %s, requeueing %v", component.Spec.Application, req.NamespacedName))
 			r.SetCreateConditionAndUpdateCR(ctx, &component, err)
-			return ctrl.Result{}, nil
+			return ctrl.Result{}, err
 		}
 
 		if hasApplication.Status.Devfile != "" {
@@ -218,7 +221,7 @@ func (r *ComponentReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 			if err != nil {
 				log.Error(err, fmt.Sprintf("Unable to parse the devfile from Application, exiting reconcile loop %v", req.NamespacedName))
 				r.SetCreateConditionAndUpdateCR(ctx, &component, err)
-				return ctrl.Result{}, nil
+				return ctrl.Result{}, err
 			}
 
 			err = r.updateApplicationDevfileModel(hasAppDevfileData, component)
@@ -287,10 +290,10 @@ func (r *ComponentReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 			}
 
 		} else {
-			log.Error(err, fmt.Sprintf("Application devfile model is empty. Before creating a Component, an instance of Application should be created, exiting reconcile loop %v", req.NamespacedName))
-			err := fmt.Errorf("application devfile model is empty. Before creating a Component, an instance of Application should be created")
+			log.Error(err, fmt.Sprintf("Application devfile model is empty. Before creating a Component, an instance of Application should be created. Requeueing %v", req.NamespacedName))
+			err := fmt.Errorf("application devfile model is empty")
 			r.SetCreateConditionAndUpdateCR(ctx, &component, err)
-			return ctrl.Result{}, nil
+			return ctrl.Result{}, err
 		}
 
 	} else {
@@ -676,5 +679,8 @@ func setGitopsStatus(component *appstudiov1alpha1.Component, devfileData data.De
 func (r *ComponentReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&appstudiov1alpha1.Component{}, builder.WithPredicates(predicate.GenerationChangedPredicate{})).
+		WithOptions(controller.Options{
+			RateLimiter: workqueue.NewItemExponentialFailureRateLimiter(time.Duration(500*time.Millisecond), time.Duration(60*time.Second)),
+		}).
 		Complete(r)
 }
