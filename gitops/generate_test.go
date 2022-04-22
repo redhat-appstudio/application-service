@@ -526,7 +526,7 @@ func TestGenerateParentKustomize(t *testing.T) {
 			wantErr: false,
 		},
 		{
-			name:    "Simple gitops repo with 3 components",
+			name:    "Simple gitops repo with 3 components - generation failure",
 			fs:      readOnlyDir,
 			wantErr: true,
 		},

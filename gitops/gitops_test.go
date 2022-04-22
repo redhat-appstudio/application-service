@@ -18,7 +18,6 @@ package gitops
 import (
 	"errors"
 	"path/filepath"
-	"regexp"
 	"testing"
 
 	appstudiov1alpha1 "github.com/redhat-appstudio/application-service/api/v1alpha1"
@@ -50,18 +49,6 @@ func TestGenerateAndPush(t *testing.T) {
 	component.Name = "test-component"
 	fs := ioutils.NewMemoryFilesystem()
 	readOnlyFs := ioutils.NewReadOnlyFs()
-
-	regExpFs := afero.Afero{
-		Fs: afero.NewRegexpFs(fs, regexp.MustCompile(`kustomization.yaml|deployment.yaml|service.yaml|route.yaml`)),
-	}
-	err := regExpFs.MkdirAll("/fake/path/test-component", 0755)
-	if err != nil {
-		panic(err)
-	}
-	_, err = regExpFs.Create("/fake/path/test-component/kustomization.yaml")
-	if err != nil {
-		panic(err)
-	}
 
 	tests := []struct {
 		name          string
