@@ -557,7 +557,7 @@ func TestGenerateAndPush(t *testing.T) {
 					Args:    []string{"commit", "-m", "Generate GitOps resources"},
 				},
 			},
-			wantErrString: "failed to generate the gitops resources in \"/fake/path/components/base\" for component \"\": failed to MkDirAll for /fake/path/components/base/deployment.yaml: operation not permitted",
+			wantErrString: "failed to generate the gitops resources in \"/fake/path/components/base\" for component \"\": failed to MkDirAll",
 		},
 	}
 
