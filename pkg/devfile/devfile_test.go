@@ -146,6 +146,69 @@ func TestConvertApplicationToDevfile(t *testing.T) {
 	}
 }
 
+func TestConvertImageComponentToDevfile(t *testing.T) {
+	//devfileAttributes := attributes.Attributes{}.PutString("gitOpsRepository.url", "https://github.com/testorg/petclinic-gitops").PutString("appModelRepository.url", "https://github.com/testorg/petclinic-app"),
+	tests := []struct {
+		name        string
+		comp        appstudiov1alpha1.Component
+		wantDevfile *v2.DevfileV2
+	}{
+		{
+			name: "Simple Component CR",
+			comp: appstudiov1alpha1.Component{
+				Spec: appstudiov1alpha1.ComponentSpec{
+					ComponentName: "Petclinic",
+					Source: appstudiov1alpha1.ComponentSource{
+						ComponentSourceUnion: appstudiov1alpha1.ComponentSourceUnion{
+							ImageSource: &appstudiov1alpha1.ImageSource{
+								ContainerImage: "quay.io/test/someimage:latest",
+							},
+						},
+					},
+				},
+			},
+			wantDevfile: &v2.DevfileV2{
+				Devfile: v1alpha2.Devfile{
+					DevfileHeader: devfile.DevfileHeader{
+						SchemaVersion: string(data.APISchemaVersion210),
+						Metadata: devfile.DevfileMetadata{
+							Name: "Petclinic",
+						},
+					},
+					DevWorkspaceTemplateSpec: v1alpha2.DevWorkspaceTemplateSpec{
+						DevWorkspaceTemplateSpecContent: v1alpha2.DevWorkspaceTemplateSpecContent{
+							Components: []v1alpha2.Component{
+								{
+									Name: "container",
+									ComponentUnion: v1alpha2.ComponentUnion{
+										Container: &v1alpha2.ContainerComponent{
+											Container: v1alpha2.Container{
+												Image: "quay.io/test/someimage:latest",
+											},
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			// Convert the hasApp resource to a devfile
+			convertedDevfile, err := ConvertImageComponentToDevfile(tt.comp)
+			if err != nil {
+				t.Errorf("TestConvertImageComponentToDevfile() unexpected error: %v", err)
+			} else if !reflect.DeepEqual(convertedDevfile, tt.wantDevfile) {
+				t.Errorf("TestConvertImageComponentToDevfile() error: expected %v got %v", tt.wantDevfile, convertedDevfile)
+			}
+		})
+	}
+}
+
 func TestDownloadDevfile(t *testing.T) {
 	tests := []struct {
 		name    string

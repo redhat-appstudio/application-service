@@ -198,6 +198,114 @@ func TestGenerateDeployment(t *testing.T) {
 				},
 			},
 		},
+		{
+			name: "Simple image component, no optional fields set",
+			component: appstudiov1alpha1.Component{
+				ObjectMeta: v1.ObjectMeta{
+					Name:      componentName,
+					Namespace: namespace,
+				},
+				Spec: appstudiov1alpha1.ComponentSpec{
+					ComponentName: componentName,
+					Application:   applicationName,
+					Source: appstudiov1alpha1.ComponentSource{
+						ComponentSourceUnion: appstudiov1alpha1.ComponentSourceUnion{
+							ImageSource: &appstudiov1alpha1.ImageSource{
+								ContainerImage: "quay.io/test/test:latest",
+							},
+						},
+					},
+				},
+			},
+			wantDeployment: appsv1.Deployment{
+				TypeMeta: v1.TypeMeta{
+					Kind:       "Deployment",
+					APIVersion: "apps/v1",
+				},
+				ObjectMeta: v1.ObjectMeta{
+					Name:      componentName,
+					Namespace: namespace,
+					Labels:    k8slabels,
+				},
+				Spec: appsv1.DeploymentSpec{
+					Replicas: &replicas,
+					Selector: &v1.LabelSelector{
+						MatchLabels: matchLabels,
+					},
+					Template: corev1.PodTemplateSpec{
+						ObjectMeta: v1.ObjectMeta{
+							Labels: matchLabels,
+						},
+						Spec: corev1.PodSpec{
+							Containers: []corev1.Container{
+								{
+									Name:            "container-image",
+									Image:           "quay.io/test/test:latest",
+									ImagePullPolicy: corev1.PullAlways,
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+		{
+			name: "Simple image component with pull secret set",
+			component: appstudiov1alpha1.Component{
+				ObjectMeta: v1.ObjectMeta{
+					Name:      componentName,
+					Namespace: namespace,
+				},
+				Spec: appstudiov1alpha1.ComponentSpec{
+					ComponentName: componentName,
+					Application:   applicationName,
+					Secret:        "my-image-pull-secret",
+					Source: appstudiov1alpha1.ComponentSource{
+						ComponentSourceUnion: appstudiov1alpha1.ComponentSourceUnion{
+							ImageSource: &appstudiov1alpha1.ImageSource{
+								ContainerImage: "quay.io/test/test:latest",
+							},
+						},
+					},
+				},
+			},
+			wantDeployment: appsv1.Deployment{
+				TypeMeta: v1.TypeMeta{
+					Kind:       "Deployment",
+					APIVersion: "apps/v1",
+				},
+				ObjectMeta: v1.ObjectMeta{
+					Name:      componentName,
+					Namespace: namespace,
+					Labels:    k8slabels,
+				},
+				Spec: appsv1.DeploymentSpec{
+					Replicas: &replicas,
+					Selector: &v1.LabelSelector{
+						MatchLabels: matchLabels,
+					},
+					Template: corev1.PodTemplateSpec{
+						ObjectMeta: v1.ObjectMeta{
+							Labels: matchLabels,
+						},
+						Spec: corev1.PodSpec{
+							ImagePullSecrets: []corev1.LocalObjectReference{
+								{
+									Name: "my-image-pull-secret",
+								},
+							},
+							Containers: []corev1.Container{
+								{
+									Name:            "container-image",
+									Image:           "quay.io/test/test:latest",
+									ImagePullPolicy: corev1.PullAlways,
+								},
+							},
+						},
+					},
+				},
+			},
+		},
 	}
 
 	for _, tt := range tests {

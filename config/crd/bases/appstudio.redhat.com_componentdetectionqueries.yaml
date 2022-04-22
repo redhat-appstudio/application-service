@@ -48,10 +48,6 @@ spec:
                     description: If specified, the devfile at the URL will be used
                       for the component.
                     type: string
-                  secret:
-                    description: Secret containing a Person Access Token to clone
-                      a sample, if using private repository
-                    type: string
                   url:
                     description: If importing from git, the repository to create the
                       component from
@@ -63,6 +59,10 @@ spec:
                 description: IsMultiComponent specifies if the component specified
                   has multiple services
                 type: boolean
+              secret:
+                description: Secret describes the name of a Kubernetes secret containing
+                  a Personal Access Token to access the git repostiory
+                type: string
             required:
             - git
             type: object
@@ -219,12 +219,6 @@ spec:
                             - name
                             type: object
                           type: array
-                        releaseStrategies:
-                          description: List of references to ReleaseStrategies to
-                            use when releasing the component
-                          items:
-                            type: string
-                          type: array
                         replicas:
                           description: The number of replicas to deploy the component
                             with
@@ -259,6 +253,13 @@ spec:
                         route:
                           description: The route to expose the component with
                           type: string
+                        secret:
+                          description: 'Secret describes the name of a Kubernetes
+                            secret containing either: 1. A Personal Access Token to
+                            access the Component''s git repostiory (if using a Git-source
+                            component) or 2. An Image Pull Secret to access the Component''s
+                            container image (if using an Image-source component).'
+                          type: string
                         source:
                           description: Source describes the Component source
                           properties:
@@ -268,10 +269,6 @@ spec:
                                 devfileUrl:
                                   description: If specified, the devfile at the URL
                                     will be used for the component.
-                                  type: string
-                                secret:
-                                  description: Secret containing a Person Access Token
-                                    to clone a sample, if using private repository
                                   type: string
                                 url:
                                   description: If importing from git, the repository
