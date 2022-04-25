@@ -16,16 +16,22 @@
 package gitops
 
 import (
+	"path/filepath"
 	"reflect"
 	"testing"
 
 	routev1 "github.com/openshift/api/route/v1"
 	appstudiov1alpha1 "github.com/redhat-appstudio/application-service/api/v1alpha1"
+	"github.com/redhat-appstudio/application-service/gitops/resources"
+	"github.com/redhat-appstudio/application-service/pkg/util/ioutils"
+	"github.com/spf13/afero"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
+
+	"sigs.k8s.io/yaml"
 )
 
 func TestGenerateDeployment(t *testing.T) {
@@ -492,6 +498,72 @@ func TestGenerateRoute(t *testing.T) {
 
 			if !reflect.DeepEqual(*generatedRoute, tt.wantRoute) {
 				t.Errorf("TestGenerateRoute() error: expected %v got %v", tt.wantRoute, generatedRoute)
+			}
+		})
+	}
+}
+
+func TestGenerateParentKustomize(t *testing.T) {
+	fs := ioutils.NewMemoryFilesystem()
+	readOnlyDir := ioutils.NewReadOnlyFs()
+
+	// Prepopulate the fs with components
+	gitOpsFolder := "/tmp/gitops"
+	componentsFolder := filepath.Join(gitOpsFolder, "components")
+	fs.MkdirAll(componentsFolder, 0755)
+	fs.Mkdir(filepath.Join(componentsFolder, "compA"), 0755)
+	fs.Mkdir(filepath.Join(componentsFolder, "compB"), 0755)
+	fs.Mkdir(filepath.Join(componentsFolder, "compC"), 0755)
+
+	tests := []struct {
+		name    string
+		fs      afero.Afero
+		wantErr bool
+	}{
+		{
+			name:    "Simple gitops repo with 3 components",
+			fs:      fs,
+			wantErr: false,
+		},
+		{
+			name:    "Simple gitops repo with 3 components - generation failure",
+			fs:      readOnlyDir,
+			wantErr: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			err := GenerateParentKustomize(tt.fs, gitOpsFolder)
+
+			if tt.wantErr != (err != nil) {
+				t.Errorf("unexpected error return value. Got %v", err)
+			}
+
+			if !tt.wantErr {
+				// Validate that the kustomization.yaml got created successfully and contains the proper entries
+				kustomizationFilepath := filepath.Join(gitOpsFolder, "kustomization.yaml")
+				exists, err := tt.fs.Exists(kustomizationFilepath)
+				if err != nil {
+					t.Errorf("unexpected error checking if parent kustomize file exists %v", err)
+				}
+				if !exists {
+					t.Errorf("parent kustomize file does not exist at path %v", kustomizationFilepath)
+				}
+
+				// Read the kustomization.yaml and validate its entries
+				k := resources.Kustomization{}
+				kustomizationBytes, err := tt.fs.ReadFile(kustomizationFilepath)
+				if err != nil {
+					t.Errorf("unexpected error reading parent kustomize file")
+				}
+				yaml.Unmarshal(kustomizationBytes, &k)
+
+				// There should be 3 entries in the kustomization file
+				if len(k.Bases) != 3 {
+					t.Errorf("expected %v kustomization bases, got %v", 3, len(k.Bases))
+				}
+
 			}
 		})
 	}

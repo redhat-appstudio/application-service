@@ -37,7 +37,7 @@ type Executor interface {
 // 6. The branch to push to
 // 7. The path within the repository to generate the resources in
 // Adapted from https://github.com/redhat-developer/kam/blob/master/pkg/pipelines/utils.go#L79
-func GenerateAndPush(outputPath string, remote string, component appstudiov1alpha1.Component, e Executor, appFs afero.Fs, branch string, context string) error {
+func GenerateAndPush(outputPath string, remote string, component appstudiov1alpha1.Component, e Executor, appFs afero.Afero, branch string, context string) error {
 	componentName := component.Name
 	if out, err := e.Execute(outputPath, "git", "clone", remote, componentName); err != nil {
 		return fmt.Errorf("failed to clone git repository in %q %q: %s", outputPath, string(out), err)
@@ -56,9 +56,10 @@ func GenerateAndPush(outputPath string, remote string, component appstudiov1alph
 		return fmt.Errorf("failed to delete %q folder in repository in %q %q: %s", filepath.Join("components", componentName), repoPath, string(out), err)
 	}
 
-	// Generate the gitops resources
-	componentPath := filepath.Join(repoPath, context, "components", componentName, "base")
-	if err := Generate(appFs, componentPath, component); err != nil {
+	// Generate the gitops resources and update the parent kustomize yaml file
+	gitopsFolder := filepath.Join(repoPath, context)
+	componentPath := filepath.Join(gitopsFolder, "components", componentName, "base")
+	if err := Generate(appFs, gitopsFolder, componentPath, component); err != nil {
 		return fmt.Errorf("failed to generate the gitops resources in %q for component %q: %s", componentPath, componentName, err)
 	}
 
