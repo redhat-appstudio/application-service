@@ -95,7 +95,7 @@ func GenerateParentKustomize(fs afero.Afero, gitOpsFolder string) error {
 		}
 	}
 
-	resources["kustomization.yml"] = k
+	resources["kustomization.yaml"] = k
 
 	_, err = yaml.WriteResources(fs, gitOpsFolder, resources)
 	return err

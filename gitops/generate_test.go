@@ -542,7 +542,7 @@ func TestGenerateParentKustomize(t *testing.T) {
 
 			if !tt.wantErr {
 				// Validate that the kustomization.yaml got created successfully and contains the proper entries
-				kustomizationFilepath := filepath.Join(gitOpsFolder, "kustomization.yml")
+				kustomizationFilepath := filepath.Join(gitOpsFolder, "kustomization.yaml")
 				exists, err := tt.fs.Exists(kustomizationFilepath)
 				if err != nil {
 					t.Errorf("unexpected error checking if parent kustomize file exists %v", err)
