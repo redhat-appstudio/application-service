@@ -218,7 +218,7 @@ var _ = Describe("Component Detection Query controller", func() {
 			Expect(len(createdHasCompDetectionQuery.Status.ComponentDetected)).Should(Equal(2))
 
 			for devfileName, devfileDesc := range createdHasCompDetectionQuery.Status.ComponentDetected {
-				Expect(devfileName).Should(BeElementOf([]string{"java-springboot", "python"}))
+				Expect(devfileName).Should(Or(ContainSubstring("java-springboot"), ContainSubstring("python")))
 				Expect(devfileDesc.ComponentStub.Context).Should(BeElementOf([]string{"devfile-sample-java-springboot-basic", "devfile-sample-python-basic"}))
 			}
 
@@ -310,7 +310,7 @@ var _ = Describe("Component Detection Query controller", func() {
 			Expect(len(createdHasCompDetectionQuery.Status.ComponentDetected)).Should(Equal(2))
 
 			for devfileName, devfileDesc := range createdHasCompDetectionQuery.Status.ComponentDetected {
-				Expect(devfileName).Should(BeElementOf([]string{"java-springboot", "python"}))
+				Expect(devfileName).Should(Or(ContainSubstring("java-springboot"), ContainSubstring("python")))
 				Expect(devfileDesc.ComponentStub.Context).Should(BeElementOf([]string{"devfile-sample-java-springboot-basic", "devfile-sample-python-basic"}))
 			}
 
@@ -359,7 +359,7 @@ var _ = Describe("Component Detection Query controller", func() {
 			Expect(len(createdHasCompDetectionQuery.Status.ComponentDetected)).Should(Equal(1))
 
 			for devfileName, devfileDesc := range createdHasCompDetectionQuery.Status.ComponentDetected {
-				Expect(devfileName).Should(BeElementOf([]string{"java-springboot"}))
+				Expect([]string{devfileName}).Should(ContainElement(ContainSubstring("java-springboot")))
 				Expect(devfileDesc.ComponentStub.Context).Should(BeElementOf([]string{"./"}))
 			}
 
@@ -494,8 +494,8 @@ var _ = Describe("Component Detection Query controller", func() {
 	})
 
 	// Private repo tests
-	Context("Create Component Detection Query with private git repo + token", func() {
-		It("Should successfully get token and run", func() {
+	Context("Create Component Detection Query with private git repo + invalid token", func() {
+		It("Should err out due to invalid token", func() {
 			ctx := context.Background()
 
 			queryName := HASCompDetQuery + "11"
@@ -544,13 +544,9 @@ var _ = Describe("Component Detection Query controller", func() {
 				return len(createdHasCompDetectionQuery.Status.Conditions) > 1
 			}, timeout, interval).Should(BeTrue())
 
-			// Make sure the a devfile is detected
-			Expect(len(createdHasCompDetectionQuery.Status.ComponentDetected)).Should(Equal(1))
-
-			for devfileName, devfileDesc := range createdHasCompDetectionQuery.Status.ComponentDetected {
-				Expect(devfileName).Should(ContainSubstring("go"))
-				Expect(devfileDesc.ComponentStub.Context).Should(ContainSubstring("./"))
-			}
+			// index is 1 because of CDQ status condition Processing
+			Expect(createdHasCompDetectionQuery.Status.Conditions[1].Status).Should(Equal(metav1.ConditionFalse))
+			Expect(createdHasCompDetectionQuery.Status.Conditions[1].Message).Should(ContainSubstring("ComponentDetectionQuery failed: authentication required"))
 
 			// Delete the specified Detection Query resource
 			deleteCompDetQueryCR(hasCompDetQueryLookupKey)
@@ -608,7 +604,7 @@ var _ = Describe("Component Detection Query controller", func() {
 				return len(createdHasCompDetectionQuery.Status.Conditions) > 1
 			}, timeout, interval).Should(BeTrue())
 
-			// Make sure the a devfile is detected
+			// index is 1 because of CDQ status condition Processing
 			Expect(createdHasCompDetectionQuery.Status.Conditions[1].Status).Should(Equal(metav1.ConditionFalse))
 			Expect(createdHasCompDetectionQuery.Status.Conditions[1].Message).Should(ContainSubstring("ComponentDetectionQuery failed: authentication required"))
 
@@ -669,9 +665,9 @@ var _ = Describe("Component Detection Query controller", func() {
 				return len(createdHasCompDetectionQuery.Status.Conditions) > 1
 			}, timeout, interval).Should(BeTrue())
 
-			// Make sure the a devfile is detected
+			// index is 1 because of CDQ status condition Processing
 			Expect(createdHasCompDetectionQuery.Status.Conditions[1].Status).Should(Equal(metav1.ConditionFalse))
-			Expect(createdHasCompDetectionQuery.Status.Conditions[1].Message).Should(ContainSubstring("ComponentDetectionQuery failed: unable to find any devfiles in repo https://github.com/test-repo/test-error-response"))
+			Expect(createdHasCompDetectionQuery.Status.Conditions[1].Message).Should(ContainSubstring("authentication required"))
 
 			// Delete the specified Detection Query resource
 			deleteCompDetQueryCR(hasCompDetQueryLookupKey)

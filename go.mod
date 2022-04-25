@@ -15,9 +15,9 @@ require (
 	github.com/migueleliasweb/go-github-mock v0.0.5
 	github.com/mitchellh/go-homedir v1.1.0
 	github.com/onsi/ginkgo v1.16.5
-	github.com/onsi/gomega v1.17.0
+	github.com/onsi/gomega v1.19.0
 	github.com/openshift/api v0.0.0-20200930075302-db52bc4ef99f
-	github.com/redhat-appstudio/service-provider-integration-scm-file-retriever v0.2.5
+	github.com/redhat-appstudio/service-provider-integration-scm-file-retriever v0.4.3
 	github.com/redhat-developer/alizer/go v0.0.0-20220215154256-33df7feef4ae
 	github.com/spf13/afero v1.6.0
 	github.com/stretchr/testify v1.7.0

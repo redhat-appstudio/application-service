@@ -64,6 +64,51 @@ func TestGetContext(t *testing.T) {
 	}
 }
 
+func TestUpdateDockerfileLink(t *testing.T) {
+
+	tests := []struct {
+		name     string
+		repo     string
+		context  string
+		wantLink string
+		wantErr  bool
+	}{
+		{
+			name:     "context has no http",
+			repo:     "https://github.com/maysunfaisal/multi-components-dockerfile/",
+			context:  "devfile-sample-java-springboot-basic/docker/Dockerfile",
+			wantLink: "https://raw.githubusercontent.com/maysunfaisal/multi-components-dockerfile/main/devfile-sample-java-springboot-basic/docker/Dockerfile",
+		},
+		{
+			name:     "context has http",
+			repo:     "https://github.com/maysunfaisal/multi-components-dockerfile/",
+			context:  "https://raw.githubusercontent.com/maysunfaisal/multi-components-dockerfile/main/devfile-sample-java-springboot-basic/docker/Dockerfile",
+			wantLink: "https://raw.githubusercontent.com/maysunfaisal/multi-components-dockerfile/main/devfile-sample-java-springboot-basic/docker/Dockerfile",
+		},
+		{
+			name:    "err case",
+			repo:    "\000x",
+			context: "test/dir",
+			wantErr: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+
+			gotLink, err := UpdateDockerfileLink(tt.repo, tt.context)
+			if !tt.wantErr && err != nil {
+				t.Errorf("Unexpected err: %+v", err)
+			} else if tt.wantErr && err == nil {
+				t.Errorf("Expected error but got nil")
+			} else if gotLink != tt.wantLink {
+				t.Errorf("Expected: %+v, Got: %+v", tt.wantLink, gotLink)
+			}
+
+		})
+	}
+}
+
 func TestGetAlizerDevfileTypes(t *testing.T) {
 	const serverIP = "127.0.0.1:9080"
 
@@ -176,6 +221,105 @@ func TestGetAlizerDevfileTypes(t *testing.T) {
 				t.Errorf("Expected error but got nil")
 			} else if !reflect.DeepEqual(types, tt.wantTypes) {
 				t.Errorf("Expected: %+v, \nGot: %+v", tt.wantTypes, types)
+			}
+		})
+	}
+}
+
+func TestGetRepoFromRegistry(t *testing.T) {
+	const serverIP = "127.0.0.1:9080"
+
+	index := []indexSchema.Schema{
+		{
+			Name:        "index1",
+			ProjectType: "project1",
+			Language:    "language1",
+			Git: &indexSchema.Git{
+				Remotes: map[string]string{
+					"origin": "repo",
+				},
+			},
+		},
+		{
+			Name:        "index2",
+			ProjectType: "project2",
+			Language:    "language2",
+		},
+	}
+
+	// Mocking the registry REST endpoints on a very basic level
+	testServer := httptest.NewUnstartedServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+
+		var data []indexSchema.Schema
+		var err error
+
+		if r.URL.Path == "/index/sample" {
+			data = index
+		} else if r.URL.Path == "/index/all" {
+			data = index
+		}
+
+		bytes, err := json.MarshalIndent(&data, "", "  ")
+		if err != nil {
+			t.Errorf("Unexpected error while doing json marshal: %v", err)
+			return
+		}
+
+		_, err = w.Write(bytes)
+		if err != nil {
+			t.Errorf("Unexpected error while writing data: %v", err)
+		}
+	}))
+	// create a listener with the desired port.
+	l, err := net.Listen("tcp", serverIP)
+	if err != nil {
+		t.Errorf("Unexpected error while creating listener: %v", err)
+		return
+	}
+
+	// NewUnstartedServer creates a listener. Close that listener and replace
+	// with the one we created.
+	testServer.Listener.Close()
+	testServer.Listener = l
+
+	testServer.Start()
+	defer testServer.Close()
+
+	tests := []struct {
+		name       string
+		url        string
+		sampleName string
+		wantURL    string
+		wantErr    bool
+	}{
+		{
+			name:       "Get the Repo URL from the sample",
+			url:        "http://" + serverIP,
+			sampleName: "index1",
+			wantURL:    "repo",
+		},
+		{
+			name:       "Sample does not have a Repo URL",
+			url:        "http://" + serverIP,
+			sampleName: "index2",
+			wantErr:    true,
+		},
+		{
+			name:    "Not a URL",
+			url:     serverIP,
+			wantErr: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			gotURL, err := GetRepoFromRegistry(tt.sampleName, tt.url)
+			if !tt.wantErr && err != nil {
+				t.Errorf("Unexpected err: %+v", err)
+			} else if tt.wantErr && err == nil {
+				t.Errorf("Expected error but got nil")
+			} else if !reflect.DeepEqual(gotURL, tt.wantURL) {
+				t.Errorf("Expected: %+v, \nGot: %+v", tt.wantURL, gotURL)
 			}
 		})
 	}

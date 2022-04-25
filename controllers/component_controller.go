@@ -132,7 +132,7 @@ func (r *ComponentReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 
 			var devfileBytes []byte
 			var gitURL string
-			if source.GitSource.DevfileURL == "" {
+			if source.GitSource.DevfileURL == "" && source.GitSource.DockerfileURL == "" {
 				if gitToken == "" {
 					gitURL, err = util.ConvertGitHubURL(source.GitSource.URL)
 					if err != nil {
@@ -166,7 +166,21 @@ func (r *ComponentReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 					}
 				}
 
-			} else {
+			} else if source.GitSource.DockerfileURL != "" {
+				devfileData, err := devfile.CreateDevfileForDockerfileBuild(source.GitSource.DockerfileURL, context)
+				if err != nil {
+					log.Error(err, fmt.Sprintf("Unable to create devfile for dockerfile build %v", req.NamespacedName))
+					r.SetCreateConditionAndUpdateCR(ctx, &component, err)
+					return ctrl.Result{}, nil
+				}
+
+				devfileBytes, err = yaml.Marshal(devfileData)
+				if err != nil {
+					log.Error(err, fmt.Sprintf("Unable to marshall devfile, exiting reconcile loop %v", req.NamespacedName))
+					r.SetCreateConditionAndUpdateCR(ctx, &component, err)
+					return ctrl.Result{}, nil
+				}
+			} else if source.GitSource.DevfileURL != "" {
 				devfileBytes, err = util.CurlEndpoint(source.GitSource.DevfileURL)
 				if err != nil {
 					log.Error(err, fmt.Sprintf("Unable to GET %s, exiting reconcile loop %v", source.GitSource.DevfileURL, req.NamespacedName))
