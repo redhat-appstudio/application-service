@@ -54,7 +54,7 @@ func TestAnalyzeAndDetectDevfile(t *testing.T) {
 		},
 		{
 			name:        "Test err condition for Alizer Analyze",
-			clonePath:   "/tmp/error/Analyze",
+			clonePath:   "/tmp/errorAnalyze",
 			repo:        "https://github.com/maysunfaisal/devfile-sample-java-springboot-basic-1",
 			registryURL: DevfileStageRegistryEndpoint,
 			wantErr:     true,
@@ -68,7 +68,7 @@ func TestAnalyzeAndDetectDevfile(t *testing.T) {
 		},
 		{
 			name:        "Test err condition for Alizer SelectDevFileFromTypes",
-			clonePath:   "/tmp/springboot/error/SelectDevFileFromTypes",
+			clonePath:   "/tmp/springboot/errorSelectDevFileFromTypes",
 			repo:        "https://github.com/maysunfaisal/devfile-sample-java-springboot-basic-1",
 			registryURL: DevfileStageRegistryEndpoint,
 			wantErr:     true,
@@ -103,3 +103,92 @@ func TestAnalyzeAndDetectDevfile(t *testing.T) {
 		})
 	}
 }
+
+func TestSearchForDockerfile(t *testing.T) {
+
+	tests := []struct {
+		name          string
+		devfileString string
+		wantUri       string
+		wantErr       bool
+	}{
+		{
+			name: "Successfully get the Devfile Uri",
+			devfileString: `
+schemaVersion: 2.2.0
+metadata:
+  name: nodejs
+components:
+  - name: outerloop-build
+    image:
+      imageName: nodejs-image:latest
+      dockerfile:
+        uri: "myuri"`,
+			wantUri: "myuri",
+		},
+		{
+			name: "No Devfile Uri",
+			devfileString: `
+schemaVersion: 2.2.0
+metadata:
+  name: nodejs
+components:
+  - name: outerloop-build
+    image:
+      imageName: nodejs-image:latest
+      dockerfile:
+        uri: ""`,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			devfileBytes := []byte(tt.devfileString)
+			gotUri, err := SearchForDockerfile(devfileBytes)
+			if !tt.wantErr && err != nil {
+				t.Errorf("Unexpected err: %+v", err)
+			} else if tt.wantErr && err == nil {
+				t.Errorf("Expected error but got nil")
+			} else if gotUri != tt.wantUri {
+				t.Errorf("Expected %v but got %v", tt.wantUri, gotUri)
+			}
+		})
+	}
+}
+
+// func TestAnalyzePath(t *testing.T) {
+
+// 	var mockClient MockAlizerClient
+
+// 	tests := []struct {
+// 		name                         string
+// 		localpath                    string
+// 		context                      string
+// 		devfileRegistryURL           string
+// 		devfileMapFromRepo           map[string][]byte
+// 		devfilesURLMapFromRepo       map[string]string
+// 		dockerfileContextMapFromRepo map[string]string
+// 		isDevfilePresent             bool
+// 		isDockerfilePresent          bool
+// 		wantErr                      bool
+// 	}{
+// 		{
+// 			name: "Successfully get the Devfile Uri",
+// 		},
+// 	}
+
+// 	for _, tt := range tests {
+// 		t.Run(tt.name, func(t *testing.T) {
+
+// 			err := AnalyzePath(mockClient, tt.localpath, tt.context, tt.devfileRegistryURL, tt.devfileMapFromRepo, tt.devfilesURLMapFromRepo, tt.dockerfileContextMapFromRepo, tt.isDevfilePresent, tt.isDockerfilePresent)
+
+// 			if !tt.wantErr && err != nil {
+// 				t.Errorf("Unexpected err: %+v", err)
+// 			} else if tt.wantErr && err == nil {
+// 				t.Errorf("Expected error but got nil")
+// 			} else {
+// 				t.Errorf("Expected %v but got %v", nil, nil)
+// 			}
+// 		})
+// 	}
+// }
