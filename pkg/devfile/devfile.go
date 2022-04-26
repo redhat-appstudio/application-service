@@ -77,12 +77,16 @@ func ConvertApplicationToDevfile(hasApp appstudiov1alpha1.Application, gitOpsRep
 	}
 	if hasApp.Spec.AppModelRepository.Context != "" {
 		devfileAttributes.PutString("appModelRepository.context", hasApp.Spec.AppModelRepository.Context)
+	} else {
+		devfileAttributes.PutString("appModelRepository.context", "/")
 	}
 	if hasApp.Spec.GitOpsRepository.Branch != "" {
 		devfileAttributes.PutString("gitOpsRepository.branch", hasApp.Spec.GitOpsRepository.Branch)
 	}
 	if hasApp.Spec.GitOpsRepository.Context != "" {
 		devfileAttributes.PutString("gitOpsRepository.context", hasApp.Spec.GitOpsRepository.Context)
+	} else {
+		devfileAttributes.PutString("gitOpsRepository.context", "/")
 	}
 
 	devfileData.SetMetadata(devfile.DevfileMetadata{
