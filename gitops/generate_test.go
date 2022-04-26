@@ -518,23 +518,44 @@ func TestGenerateParentKustomize(t *testing.T) {
 	tests := []struct {
 		name    string
 		fs      afero.Afero
+		pvc     *corev1.PersistentVolumeClaim
 		wantErr bool
 	}{
 		{
-			name:    "Simple gitops repo with 3 components",
+			name:    "Simple gitops repo with 3 components - no pvc",
 			fs:      fs,
 			wantErr: false,
 		},
 		{
-			name:    "Simple gitops repo with 3 components - generation failure",
+			name:    "Simple gitops repo with 3 components, no pvc - generation failure",
 			fs:      readOnlyDir,
+			wantErr: true,
+		},
+		{
+			name: "Simple gitops repo with 3 components - with pvc",
+			fs:   fs,
+			pvc: &corev1.PersistentVolumeClaim{
+				ObjectMeta: v1.ObjectMeta{
+					Name: "test",
+				},
+			},
+			wantErr: false,
+		},
+		{
+			name: "Simple gitops repo with 3 components, wth pvc - generation failure",
+			fs:   readOnlyDir,
+			pvc: &corev1.PersistentVolumeClaim{
+				ObjectMeta: v1.ObjectMeta{
+					Name: "test",
+				},
+			},
 			wantErr: true,
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			err := GenerateParentKustomize(tt.fs, gitOpsFolder)
+			err := GenerateParentKustomize(tt.fs, gitOpsFolder, tt.pvc)
 
 			if tt.wantErr != (err != nil) {
 				t.Errorf("unexpected error return value. Got %v", err)
@@ -562,6 +583,20 @@ func TestGenerateParentKustomize(t *testing.T) {
 				// There should be 3 entries in the kustomization file
 				if len(k.Bases) != 3 {
 					t.Errorf("expected %v kustomization bases, got %v", 3, len(k.Bases))
+				}
+
+				// Test that the common storage pvc was added when appropriate
+				if tt.pvc != nil {
+					if len(k.Resources) != 1 {
+						t.Errorf("expected %v kustomization resources, got %v", 3, len(k.Resources))
+					}
+					if k.Resources[0] != "common-storage-pvc.yaml" {
+						t.Errorf("expected common storage pvc path %v, got %v", "common-storage-pvc.yaml", k.Resources[0])
+					}
+				} else {
+					if len(k.Resources) != 0 {
+						t.Errorf("expected %v kustomization resources, got %v", 0, len(k.Resources))
+					}
 				}
 
 			}
