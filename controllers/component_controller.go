@@ -107,7 +107,7 @@ func (r *ComponentReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 	if component.Status.Devfile == "" {
 
 		source := component.Spec.Source
-		context := component.Spec.Context
+		context := component.Spec.Source.GitSource.Context
 
 		var compDevfileData data.DevfileData
 		if source.GitSource != nil && source.GitSource.URL != "" {
@@ -429,6 +429,7 @@ func (r *ComponentReconciler) runBuild(ctx context.Context, component *appstudio
 	log.Info(fmt.Sprintf("PV is now present : %v", workspaceStorage.Name))
 
 	sourceSecretName := component.Spec.Secret
+
 
 	// Make the Secret ready for consumption by Tekton.
 	if sourceSecretName != "" {

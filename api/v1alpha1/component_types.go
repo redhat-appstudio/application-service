@@ -36,6 +36,12 @@ type GitSource struct {
 	// If importing from git, the repository to create the component from
 	URL string `json:"url"`
 
+	// Specify a branch/tag/commit id. If not specified, default is `main`/`master`.
+	Revision string `json:"revision,omitempty"`
+
+	// A relative path inside the git repo containing the component
+	Context string `json:"context,omitempty"`
+
 	// If specified, the devfile at the URL will be used for the component.
 	DevfileURL string `json:"devfileUrl,omitempty"`
 
@@ -44,7 +50,7 @@ type GitSource struct {
 }
 
 type ImageSource struct {
-	// If importing from git, container image to create the component from
+	// If importing from container image, container image to create the component from
 	ContainerImage string `json:"containerImage"`
 }
 
@@ -93,8 +99,8 @@ type ComponentSpec struct {
 	// Source describes the Component source
 	Source ComponentSource `json:"source"`
 
-	// A relative path inside the git repo containing the component
-	Context string `json:"context,omitempty"`
+	// List of references to ReleaseStrategies to use when releasing the component
+	ReleaseStrategies []string `json:"releaseStrategies,omitempty"`
 
 	// Compute Resources required by this component
 	Resources corev1.ResourceRequirements `json:"resources,omitempty"`
