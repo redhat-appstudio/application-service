@@ -76,22 +76,6 @@ func TestComponentCreateValidatingWebhook(t *testing.T) {
 				},
 			},
 		},
-		{
-			name: "valid component with image src",
-			newComp: Component{
-				Spec: ComponentSpec{
-					ComponentName: "component1",
-					Application:   "application1",
-					Source: ComponentSource{
-						ComponentSourceUnion: ComponentSourceUnion{
-							ImageSource: &ImageSource{
-								ContainerImage: "image",
-							},
-						},
-					},
-				},
-			},
-		},
 	}
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
@@ -112,11 +96,11 @@ func TestComponentUpdateValidatingWebhook(t *testing.T) {
 		Spec: ComponentSpec{
 			ComponentName: "component",
 			Application:   "application",
-			Context:       "context",
 			Source: ComponentSource{
 				ComponentSourceUnion: ComponentSourceUnion{
 					GitSource: &GitSource{
-						URL: "http://link",
+						URL:     "http://link",
+						Context: "context",
 					},
 				},
 			},
@@ -148,28 +132,17 @@ func TestComponentUpdateValidatingWebhook(t *testing.T) {
 			},
 		},
 		{
-			name: "context cannot be changed",
-			err:  "context cannot be updated to",
-			updateComp: Component{
-				Spec: ComponentSpec{
-					ComponentName: "component",
-					Application:   "application",
-					Context:       "context1",
-				},
-			},
-		},
-		{
 			name: "git src cannot be changed",
 			err:  "git source cannot be updated to",
 			updateComp: Component{
 				Spec: ComponentSpec{
 					ComponentName: "component",
 					Application:   "application",
-					Context:       "context",
 					Source: ComponentSource{
 						ComponentSourceUnion: ComponentSourceUnion{
 							GitSource: &GitSource{
-								URL: "http://link1",
+								URL:     "http://link1",
+								Context: "context",
 							},
 						},
 					},
@@ -177,19 +150,12 @@ func TestComponentUpdateValidatingWebhook(t *testing.T) {
 			},
 		},
 		{
-			name: "image src can be changed",
+			name: "container image can be changed",
 			updateComp: Component{
 				Spec: ComponentSpec{
-					ComponentName: "component",
-					Application:   "application",
-					Context:       "context",
-					Source: ComponentSource{
-						ComponentSourceUnion: ComponentSourceUnion{
-							ImageSource: &ImageSource{
-								ContainerImage: "image1",
-							},
-						},
-					},
+					ComponentName:  "component",
+					Application:    "application",
+					ContainerImage: "image1",
 				},
 			},
 		},
@@ -208,13 +174,13 @@ func TestComponentUpdateValidatingWebhook(t *testing.T) {
 			if test.err == "" {
 				originalComponent = Component{
 					Spec: ComponentSpec{
-						ComponentName: "component",
-						Application:   "application",
-						Context:       "context",
+						ComponentName:  "component",
+						Application:    "application",
+						ContainerImage: "image",
 						Source: ComponentSource{
 							ComponentSourceUnion: ComponentSourceUnion{
-								ImageSource: &ImageSource{
-									ContainerImage: "image",
+								GitSource: &GitSource{
+									Context: "context",
 								},
 							},
 						},

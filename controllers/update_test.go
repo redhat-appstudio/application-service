@@ -92,8 +92,7 @@ func TestUpdateApplicationDevfileModel(t *testing.T) {
 					ComponentName: "new",
 					Source: appstudiov1alpha1.ComponentSource{
 						ComponentSourceUnion: appstudiov1alpha1.ComponentSourceUnion{
-							GitSource:   nil,
-							ImageSource: nil,
+							GitSource: nil,
 						},
 					},
 				},
@@ -108,8 +107,7 @@ func TestUpdateApplicationDevfileModel(t *testing.T) {
 					ComponentName: "new",
 					Source: appstudiov1alpha1.ComponentSource{
 						ComponentSourceUnion: appstudiov1alpha1.ComponentSourceUnion{
-							GitSource:   nil,
-							ImageSource: nil,
+							GitSource: nil,
 						},
 					},
 				},
@@ -121,14 +119,8 @@ func TestUpdateApplicationDevfileModel(t *testing.T) {
 			attributes: attributes.Attributes{}.PutString("containerImage/otherComponent", "other-image"),
 			component: appstudiov1alpha1.Component{
 				Spec: appstudiov1alpha1.ComponentSpec{
-					ComponentName: "new",
-					Source: appstudiov1alpha1.ComponentSource{
-						ComponentSourceUnion: appstudiov1alpha1.ComponentSourceUnion{
-							ImageSource: &appstudiov1alpha1.ImageSource{
-								ContainerImage: "an-image",
-							},
-						},
-					},
+					ComponentName:  "new",
+					ContainerImage: "an-image",
 				},
 			},
 		},
@@ -137,14 +129,8 @@ func TestUpdateApplicationDevfileModel(t *testing.T) {
 			attributes: attributes.Attributes{}.PutString("containerImage/new", "an-image"),
 			component: appstudiov1alpha1.Component{
 				Spec: appstudiov1alpha1.ComponentSpec{
-					ComponentName: "new",
-					Source: appstudiov1alpha1.ComponentSource{
-						ComponentSourceUnion: appstudiov1alpha1.ComponentSourceUnion{
-							ImageSource: &appstudiov1alpha1.ImageSource{
-								ContainerImage: "an-image",
-							},
-						},
-					},
+					ComponentName:  "new",
+					ContainerImage: "an-image",
 				},
 			},
 			wantErr: true,
@@ -154,14 +140,8 @@ func TestUpdateApplicationDevfileModel(t *testing.T) {
 			attributes: attributes.Attributes{}.Put("containerImage/new", make(chan error), nil),
 			component: appstudiov1alpha1.Component{
 				Spec: appstudiov1alpha1.ComponentSpec{
-					ComponentName: "new",
-					Source: appstudiov1alpha1.ComponentSource{
-						ComponentSourceUnion: appstudiov1alpha1.ComponentSourceUnion{
-							ImageSource: &appstudiov1alpha1.ImageSource{
-								ContainerImage: "an-image",
-							},
-						},
-					},
+					ComponentName:  "new",
+					ContainerImage: "an-image",
 				},
 			},
 			wantErr: true,
@@ -216,8 +196,8 @@ func TestUpdateApplicationDevfileModel(t *testing.T) {
 					if err != nil {
 						t.Errorf("got unexpected error: %v", err)
 					}
-					if containerImage != tt.component.Spec.Source.ImageSource.ContainerImage {
-						t.Errorf("unable to find component with container iamge: %s", tt.component.Spec.Source.ImageSource.ContainerImage)
+					if containerImage != tt.component.Spec.ContainerImage {
+						t.Errorf("unable to find component with container iamge: %s", tt.component.Spec.ContainerImage)
 					}
 				}
 			}
@@ -1314,17 +1294,17 @@ func TestUpdateComponentStub(t *testing.T) {
 
 					if len(tt.devfilesDataMap) != 0 {
 						// Language
-						assert.Equal(t, hasCompDetection.Language, tt.devfilesDataMap[hasCompDetection.ComponentStub.Context].Metadata.Language, "The language should be the same")
+						assert.Equal(t, hasCompDetection.Language, tt.devfilesDataMap[hasCompDetection.ComponentStub.Source.GitSource.Context].Metadata.Language, "The language should be the same")
 
 						// Project Type
-						assert.Equal(t, hasCompDetection.ProjectType, tt.devfilesDataMap[hasCompDetection.ComponentStub.Context].Metadata.ProjectType, "The project type should be the same")
+						assert.Equal(t, hasCompDetection.ProjectType, tt.devfilesDataMap[hasCompDetection.ComponentStub.Source.GitSource.Context].Metadata.ProjectType, "The project type should be the same")
 
 						// Devfile Found
-						assert.Equal(t, hasCompDetection.DevfileFound, len(tt.devfilesURLMap[hasCompDetection.ComponentStub.Context]) == 0, "The devfile found did not match expected")
+						assert.Equal(t, hasCompDetection.DevfileFound, len(tt.devfilesURLMap[hasCompDetection.ComponentStub.Source.GitSource.Context]) == 0, "The devfile found did not match expected")
 
 						// Component Name
-						if len(tt.devfilesDataMap[hasCompDetection.ComponentStub.Context].Metadata.Name) > 0 {
-							assert.Contains(t, hasCompDetection.ComponentStub.ComponentName, tt.devfilesDataMap[hasCompDetection.ComponentStub.Context].Metadata.Name, "The component name did not match the expected")
+						if len(tt.devfilesDataMap[hasCompDetection.ComponentStub.Source.GitSource.Context].Metadata.Name) > 0 {
+							assert.Contains(t, hasCompDetection.ComponentStub.ComponentName, tt.devfilesDataMap[hasCompDetection.ComponentStub.Source.GitSource.Context].Metadata.Name, "The component name did not match the expected")
 						} else {
 							assert.Contains(t, hasCompDetection.ComponentStub.ComponentName, "component", "The component name did not match the expected")
 						}
@@ -1333,17 +1313,17 @@ func TestUpdateComponentStub(t *testing.T) {
 						if len(tt.devfilesURLMap) > 0 {
 							assert.NotNil(t, hasCompDetection.ComponentStub.Source.GitSource, "The git source cannot be nil for this test")
 							assert.Equal(t, hasCompDetection.ComponentStub.Source.GitSource.URL, "url", "The URL should match")
-							assert.Equal(t, hasCompDetection.ComponentStub.Source.GitSource.DevfileURL, tt.devfilesURLMap[hasCompDetection.ComponentStub.Context], "The devfile URL should match")
+							assert.Equal(t, hasCompDetection.ComponentStub.Source.GitSource.DevfileURL, tt.devfilesURLMap[hasCompDetection.ComponentStub.Source.GitSource.Context], "The devfile URL should match")
 						}
 
 						// Dockerfile URL
 						if len(tt.dockerfileURLMap) > 0 {
 							assert.NotNil(t, hasCompDetection.ComponentStub.Source.GitSource, "The git source cannot be nil for this test")
 							assert.Equal(t, hasCompDetection.ComponentStub.Source.GitSource.URL, "url", "The URL should match")
-							assert.Equal(t, hasCompDetection.ComponentStub.Source.GitSource.DockerfileURL, tt.dockerfileURLMap[hasCompDetection.ComponentStub.Context], "The dockerfile URL should match")
+							assert.Equal(t, hasCompDetection.ComponentStub.Source.GitSource.DockerfileURL, tt.dockerfileURLMap[hasCompDetection.ComponentStub.Source.GitSource.Context], "The dockerfile URL should match")
 						}
 
-						for _, devfileComponent := range tt.devfilesDataMap[hasCompDetection.ComponentStub.Context].Components {
+						for _, devfileComponent := range tt.devfilesDataMap[hasCompDetection.ComponentStub.Source.GitSource.Context].Components {
 							if devfileComponent.Container != nil {
 								for _, devfileEnv := range devfileComponent.Container.Env {
 									matched := false
@@ -1424,7 +1404,7 @@ func TestUpdateComponentStub(t *testing.T) {
 						if len(tt.dockerfileURLMap) > 0 {
 							assert.NotNil(t, hasCompDetection.ComponentStub.Source.GitSource, "The git source cannot be nil for this test")
 							assert.Equal(t, hasCompDetection.ComponentStub.Source.GitSource.URL, "url", "The URL should match")
-							assert.Equal(t, hasCompDetection.ComponentStub.Source.GitSource.DockerfileURL, tt.dockerfileURLMap[hasCompDetection.ComponentStub.Context], "The dockerfile URL should match")
+							assert.Equal(t, hasCompDetection.ComponentStub.Source.GitSource.DockerfileURL, tt.dockerfileURLMap[hasCompDetection.ComponentStub.Source.GitSource.Context], "The dockerfile URL should match")
 						}
 					}
 				}

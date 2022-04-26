@@ -107,13 +107,11 @@ func TestGenerateDeployment(t *testing.T) {
 					Namespace: namespace,
 				},
 				Spec: appstudiov1alpha1.ComponentSpec{
-					ComponentName: componentName,
-					Application:   applicationName,
-					Replicas:      3,
-					TargetPort:    5000,
-					Build: appstudiov1alpha1.Build{
-						ContainerImage: "quay.io/test/test-image:latest",
-					},
+					ComponentName:  componentName,
+					Application:    applicationName,
+					Replicas:       3,
+					TargetPort:     5000,
+					ContainerImage: "quay.io/test/test-image:latest",
 					Env: []corev1.EnvVar{
 						{
 							Name:  "test",
@@ -212,15 +210,9 @@ func TestGenerateDeployment(t *testing.T) {
 					Namespace: namespace,
 				},
 				Spec: appstudiov1alpha1.ComponentSpec{
-					ComponentName: componentName,
-					Application:   applicationName,
-					Source: appstudiov1alpha1.ComponentSource{
-						ComponentSourceUnion: appstudiov1alpha1.ComponentSourceUnion{
-							ImageSource: &appstudiov1alpha1.ImageSource{
-								ContainerImage: "quay.io/test/test:latest",
-							},
-						},
-					},
+					ComponentName:  componentName,
+					Application:    applicationName,
+					ContainerImage: "quay.io/test/test:latest",
 				},
 			},
 			wantDeployment: appsv1.Deployment{
@@ -263,16 +255,10 @@ func TestGenerateDeployment(t *testing.T) {
 					Namespace: namespace,
 				},
 				Spec: appstudiov1alpha1.ComponentSpec{
-					ComponentName: componentName,
-					Application:   applicationName,
-					Secret:        "my-image-pull-secret",
-					Source: appstudiov1alpha1.ComponentSource{
-						ComponentSourceUnion: appstudiov1alpha1.ComponentSourceUnion{
-							ImageSource: &appstudiov1alpha1.ImageSource{
-								ContainerImage: "quay.io/test/test:latest",
-							},
-						},
-					},
+					ComponentName:  componentName,
+					Application:    applicationName,
+					Secret:         "my-image-pull-secret",
+					ContainerImage: "quay.io/test/test:latest",
 				},
 			},
 			wantDeployment: appsv1.Deployment{

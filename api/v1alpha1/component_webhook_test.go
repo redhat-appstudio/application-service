@@ -153,15 +153,9 @@ var _ = Describe("Application validation webhook", func() {
 			Expect(err).Should(HaveOccurred())
 			Expect(err.Error()).Should(ContainSubstring("component name cannot be updated"))
 
-			// Update the Comp context
-			createdHasComp.Spec.ComponentName = hasComp.Spec.ComponentName
-			createdHasComp.Spec.Context = "newcontext"
-			err = k8sClient.Update(ctx, createdHasComp)
-			Expect(err).Should(HaveOccurred())
-			Expect(err.Error()).Should(ContainSubstring("context cannot be updated"))
-
 			// Update the Comp git src
-			createdHasComp.Spec.Context = hasComp.Spec.Context
+			createdHasComp.Spec.ComponentName = hasComp.Spec.ComponentName
+			createdHasComp.Spec.Source.GitSource.Context = hasComp.Spec.Source.GitSource.Context
 			createdHasComp.Spec.Source.GitSource = &GitSource{
 				URL: "newlink",
 			}

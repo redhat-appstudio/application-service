@@ -82,7 +82,7 @@ var _ = Describe("Component Detection Query controller", func() {
 
 			for devfileName, devfileDesc := range createdHasCompDetectionQuery.Status.ComponentDetected {
 				Expect(devfileName).Should(ContainSubstring("spring"))
-				Expect(devfileDesc.ComponentStub.Context).Should(ContainSubstring("./"))
+				Expect(devfileDesc.ComponentStub.Source.GitSource.Context).Should(ContainSubstring("./"))
 			}
 
 			// Delete the specified Detection Query resource
@@ -129,7 +129,7 @@ var _ = Describe("Component Detection Query controller", func() {
 
 			for devfileName, devfileDesc := range createdHasCompDetectionQuery.Status.ComponentDetected {
 				Expect(devfileName).Should(ContainSubstring("spring"))
-				Expect(devfileDesc.ComponentStub.Context).Should(ContainSubstring("./"))
+				Expect(devfileDesc.ComponentStub.Source.GitSource.Context).Should(ContainSubstring("./"))
 			}
 
 			// Delete the specified Detection Query resource
@@ -219,7 +219,7 @@ var _ = Describe("Component Detection Query controller", func() {
 
 			for devfileName, devfileDesc := range createdHasCompDetectionQuery.Status.ComponentDetected {
 				Expect(devfileName).Should(Or(ContainSubstring("java-springboot"), ContainSubstring("python")))
-				Expect(devfileDesc.ComponentStub.Context).Should(BeElementOf([]string{"devfile-sample-java-springboot-basic", "devfile-sample-python-basic"}))
+				Expect(devfileDesc.ComponentStub.Source.GitSource.Context).Should(BeElementOf([]string{"devfile-sample-java-springboot-basic", "devfile-sample-python-basic"}))
 			}
 
 			// Delete the specified Detection Query resource
@@ -311,7 +311,7 @@ var _ = Describe("Component Detection Query controller", func() {
 
 			for devfileName, devfileDesc := range createdHasCompDetectionQuery.Status.ComponentDetected {
 				Expect(devfileName).Should(Or(ContainSubstring("java-springboot"), ContainSubstring("python")))
-				Expect(devfileDesc.ComponentStub.Context).Should(BeElementOf([]string{"devfile-sample-java-springboot-basic", "devfile-sample-python-basic"}))
+				Expect(devfileDesc.ComponentStub.Source.GitSource.Context).Should(BeElementOf([]string{"devfile-sample-java-springboot-basic", "devfile-sample-python-basic"}))
 			}
 
 			// Delete the specified Detection Query resource
@@ -360,7 +360,7 @@ var _ = Describe("Component Detection Query controller", func() {
 
 			for devfileName, devfileDesc := range createdHasCompDetectionQuery.Status.ComponentDetected {
 				Expect([]string{devfileName}).Should(ContainElement(ContainSubstring("java-springboot")))
-				Expect(devfileDesc.ComponentStub.Context).Should(BeElementOf([]string{"./"}))
+				Expect(devfileDesc.ComponentStub.Source.GitSource.Context).Should(BeElementOf([]string{"./"}))
 			}
 
 			// Delete the specified Detection Query resource

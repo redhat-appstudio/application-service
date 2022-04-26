@@ -64,7 +64,7 @@ func (r *Component) ValidateCreate() error {
 			return err
 		}
 		sourceSpecified = true
-	} else if r.Spec.Source.ImageSource != nil && r.Spec.Source.ImageSource.ContainerImage != "" {
+	} else if r.Spec.ContainerImage != "" {
 		sourceSpecified = true
 	}
 
@@ -88,10 +88,6 @@ func (r *Component) ValidateUpdate(old runtime.Object) error {
 
 		if r.Spec.Application != old.Spec.Application {
 			return fmt.Errorf("application name cannot be updated to %s", r.Spec.Application)
-		}
-
-		if r.Spec.Context != old.Spec.Context {
-			return fmt.Errorf("context cannot be updated to %s", r.Spec.Context)
 		}
 
 		if r.Spec.Source.GitSource != nil && old.Spec.Source.GitSource != nil && !reflect.DeepEqual(*(r.Spec.Source.GitSource), *(old.Spec.Source.GitSource)) {

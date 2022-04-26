@@ -388,15 +388,13 @@ func TestGetParamsForComponentBuild(t *testing.T) {
 					Namespace: "kcpworkspacename",
 				},
 				Spec: appstudiov1alpha1.ComponentSpec{
+					ContainerImage: "whatever-is-set",
 					Source: appstudiov1alpha1.ComponentSource{
 						ComponentSourceUnion: appstudiov1alpha1.ComponentSourceUnion{
 							GitSource: &appstudiov1alpha1.GitSource{
 								URL: "https://a/b/c",
 							},
 						},
-					},
-					Build: appstudiov1alpha1.Build{
-						ContainerImage: "whatever-is-set",
 					},
 				},
 			},
@@ -427,15 +425,13 @@ func TestGetParamsForComponentBuild(t *testing.T) {
 					Namespace: "kcpworkspacename",
 				},
 				Spec: appstudiov1alpha1.ComponentSpec{
+					ContainerImage: "docker.io/foo/bar:tag",
 					Source: appstudiov1alpha1.ComponentSource{
 						ComponentSourceUnion: appstudiov1alpha1.ComponentSourceUnion{
 							GitSource: &appstudiov1alpha1.GitSource{
 								URL: "https://a/b/c",
 							},
 						},
-					},
-					Build: appstudiov1alpha1.Build{
-						ContainerImage: "docker.io/foo/bar:tag",
 					},
 				},
 			},
@@ -466,15 +462,13 @@ func TestGetParamsForComponentBuild(t *testing.T) {
 					Namespace: "kcpworkspacename",
 				},
 				Spec: appstudiov1alpha1.ComponentSpec{
+					ContainerImage: "docker.io/foo/bar:tag",
 					Source: appstudiov1alpha1.ComponentSource{
 						ComponentSourceUnion: appstudiov1alpha1.ComponentSourceUnion{
 							GitSource: &appstudiov1alpha1.GitSource{
 								URL: "https://a/b/c",
 							},
 						},
-					},
-					Build: appstudiov1alpha1.Build{
-						ContainerImage: "docker.io/foo/bar:tag",
 					},
 				},
 				Status: appstudiov1alpha1.ComponentStatus{

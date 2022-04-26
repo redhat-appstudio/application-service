@@ -218,7 +218,7 @@ var _ = Describe("Component controller", func() {
 
 			// Trigger another reconcile in the controller
 			// With the Route URL now set, validate that the component's status.webhook is set to the route url
-			createdHasComp.Spec.Build.ContainerImage = "newimage"
+			createdHasComp.Spec.ContainerImage = "newimage"
 			Expect(k8sClient.Update(context.Background(), createdHasComp)).Should(Succeed())
 
 			Eventually(func() bool {
@@ -292,17 +292,15 @@ var _ = Describe("Component controller", func() {
 					Namespace: HASAppNamespace,
 				},
 				Spec: appstudiov1alpha1.ComponentSpec{
-					ComponentName: ComponentName,
-					Application:   HASAppNameForBuild,
+					ComponentName:  ComponentName,
+					Application:    HASAppNameForBuild,
+					ContainerImage: "docker.io/foo/bar",
 					Source: appstudiov1alpha1.ComponentSource{
 						ComponentSourceUnion: appstudiov1alpha1.ComponentSourceUnion{
 							GitSource: &appstudiov1alpha1.GitSource{
 								URL: SampleRepoLink,
 							},
 						},
-					},
-					Build: appstudiov1alpha1.Build{
-						ContainerImage: "docker.io/foo/bar",
 					},
 				},
 			}
@@ -753,17 +751,15 @@ var _ = Describe("Component controller", func() {
 					Namespace: HASAppNamespace,
 				},
 				Spec: appstudiov1alpha1.ComponentSpec{
-					ComponentName: ComponentName,
-					Application:   applicationName,
+					ComponentName:  ComponentName,
+					Application:    applicationName,
+					ContainerImage: "quay.io/test/test-image:latest",
 					Source: appstudiov1alpha1.ComponentSource{
 						ComponentSourceUnion: appstudiov1alpha1.ComponentSourceUnion{
 							GitSource: &appstudiov1alpha1.GitSource{
 								URL: SampleRepoLink,
 							},
 						},
-					},
-					Build: appstudiov1alpha1.Build{
-						ContainerImage: "quay.io/test/test-image:latest",
 					},
 					Replicas:   originalReplica,
 					TargetPort: originalPort,
@@ -844,7 +840,7 @@ var _ = Describe("Component controller", func() {
 			createdHasComp.Spec.TargetPort = updatedPort
 			createdHasComp.Spec.Env = updatedEnv
 			createdHasComp.Spec.Resources = updatedResources
-			createdHasComp.Spec.Build.ContainerImage = "quay.io/newimage/newimage:latest"
+			createdHasComp.Spec.ContainerImage = "quay.io/newimage/newimage:latest"
 
 			Expect(k8sClient.Update(ctx, createdHasComp)).Should(Succeed())
 
@@ -901,17 +897,15 @@ var _ = Describe("Component controller", func() {
 					Namespace: HASAppNamespace,
 				},
 				Spec: appstudiov1alpha1.ComponentSpec{
-					ComponentName: ComponentName,
-					Application:   applicationName,
+					ComponentName:  ComponentName,
+					Application:    applicationName,
+					ContainerImage: "quay.io/test/testimage:latest",
 					Source: appstudiov1alpha1.ComponentSource{
 						ComponentSourceUnion: appstudiov1alpha1.ComponentSourceUnion{
 							GitSource: &appstudiov1alpha1.GitSource{
 								URL: SampleRepoLink,
 							},
 						},
-					},
-					Build: appstudiov1alpha1.Build{
-						ContainerImage: "quay.io/test/testimage:latest",
 					},
 				},
 			}
@@ -973,17 +967,15 @@ var _ = Describe("Component controller", func() {
 					Namespace: HASAppNamespace,
 				},
 				Spec: appstudiov1alpha1.ComponentSpec{
-					ComponentName: ComponentName,
-					Application:   applicationName,
+					ComponentName:  ComponentName,
+					Application:    applicationName,
+					ContainerImage: "quay.io/test/testimage:latest",
 					Source: appstudiov1alpha1.ComponentSource{
 						ComponentSourceUnion: appstudiov1alpha1.ComponentSourceUnion{
 							GitSource: &appstudiov1alpha1.GitSource{
 								URL: SampleRepoLink,
 							},
 						},
-					},
-					Build: appstudiov1alpha1.Build{
-						ContainerImage: "quay.io/test/testimage:latest",
 					},
 				},
 			}
@@ -1002,7 +994,7 @@ var _ = Describe("Component controller", func() {
 			createdHasComp.Status.Devfile = "a"
 			Expect(k8sClient.Status().Update(ctx, createdHasComp)).Should(Succeed())
 
-			createdHasComp.Spec.Build.ContainerImage = "test"
+			createdHasComp.Spec.ContainerImage = "test"
 			Expect(k8sClient.Update(ctx, createdHasComp)).Should(Succeed())
 
 			updatedHasComp := &appstudiov1alpha1.Component{}
@@ -1073,17 +1065,15 @@ var _ = Describe("Component controller", func() {
 					Namespace: HASAppNamespace,
 				},
 				Spec: appstudiov1alpha1.ComponentSpec{
-					ComponentName: ComponentName,
-					Application:   applicationName,
+					ComponentName:  ComponentName,
+					Application:    applicationName,
+					ContainerImage: "quay.io/test/testimage:latest",
 					Source: appstudiov1alpha1.ComponentSource{
 						ComponentSourceUnion: appstudiov1alpha1.ComponentSourceUnion{
 							GitSource: &appstudiov1alpha1.GitSource{
 								URL: SampleRepoLink,
 							},
 						},
-					},
-					Build: appstudiov1alpha1.Build{
-						ContainerImage: "quay.io/test/testimage:latest",
 					},
 				},
 			}
@@ -1130,17 +1120,15 @@ var _ = Describe("Component controller", func() {
 					Namespace: HASAppNamespace,
 				},
 				Spec: appstudiov1alpha1.ComponentSpec{
-					ComponentName: ComponentName,
-					Application:   applicationName,
+					ComponentName:  ComponentName,
+					Application:    applicationName,
+					ContainerImage: "quay.io/test/testimage:latest",
 					Source: appstudiov1alpha1.ComponentSource{
 						ComponentSourceUnion: appstudiov1alpha1.ComponentSourceUnion{
 							GitSource: &appstudiov1alpha1.GitSource{
 								URL: SampleRepoLink,
 							},
 						},
-					},
-					Build: appstudiov1alpha1.Build{
-						ContainerImage: "quay.io/test/testimage:latest",
 					},
 				},
 			}
@@ -1160,7 +1148,7 @@ var _ = Describe("Component controller", func() {
 			Expect(k8sClient.Status().Update(ctx, createdHasComp)).Should(Succeed())
 
 			// Trigger a new reconcile
-			createdHasComp.Spec.Build.ContainerImage = "Newimage"
+			createdHasComp.Spec.ContainerImage = "Newimage"
 			Expect(k8sClient.Update(ctx, createdHasComp)).Should(Succeed())
 
 			updatedHasComp := &appstudiov1alpha1.Component{}
@@ -1223,17 +1211,15 @@ var _ = Describe("Component controller", func() {
 					Namespace: HASAppNamespace,
 				},
 				Spec: appstudiov1alpha1.ComponentSpec{
-					ComponentName: ComponentName,
-					Application:   applicationName,
+					ComponentName:  ComponentName,
+					Application:    applicationName,
+					ContainerImage: "quay.io/test/testimage:latest",
 					Source: appstudiov1alpha1.ComponentSource{
 						ComponentSourceUnion: appstudiov1alpha1.ComponentSourceUnion{
 							GitSource: &appstudiov1alpha1.GitSource{
 								URL: SampleRepoLink,
 							},
 						},
-					},
-					Build: appstudiov1alpha1.Build{
-						ContainerImage: "quay.io/test/testimage:latest",
 					},
 				},
 			}
@@ -1629,11 +1615,11 @@ var _ = Describe("Component controller", func() {
 					Source: appstudiov1alpha1.ComponentSource{
 						ComponentSourceUnion: appstudiov1alpha1.ComponentSourceUnion{
 							GitSource: &appstudiov1alpha1.GitSource{
-								URL: "https://github.com/devfile-samples/devfile-sample-python-basic",
+								URL:     "https://github.com/devfile-samples/devfile-sample-python-basic",
+								Context: "/docker",
 							},
 						},
 					},
-					Context: "/docker",
 				},
 			}
 			Expect(k8sClient.Create(ctx, hasComp)).Should(Succeed())
@@ -1680,15 +1666,9 @@ var _ = Describe("Component controller", func() {
 					Namespace: HASAppNamespace,
 				},
 				Spec: appstudiov1alpha1.ComponentSpec{
-					ComponentName: ComponentName,
-					Application:   applicationName,
-					Source: appstudiov1alpha1.ComponentSource{
-						ComponentSourceUnion: appstudiov1alpha1.ComponentSourceUnion{
-							ImageSource: &appstudiov1alpha1.ImageSource{
-								ContainerImage: "an-image",
-							},
-						},
-					},
+					ComponentName:  ComponentName,
+					Application:    applicationName,
+					ContainerImage: "an-image",
 				},
 			}
 			Expect(k8sClient.Create(ctx, hasComp)).Should(Succeed())

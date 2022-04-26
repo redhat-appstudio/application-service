@@ -159,14 +159,8 @@ func TestConvertImageComponentToDevfile(t *testing.T) {
 			name: "Simple Component CR",
 			comp: appstudiov1alpha1.Component{
 				Spec: appstudiov1alpha1.ComponentSpec{
-					ComponentName: "Petclinic",
-					Source: appstudiov1alpha1.ComponentSource{
-						ComponentSourceUnion: appstudiov1alpha1.ComponentSourceUnion{
-							ImageSource: &appstudiov1alpha1.ImageSource{
-								ContainerImage: "quay.io/test/someimage:latest",
-							},
-						},
-					},
+					ComponentName:  "Petclinic",
+					ContainerImage: "quay.io/test/someimage:latest",
 				},
 			},
 			wantDevfile: &v2.DevfileV2{

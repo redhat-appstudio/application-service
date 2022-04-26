@@ -49,11 +49,6 @@ type GitSource struct {
 	DockerfileURL string `json:"dockerfileUrl,omitempty"`
 }
 
-type ImageSource struct {
-	// If importing from container image, container image to create the component from
-	ContainerImage string `json:"containerImage"`
-}
-
 // ComponentSource describes the Component source
 type ComponentSource struct {
 	ComponentSourceUnion `json:",inline"`
@@ -63,15 +58,6 @@ type ComponentSource struct {
 type ComponentSourceUnion struct {
 	// Git Source for a Component
 	GitSource *GitSource `json:"git,omitempty"`
-
-	// Image Source for a Component
-	ImageSource *ImageSource `json:"image,omitempty"`
-}
-
-// Build describes the various build artifacts associated with a given component
-type Build struct {
-	// The container image that is created during the component build.
-	ContainerImage string `json:"containerImage"`
 }
 
 // EDIT THIS FILE!  THIS IS SCAFFOLDING FOR YOU TO OWN!
@@ -117,8 +103,8 @@ type ComponentSpec struct {
 	// An array of environment variables to add to the component
 	Env []corev1.EnvVar `json:"env,omitempty"`
 
-	// The build artifacts associated with the component
-	Build Build `json:"build,omitempty"`
+	// The container image to build or create the component from
+	ContainerImage string `json:"containerImage,omitempty"`
 }
 
 // ComponentStatus defines the observed state of Component

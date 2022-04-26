@@ -98,8 +98,8 @@ func (r *ComponentReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 		return ctrl.Result{}, err
 	}
 
-	if component.Spec.Build.ContainerImage == "" && component.Spec.Source.ImageSource == nil {
-		component.Spec.Build.ContainerImage = r.ImageRepository + ":" + component.Namespace + "-" + component.Name
+	if component.Spec.ContainerImage == "" {
+		component.Spec.ContainerImage = r.ImageRepository + ":" + component.Namespace + "-" + component.Name
 	}
 
 	// If the devfile hasn't been populated, the CR was just created
@@ -107,10 +107,10 @@ func (r *ComponentReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 	if component.Status.Devfile == "" {
 
 		source := component.Spec.Source
-		context := component.Spec.Source.GitSource.Context
 
 		var compDevfileData data.DevfileData
 		if source.GitSource != nil && source.GitSource.URL != "" {
+			context := source.GitSource.Context
 			// If a Git secret was passed in, retrieve it for use in our Git operations
 			// The secret needs to be in the same namespace as the Component
 			if component.Spec.Secret != "" {
@@ -197,7 +197,7 @@ func (r *ComponentReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 				r.SetCreateConditionAndUpdateCR(ctx, &component, err)
 				return ctrl.Result{}, nil
 			}
-		} else if source.ImageSource != nil && source.ImageSource.ContainerImage != "" {
+		} else if component.Spec.ContainerImage != "" {
 			// An image component was specified
 			// Generate a stub devfile for the component
 			compDevfileData, err = devfile.ConvertImageComponentToDevfile(component)
@@ -206,7 +206,7 @@ func (r *ComponentReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 				r.SetCreateConditionAndUpdateCR(ctx, &component, err)
 				return ctrl.Result{}, nil
 			}
-			component.Status.ContainerImage = source.ImageSource.ContainerImage
+			component.Status.ContainerImage = component.Spec.ContainerImage
 		}
 
 		err = r.updateComponentDevfileModel(compDevfileData, component)
@@ -267,9 +267,9 @@ func (r *ComponentReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 				return ctrl.Result{}, err
 			}
 
-			if component.Spec.Build.ContainerImage != "" {
+			if component.Spec.ContainerImage != "" {
 				// Set the container image in the status
-				component.Status.ContainerImage = component.Spec.Build.ContainerImage
+				component.Status.ContainerImage = component.Spec.ContainerImage
 			}
 
 			log.Info(fmt.Sprintf("Adding the GitOps repository information to the status for component %v", req.NamespacedName))
@@ -334,10 +334,8 @@ func (r *ComponentReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 			return ctrl.Result{}, nil
 		}
 		var containerImage string
-		if component.Spec.Source.ImageSource != nil && component.Spec.Source.ImageSource.ContainerImage != "" {
-			containerImage = component.Spec.Source.ImageSource.ContainerImage
-		} else {
-			containerImage = component.Spec.Build.ContainerImage
+		if component.Spec.ContainerImage != "" {
+			containerImage = component.Spec.ContainerImage
 		}
 		isUpdated := !reflect.DeepEqual(oldCompDevfileData, hasCompDevfileData) || containerImage != component.Status.ContainerImage
 		if isUpdated {
@@ -350,10 +348,8 @@ func (r *ComponentReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 			}
 
 			// Generate and push the gitops resources
-			if component.Spec.Source.ImageSource != nil && component.Spec.Source.ImageSource.ContainerImage != "" {
-				component.Status.ContainerImage = component.Spec.Source.ImageSource.ContainerImage
-			} else {
-				component.Status.ContainerImage = component.Spec.Build.ContainerImage
+			if component.Spec.ContainerImage != "" {
+				component.Status.ContainerImage = component.Spec.ContainerImage
 			}
 
 			if err := r.generateGitops(&component); err != nil {
@@ -382,7 +378,7 @@ func (r *ComponentReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 
 	// Get the Webhook from the event listener route and update it
 	// Only attempt to get it if the build generation succeeded, otherwise the route won't exist
-	if component.Status.Conditions[len(component.Status.Conditions)-1].Status == v1.ConditionTrue && component.Spec.Source.ImageSource == nil {
+	if component.Status.Conditions[len(component.Status.Conditions)-1].Status == v1.ConditionTrue && component.Spec.ContainerImage != "" {
 		createdWebhook := &routev1.Route{}
 		err = r.Client.Get(ctx, types.NamespacedName{Name: "el" + component.Name, Namespace: component.Namespace}, createdWebhook)
 		if err != nil {
@@ -429,7 +425,6 @@ func (r *ComponentReconciler) runBuild(ctx context.Context, component *appstudio
 	log.Info(fmt.Sprintf("PV is now present : %v", workspaceStorage.Name))
 
 	sourceSecretName := component.Spec.Secret
-
 
 	// Make the Secret ready for consumption by Tekton.
 	if sourceSecretName != "" {
