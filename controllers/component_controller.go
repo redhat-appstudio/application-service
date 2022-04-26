@@ -416,7 +416,7 @@ func (r *ComponentReconciler) runBuild(ctx context.Context, component *appstudio
 	err := r.Get(ctx, types.NamespacedName{Name: workspaceStorage.Name, Namespace: workspaceStorage.Namespace}, pvc)
 	if err != nil {
 		if errors.IsNotFound(err) {
-			err = r.Client.Create(ctx, &workspaceStorage)
+			err = r.Client.Create(ctx, workspaceStorage)
 			if err != nil {
 				log.Error(err, fmt.Sprintf("Unable to create common storage %v", workspaceStorage))
 				return err
