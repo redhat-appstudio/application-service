@@ -22,6 +22,7 @@ import (
 	"net/url"
 	"path"
 	"reflect"
+	"strings"
 	"time"
 
 	corev1 "k8s.io/api/core/v1"
@@ -98,12 +99,68 @@ func (r *ComponentReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 		return ctrl.Result{}, err
 	}
 
+	// Get the secret resource if it exists
+	var token, username string
+	if component.Spec.Secret != "" {
+		spiSecret := corev1.Secret{}
+		namespacedName := types.NamespacedName{
+			Name:      component.Spec.Secret,
+			Namespace: component.Namespace,
+		}
+
+		err = r.Client.Get(ctx, namespacedName, &spiSecret)
+		if err != nil {
+			log.Error(err, fmt.Sprintf("Unable to retrieve Git secret %v, exiting reconcile loop %v", component.Spec.Secret, req.NamespacedName))
+			r.SetCreateConditionAndUpdateCR(ctx, &component, err)
+			return ctrl.Result{}, nil
+		}
+
+		token = string(spiSecret.Data["password"])
+		username = string(spiSecret.Data["username"])
+	}
+
+	if component.Spec.Source.ImageSource != nil && strings.Contains(component.Spec.Source.ImageSource.ContainerImage, "quay.io") && component.Spec.Secret != "" {
+		imps := corev1.Secret{}
+		namespacedName := types.NamespacedName{
+			Name:      component.Name,
+			Namespace: component.Namespace,
+		}
+		err = r.Client.Get(ctx, namespacedName, &imps)
+		if err != nil {
+			if errors.IsNotFound(err) {
+				// Image Pull Secret for component hasn't been created, so create it
+				testDockerconfig := `{"auths":{"quay.io":{"username":"` + username + `","password":"` + token + `"}}}`
+				imps = corev1.Secret{
+					TypeMeta: v1.TypeMeta{
+						Kind:       "Secret",
+						APIVersion: "v1",
+					},
+					ObjectMeta: v1.ObjectMeta{
+						Name:      req.Name,
+						Namespace: req.Namespace,
+					},
+					Type: corev1.SecretTypeDockerConfigJson,
+					Data: map[string][]byte{
+						corev1.DockerConfigJsonKey: []byte(testDockerconfig),
+					},
+				}
+				err = r.Client.Create(ctx, &imps)
+				if err != nil {
+					return ctrl.Result{}, err
+				}
+			} else {
+				log.Error(err, fmt.Sprintf("Unable to retrieve ImagePullSecret secret %v, exiting reconcile loop %v", component.Spec.Secret, req.NamespacedName))
+				return ctrl.Result{}, err
+			}
+		}
+		component.Spec.Secret = imps.Name
+	}
+
 	if component.Spec.Build.ContainerImage == "" && component.Spec.Source.ImageSource == nil {
 		component.Spec.Build.ContainerImage = r.ImageRepository + ":" + component.Namespace + "-" + component.Name
 	}
 
 	// If the devfile hasn't been populated, the CR was just created
-	var gitToken string
 	if component.Status.Devfile == "" {
 
 		source := component.Spec.Source
@@ -113,27 +170,11 @@ func (r *ComponentReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 		if source.GitSource != nil && source.GitSource.URL != "" {
 			// If a Git secret was passed in, retrieve it for use in our Git operations
 			// The secret needs to be in the same namespace as the Component
-			if component.Spec.Secret != "" {
-				gitSecret := corev1.Secret{}
-				namespacedName := types.NamespacedName{
-					Name:      component.Spec.Secret,
-					Namespace: component.Namespace,
-				}
-
-				err = r.Client.Get(ctx, namespacedName, &gitSecret)
-				if err != nil {
-					log.Error(err, fmt.Sprintf("Unable to retrieve Git secret %v, exiting reconcile loop %v", component.Spec.Secret, req.NamespacedName))
-					r.SetCreateConditionAndUpdateCR(ctx, &component, err)
-					return ctrl.Result{}, nil
-				}
-
-				gitToken = string(gitSecret.Data["password"])
-			}
 
 			var devfileBytes []byte
 			var gitURL string
 			if source.GitSource.DevfileURL == "" && source.GitSource.DockerfileURL == "" {
-				if gitToken == "" {
+				if token == "" {
 					gitURL, err = util.ConvertGitHubURL(source.GitSource.URL)
 					if err != nil {
 						log.Error(err, fmt.Sprintf("Unable to convert Github URL to raw format, exiting reconcile loop %v", req.NamespacedName))

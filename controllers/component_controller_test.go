@@ -1661,8 +1661,8 @@ var _ = Describe("Component controller", func() {
 		})
 	})
 
-	Context("Create Component with basic field set", func() {
-		It("Should complete with an image source even if it is not implemented yet", func() {
+	Context("Create Component with image source set", func() {
+		It("Should complete successfully", func() {
 			ctx := context.Background()
 
 			applicationName := HASAppName + "17"
@@ -1692,6 +1692,98 @@ var _ = Describe("Component controller", func() {
 				},
 			}
 			Expect(k8sClient.Create(ctx, hasComp)).Should(Succeed())
+
+			// Look up the has app resource that was created.
+			// num(conditions) may still be < 1 on the first try, so retry until at least _some_ condition is set
+			hasCompLookupKey := types.NamespacedName{Name: componentName, Namespace: HASAppNamespace}
+			createdHasComp := &appstudiov1alpha1.Component{}
+			Eventually(func() bool {
+				k8sClient.Get(context.Background(), hasCompLookupKey, createdHasComp)
+				return len(createdHasComp.Status.Conditions) > 0
+			}, timeout, interval).Should(BeTrue())
+
+			// Make sure the devfile model was properly set in Component
+			Expect(createdHasComp.Status.Devfile).Should(Not(Equal("")))
+
+			// Make sure the component resource has been updated properly
+			Expect(createdHasComp.Status.Conditions[len(createdHasComp.Status.Conditions)-1].Message).Should(ContainSubstring("successfully created"))
+			Expect(createdHasComp.Status.Conditions[len(createdHasComp.Status.Conditions)-1].Reason).Should(Equal("OK"))
+
+			hasAppLookupKey := types.NamespacedName{Name: applicationName, Namespace: HASAppNamespace}
+			createdHasApp := &appstudiov1alpha1.Application{}
+			Eventually(func() bool {
+				k8sClient.Get(context.Background(), hasAppLookupKey, createdHasApp)
+				return strings.Contains(createdHasApp.Status.Devfile, "containerImage/backend")
+			}, timeout, interval).Should(BeTrue())
+
+			// Make sure the devfile model was properly set in Application
+			Expect(createdHasApp.Status.Devfile).Should(Not(Equal("")))
+			Expect(createdHasApp.Status.Devfile).Should(ContainSubstring("containerImage/backend"))
+
+			// Delete the specified HASComp resource
+			deleteHASCompCR(hasCompLookupKey)
+
+			// Delete the specified HASApp resource
+			deleteHASAppCR(hasAppLookupKey)
+		})
+	})
+
+	Context("Create Component with private container image", func() {
+		It("Should complete successfully", func() {
+			ctx := context.Background()
+
+			applicationName := HASAppName + "18"
+			componentName := HASCompName + "18"
+
+			// Create an SPI secret
+			tokenSecret := &corev1.Secret{
+				TypeMeta: metav1.TypeMeta{
+					Kind: "Secret",
+				},
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "spi-quay-secret",
+					Namespace: HASAppNamespace,
+				},
+				StringData: map[string]string{
+					"username": "$oauthtoken",
+					"password": "sometoken",
+				},
+			}
+
+			Expect(k8sClient.Create(ctx, tokenSecret)).Should(Succeed())
+
+			createAndFetchSimpleApp(applicationName, HASAppNamespace, DisplayName, Description)
+
+			hasComp := &appstudiov1alpha1.Component{
+				TypeMeta: metav1.TypeMeta{
+					APIVersion: "appstudio.redhat.com/v1alpha1",
+					Kind:       "Component",
+				},
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      componentName,
+					Namespace: HASAppNamespace,
+				},
+				Spec: appstudiov1alpha1.ComponentSpec{
+					ComponentName: ComponentName,
+					Application:   applicationName,
+					Secret:        "spi-quay-secret",
+					Source: appstudiov1alpha1.ComponentSource{
+						ComponentSourceUnion: appstudiov1alpha1.ComponentSourceUnion{
+							ImageSource: &appstudiov1alpha1.ImageSource{
+								ContainerImage: "quay.io/jcollier/an-image",
+							},
+						},
+					},
+				},
+			}
+			Expect(k8sClient.Create(ctx, hasComp)).Should(Succeed())
+
+			// Validate than an imagepullsecret was created
+			imps := corev1.Secret{}
+			impsLookupKey := types.NamespacedName{Name: componentName, Namespace: HASAppNamespace}
+			Eventually(func() error {
+				return k8sClient.Get(context.Background(), impsLookupKey, &imps)
+			}, timeout, interval).Should(Succeed())
 
 			// Look up the has app resource that was created.
 			// num(conditions) may still be < 1 on the first try, so retry until at least _some_ condition is set
