@@ -25,12 +25,15 @@ import (
 
 	appstudiov1alpha1 "github.com/redhat-appstudio/application-service/api/v1alpha1"
 	"github.com/redhat-appstudio/application-service/pkg/util"
+
+	"github.com/go-logr/logr"
 )
 
 const (
 	DevfileName       = "devfile.yaml"
 	HiddenDevfileName = ".devfile.yaml"
 	HiddenDevfileDir  = ".devfile"
+	DockerfileName    = "Dockerfile"
 
 	Devfile                = DevfileName                                // devfile.yaml
 	HiddenDevfile          = HiddenDevfileName                          // .devfile.yaml
@@ -74,12 +77,16 @@ func ConvertApplicationToDevfile(hasApp appstudiov1alpha1.Application, gitOpsRep
 	}
 	if hasApp.Spec.AppModelRepository.Context != "" {
 		devfileAttributes.PutString("appModelRepository.context", hasApp.Spec.AppModelRepository.Context)
+	} else {
+		devfileAttributes.PutString("appModelRepository.context", "/")
 	}
 	if hasApp.Spec.GitOpsRepository.Branch != "" {
 		devfileAttributes.PutString("gitOpsRepository.branch", hasApp.Spec.GitOpsRepository.Branch)
 	}
 	if hasApp.Spec.GitOpsRepository.Context != "" {
 		devfileAttributes.PutString("gitOpsRepository.context", hasApp.Spec.GitOpsRepository.Context)
+	} else {
+		devfileAttributes.PutString("gitOpsRepository.context", "/")
 	}
 
 	devfileData.SetMetadata(devfile.DevfileMetadata{
@@ -122,6 +129,74 @@ func ConvertImageComponentToDevfile(comp appstudiov1alpha1.Component) (data.Devf
 	return devfileData, nil
 }
 
+func CreateDevfileForDockerfileBuild(uri, context string) (data.DevfileData, error) {
+	devfileVersion := string(data.APISchemaVersion220)
+	devfileData, err := data.NewDevfileData(devfileVersion)
+	if err != nil {
+		return nil, err
+	}
+
+	devfileData.SetSchemaVersion(devfileVersion)
+
+	devfileData.SetMetadata(devfile.DevfileMetadata{
+		Name:        "dockerfile-component",
+		Description: "Basic Devfile for a Dockerfile Component",
+	})
+
+	components := []v1alpha2.Component{
+		{
+			Name: "dockerfile-build",
+			ComponentUnion: v1alpha2.ComponentUnion{
+				Image: &v1alpha2.ImageComponent{
+					Image: v1alpha2.Image{
+						ImageUnion: v1alpha2.ImageUnion{
+							Dockerfile: &v1alpha2.DockerfileImage{
+								DockerfileSrc: v1alpha2.DockerfileSrc{
+									Uri: uri,
+								},
+								Dockerfile: v1alpha2.Dockerfile{
+									BuildContext: context,
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+		{
+			Name: "container",
+			ComponentUnion: v1alpha2.ComponentUnion{
+				Container: &v1alpha2.ContainerComponent{
+					Container: v1alpha2.Container{
+						Image: "no-op",
+					},
+				},
+			},
+		},
+	}
+	err = devfileData.AddComponents(components)
+	if err != nil {
+		return nil, err
+	}
+
+	commands := []v1alpha2.Command{
+		{
+			Id: "build-image",
+			CommandUnion: v1alpha2.CommandUnion{
+				Apply: &v1alpha2.ApplyCommand{
+					Component: "dockerfile-build",
+				},
+			},
+		},
+	}
+	err = devfileData.AddCommands(commands)
+	if err != nil {
+		return nil, err
+	}
+
+	return devfileData, nil
+}
+
 // DownloadDevfile downloads devfile from the various possible devfile locations in dir and returns the contents
 func DownloadDevfile(dir string) ([]byte, error) {
 	var devfileBytes []byte
@@ -130,18 +205,37 @@ func DownloadDevfile(dir string) ([]byte, error) {
 
 	for _, path := range validDevfileLocations {
 		devfilePath := dir + "/" + path
-		devfileBytes, err = util.CurlEndpoint(devfilePath)
+		devfileBytes, err = DownloadFile(devfilePath)
 		if err == nil {
 			// if we get a 200, return
 			return devfileBytes, err
 		}
 	}
 
-	return nil, &NoDevfileFound{location: dir}
+	return nil, &NoDevfileFound{Location: dir}
 }
 
-// ReadDevfilesFromRepo attempts to read and return devfiles from the local path upto the specified depth
-// If no devfile(s) is found, then the Alizer tool is used to detect and match a devfile from the devfile registry
-func ReadDevfilesFromRepo(a Alizer, localpath string, depth int, devfileRegistryURL string) (map[string][]byte, map[string]string, error) {
-	return searchDevfiles(a, localpath, 0, depth, devfileRegistryURL)
+// DownloadFile downloads the specified file
+func DownloadFile(file string) ([]byte, error) {
+	return util.CurlEndpoint(file)
+}
+
+// DownloadDevfileAndDockerfile attempts to download the  devfile and dockerfile from the root of the specified url
+func DownloadDevfileAndDockerfile(url string) ([]byte, []byte) {
+	var devfileBytes, dockerfileBytes []byte
+
+	devfileBytes, _ = DownloadDevfile(url)
+	dockerfileBytes, _ = DownloadFile(url + "/Dockerfile")
+
+	return devfileBytes, dockerfileBytes
+}
+
+// ScanRepo attempts to read and return devfiles and dockerfiles from the local path upto the specified depth
+// If no devfile(s) or dockerfile(s) are found, then the Alizer tool is used to detect and match a devfile/dockerfile from the devfile registry
+// ScanRepo returns 3 maps and an error:
+// Map 1 returns a context to the devfile bytes if present.
+// Map 2 returns a context to the matched devfileURL from the devfile registry if no devfile is present in the context.
+// Map 3 returns a context to the dockerfile uri or a matched dockerfileURL from the devfile registry if no dockerfile is present in the context
+func ScanRepo(log logr.Logger, a Alizer, localpath string, depth int, devfileRegistryURL string) (map[string][]byte, map[string]string, map[string]string, error) {
+	return search(log, a, localpath, 0, depth, devfileRegistryURL)
 }

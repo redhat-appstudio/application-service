@@ -57,6 +57,9 @@ func ConvertGitHubURL(URL string) (string, error) {
 	reg := regexp.MustCompile(".git$")
 	URL = reg.ReplaceAllString(URL, "")
 
+	// If the URL has a trailing / suffix, trim it
+	URL = strings.TrimSuffix(URL, "/")
+
 	url, err := url.Parse(URL)
 	if err != nil {
 		return "", err

@@ -1294,7 +1294,7 @@ var _ = Describe("Component controller", func() {
 			// Make sure the err was set
 			Expect(createdHasComp.Status.Devfile).Should(Equal(""))
 			Expect(createdHasComp.Status.Conditions[len(createdHasComp.Status.Conditions)-1].Status).Should(Equal(metav1.ConditionFalse))
-			Expect(strings.ToLower(createdHasComp.Status.Conditions[len(createdHasComp.Status.Conditions)-1].Message)).Should(ContainSubstring("component create failed: unable to find any devfiles in repo https://github.com/johnmcollier/test-error-response"))
+			Expect(strings.ToLower(createdHasComp.Status.Conditions[len(createdHasComp.Status.Conditions)-1].Message)).Should(ContainSubstring("component create failed: unable to find devfile"))
 
 			hasAppLookupKey := types.NamespacedName{Name: applicationName, Namespace: HASAppNamespace}
 

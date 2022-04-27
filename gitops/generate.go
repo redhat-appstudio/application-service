@@ -39,7 +39,7 @@ const (
 
 // Generate takes in a given Component CR and
 // spits out a deployment, service, and route file to disk
-func Generate(fs afero.Fs, outputFolder string, component appstudiov1alpha1.Component) error {
+func Generate(fs afero.Afero, gitOpsFolder string, outputFolder string, component appstudiov1alpha1.Component) error {
 	deployment := generateDeployment(component)
 
 	k := resources.Kustomization{}
@@ -57,18 +57,57 @@ func Generate(fs afero.Fs, outputFolder string, component appstudiov1alpha1.Comp
 		resources[routeFileName] = route
 	}
 
-	if component.Spec.Source.GitSource != nil {
+	var commonStorage *corev1.PersistentVolumeClaim
+	if component.Spec.Source.GitSource != nil && component.Spec.Source.GitSource.URL != "" {
 		tektonResourcesDirName := ".tekton"
 		k.AddResources(tektonResourcesDirName + "/")
 
 		if err := GenerateBuild(fs, filepath.Join(outputFolder, tektonResourcesDirName), component); err != nil {
 			return err
 		}
+
+		// Generate the common pvc for git components, and place it at application-level in the repository
+		commonStorage = GenerateCommonStorage(component, "appstudio")
 	}
 
 	resources["kustomization.yaml"] = k
 
 	_, err := yaml.WriteResources(fs, outputFolder, resources)
+	if err != nil {
+		return err
+	}
+
+	// Re-generate the parent kustomize file and return
+	return GenerateParentKustomize(fs, gitOpsFolder, commonStorage)
+}
+
+// GenerateParentKustomize takes in a folder of components, and outputs a kustomize file to the outputFolder dir
+// containing entries for each Component.
+// If commonStoragePVC is non-nil, it will also add the common storage pvc yaml file to the parent kustomize. If it's nil, it will not be added
+func GenerateParentKustomize(fs afero.Afero, gitOpsFolder string, commonStoragePVC *corev1.PersistentVolumeClaim) error {
+	componentsFolder := filepath.Join(gitOpsFolder, "components")
+	k := resources.Kustomization{}
+
+	resources := map[string]interface{}{}
+
+	fInfo, err := fs.ReadDir(componentsFolder)
+	if err != nil {
+		return err
+	}
+	for _, file := range fInfo {
+		if file.IsDir() {
+			k.AddBases(filepath.Join("components", file.Name(), "base"))
+		}
+	}
+
+	// if the common storage PVC yaml file was passed in, write to disk and add it to the parent kustomize file
+	if commonStoragePVC != nil {
+		resources["common-storage-pvc.yaml"] = commonStoragePVC
+		k.AddResources("common-storage-pvc.yaml")
+	}
+	resources["kustomization.yaml"] = k
+
+	_, err = yaml.WriteResources(fs, gitOpsFolder, resources)
 	return err
 }
 

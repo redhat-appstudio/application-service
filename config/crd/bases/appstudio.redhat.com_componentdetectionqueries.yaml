@@ -48,6 +48,10 @@ spec:
                     description: If specified, the devfile at the URL will be used
                       for the component.
                     type: string
+                  dockerfileUrl:
+                    description: If specified, the dockerfile at the URL will be used
+                      for the component.
+                    type: string
                   url:
                     description: If importing from git, the repository to create the
                       component from
@@ -269,6 +273,10 @@ spec:
                                 devfileUrl:
                                   description: If specified, the devfile at the URL
                                     will be used for the component.
+                                  type: string
+                                dockerfileUrl:
+                                  description: If specified, the dockerfile at the
+                                    URL will be used for the component.
                                   type: string
                                 url:
                                   description: If importing from git, the repository

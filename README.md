@@ -107,7 +107,7 @@ By default, the production devfile registry URL will be used for `ComponentDetec
 
 For example:
 
-`DEVFILE_REGISTRY_URL=https://myregistry make deploy` would deploy HAS configured to use github.com/fake-organization.
+`DEVFILE_REGISTRY_URL=https://myregistry make deploy` would deploy HAS configured to use https://myregistry.
 
 ### Disabling Webhooks for Local Dev
 

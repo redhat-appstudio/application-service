@@ -31,6 +31,15 @@ func Test_AddResource(t *testing.T) {
 	}
 }
 
+func Test_AddBases(t *testing.T) {
+	k := Kustomization{}
+	k.AddBases("testing.yaml", "testing2.yaml")
+
+	if diff := cmp.Diff([]string{"testing.yaml", "testing2.yaml"}, k.Bases); diff != "" {
+		t.Fatalf("failed to add resources:\n%s", diff)
+	}
+}
+
 func Test_AddResource_with_duplicates(t *testing.T) {
 	k := Kustomization{}
 	k.AddResources("testing.yaml", "testing2.yaml")

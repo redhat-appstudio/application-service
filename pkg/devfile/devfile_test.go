@@ -25,8 +25,11 @@ import (
 	"github.com/devfile/api/v2/pkg/devfile"
 	data "github.com/devfile/library/pkg/devfile/parser/data"
 	v2 "github.com/devfile/library/pkg/devfile/parser/data/v2"
+	"github.com/devfile/library/pkg/devfile/parser/data/v2/common"
+	"github.com/go-logr/logr"
 	appstudiov1alpha1 "github.com/redhat-appstudio/application-service/api/v1alpha1"
 	"github.com/redhat-appstudio/application-service/pkg/util"
+	"github.com/stretchr/testify/assert"
 )
 
 func TestParseDevfileModel(t *testing.T) {
@@ -96,7 +99,7 @@ func TestConvertApplicationToDevfile(t *testing.T) {
 						SchemaVersion: string(data.APISchemaVersion210),
 						Metadata: devfile.DevfileMetadata{
 							Name:       "Petclinic",
-							Attributes: attributes.Attributes{}.PutString("gitOpsRepository.url", "https://github.com/testorg/petclinic-gitops").PutString("appModelRepository.url", "https://github.com/testorg/petclinic-app"),
+							Attributes: attributes.Attributes{}.PutString("gitOpsRepository.url", "https://github.com/testorg/petclinic-gitops").PutString("appModelRepository.url", "https://github.com/testorg/petclinic-app").PutString("gitOpsRepository.context", "/").PutString("appModelRepository.context", "/"),
 						},
 					},
 				},
@@ -252,18 +255,128 @@ func TestDownloadDevfile(t *testing.T) {
 	}
 }
 
-func TestReadDevfilesFromRepo(t *testing.T) {
+func TestCreateDevfileForDockerfileBuild(t *testing.T) {
+	tests := []struct {
+		name    string
+		uri     string
+		context string
+		wantErr bool
+	}{
+		{
+			name:    "Set Dockerfile Uri and Context",
+			uri:     "dockerfile/uri",
+			context: "context",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			gotDevfile, err := CreateDevfileForDockerfileBuild(tt.uri, tt.context)
+			if tt.wantErr && (err == nil) {
+				t.Error("wanted error but got nil")
+			} else if !tt.wantErr && err != nil {
+				t.Errorf("got unexpected error %v", err)
+			} else {
+				// Devfile Metadata
+				metadata := gotDevfile.GetMetadata()
+				assert.Equal(t, "dockerfile-component", metadata.Name, "Devfile metadata name should be equal")
+				assert.Equal(t, "Basic Devfile for a Dockerfile Component", metadata.Description, "Devfile metadata description should be equal")
+
+				// Container Component
+				if containerComponents, err := gotDevfile.GetComponents(common.DevfileOptions{
+					ComponentOptions: common.ComponentOptions{
+						ComponentType: v1alpha2.ContainerComponentType,
+					},
+				}); err != nil {
+					t.Errorf("unexpected error %v", err)
+				} else if len(containerComponents) != 1 {
+					t.Error("expected 1 container component")
+				} else {
+					assert.Equal(t, "container", containerComponents[0].Name, "component name should be equal")
+					assert.Equal(t, "no-op", containerComponents[0].Container.Image, "container image should be equal")
+				}
+
+				// Image Component
+				if imageComponents, err := gotDevfile.GetComponents(common.DevfileOptions{
+					ComponentOptions: common.ComponentOptions{
+						ComponentType: v1alpha2.ImageComponentType,
+					},
+				}); err != nil {
+					t.Errorf("unexpected error %v", err)
+					return
+				} else if len(imageComponents) != 1 {
+					t.Error("expected 1 image component")
+				} else {
+					assert.Equal(t, "dockerfile-build", imageComponents[0].Name, "component name should be equal")
+					assert.NotNil(t, imageComponents[0].Image, "Image component should not be nil")
+					assert.NotNil(t, imageComponents[0].Image.Dockerfile, "Dockerfile Image component should not be nil")
+					assert.Equal(t, tt.uri, imageComponents[0].Image.Dockerfile.DockerfileSrc.Uri, "dockerfile uri should be equal")
+					assert.Equal(t, tt.context, imageComponents[0].Image.Dockerfile.Dockerfile.BuildContext, "dockerfile context should be equal")
+				}
+
+				// Apply Command
+				if applyCommands, err := gotDevfile.GetCommands(common.DevfileOptions{
+					CommandOptions: common.CommandOptions{
+						CommandType: v1alpha2.ApplyCommandType,
+					},
+				}); err != nil {
+					t.Errorf("unexpected error %v", err)
+					return
+				} else if len(applyCommands) != 1 {
+					t.Error("expected 1 apply command")
+				} else {
+					assert.Equal(t, "build-image", applyCommands[0].Id, "command id should be equal")
+					assert.NotNil(t, applyCommands[0].Apply, "Apply command should not be nil")
+					assert.Equal(t, "dockerfile-build", applyCommands[0].Apply.Component, "command component reference should be equal")
+				}
+			}
+		})
+	}
+}
+
+func TestDownloadDevfileAndDockerfile(t *testing.T) {
+	tests := []struct {
+		name string
+		url  string
+		want bool
+	}{
+		{
+			name: "Curl devfile.yaml and dockerfile",
+			url:  "https://raw.githubusercontent.com/maysunfaisal/devfile-sample-python-samelevel/main",
+			want: true,
+		},
+		{
+			name: "Cannot curl for a devfile nor a dockerfile",
+			url:  "https://github.com/octocat/Hello-World",
+			want: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			devfile, dockerfile := DownloadDevfileAndDockerfile(tt.url)
+			if tt.want != (len(devfile) > 0 && len(dockerfile) > 0) {
+				t.Errorf("devfile and a dockerfile wanted: %v but got devfile: %v dockerfile: %v", tt.want, len(devfile) > 0, len(dockerfile) > 0)
+			}
+		})
+	}
+}
+
+func TestScanRepo(t *testing.T) {
 
 	var mockClient MockAlizerClient
+	var logger logr.Logger
 
 	tests := []struct {
-		name                   string
-		clonePath              string
-		depth                  int
-		repo                   string
-		token                  string
-		wantErr                bool
-		expectedDevfileContext []string
+		name                      string
+		clonePath                 string
+		depth                     int
+		repo                      string
+		token                     string
+		wantErr                   bool
+		expectedDevfileContext    []string
+		expectedDevfileURLContext []string
+		expectedDockerfileContext []string
 	}{
 		{
 			name:      "Should return 0 devfiles as this is not a multi comp devfile",
@@ -279,6 +392,15 @@ func TestReadDevfilesFromRepo(t *testing.T) {
 			repo:                   "https://github.com/maysunfaisal/multi-components-deep",
 			expectedDevfileContext: []string{"devfile-sample-java-springboot-basic", "python"},
 		},
+		// {
+		// 	name:                      "Should return x devfiles as this is a multi comp devfile",
+		// 	clonePath:                 "/tmp/testclone",
+		// 	depth:                     1,
+		// 	repo:                      "https://github.com/maysunfaisal/multi-components-dockerfile",
+		// 	expectedDevfileContext:    []string{"devfile-sample-java-springboot-basic", "devfile-sample-nodejs-basic", "devfile-sample-python-basic", "python-src-none"},
+		// 	expectedDevfileURLContext: []string{"python-src-none"},
+		// 	expectedDockerfileContext: []string{"python-src-docker"},
+		// },
 		// TODO - maysunfaisal
 		// Commenting out this test case, we hard code our depth to 1 for CDQ
 		// But there seems to a gap in the logic if we extend past depth 1 and discovering devfile logic
@@ -299,7 +421,7 @@ func TestReadDevfilesFromRepo(t *testing.T) {
 			if err != nil {
 				t.Errorf("got unexpected error %v", err)
 			} else {
-				devfileMap, _, err := ReadDevfilesFromRepo(mockClient, tt.clonePath, tt.depth, DevfileStageRegistryEndpoint)
+				devfileMap, _, _, err := ScanRepo(logger, mockClient, tt.clonePath, tt.depth, DevfileStageRegistryEndpoint)
 				if tt.wantErr && (err == nil) {
 					t.Error("wanted error but got nil")
 				} else if !tt.wantErr && err != nil {
@@ -317,6 +439,14 @@ func TestReadDevfilesFromRepo(t *testing.T) {
 							t.Errorf("found devfile at context %v but expected none", actualContext)
 						}
 					}
+
+					// for context, uri := range devfileURLMap {
+					// 	t.Logf("devfileURLMAP context %v, uri %v", context, uri)
+					// }
+
+					// for context, uri := range dockerfileMap {
+					// 	t.Logf("dockerfileMap context %v, uri %v", context, uri)
+					// }
 				}
 			}
 			os.RemoveAll(tt.clonePath)
