@@ -758,11 +758,11 @@ var _ = Describe("Component Detection Query controller", func() {
 		})
 	})
 
-	Context("Create Component Detection Query with repo that has no devfile", func() {
-		It("Should error out if Alizer Analyze errors out", func() {
+	Context("Create Component Detection Query with springboot repo that has no devfile", func() {
+		It("Should match a devfile", func() {
 			ctx := context.Background()
 
-			queryName := "error" + HASCompDetQuery + "16" // this name is tied to mock fn in detect_mock.go
+			queryName := "springboot" + HASCompDetQuery + "16"
 
 			hasCompDetectionQuery := &appstudiov1alpha1.ComponentDetectionQuery{
 				TypeMeta: metav1.TypeMeta{
@@ -791,11 +791,15 @@ var _ = Describe("Component Detection Query controller", func() {
 				return len(createdHasCompDetectionQuery.Status.Conditions) > 1
 			}, timeout, interval).Should(BeTrue())
 
-			// Make sure the right err is set
-			Expect(createdHasCompDetectionQuery.Status.Conditions[1].Message).Should(ContainSubstring("ComponentDetectionQuery failed: dummy Analyze err"))
+			// Make sure the right status is set
+			Expect(createdHasCompDetectionQuery.Status.Conditions[1].Message).Should(ContainSubstring("ComponentDetectionQuery has successfully finished"))
 
-			// Make sure the a devfile is detected
-			Expect(len(createdHasCompDetectionQuery.Status.ComponentDetected)).Should(Equal(0))
+			// Make sure a devfile is matched
+			Expect(len(createdHasCompDetectionQuery.Status.ComponentDetected)).Should(Equal(1))
+			for _, componentDesc := range createdHasCompDetectionQuery.Status.ComponentDetected {
+				Expect(componentDesc.ComponentStub.Source.GitSource).ShouldNot(BeNil())
+				Expect(componentDesc.ComponentStub.Source.GitSource.DevfileURL).ShouldNot(BeEmpty())
+			}
 
 			// Delete the specified Detection Query resource
 			deleteCompDetQueryCR(hasCompDetQueryLookupKey)
@@ -803,10 +807,10 @@ var _ = Describe("Component Detection Query controller", func() {
 	})
 
 	Context("Create Component Detection Query with multi component repo that has no devfile", func() {
-		It("Should error out if Alizer Analyze errors out", func() {
+		It("Should attempt to match a devfile for every component", func() {
 			ctx := context.Background()
 
-			queryName := "error" + HASCompDetQuery + "17" // this name is tied to mock fn in detect_mock.go
+			queryName := HASCompDetQuery + "17"
 
 			hasCompDetectionQuery := &appstudiov1alpha1.ComponentDetectionQuery{
 				TypeMeta: metav1.TypeMeta{
@@ -836,11 +840,11 @@ var _ = Describe("Component Detection Query controller", func() {
 				return len(createdHasCompDetectionQuery.Status.Conditions) > 1
 			}, timeout, interval).Should(BeTrue())
 
-			// Make sure the right err is set
-			Expect(createdHasCompDetectionQuery.Status.Conditions[1].Message).Should(ContainSubstring("ComponentDetectionQuery failed: dummy Analyze err"))
+			// Make sure the right status is set
+			Expect(createdHasCompDetectionQuery.Status.Conditions[1].Message).Should(ContainSubstring("ComponentDetectionQuery has successfully finished"))
 
-			// Make sure the a devfile is detected
-			Expect(len(createdHasCompDetectionQuery.Status.ComponentDetected)).Should(Equal(0))
+			// Make sure the devfiles are detected
+			Expect(len(createdHasCompDetectionQuery.Status.ComponentDetected)).Should(Equal(2))
 
 			// Delete the specified Detection Query resource
 			deleteCompDetQueryCR(hasCompDetQueryLookupKey)
