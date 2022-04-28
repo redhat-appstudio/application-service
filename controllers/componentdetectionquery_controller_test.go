@@ -301,7 +301,7 @@ var _ = Describe("Component Detection Query controller", func() {
 			Eventually(func() bool {
 				k8sClient.Get(context.Background(), hasCompDetQueryLookupKey, createdHasCompDetectionQuery)
 				return len(createdHasCompDetectionQuery.Status.Conditions) > 1
-			}, timeout, interval).Should(BeTrue())
+			}, timeout20s, interval).Should(BeTrue())
 
 			// Make sure the right err is set
 			Expect(createdHasCompDetectionQuery.Status.Conditions[1].Message).Should(ContainSubstring("ComponentDetectionQuery has successfully finished"))
@@ -311,7 +311,9 @@ var _ = Describe("Component Detection Query controller", func() {
 
 			for devfileName, devfileDesc := range createdHasCompDetectionQuery.Status.ComponentDetected {
 				Expect(devfileName).Should(Or(ContainSubstring("java-springboot"), ContainSubstring("python")))
+				Expect(devfileDesc.ComponentStub.Source.GitSource).ShouldNot(BeNil())
 				Expect(devfileDesc.ComponentStub.Source.GitSource.Context).Should(BeElementOf([]string{"devfile-sample-java-springboot-basic", "devfile-sample-python-basic"}))
+				Expect(devfileDesc.ComponentStub.Source.GitSource.DevfileURL).ShouldNot(BeEmpty())
 			}
 
 			// Delete the specified Detection Query resource
@@ -758,11 +760,11 @@ var _ = Describe("Component Detection Query controller", func() {
 		})
 	})
 
-	Context("Create Component Detection Query with repo that has no devfile", func() {
-		It("Should error out if Alizer Analyze errors out", func() {
+	Context("Create Component Detection Query with springboot repo that has no devfile", func() {
+		It("Should match a devfile", func() {
 			ctx := context.Background()
 
-			queryName := "error" + HASCompDetQuery + "16" // this name is tied to mock fn in detect_mock.go
+			queryName := "springboot" + HASCompDetQuery + "16"
 
 			hasCompDetectionQuery := &appstudiov1alpha1.ComponentDetectionQuery{
 				TypeMeta: metav1.TypeMeta{
@@ -791,56 +793,15 @@ var _ = Describe("Component Detection Query controller", func() {
 				return len(createdHasCompDetectionQuery.Status.Conditions) > 1
 			}, timeout, interval).Should(BeTrue())
 
-			// Make sure the right err is set
-			Expect(createdHasCompDetectionQuery.Status.Conditions[1].Message).Should(ContainSubstring("ComponentDetectionQuery failed: dummy Analyze err"))
+			// Make sure the right status is set
+			Expect(createdHasCompDetectionQuery.Status.Conditions[1].Message).Should(ContainSubstring("ComponentDetectionQuery has successfully finished"))
 
-			// Make sure the a devfile is detected
-			Expect(len(createdHasCompDetectionQuery.Status.ComponentDetected)).Should(Equal(0))
-
-			// Delete the specified Detection Query resource
-			deleteCompDetQueryCR(hasCompDetQueryLookupKey)
-		})
-	})
-
-	Context("Create Component Detection Query with multi component repo that has no devfile", func() {
-		It("Should error out if Alizer Analyze errors out", func() {
-			ctx := context.Background()
-
-			queryName := "error" + HASCompDetQuery + "17" // this name is tied to mock fn in detect_mock.go
-
-			hasCompDetectionQuery := &appstudiov1alpha1.ComponentDetectionQuery{
-				TypeMeta: metav1.TypeMeta{
-					APIVersion: "appstudio.redhat.com/v1alpha1",
-					Kind:       "ComponentDetectionQuery",
-				},
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      queryName,
-					Namespace: HASNamespace,
-				},
-				Spec: appstudiov1alpha1.ComponentDetectionQuerySpec{
-					IsMultiComponent: true,
-					GitSource: appstudiov1alpha1.GitSource{
-						URL: "https://github.com/maysunfaisal/multi-components-none",
-					},
-				},
+			// Make sure a devfile is matched
+			Expect(len(createdHasCompDetectionQuery.Status.ComponentDetected)).Should(Equal(1))
+			for _, componentDesc := range createdHasCompDetectionQuery.Status.ComponentDetected {
+				Expect(componentDesc.ComponentStub.Source.GitSource).ShouldNot(BeNil())
+				Expect(componentDesc.ComponentStub.Source.GitSource.DevfileURL).ShouldNot(BeEmpty())
 			}
-
-			Expect(k8sClient.Create(ctx, hasCompDetectionQuery)).Should(Succeed())
-
-			// Look up the has app resource that was created.
-			// num(conditions) may still be < 1 on the first try, so retry until at least _some_ condition is set
-			hasCompDetQueryLookupKey := types.NamespacedName{Name: queryName, Namespace: HASNamespace}
-			createdHasCompDetectionQuery := &appstudiov1alpha1.ComponentDetectionQuery{}
-			Eventually(func() bool {
-				k8sClient.Get(context.Background(), hasCompDetQueryLookupKey, createdHasCompDetectionQuery)
-				return len(createdHasCompDetectionQuery.Status.Conditions) > 1
-			}, timeout, interval).Should(BeTrue())
-
-			// Make sure the right err is set
-			Expect(createdHasCompDetectionQuery.Status.Conditions[1].Message).Should(ContainSubstring("ComponentDetectionQuery failed: dummy Analyze err"))
-
-			// Make sure the a devfile is detected
-			Expect(len(createdHasCompDetectionQuery.Status.ComponentDetected)).Should(Equal(0))
 
 			// Delete the specified Detection Query resource
 			deleteCompDetQueryCR(hasCompDetQueryLookupKey)
@@ -941,6 +902,105 @@ var _ = Describe("Component Detection Query controller", func() {
 				err := k8sClient.Get(context.Background(), hasCompDetQueryLookupKey, deletedCompDetQuery)
 				return err != nil
 			}, timeout, interval).Should(BeTrue())
+		})
+	})
+
+	Context("Create Component Detection Query with multi component repo that has no devfile or dockerfile", func() {
+		It("Should attempt to match a devfile or dockerfile for every component", func() {
+			ctx := context.Background()
+
+			queryName := HASCompDetQuery + "20"
+
+			hasCompDetectionQuery := &appstudiov1alpha1.ComponentDetectionQuery{
+				TypeMeta: metav1.TypeMeta{
+					APIVersion: "appstudio.redhat.com/v1alpha1",
+					Kind:       "ComponentDetectionQuery",
+				},
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      queryName,
+					Namespace: HASNamespace,
+				},
+				Spec: appstudiov1alpha1.ComponentDetectionQuerySpec{
+					IsMultiComponent: true,
+					GitSource: appstudiov1alpha1.GitSource{
+						URL: "https://github.com/maysunfaisal/multi-components-dockerfile",
+					},
+				},
+			}
+
+			Expect(k8sClient.Create(ctx, hasCompDetectionQuery)).Should(Succeed())
+
+			// Look up the has app resource that was created.
+			// num(conditions) may still be < 1 on the first try, so retry until at least _some_ condition is set
+			hasCompDetQueryLookupKey := types.NamespacedName{Name: queryName, Namespace: HASNamespace}
+			createdHasCompDetectionQuery := &appstudiov1alpha1.ComponentDetectionQuery{}
+			Eventually(func() bool {
+				k8sClient.Get(context.Background(), hasCompDetQueryLookupKey, createdHasCompDetectionQuery)
+				return len(createdHasCompDetectionQuery.Status.Conditions) > 1
+			}, timeout20s, interval).Should(BeTrue())
+
+			// Make sure the right status is set
+			Expect(createdHasCompDetectionQuery.Status.Conditions[1].Message).Should(ContainSubstring("ComponentDetectionQuery has successfully finished"))
+
+			// Make sure the devfiles are detected
+			Expect(len(createdHasCompDetectionQuery.Status.ComponentDetected)).Should(Equal(4)) // mocked, not accurate. check unit test for accurate detection that uses the alizer client instead of the mock client.
+			for _, componentDesc := range createdHasCompDetectionQuery.Status.ComponentDetected {
+				Expect(componentDesc.ComponentStub.Source.GitSource).ShouldNot(BeNil())
+			}
+
+			// Delete the specified Detection Query resource
+			deleteCompDetQueryCR(hasCompDetQueryLookupKey)
+		})
+
+		Context("Create Component Detection Query with a dockerfile repo", func() {
+			It("Should return successfully", func() {
+				ctx := context.Background()
+
+				queryName := HASCompDetQuery + "21"
+
+				hasCompDetectionQuery := &appstudiov1alpha1.ComponentDetectionQuery{
+					TypeMeta: metav1.TypeMeta{
+						APIVersion: "appstudio.redhat.com/v1alpha1",
+						Kind:       "ComponentDetectionQuery",
+					},
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      queryName,
+						Namespace: HASNamespace,
+					},
+					Spec: appstudiov1alpha1.ComponentDetectionQuerySpec{
+						GitSource: appstudiov1alpha1.GitSource{
+							URL: "https://github.com/maysunfaisal/python-src-docker",
+						},
+					},
+				}
+
+				Expect(k8sClient.Create(ctx, hasCompDetectionQuery)).Should(Succeed())
+
+				// Look up the has app resource that was created.
+				// num(conditions) may still be < 1 on the first try, so retry until at least _some_ condition is set
+				hasCompDetQueryLookupKey := types.NamespacedName{Name: queryName, Namespace: HASNamespace}
+				createdHasCompDetectionQuery := &appstudiov1alpha1.ComponentDetectionQuery{}
+				Eventually(func() bool {
+					k8sClient.Get(context.Background(), hasCompDetQueryLookupKey, createdHasCompDetectionQuery)
+					return len(createdHasCompDetectionQuery.Status.Conditions) > 1
+				}, timeout20s, interval).Should(BeTrue())
+
+				// Make sure the right status is set
+				Expect(createdHasCompDetectionQuery.Status.Conditions[1].Message).Should(ContainSubstring("ComponentDetectionQuery has successfully finished"))
+
+				fmt.Printf("detected mjf are %+v\n", createdHasCompDetectionQuery.Status.ComponentDetected)
+
+				// Make sure the devfiles are detected
+				Expect(len(createdHasCompDetectionQuery.Status.ComponentDetected)).Should(Equal(1))
+				for _, componentDesc := range createdHasCompDetectionQuery.Status.ComponentDetected {
+					Expect(componentDesc.ComponentStub.Source.GitSource).ShouldNot(BeNil())
+					Expect(componentDesc.ComponentStub.Source.GitSource.DockerfileURL).ShouldNot(BeEmpty())
+					Expect(componentDesc.ComponentStub.Source.GitSource.DockerfileURL).Should(Equal("https://raw.githubusercontent.com/maysunfaisal/python-src-docker/main/./Dockerfile"))
+				}
+
+				// Delete the specified Detection Query resource
+				deleteCompDetQueryCR(hasCompDetQueryLookupKey)
+			})
 		})
 	})
 

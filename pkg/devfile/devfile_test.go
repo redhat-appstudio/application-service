@@ -357,7 +357,7 @@ func TestDownloadDevfileAndDockerfile(t *testing.T) {
 
 func TestScanRepo(t *testing.T) {
 
-	var mockClient MockAlizerClient
+	var alizerClient AlizerClient // Use actual client because this is a huge wrapper function and mocking so many possibilities is pretty tedious when everything is changing frequently
 
 	tests := []struct {
 		name                      string
@@ -371,28 +371,22 @@ func TestScanRepo(t *testing.T) {
 		expectedDockerfileContext []string
 	}{
 		{
-			name:      "Should return 0 devfiles as this is not a multi comp devfile",
-			clonePath: "/tmp/testclone",
-			depth:     1,
-			repo:      "https://github.com/devfile-samples/devfile-sample-java-springboot-basic",
-			wantErr:   true,
+			name:                      "Should return 1 devfiles as this is a multi comp devfile",
+			clonePath:                 "/tmp/testclone",
+			depth:                     1,
+			repo:                      "https://github.com/maysunfaisal/multi-components-deep",
+			expectedDevfileContext:    []string{"devfile-sample-java-springboot-basic", "python"},
+			expectedDevfileURLContext: []string{"python"},
 		},
 		{
-			name:                   "Should return 1 devfiles as this is a multi comp devfile",
-			clonePath:              "/tmp/testclone",
-			depth:                  1,
-			repo:                   "https://github.com/maysunfaisal/multi-components-deep",
-			expectedDevfileContext: []string{"devfile-sample-java-springboot-basic", "python"},
+			name:                      "Should return 4 devfiles, 1 devfile url and 2 dockerfile uri as this is a multi comp devfile",
+			clonePath:                 "/tmp/testclone",
+			depth:                     1,
+			repo:                      "https://github.com/maysunfaisal/multi-components-dockerfile",
+			expectedDevfileContext:    []string{"devfile-sample-java-springboot-basic", "devfile-sample-nodejs-basic", "devfile-sample-python-basic", "python-src-none"},
+			expectedDevfileURLContext: []string{"python-src-none"},
+			expectedDockerfileContext: []string{"python-src-docker", "devfile-sample-nodejs-basic"},
 		},
-		// {
-		// 	name:                      "Should return x devfiles as this is a multi comp devfile",
-		// 	clonePath:                 "/tmp/testclone",
-		// 	depth:                     1,
-		// 	repo:                      "https://github.com/maysunfaisal/multi-components-dockerfile",
-		// 	expectedDevfileContext:    []string{"devfile-sample-java-springboot-basic", "devfile-sample-nodejs-basic", "devfile-sample-python-basic", "python-src-none"},
-		// 	expectedDevfileURLContext: []string{"python-src-none"},
-		// 	expectedDockerfileContext: []string{"python-src-docker"},
-		// },
 		// TODO - maysunfaisal
 		// Commenting out this test case, we hard code our depth to 1 for CDQ
 		// But there seems to a gap in the logic if we extend past depth 1 and discovering devfile logic
@@ -413,7 +407,7 @@ func TestScanRepo(t *testing.T) {
 			if err != nil {
 				t.Errorf("got unexpected error %v", err)
 			} else {
-				devfileMap, _, _, err := ScanRepo(nil, mockClient, tt.clonePath, tt.depth, DevfileStageRegistryEndpoint)
+				devfileMap, devfileURLMap, dockerfileMap, err := ScanRepo(nil, alizerClient, tt.clonePath, tt.depth, DevfileStageRegistryEndpoint)
 				if tt.wantErr && (err == nil) {
 					t.Error("wanted error but got nil")
 				} else if !tt.wantErr && err != nil {
@@ -421,9 +415,10 @@ func TestScanRepo(t *testing.T) {
 				} else {
 					for actualContext := range devfileMap {
 						matched := false
-						for _, context := range tt.expectedDevfileContext {
-							if context == actualContext {
+						for _, expectedContext := range tt.expectedDevfileContext {
+							if expectedContext == actualContext {
 								matched = true
+								break
 							}
 						}
 
@@ -432,13 +427,33 @@ func TestScanRepo(t *testing.T) {
 						}
 					}
 
-					// for context, uri := range devfileURLMap {
-					// 	t.Logf("devfileURLMAP context %v, uri %v", context, uri)
-					// }
+					for actualContext := range devfileURLMap {
+						matched := false
+						for _, expectedContext := range tt.expectedDevfileURLContext {
+							if expectedContext == actualContext {
+								matched = true
+								break
+							}
+						}
 
-					// for context, uri := range dockerfileMap {
-					// 	t.Logf("dockerfileMap context %v, uri %v", context, uri)
-					// }
+						if !matched {
+							t.Errorf("found devfile URL at context %v:%v but expected none", actualContext, devfileURLMap[actualContext])
+						}
+					}
+
+					for actualContext := range dockerfileMap {
+						matched := false
+						for _, expectedContext := range tt.expectedDockerfileContext {
+							if expectedContext == actualContext {
+								matched = true
+								break
+							}
+						}
+
+						if !matched {
+							t.Errorf("found dockerfile uri at context %v:%v but expected none", actualContext, dockerfileMap[actualContext])
+						}
+					}
 				}
 			}
 			os.RemoveAll(tt.clonePath)

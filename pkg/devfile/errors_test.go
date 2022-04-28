@@ -53,3 +53,67 @@ func TestNoDevfileFoundErr(t *testing.T) {
 		})
 	}
 }
+
+func TestNoDockerfileFoundErr(t *testing.T) {
+
+	tests := []struct {
+		name          string
+		args          NoDockerfileFound
+		wantErrString string
+	}{
+		{
+			name: "No Dockerfile Found at location",
+			args: NoDockerfileFound{
+				Location: "/path",
+			},
+			wantErrString: "unable to find dockerfile in the specified location /path",
+		},
+		{
+			name: "No Dockerfile Found at location due to an err",
+			args: NoDockerfileFound{
+				Location: "/path",
+				Err:      fmt.Errorf("a dummy err"),
+			},
+			wantErrString: "unable to find dockerfile in the specified location /path due to a dummy err",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			errString := tt.args.Error()
+			assert.Equal(t, tt.wantErrString, errString, "the err string should be equal")
+		})
+	}
+}
+
+func TestNoFileFoundErr(t *testing.T) {
+
+	tests := []struct {
+		name          string
+		args          NoFileFound
+		wantErrString string
+	}{
+		{
+			name: "No file Found at location",
+			args: NoFileFound{
+				Location: "/path",
+			},
+			wantErrString: "unable to find file in the specified location /path",
+		},
+		{
+			name: "No file Found at location due to an err",
+			args: NoFileFound{
+				Location: "/path",
+				Err:      fmt.Errorf("a dummy err"),
+			},
+			wantErrString: "unable to find file in the specified location /path due to a dummy err",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			errString := tt.args.Error()
+			assert.Equal(t, tt.wantErrString, errString, "the err string should be equal")
+		})
+	}
+}

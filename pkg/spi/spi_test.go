@@ -26,36 +26,31 @@ func TestDownloadDevfileFromSPI(t *testing.T) {
 	var mock MockSPIClient
 
 	tests := []struct {
-		name     string
-		repoUrl  string
-		filename string
-		path     string
-		want     string
-		wantErr  bool
+		name    string
+		repoUrl string
+		path    string
+		want    string
+		wantErr bool
 	}{
 		{
 			name:    "Successfully retrieve devfile, no context/path set",
 			repoUrl: "https://github.com/testrepo/test-private-repo",
 			want:    mockDevfile,
-			wantErr: false,
 		},
 		{
 			name:    "Successfully retrieve devfile, context/path set",
 			repoUrl: "https://github.com/testrepo/test-private-repo",
 			path:    "/test",
 			want:    mockDevfile,
-			wantErr: false,
 		},
 		{
 			name:    "Unable to retrieve devfile",
 			repoUrl: "https://github.com/testrepo/test-error-response",
-			want:    "",
 			wantErr: true,
 		},
 		{
 			name:    "Error reading devfile",
 			repoUrl: "https://github.com/testrepo/test-parse-error",
-			want:    "",
 			wantErr: true,
 		},
 	}
@@ -71,6 +66,63 @@ func TestDownloadDevfileFromSPI(t *testing.T) {
 			devfileBytesString := string(devfileBytes)
 			if devfileBytesString != tt.want {
 				t.Errorf("error: expected %v, got %v", tt.want, devfileBytesString)
+			}
+		})
+	}
+}
+
+func TestDownloadDevfileandDockerfileUsingSPI(t *testing.T) {
+	var mock MockSPIClient
+
+	tests := []struct {
+		name           string
+		repoUrl        string
+		path           string
+		wantDevfile    string
+		wantDockerfile string
+		wantErr        bool
+	}{
+		{
+			name:           "Successfully retrieve devfile, no context/path set",
+			repoUrl:        "https://github.com/testrepo/test-private-repo",
+			wantDevfile:    mockDevfile,
+			wantDockerfile: mockDockerfile,
+		},
+		{
+			name:           "Successfully retrieve devfile, context/path set",
+			repoUrl:        "https://github.com/testrepo/test-private-repo",
+			path:           "/test",
+			wantDevfile:    mockDevfile,
+			wantDockerfile: mockDockerfile,
+		},
+		{
+			name:    "Error reading devfile",
+			repoUrl: "https://github.com/testrepo/test-parse-error",
+			wantErr: true,
+		},
+		{
+			name:    "Error reading dockerfile",
+			repoUrl: "https://github.com/testrepo/test-error-dockerfile-response",
+			wantErr: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			devfileBytes, dockerfileBytes, err := DownloadDevfileandDockerfileUsingSPI(mock, context.Background(), "test-namespace", tt.repoUrl, "main", tt.path)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("unexpected error return value: %v", err)
+				return
+			}
+
+			devfileBytesString := string(devfileBytes)
+			if devfileBytesString != tt.wantDevfile {
+				t.Errorf("devfile error: expected %v, got %v", tt.wantDevfile, devfileBytesString)
+			}
+
+			dockerfileBytesString := string(dockerfileBytes)
+			if dockerfileBytesString != tt.wantDockerfile {
+				t.Errorf("dockerfile error: expected %v, got %v", tt.wantDockerfile, dockerfileBytesString)
 			}
 		})
 	}
