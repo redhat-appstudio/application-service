@@ -96,7 +96,7 @@ func TestUpdateDockerfileLink(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 
-			gotLink, err := UpdateDockerfileLink(tt.repo, tt.context)
+			gotLink, err := UpdateDockerfileLink(tt.repo, "", tt.context)
 			if !tt.wantErr && err != nil {
 				t.Errorf("Unexpected err: %+v", err)
 			} else if tt.wantErr && err == nil {

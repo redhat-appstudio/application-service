@@ -134,7 +134,7 @@ func (r *ComponentReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 			var gitURL string
 			if source.GitSource.DevfileURL == "" && source.GitSource.DockerfileURL == "" {
 				if gitToken == "" {
-					gitURL, err = util.ConvertGitHubURL(source.GitSource.URL)
+					gitURL, err = util.ConvertGitHubURL(source.GitSource.URL, source.GitSource.Revision)
 					if err != nil {
 						log.Error(err, fmt.Sprintf("Unable to convert Github URL to raw format, exiting reconcile loop %v", req.NamespacedName))
 						r.SetCreateConditionAndUpdateCR(ctx, &component, err)
