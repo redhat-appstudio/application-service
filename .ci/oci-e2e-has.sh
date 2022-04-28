@@ -6,42 +6,68 @@ set -o pipefail
 # error on unset variables
 set -u
 
-if [ -z "${OPENSHIFT_CI}" ]; then
-    echo "[ERROR] The script is not running in openshift ci"
-    exit 1
-fi
+command -v e2e-appstudio >/dev/null 2>&1 || { echo "e2e-appstudio bin is not installed. Please install it from: https://github.com/redhat-appstudio/e2e-tests."; exit 1; }
+command -v kubectl >/dev/null 2>&1 || { echo "kubectl is not installed. Aborting."; exit 1; }
 
-mkdir -p tmp/
+export WORKSPACE=$(dirname $(dirname $(readlink -f "$0")));
+export TEST_SUITE="has-suite"
+export APPLICATION_NAMESPACE="openshift-gitops"
+export APPLICATION_NAME="all-components-staging"
 
-export ROOT_E2E="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"/..
-export WORKSPACE=${WORKSPACE:-${ROOT_E2E}}
-export E2E_CLONE_BRANCH="main"
-export E2E_REPO_LINK="https://github.com/redhat-appstudio/e2e-tests.git"
+# HAS_CONTROLLER_IMAGE it is application-service controller image builded in openshift CI job workflow. More info about how works image dependencies in ci:https://github.com/openshift/ci-tools/blob/master/TEMPLATES.md#parameters-available-to-templates
+# Container env defined at: https://github.com/openshift/release/blob/master/ci-operator/config/redhat-appstudio/application-service/redhat-appstudio-application-service-main.yaml#L6-L7
+# Openshift CI generate the application service container value as registry.build01.ci.openshift.org/ci-op-83gwcnmk/pipeline@sha256:8812e26b50b262d0cc45da7912970a205add4bd4e4ff3fed421baf3120027206. Need to get the image without sha.
+export OPENSHIFT_CI_CONTROLLER_IMAGE=${HAS_CONTROLLER_IMAGE%@*}
+# Tag defined at: https://github.com/openshift/release/blob/master/ci-operator/config/redhat-appstudio/application-service/redhat-appstudio-application-service-main.yaml#L8
+export OPENSHIFT_CI_CONTROLLER_TAG=${HAS_CONTROLLER_IMAGE_TAG:-"redhat-appstudio-has-image"}
 
-# Example: CLONEREFS_OPTIONS={"src_root":"/go","log":"/dev/null","git_user_name":"ci-robot","git_user_email":"ci-robot@openshift.io","refs":[{"org":"redhat-appstudio","repo":"application-service","repo_link":"https://github.com/redhat-appstudio/application-service","base_ref":"main","base_sha":"75a4c79e49ab5c1a4c15d844256d1e4419da63e3","base_link":"https://github.com/redhat-appstudio/application-service/commit/75a4c79e49ab5c1a4c15d844256d1e4419da63e3","pulls":[{"number":91,"author":"flacatus","sha":"47b9fe555e27cc65c5ebfcf51c2d26a036fab235","link":"https://github.com/redhat-appstudio/application-service/pull/91","commit_link":"https://github.com/redhat-appstudio/application-service/pull/91/commits/47b9fe555e27cc65c5ebfcf51c2d26a036fab235","author_link":"https://github.com/flacatus"}]}],"fail":true}
-# Checking if CLONEREFS_OPTIONS openshift ci env exists and extract PR information to pair the PR
-if [[ -n ${CLONEREFS_OPTIONS} ]]; then
-    AUTHOR=$(jq -r '.refs[0].pulls[0].author' <<< ${CLONEREFS_OPTIONS} | tr -d '[:space:]')
-    AUTHOR_LINK=$(jq -r '.refs[0].pulls[0].author_link' <<< ${CLONEREFS_OPTIONS} | tr -d '[:space:]')
-    GITHUB_ORGANIZATION=$(jq -r '.refs[0].org' <<< ${CLONEREFS_OPTIONS} | tr -d '[:space:]')
-    GITHUB_REPO=$(jq -r '.refs[0].repo' <<< ${CLONEREFS_OPTIONS} | tr -d '[:space:]')
+export HAS_IMAGE_REPO=${OPENSHIFT_CI_CONTROLLER_IMAGE:-"quay.io/redhat-appstudio/application-service"}
+export HAS_IMAGE_TAG=${OPENSHIFT_CI_CONTROLLER_TAG:-"next"}
 
-    PR_BRANCH_REF=$(curl https://api.github.com/repos/"${GITHUB_ORGANIZATION}"/"${GITHUB_REPO}"/pulls/"${PULL_NUMBER}" | jq --raw-output .head.ref)
-    AUTHOR_E2E_BRANCH=$(curl https://api.github.com/repos/"${AUTHOR}"/e2e-tests/branches | jq '.[] | select(.name=="'${PR_BRANCH_REF}'")')
+# Available openshift ci environments https://docs.ci.openshift.org/docs/architecture/step-registry/#available-environment-variables
+export ARTIFACTS_DIR=${ARTIFACT_DIR:-"/tmp/appstudio"}
 
-    if [ -z "${AUTHOR_E2E_BRANCH}" ]; then
-        echo "[INFO] ${PR_BRANCH_REF} not exists in ${AUTHOR_LINK}/e2e-tests. Using ${E2E_CLONE_BRANCH} to clone the e2e-tests"
-    else
-        echo "[INFO] Cloning e2e-tests from branch ${PR_BRANCH_REF} repository ${AUTHOR_LINK}/e2e-tests"
-        E2E_CLONE_BRANCH=${PR_BRANCH_REF}
-        E2E_REPO_LINK="${AUTHOR_LINK}/e2e-tests.git"
-    fi
-fi
+function waitHASApplicationToBeReady() {
+    while [ "$(kubectl get applications.argoproj.io has -n openshift-gitops -o jsonpath='{.status.health.status}')" != "Healthy" ]; do
+        sleep 30s
+        echo "[INFO] Waiting for HAS to be ready."
+    done
+}
 
-git clone -b "${E2E_CLONE_BRANCH}" "${E2E_REPO_LINK}" "$WORKSPACE"/tmp/e2e-tests
+function waitAppStudioToBeReady() {
+    while [ "$(kubectl get applications.argoproj.io ${APPLICATION_NAME} -n ${APPLICATION_NAMESPACE} -o jsonpath='{.status.health.status}')" != "Healthy" ] ||
+          [ "$(kubectl get applications.argoproj.io ${APPLICATION_NAME} -n ${APPLICATION_NAMESPACE} -o jsonpath='{.status.sync.status}')" != "Synced" ]; do
+        sleep 1m
+        echo "[INFO] Waiting for AppStudio to be ready."
+    done
+}
 
-cd "$WORKSPACE"/tmp/e2e-tests
-make build
-chmod 755 "$WORKSPACE"/tmp/e2e-tests/bin/e2e-appstudio
-export PATH="$WORKSPACE"/tmp/e2e-tests/bin:${PATH}
-which e2e-appstudio
+function waitBuildToBeReady() {
+    while [ "$(kubectl get applications.argoproj.io build -n ${APPLICATION_NAMESPACE} -o jsonpath='{.status.health.status}')" != "Healthy" ] ||
+          [ "$(kubectl get applications.argoproj.io build -n ${APPLICATION_NAMESPACE} -o jsonpath='{.status.sync.status}')" != "Synced" ]; do
+        sleep 1m
+        echo "[INFO] Waiting for Build to be ready."
+    done
+}
+
+function executeE2ETests() {
+    # E2E instructions can be found: https://github.com/redhat-appstudio/e2e-tests
+    # The e2e binary is included in Openshift CI test container from the dockerfile: https://github.com/redhat-appstudio/infra-deployments/blob/main/.ci/openshift-ci/Dockerfile
+    curl https://raw.githubusercontent.com/redhat-appstudio/e2e-tests/main/scripts/e2e-openshift-ci.sh | bash -s
+
+    # The bin will be installed in tmp folder after executing e2e-openshift-ci.sh script
+    ${WORKSPACE}/tmp/e2e-tests/bin/e2e-appstudio --ginkgo.junit-report="${ARTIFACTS_DIR}"/e2e-report.xml --ginkgo.focus="${TEST_SUITE}"
+}
+
+curl https://raw.githubusercontent.com/redhat-appstudio/e2e-tests/main/scripts/install-appstudio-e2e-mode.sh | bash -s install
+
+export -f waitAppStudioToBeReady
+export -f waitBuildToBeReady
+export -f waitHASApplicationToBeReady
+
+# Install AppStudio Controllers and wait for HAS and other AppStudio application to be running.
+timeout --foreground 10m bash -c waitAppStudioToBeReady
+timeout --foreground 10m bash -c waitBuildToBeReady
+timeout --foreground 10m bash -c waitHASApplicationToBeReady
+
+executeE2ETests
