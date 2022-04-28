@@ -89,18 +89,39 @@ commands:
     id: run
 `
 
+var mockDockerfile = `
+FROM python:slim
+
+WORKDIR /projects
+
+RUN python3 -m venv venv
+RUN . venv/bin/activate
+
+# optimize image caching
+COPY requirements.txt .
+RUN pip install -r requirements.txt
+
+COPY . .
+
+EXPOSE 8081
+CMD [ "waitress-serve", "--port=8081", "app:app"]
+`
+
 // GetFileContents mocks the GetFileContents function from SPI
 // If "repoURL" parameter contains "test-error-response", then an error value will be returned,
 // otherwise we return a mock devfile that can be read.
 func (s MockSPIClient) GetFileContents(ctx context.Context, namespace string, repoURL string, filepath string, ref string, callback func(ctx context.Context, url string)) (io.ReadCloser, error) {
 	if strings.Contains(repoURL, "test-error-response") {
 		return nil, fmt.Errorf("file not found")
-	} else if strings.Contains(repoURL, "test-parse-error") {
-		//stringReader := strings.NewReader(make(chan error))
+	} else if strings.Contains(repoURL, "test-parse-error") || (strings.Contains(repoURL, "test-error-dockerfile-response") && strings.Contains(filepath, "Dockerfile")) {
 		mockReadCloser := mockReadCloser{}
 		mockReadCloser.On("Read", mock.AnythingOfType("[]uint8")).Return(0, fmt.Errorf("error reading"))
 		mockReadCloser.On("Close").Return(fmt.Errorf("error closing"))
 		return &mockReadCloser, nil
+	} else if strings.Contains(filepath, "Dockerfile") {
+		stringReader := strings.NewReader(mockDockerfile)
+		stringReadCloser := io.NopCloser(stringReader)
+		return stringReadCloser, nil
 	} else {
 		stringReader := strings.NewReader(mockDevfile)
 		stringReadCloser := io.NopCloser(stringReader)
