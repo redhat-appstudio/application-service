@@ -127,3 +127,14 @@ func CloneRepo(clonePath, repoURL string, token string) error {
 
 	return nil
 }
+
+// CheckWithRegex checks if a name matches the pattern.
+// If a pattern fails to compile, it returns false
+func CheckWithRegex(pattern, name string) bool {
+	reg, err := regexp.Compile(pattern)
+	if err != nil {
+		return false
+	}
+
+	return reg.MatchString(name)
+}
