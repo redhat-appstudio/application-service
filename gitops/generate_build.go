@@ -46,7 +46,7 @@ const (
 )
 
 func GenerateBuild(fs afero.Fs, outputFolder string, component appstudiov1alpha1.Component) error {
-	commonStoragePVC := GenerateCommonStorage(component, "appstudio")
+	//commonStoragePVC := GenerateCommonStorage(component, "appstudio")
 	triggerTemplate, err := GenerateTriggerTemplate(component)
 	if err != nil {
 		return err
@@ -55,10 +55,10 @@ func GenerateBuild(fs afero.Fs, outputFolder string, component appstudiov1alpha1
 	webhookRoute := GenerateBuildWebhookRoute(component)
 
 	buildResources := map[string]interface{}{
-		buildCommonStoragePVCFileName: commonStoragePVC,
-		buildTriggerTemplateFileName:  triggerTemplate,
-		buildEventListenerFileName:    eventListener,
-		buildWebhookRouteFileName:     webhookRoute,
+		//buildCommonStoragePVCFileName: commonStoragePVC,
+		buildTriggerTemplateFileName: triggerTemplate,
+		buildEventListenerFileName:   eventListener,
+		buildWebhookRouteFileName:    webhookRoute,
 	}
 
 	kustomize := resources.Kustomization{}
@@ -275,7 +275,7 @@ func getBuildCommonLabelsForComponent(component *appstudiov1alpha1.Component) ma
 
 // GenerateCommonStorage returns the PVC that would be created per namespace for
 // user-triggered and webhook-triggered Tekton workspaces.
-func GenerateCommonStorage(component appstudiov1alpha1.Component, name string) corev1.PersistentVolumeClaim {
+func GenerateCommonStorage(component appstudiov1alpha1.Component, name string) *corev1.PersistentVolumeClaim {
 	fsMode := corev1.PersistentVolumeFilesystem
 
 	workspaceStorage := &corev1.PersistentVolumeClaim{
@@ -300,7 +300,7 @@ func GenerateCommonStorage(component appstudiov1alpha1.Component, name string) c
 			VolumeMode: &fsMode,
 		},
 	}
-	return *workspaceStorage
+	return workspaceStorage
 }
 
 // GenerateBuildWebhookRoute returns the Route resource that would enable
