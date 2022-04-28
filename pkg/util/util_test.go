@@ -259,14 +259,14 @@ func TestCheckWithRegex(t *testing.T) {
 		{
 			name:      "matching string",
 			test:      "hi-00-HI",
-			pattern:   "[a-z]([-a-z0-9]*[a-z0-9])?",
+			pattern:   "^[a-z]([-a-z0-9]*[a-z0-9])?",
 			wantMatch: true,
 		},
 		{
 			name:      "not a matching string",
-			test:      "1-hi-00-HI",
-			pattern:   "[a-z]([-a-z0-9]*[a-z0-9])?",
-			wantMatch: true,
+			test:      "1-hi",
+			pattern:   "^[a-z]([-a-z0-9]*[a-z0-9])?",
+			wantMatch: false,
 		},
 		{
 			name:      "bad pattern",

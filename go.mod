@@ -3,6 +3,7 @@ module github.com/redhat-appstudio/application-service
 go 1.16
 
 require (
+	github.com/antlr/antlr4/runtime/Go/antlr v0.0.0-20220418222510-f25a4f6275ed // indirect
 	github.com/brianvoe/gofakeit/v6 v6.9.0
 	github.com/devfile/api/v2 v2.0.0-20211021164004-dabee4e633ed
 	github.com/devfile/library v1.2.1-0.20211104222135-49d635cb492f
@@ -24,10 +25,11 @@ require (
 	github.com/tektoncd/pipeline v0.33.0
 	github.com/tektoncd/triggers v0.19.1
 	golang.org/x/oauth2 v0.0.0-20211104180415-d3ed0bb246c8
-	k8s.io/api v0.23.5
-	k8s.io/apimachinery v0.23.5
-	k8s.io/client-go v0.23.0
-	sigs.k8s.io/controller-runtime v0.11.0
+	gotest.tools v2.2.0+incompatible
+	k8s.io/api v0.22.5
+	k8s.io/apimachinery v0.22.5
+	k8s.io/client-go v0.22.5
+	sigs.k8s.io/controller-runtime v0.10.3
 	sigs.k8s.io/yaml v1.3.0
 
 )

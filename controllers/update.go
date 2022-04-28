@@ -310,7 +310,7 @@ func (r *ComponentDetectionQueryReconciler) updateComponentStub(componentDetecti
 		componentName := "component"
 		if len(devfileMetadata.Name) > 0 {
 			// use regex to see if metadata.name can be used as component name, since this will be used in kube resources
-			if matched := util.CheckWithRegex("[a-z]([-a-z0-9]*[a-z0-9])?", devfileMetadata.Name); matched {
+			if matched := util.CheckWithRegex("^[a-z]([-a-z0-9]*[a-z0-9])?", devfileMetadata.Name); matched {
 				componentName = strings.ToLower(devfileMetadata.Name)
 			}
 		}
