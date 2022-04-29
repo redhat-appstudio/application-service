@@ -84,7 +84,9 @@ func search(log logr.Logger, a Alizer, localpath string, currentLevel, depth int
 			for recursiveContext := range recursiveDevfileMap {
 				if recursiveContext == HiddenDevfileDir {
 					devfileMapFromRepo[context] = recursiveDevfileMap[HiddenDevfileDir]
-					devfilesURLMapFromRepo[context] = recursiveDevfileURLMap[HiddenDevfileDir]
+					if _, ok := recursiveDevfileURLMap[HiddenDevfileDir]; ok {
+						devfilesURLMapFromRepo[context] = recursiveDevfileURLMap[HiddenDevfileDir]
+					}
 					isDevfilePresent = true
 				}
 			}
@@ -103,9 +105,14 @@ func search(log logr.Logger, a Alizer, localpath string, currentLevel, depth int
 				if err != nil {
 					return nil, nil, nil, err
 				}
+
 				for context, devfile := range recursiveDevfileMap {
 					devfileMapFromRepo[context] = devfile
-					devfilesURLMapFromRepo[context] = recursiveDevfileURLMap[context]
+
+					if _, ok := recursiveDevfileURLMap[context]; ok {
+						devfilesURLMapFromRepo[context] = recursiveDevfileURLMap[context]
+					}
+
 					isDevfilePresent = true
 				}
 				for context := range recursiveDockerfileContextMap {
@@ -167,7 +174,6 @@ func AnalyzePath(a Alizer, localpath, context, devfileRegistryURL string, devfil
 		} else if isDevfilePresent && len(devfile) > 0 {
 			// If a devfile is present but we could not determine a dockerfile, then update dockerfileContextMapFromRepo
 			// by looking up the devfile from the detected alizer sample from the devfile registry
-
 			sampleRepoURL, err := GetRepoFromRegistry(detectedSampleName, devfileRegistryURL)
 			if err != nil {
 				return err
@@ -259,7 +265,6 @@ func AnalyzeAndDetectDevfile(a Alizer, path, devfileRegistryURL string) ([]byte,
 				return nil, "", "", err
 			} else if !reflect.DeepEqual(detectedType, recognizer.DevFileType{}) {
 				detectedDevfileEndpoint := devfileRegistryURL + "/devfiles/" + detectedType.Name
-
 				devfileBytes, err = util.CurlEndpoint(detectedDevfileEndpoint)
 				if err != nil {
 					return nil, "", "", err
