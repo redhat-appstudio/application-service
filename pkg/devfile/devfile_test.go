@@ -26,6 +26,7 @@ import (
 	data "github.com/devfile/library/pkg/devfile/parser/data"
 	v2 "github.com/devfile/library/pkg/devfile/parser/data/v2"
 	"github.com/devfile/library/pkg/devfile/parser/data/v2/common"
+	"github.com/go-logr/logr"
 	appstudiov1alpha1 "github.com/redhat-appstudio/application-service/api/v1alpha1"
 	"github.com/redhat-appstudio/application-service/pkg/util"
 	"github.com/stretchr/testify/assert"
@@ -357,6 +358,7 @@ func TestDownloadDevfileAndDockerfile(t *testing.T) {
 
 func TestScanRepo(t *testing.T) {
 
+	var logger logr.Logger
 	var alizerClient AlizerClient // Use actual client because this is a huge wrapper function and mocking so many possibilities is pretty tedious when everything is changing frequently
 
 	tests := []struct {
@@ -407,7 +409,7 @@ func TestScanRepo(t *testing.T) {
 			if err != nil {
 				t.Errorf("got unexpected error %v", err)
 			} else {
-				devfileMap, devfileURLMap, dockerfileMap, err := ScanRepo(nil, alizerClient, tt.clonePath, tt.depth, DevfileStageRegistryEndpoint)
+				devfileMap, devfileURLMap, dockerfileMap, err := ScanRepo(logger, alizerClient, tt.clonePath, tt.depth, DevfileStageRegistryEndpoint)
 				if tt.wantErr && (err == nil) {
 					t.Error("wanted error but got nil")
 				} else if !tt.wantErr && err != nil {

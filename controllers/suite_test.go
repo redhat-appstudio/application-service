@@ -18,7 +18,6 @@ package controllers
 
 import (
 	"context"
-	"go/build"
 	"path/filepath"
 	"testing"
 
@@ -38,8 +37,6 @@ import (
 
 	routev1 "github.com/openshift/api/route/v1"
 	appstudiov1alpha1 "github.com/redhat-appstudio/application-service/api/v1alpha1"
-	taskrunapi "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
-	triggersapi "github.com/tektoncd/triggers/pkg/apis/triggers/v1alpha1"
 
 	"github.com/redhat-appstudio/application-service/gitops/testutils"
 	"github.com/redhat-appstudio/application-service/pkg/devfile"
@@ -77,8 +74,7 @@ var _ = BeforeSuite(func() {
 		CRDDirectoryPaths: []string{
 			filepath.Join("..", "config", "crd", "bases"),
 			filepath.Join("..", "hack", "routecrd"),
-			filepath.Join(build.Default.GOPATH, "pkg", "mod", "github.com", "tektoncd", "triggers@v0.17.1", "config"),
-			filepath.Join(build.Default.GOPATH, "pkg", "mod", "github.com", "tektoncd", "pipeline@v0.32.1", "config")},
+		},
 		ErrorIfCRDPathMissing: true,
 	}
 
@@ -87,12 +83,6 @@ var _ = BeforeSuite(func() {
 	Expect(cfg).NotTo(BeNil())
 
 	err = appstudiov1alpha1.AddToScheme(scheme.Scheme)
-	Expect(err).NotTo(HaveOccurred())
-
-	err = triggersapi.AddToScheme(scheme.Scheme)
-	Expect(err).NotTo(HaveOccurred())
-
-	err = taskrunapi.AddToScheme(scheme.Scheme)
 	Expect(err).NotTo(HaveOccurred())
 
 	err = routev1.AddToScheme(scheme.Scheme)
