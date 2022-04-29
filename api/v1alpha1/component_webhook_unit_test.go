@@ -76,6 +76,16 @@ func TestComponentCreateValidatingWebhook(t *testing.T) {
 				},
 			},
 		},
+		{
+			name: "valid component with container image",
+			newComp: Component{
+				Spec: ComponentSpec{
+					ComponentName:  "component1",
+					Application:    "application1",
+					ContainerImage: "image",
+				},
+			},
+		},
 	}
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
