@@ -17,7 +17,6 @@ limitations under the License.
 package controllers
 
 import (
-	"context"
 	"errors"
 	"reflect"
 	"testing"
@@ -34,7 +33,6 @@ import (
 	ctrl "sigs.k8s.io/controller-runtime"
 
 	devfileApi "github.com/devfile/api/v2/pkg/devfile"
-	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	//+kubebuilder:scaffold:imports
 )
@@ -349,123 +347,4 @@ func TestGenerateGitops(t *testing.T) {
 		})
 	}
 
-}
-
-func TestGetGitProvider(t *testing.T) {
-	type args struct {
-		ctx    context.Context
-		gitURL string
-	}
-	tests := []struct {
-		name       string
-		args       args
-		wantErr    bool
-		wantString string
-	}{
-		{
-			name: "github",
-			args: args{
-				ctx:    context.Background(),
-				gitURL: "git@github.com:redhat-appstudio/application-service.git",
-			},
-			wantErr:    true, //unsupported
-			wantString: "",
-		},
-		{
-			name: "github https",
-			args: args{
-				ctx:    context.Background(),
-				gitURL: "https://github.com/redhat-appstudio/application-service.git",
-			},
-			wantErr:    false,
-			wantString: "https://github.com",
-		},
-		{
-			name: "bitbucket https",
-			args: args{
-				ctx:    context.Background(),
-				gitURL: "https://sbose78@bitbucket.org/sbose78/appstudio.git",
-			},
-			wantErr:    false,
-			wantString: "https://bitbucket.org",
-		},
-		{
-			name: "no scheme",
-			args: args{
-				ctx:    context.Background(),
-				gitURL: "github.com/redhat-appstudio/application-service.git",
-			},
-			wantErr:    true, //fully qualified URL is a must
-			wantString: "",
-		},
-		{
-			name: "invalid url",
-			args: args{
-				ctx:    context.Background(),
-				gitURL: "not-even-a-url",
-			},
-			wantErr:    true, //fully qualified URL is a must
-			wantString: "",
-		},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			if got, err := getGitProvider(tt.args.gitURL); (got != tt.wantString) ||
-				(tt.wantErr == true && err == nil) ||
-				(tt.wantErr == false && err != nil) {
-				t.Errorf("UpdateServiceAccountIfSecretNotLinked() Got Error: = %v, want %v ; Got String:  = %v , want %v", err, tt.wantErr, got, tt.wantString)
-			}
-		})
-	}
-}
-
-func TestUpdateServiceAccountIfSecretNotLinked(t *testing.T) {
-	type args struct {
-		ctx              context.Context
-		sourceSecretName string
-		serviceAccount   *corev1.ServiceAccount
-	}
-	tests := []struct {
-		name string
-		args args
-		want bool
-	}{
-		{
-			name: "present",
-			args: args{
-				ctx:              context.Background(),
-				sourceSecretName: "present",
-				serviceAccount: &corev1.ServiceAccount{
-					Secrets: []corev1.ObjectReference{
-						{
-							Name: "present",
-						},
-					},
-				},
-			},
-			want: false, // since it was present, this implies the SA wasn't updated.
-		},
-		{
-			name: "not present",
-			args: args{
-				ctx:              context.Background(),
-				sourceSecretName: "not-present",
-				serviceAccount: &corev1.ServiceAccount{
-					Secrets: []corev1.ObjectReference{
-						{
-							Name: "something-else",
-						},
-					},
-				},
-			},
-			want: true, // since it wasn't present, this implies the SA was updated.
-		},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			if got := updateServiceAccountIfSecretNotLinked(tt.args.ctx, tt.args.sourceSecretName, tt.args.serviceAccount); got != tt.want {
-				t.Errorf("UpdateServiceAccountIfSecretNotLinked() = %v, want %v", got, tt.want)
-			}
-		})
-	}
 }
