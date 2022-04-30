@@ -44,6 +44,7 @@ import (
 
 	appstudiov1alpha1 "github.com/redhat-appstudio/application-service/api/v1alpha1"
 	"github.com/redhat-appstudio/application-service/gitops"
+	"github.com/redhat-appstudio/application-service/gitops/prepare"
 	devfile "github.com/redhat-appstudio/application-service/pkg/devfile"
 	"github.com/redhat-appstudio/application-service/pkg/spi"
 	"github.com/redhat-appstudio/application-service/pkg/util"
@@ -68,6 +69,7 @@ type ComponentReconciler struct {
 //+kubebuilder:rbac:groups=appstudio.redhat.com,resources=components,verbs=get;list;watch;create;update;patch;delete
 //+kubebuilder:rbac:groups=appstudio.redhat.com,resources=components/status,verbs=get;update;patch
 //+kubebuilder:rbac:groups=appstudio.redhat.com,resources=components/finalizers,verbs=update
+//+kubebuilder:rbac:groups=core,resources=configmaps,verbs=get;list;watch
 
 // Reconcile is part of the main kubernetes reconciliation loop which aims to
 // move the current state of the cluster closer to the desired state.
@@ -279,7 +281,7 @@ func (r *ComponentReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 			}
 
 			// Generate and push the gitops resources
-			if err := r.generateGitops(&component); err != nil {
+			if err := r.generateGitops(ctx, &component); err != nil {
 				errMsg := fmt.Sprintf("Unable to generate gitops resources for component %v", req.NamespacedName)
 				log.Error(err, errMsg)
 				r.SetCreateConditionAndUpdateCR(ctx, &component, fmt.Errorf(errMsg))
@@ -345,7 +347,7 @@ func (r *ComponentReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 				component.Status.ContainerImage = component.Spec.Build.ContainerImage
 			}
 
-			if err := r.generateGitops(&component); err != nil {
+			if err := r.generateGitops(ctx, &component); err != nil {
 				errMsg := fmt.Sprintf("Unable to generate gitops resources for component %v", req.NamespacedName)
 				log.Error(err, errMsg)
 				r.SetUpdateConditionAndUpdateCR(ctx, &component, fmt.Errorf("%v: %v", errMsg, err))
@@ -387,7 +389,7 @@ func (r *ComponentReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 
 // generateGitops retrieves the necessary information about a Component's gitops repository (URL, branch, context)
 // and attempts to use the GitOps package to generate gitops resources based on that component
-func (r *ComponentReconciler) generateGitops(component *appstudiov1alpha1.Component) error {
+func (r *ComponentReconciler) generateGitops(ctx context.Context, component *appstudiov1alpha1.Component) error {
 	log := r.Log.WithValues("Component", component.Name)
 
 	gitopsStatus := component.Status.GitOps
@@ -428,7 +430,9 @@ func (r *ComponentReconciler) generateGitops(component *appstudiov1alpha1.Compon
 	}
 
 	// Generate and push the gitops resources
-	err = gitops.GenerateAndPush(tempDir, remoteURL, *component, r.Executor, r.AppFS, gitOpsBranch, gitOpsContext)
+	gitopsConfig := prepare.PrepareGitopsConfig(ctx, r.Client, *component)
+
+	err = gitops.GenerateAndPush(tempDir, remoteURL, *component, r.Executor, r.AppFS, gitOpsBranch, gitOpsContext, gitopsConfig)
 	if err != nil {
 		log.Error(err, "unable to generate gitops resources due to error")
 		return err

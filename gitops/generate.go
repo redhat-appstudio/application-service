@@ -20,6 +20,7 @@ import (
 
 	routev1 "github.com/openshift/api/route/v1"
 	appstudiov1alpha1 "github.com/redhat-appstudio/application-service/api/v1alpha1"
+	"github.com/redhat-appstudio/application-service/gitops/prepare"
 	"github.com/redhat-appstudio/application-service/gitops/resources"
 	"github.com/spf13/afero"
 	appsv1 "k8s.io/api/apps/v1"
@@ -39,7 +40,7 @@ const (
 
 // Generate takes in a given Component CR and
 // spits out a deployment, service, and route file to disk
-func Generate(fs afero.Afero, gitOpsFolder string, outputFolder string, component appstudiov1alpha1.Component) error {
+func Generate(fs afero.Afero, gitOpsFolder string, outputFolder string, component appstudiov1alpha1.Component, gitopsConfig prepare.GitopsConfig) error {
 	deployment := generateDeployment(component)
 
 	k := resources.Kustomization{}
@@ -62,7 +63,7 @@ func Generate(fs afero.Afero, gitOpsFolder string, outputFolder string, componen
 		tektonResourcesDirName := ".tekton"
 		k.AddResources(tektonResourcesDirName + "/")
 
-		if err := GenerateBuild(fs, filepath.Join(outputFolder, tektonResourcesDirName), component); err != nil {
+		if err := GenerateBuild(fs, filepath.Join(outputFolder, tektonResourcesDirName), component, gitopsConfig); err != nil {
 			return err
 		}
 

@@ -31,6 +31,7 @@ import (
 	"github.com/redhat-appstudio/application-service/pkg/util/ioutils"
 	"github.com/spf13/afero"
 	ctrl "sigs.k8s.io/controller-runtime"
+	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 
 	devfileApi "github.com/devfile/api/v2/pkg/devfile"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -151,11 +152,14 @@ func TestGenerateGitops(t *testing.T) {
 	appFS := ioutils.NewMemoryFilesystem()
 	readOnlyFs := ioutils.NewReadOnlyFs()
 
+	fakeClient := fake.NewClientBuilder().Build()
+
 	r := &ComponentReconciler{
 		Log:       ctrl.Log.WithName("controllers").WithName("Component"),
 		GitHubOrg: github.AppStudioAppDataOrg,
 		GitToken:  "fake-token",
 		Executor:  executor,
+		Client:    fakeClient,
 	}
 
 	// Create a second reconciler for testing error scenarios
@@ -166,6 +170,7 @@ func TestGenerateGitops(t *testing.T) {
 		GitHubOrg: github.AppStudioAppDataOrg,
 		GitToken:  "fake-token",
 		Executor:  errExec,
+		Client:    fakeClient,
 	}
 
 	componentSpec := appstudiov1alpha1.ComponentSpec{
@@ -340,7 +345,7 @@ func TestGenerateGitops(t *testing.T) {
 	for _, tt := range tests {
 		tt.reconciler.AppFS = tt.fs
 		t.Run(tt.name, func(t *testing.T) {
-			err := tt.reconciler.generateGitops(tt.component)
+			err := tt.reconciler.generateGitops(ctx, tt.component)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("TestGenerateGitops() unexpected error: %v", err)
 			}
