@@ -99,7 +99,7 @@ func TestConvertApplicationToDevfile(t *testing.T) {
 						SchemaVersion: string(data.APISchemaVersion210),
 						Metadata: devfile.DevfileMetadata{
 							Name:       "Petclinic",
-							Attributes: attributes.Attributes{}.PutString("gitOpsRepository.url", "https://github.com/testorg/petclinic-gitops").PutString("appModelRepository.url", "https://github.com/testorg/petclinic-app").PutString("gitOpsRepository.context", "/").PutString("appModelRepository.context", "/"),
+							Attributes: attributes.Attributes{}.PutString("gitOpsRepository.url", "https://github.com/testorg/petclinic-gitops").PutString("appModelRepository.url", "https://github.com/testorg/petclinic-app").PutString("gitOpsRepository.context", "./").PutString("appModelRepository.context", "/"),
 						},
 					},
 				},
