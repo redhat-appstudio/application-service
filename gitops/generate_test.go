@@ -599,6 +599,14 @@ func TestGenerateParentKustomize(t *testing.T) {
 					}
 				}
 
+				// Validate that the APIVersion and Kind are set properly
+				if k.Kind != "Kustomization" {
+					t.Errorf("expected kustomize kind %v, got %v", "Kustomization", k.Kind)
+				}
+				if k.APIVersion != "kustomize.config.k8s.io/v1beta1" {
+					t.Errorf("expected kustomize apiversion %v, got %v", "kustomize.config.k8s.io/v1beta1", k.APIVersion)
+				}
+
 			}
 		})
 	}

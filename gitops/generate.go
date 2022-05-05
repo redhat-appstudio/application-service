@@ -91,8 +91,8 @@ func Generate(fs afero.Afero, gitOpsFolder string, outputFolder string, componen
 func GenerateParentKustomize(fs afero.Afero, gitOpsFolder string, commonStoragePVC *corev1.PersistentVolumeClaim) error {
 	componentsFolder := filepath.Join(gitOpsFolder, "components")
 	k := resources.Kustomization{
-		APIVersion: "kustomize.config.k8s.io/v1beta1",
 		Kind:       "Kustomization",
+		APIVersion: "kustomize.config.k8s.io/v1beta1",
 	}
 
 	resources := map[string]interface{}{}
