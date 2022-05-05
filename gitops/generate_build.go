@@ -91,7 +91,7 @@ func GenerateInitialBuildPipelineRun(component appstudiov1alpha1.Component, gito
 }
 
 func getInitialBuildWorkspaceSubpath() string {
-	return "initialbuild-" + time.Now().Format("2006-Feb-02_15-04-05")
+	return "initialbuild-" + time.Now().Format("2006-Jan-02_15-04-05")
 }
 
 // DetermineBuildExecution returns the pipelineRun spec that would be used
