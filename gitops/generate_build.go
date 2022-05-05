@@ -97,11 +97,29 @@ func getInitialBuildWorkspaceSubpath() string {
 // in webhooks-triggered pipelineRuns as well as user-triggered PipelineRuns
 func DetermineBuildExecution(component appstudiov1alpha1.Component, params []tektonapi.Param, workspaceSubPath string) tektonapi.PipelineRunSpec {
 
+	truVar := true
 	pipelineRunSpec := tektonapi.PipelineRunSpec{
 		Params: params,
 		PipelineRef: &tektonapi.PipelineRef{
 			Name:   determineBuildPipeline(component),
 			Bundle: determineBuildCatalog(component.Namespace),
+		},
+
+		PodTemplate: &tektonapi.PodTemplate{
+			Volumes: []corev1.Volume{
+				{
+					Name: "registry-auth-volume",
+					VolumeSource: corev1.VolumeSource{
+						CSI: &corev1.CSIVolumeSource{
+							ReadOnly: &truVar,
+							Driver:   "csi.sharedresource.openshift.io",
+							VolumeAttributes: map[string]string{
+								"sharedSecret": "appstudio-push-secret",
+							},
+						},
+					},
+				},
+			},
 		},
 
 		Workspaces: []tektonapi.WorkspaceBinding{
