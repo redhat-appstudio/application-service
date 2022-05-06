@@ -1418,7 +1418,7 @@ func TestUpdateComponentStub(t *testing.T) {
 						assert.Equal(t, hasCompDetection.DevfileFound, false, "The devfile found did not match expected")
 
 						// Component Name
-						assert.Contains(t, hasCompDetection.ComponentStub.ComponentName, "dockerfile", "The component name did not match the expected")
+						assert.Contains(t, hasCompDetection.ComponentStub.ComponentName, "component", "The component name did not match the expected")
 
 						// Dockerfile URL
 						if len(tt.dockerfileURLMap) > 0 {
@@ -1429,6 +1429,54 @@ func TestUpdateComponentStub(t *testing.T) {
 					}
 				}
 			}
+		})
+	}
+}
+
+func TestCheckComponentName(t *testing.T) {
+	tests := []struct {
+		name                 string
+		componentName        string
+		componentDetectedMap appstudiov1alpha1.ComponentDetectionMap
+		wantName             string
+	}{
+		{
+			name:          "component already present",
+			componentName: "python",
+			componentDetectedMap: appstudiov1alpha1.ComponentDetectionMap{
+				"python":   appstudiov1alpha1.ComponentDetectionDescription{},
+				"python-1": appstudiov1alpha1.ComponentDetectionDescription{},
+				"nodejs":   appstudiov1alpha1.ComponentDetectionDescription{},
+				"nodejs-1": appstudiov1alpha1.ComponentDetectionDescription{},
+			},
+			wantName: "python-2",
+		},
+		{
+			name:          "component not present",
+			componentName: "nodejs",
+			componentDetectedMap: appstudiov1alpha1.ComponentDetectionMap{
+				"python": appstudiov1alpha1.ComponentDetectionDescription{},
+			},
+			wantName: "nodejs",
+		},
+		{
+			name:          "component already present edge",
+			componentName: "component",
+			componentDetectedMap: appstudiov1alpha1.ComponentDetectionMap{
+				"component":   appstudiov1alpha1.ComponentDetectionDescription{},
+				"component-1": appstudiov1alpha1.ComponentDetectionDescription{},
+				"component-2": appstudiov1alpha1.ComponentDetectionDescription{},
+				"component-3": appstudiov1alpha1.ComponentDetectionDescription{},
+				"Component-4": appstudiov1alpha1.ComponentDetectionDescription{},
+			},
+			wantName: "component-4",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			gotName := checkComponentName(tt.componentName, tt.componentDetectedMap)
+			assert.Equal(t, tt.wantName, gotName, "the name should match")
 		})
 	}
 }

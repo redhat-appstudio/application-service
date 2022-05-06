@@ -18,6 +18,8 @@ package util
 import (
 	"os"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
 )
 
 func TestSanitizeDisplayName(t *testing.T) {
@@ -243,6 +245,41 @@ func TestConvertGitHubURL(t *testing.T) {
 			} else if convertedUrl != tt.wantUrl {
 				t.Errorf("ConvertGitHubURL; expected %v got %v", tt.wantUrl, convertedUrl)
 			}
+		})
+	}
+}
+
+func TestCheckWithRegex(t *testing.T) {
+	tests := []struct {
+		name      string
+		test      string
+		pattern   string
+		wantMatch bool
+	}{
+		{
+			name:      "matching string",
+			test:      "hi-00-HI",
+			pattern:   "^[a-z]([-a-z0-9]*[a-z0-9])?",
+			wantMatch: true,
+		},
+		{
+			name:      "not a matching string",
+			test:      "1-hi",
+			pattern:   "^[a-z]([-a-z0-9]*[a-z0-9])?",
+			wantMatch: false,
+		},
+		{
+			name:      "bad pattern",
+			test:      "hi-00-HI",
+			pattern:   "(abc",
+			wantMatch: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			gotMatch := CheckWithRegex(tt.pattern, tt.test)
+			assert.Equal(t, tt.wantMatch, gotMatch, "the values should match")
 		})
 	}
 }
