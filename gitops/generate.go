@@ -43,7 +43,10 @@ const (
 func Generate(fs afero.Afero, gitOpsFolder string, outputFolder string, component appstudiov1alpha1.Component, gitopsConfig prepare.GitopsConfig) error {
 	deployment := generateDeployment(component)
 
-	k := resources.Kustomization{}
+	k := resources.Kustomization{
+		APIVersion: "kustomize.config.k8s.io/v1beta1",
+		Kind:       "Kustomization",
+	}
 	k.AddResources(deploymentFileName)
 	resources := map[string]interface{}{
 		deploymentFileName: deployment,
@@ -87,7 +90,10 @@ func Generate(fs afero.Afero, gitOpsFolder string, outputFolder string, componen
 // If commonStoragePVC is non-nil, it will also add the common storage pvc yaml file to the parent kustomize. If it's nil, it will not be added
 func GenerateParentKustomize(fs afero.Afero, gitOpsFolder string, commonStoragePVC *corev1.PersistentVolumeClaim) error {
 	componentsFolder := filepath.Join(gitOpsFolder, "components")
-	k := resources.Kustomization{}
+	k := resources.Kustomization{
+		Kind:       "Kustomization",
+		APIVersion: "kustomize.config.k8s.io/v1beta1",
+	}
 
 	resources := map[string]interface{}{}
 
