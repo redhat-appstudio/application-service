@@ -146,7 +146,7 @@ func (r *ComponentDetectionQueryReconciler) Reconcile(ctx context.Context, req c
 
 				var gitURL string
 				if gitToken == "" {
-					gitURL, err = util.ConvertGitHubURL(source.URL)
+					gitURL, err = util.ConvertGitHubURL(source.URL, source.Revision)
 					if err != nil {
 						log.Error(err, fmt.Sprintf("Unable to convert Github URL to raw format, exiting reconcile loop %v", req.NamespacedName))
 						r.SetCompleteConditionAndUpdateCR(ctx, &componentDetectionQuery, err)
@@ -229,7 +229,7 @@ func (r *ComponentDetectionQueryReconciler) Reconcile(ctx context.Context, req c
 		}
 
 		for context, link := range dockerfileContextMap {
-			updatedLink, err := devfile.UpdateDockerfileLink(source.URL, link)
+			updatedLink, err := devfile.UpdateDockerfileLink(source.URL, source.Revision, link)
 			if err != nil {
 				log.Error(err, fmt.Sprintf("Unable to update the dockerfile link %v", req.NamespacedName))
 				r.SetCompleteConditionAndUpdateCR(ctx, &componentDetectionQuery, err)

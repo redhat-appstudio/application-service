@@ -51,7 +51,7 @@ func IsExist(path string) (bool, error) {
 
 // ConvertGitHubURL converts a git url to its raw format
 // adapted from https://github.com/redhat-developer/odo/blob/e63773cc156ade6174a533535cbaa0c79506ffdb/pkg/catalog/catalog.go#L72
-func ConvertGitHubURL(URL string) (string, error) {
+func ConvertGitHubURL(URL string, revision string) (string, error) {
 	// If the URL ends with .git, remove it
 	// The regex will only instances of '.git' if it is at the end of the given string
 	reg := regexp.MustCompile(".git$")
@@ -71,8 +71,11 @@ func ConvertGitHubURL(URL string) (string, error) {
 		if len(URLSlice) > 2 && URLSlice[len(URLSlice)-2] == "tree" {
 			// GitHub raw URL doesn't have "tree" structure in the URL, need to remove it
 			URL = strings.Replace(URL, "/tree", "", 1)
+		} else if revision != "" {
+			// Add revision for GitHub raw URL
+			URL = URL + "/" + revision
 		} else {
-			// Add "main" branch for GitHub raw URL by default if branch is not specified
+			// Add "main" branch for GitHub raw URL by default if revision is not specified
 			URL = URL + "/main"
 		}
 

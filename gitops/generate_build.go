@@ -195,9 +195,9 @@ func normalizeOutputImageURL(outputImage string) string {
 // is that the git revision appended to the output image tag in case of webhook build.
 func getParamsForComponentBuild(component appstudiov1alpha1.Component, isInitialBuild bool) []tektonapi.Param {
 	sourceCode := component.Spec.Source.GitSource.URL
-	outputImage := component.Spec.Build.ContainerImage
+	outputImage := component.Spec.ContainerImage
 	if !isInitialBuild {
-		outputImage = normalizeOutputImageURL(component.Spec.Build.ContainerImage)
+		outputImage = normalizeOutputImageURL(component.Spec.ContainerImage)
 	}
 
 	// Default required parameters

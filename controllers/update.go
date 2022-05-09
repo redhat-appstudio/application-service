@@ -241,7 +241,7 @@ func (r *ComponentReconciler) updateApplicationDevfileModel(hasAppDevfileData da
 		if err != nil {
 			return err
 		}
-	} else if component.Spec.Source.ImageSource != nil {
+	} else if component.Spec.ContainerImage != "" {
 		var err error
 
 		// Initialize the attributes
@@ -264,7 +264,7 @@ func (r *ComponentReconciler) updateApplicationDevfileModel(hasAppDevfileData da
 		if componentImage != "" {
 			return fmt.Errorf("application already has a component with name %s", component.Name)
 		}
-		devSpec.Attributes = devfileAttributes.PutString(imageAttrString, component.Spec.Source.ImageSource.ContainerImage)
+		devSpec.Attributes = devfileAttributes.PutString(imageAttrString, component.Spec.ContainerImage)
 		hasAppDevfileData.SetDevfileWorkspaceSpec(*devSpec)
 
 	} else {
@@ -319,10 +319,10 @@ func (r *ComponentDetectionQueryReconciler) updateComponentStub(componentDetecti
 		componentStub := appstudiov1alpha1.ComponentSpec{
 			ComponentName: componentName,
 			Application:   "insert-application-name",
-			Context:       context,
 			Source: appstudiov1alpha1.ComponentSource{
 				ComponentSourceUnion: appstudiov1alpha1.ComponentSourceUnion{
 					GitSource: &appstudiov1alpha1.GitSource{
+						Context:       context,
 						URL:           componentDetectionQuery.Spec.GitSource.URL,
 						DevfileURL:    devfilesURLMap[context],
 						DockerfileURL: dockerfileContextMap[context],
@@ -501,10 +501,10 @@ func (r *ComponentDetectionQueryReconciler) updateComponentStub(componentDetecti
 			ComponentStub: appstudiov1alpha1.ComponentSpec{
 				ComponentName: componentName,
 				Application:   "insert-application-name",
-				Context:       context,
 				Source: appstudiov1alpha1.ComponentSource{
 					ComponentSourceUnion: appstudiov1alpha1.ComponentSourceUnion{
 						GitSource: &appstudiov1alpha1.GitSource{
+							Context:       context,
 							URL:           componentDetectionQuery.Spec.GitSource.URL,
 							DockerfileURL: link,
 						},

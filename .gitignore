@@ -5,3 +5,6 @@ bin/*
 cover.out
 __debug_bin
 tmp
+
+.idea/
+.vscode/

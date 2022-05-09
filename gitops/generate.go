@@ -120,10 +120,8 @@ func GenerateParentKustomize(fs afero.Afero, gitOpsFolder string, commonStorageP
 
 func generateDeployment(component appstudiov1alpha1.Component) *appsv1.Deployment {
 	var containerImage string
-	if component.Spec.Source.ImageSource != nil && component.Spec.Source.ImageSource.ContainerImage != "" {
-		containerImage = component.Spec.Source.ImageSource.ContainerImage
-	} else {
-		containerImage = component.Spec.Build.ContainerImage
+	if component.Spec.ContainerImage != "" {
+		containerImage = component.Spec.ContainerImage
 	}
 	replicas := getReplicas(component)
 	k8sLabels := generateK8sLabels(component)
@@ -164,7 +162,7 @@ func generateDeployment(component appstudiov1alpha1.Component) *appsv1.Deploymen
 
 	// If a container image source was set in the component *and* a given secret was set for it,
 	// Set the secret as an image pull secret, in case the component references a private image component
-	if component.Spec.Source.ImageSource != nil && component.Spec.Secret != "" {
+	if component.Spec.ContainerImage != "" && component.Spec.Secret != "" {
 		deployment.Spec.Template.Spec.ImagePullSecrets = []corev1.LocalObjectReference{
 			{
 				Name: component.Spec.Secret,
