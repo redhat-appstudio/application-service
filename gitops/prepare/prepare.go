@@ -26,7 +26,7 @@ import (
 
 const (
 	// namespace where the bundle configuration will be searched in case it is not found in the component's namespace
-	BuildBundleDefaultNamepace = "build-templates"
+	BuildBundleDefaultNamespace = "build-templates"
 	// name for a configMap that holds the URL to a build bundle
 	BuildBundleConfigMapName = "build-pipelines-defaults"
 	// data key within a configMap that holds the URL to a build bundle
@@ -52,7 +52,7 @@ func PrepareGitopsConfig(ctx context.Context, cli client.Client, component appst
 // Tries to load a custom build bundle path from a configmap.
 // The following priority is used: component's namespace -> default namespace -> fallback value.
 func resolveBuildBundle(ctx context.Context, cli client.Client, component appstudiov1alpha1.Component) string {
-	namespaces := [2]string{component.Namespace, BuildBundleDefaultNamepace}
+	namespaces := [2]string{component.Namespace, BuildBundleDefaultNamespace}
 
 	for _, namespace := range namespaces {
 		var configMap = corev1.ConfigMap{}
