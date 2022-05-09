@@ -79,12 +79,12 @@ func getContext(localpath string, currentLevel int) string {
 	return context
 }
 
-func UpdateDockerfileLink(repo, context string) (string, error) {
+func UpdateDockerfileLink(repo, revision, context string) (string, error) {
 
 	link := context
 
 	if !strings.HasPrefix(context, "http") {
-		rawGitURL, err := util.ConvertGitHubURL(repo)
+		rawGitURL, err := util.ConvertGitHubURL(repo, revision)
 		if err != nil {
 			return "", err
 		}

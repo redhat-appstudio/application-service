@@ -25,6 +25,7 @@ import (
 	devfilecommon "github.com/devfile/library/pkg/devfile/parser/data/v2/common"
 	routev1 "github.com/openshift/api/route/v1"
 	appstudiov1alpha1 "github.com/redhat-appstudio/application-service/api/v1alpha1"
+	"github.com/redhat-appstudio/application-service/gitops/prepare"
 	"github.com/redhat-appstudio/application-service/gitops/resources"
 	yaml "github.com/redhat-appstudio/application-service/gitops/yaml"
 	"github.com/redhat-appstudio/application-service/pkg/devfile"
@@ -45,9 +46,9 @@ const (
 	buildWebhookRouteFileName     = "build-webhook-route.yaml"
 )
 
-func GenerateBuild(fs afero.Fs, outputFolder string, component appstudiov1alpha1.Component) error {
+func GenerateBuild(fs afero.Fs, outputFolder string, component appstudiov1alpha1.Component, gitopsConfig prepare.GitopsConfig) error {
 	//commonStoragePVC := GenerateCommonStorage(component, "appstudio")
-	triggerTemplate, err := GenerateTriggerTemplate(component)
+	triggerTemplate, err := GenerateTriggerTemplate(component, gitopsConfig)
 	if err != nil {
 		return err
 	}
@@ -76,8 +77,8 @@ func GenerateBuild(fs afero.Fs, outputFolder string, component appstudiov1alpha1
 }
 
 // GenerateInitialBuildPipelineRun generates pipeline run for initial build of the component.
-func GenerateInitialBuildPipelineRun(component appstudiov1alpha1.Component) tektonapi.PipelineRun {
-	initialBuildSpec := DetermineBuildExecution(component, getParamsForComponentBuild(component, true), getInitialBuildWorkspaceSubpath())
+func GenerateInitialBuildPipelineRun(component appstudiov1alpha1.Component, gitopsConfig prepare.GitopsConfig) tektonapi.PipelineRun {
+	initialBuildSpec := DetermineBuildExecution(component, getParamsForComponentBuild(component, true), getInitialBuildWorkspaceSubpath(), gitopsConfig)
 
 	return tektonapi.PipelineRun{
 		ObjectMeta: metav1.ObjectMeta{
@@ -95,13 +96,13 @@ func getInitialBuildWorkspaceSubpath() string {
 
 // DetermineBuildExecution returns the pipelineRun spec that would be used
 // in webhooks-triggered pipelineRuns as well as user-triggered PipelineRuns
-func DetermineBuildExecution(component appstudiov1alpha1.Component, params []tektonapi.Param, workspaceSubPath string) tektonapi.PipelineRunSpec {
+func DetermineBuildExecution(component appstudiov1alpha1.Component, params []tektonapi.Param, workspaceSubPath string, gitopsConfig prepare.GitopsConfig) tektonapi.PipelineRunSpec {
 
 	pipelineRunSpec := tektonapi.PipelineRunSpec{
 		Params: params,
 		PipelineRef: &tektonapi.PipelineRef{
 			Name:   determineBuildPipeline(component),
-			Bundle: determineBuildCatalog(component.Namespace),
+			Bundle: gitopsConfig.BuildBundle,
 		},
 
 		Workspaces: []tektonapi.WorkspaceBinding{
@@ -170,12 +171,6 @@ func determineBuildPipeline(component appstudiov1alpha1.Component) string {
 	return "noop"
 }
 
-func determineBuildCatalog(namespace string) string {
-	// TODO: If there's a namespace/workspace specific catalog, we got
-	// to respect that.
-	return "quay.io/redhat-appstudio/build-templates-bundle:8201a567956ba6d2095d615ea2c0f6ab35f9ba5f"
-}
-
 func normalizeOutputImageURL(outputImage string) string {
 
 	// if provided image format was
@@ -200,9 +195,9 @@ func normalizeOutputImageURL(outputImage string) string {
 // is that the git revision appended to the output image tag in case of webhook build.
 func getParamsForComponentBuild(component appstudiov1alpha1.Component, isInitialBuild bool) []tektonapi.Param {
 	sourceCode := component.Spec.Source.GitSource.URL
-	outputImage := component.Spec.Build.ContainerImage
+	outputImage := component.Spec.ContainerImage
 	if !isInitialBuild {
-		outputImage = normalizeOutputImageURL(component.Spec.Build.ContainerImage)
+		outputImage = normalizeOutputImageURL(component.Spec.ContainerImage)
 	}
 
 	// Default required parameters
@@ -335,8 +330,8 @@ func GenerateBuildWebhookRoute(component appstudiov1alpha1.Component) routev1.Ro
 // GenerateTriggerTemplate generates the TriggerTemplate resources
 // which defines how a webhook-based trigger event would be handled -
 // In this case, a PipelineRun to build an image would be created.
-func GenerateTriggerTemplate(component appstudiov1alpha1.Component) (*triggersapi.TriggerTemplate, error) {
-	webhookBasedBuildTemplate := DetermineBuildExecution(component, getParamsForComponentBuild(component, false), "$(tt.params.git-revision)")
+func GenerateTriggerTemplate(component appstudiov1alpha1.Component, gitopsConfig prepare.GitopsConfig) (*triggersapi.TriggerTemplate, error) {
+	webhookBasedBuildTemplate := DetermineBuildExecution(component, getParamsForComponentBuild(component, false), "$(tt.params.git-revision)", gitopsConfig)
 	resoureTemplatePipelineRun := tektonapi.PipelineRun{
 		ObjectMeta: metav1.ObjectMeta{
 			GenerateName: component.Name + "-",

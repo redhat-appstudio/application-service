@@ -18,6 +18,7 @@ package controllers
 
 import (
 	"fmt"
+	"strings"
 
 	devfileAPIV1 "github.com/devfile/api/v2/pkg/apis/workspaces/v1alpha2"
 	"github.com/devfile/api/v2/pkg/attributes"
@@ -25,6 +26,7 @@ import (
 	"github.com/devfile/library/pkg/devfile/parser/data/v2/common"
 	appstudiov1alpha1 "github.com/redhat-appstudio/application-service/api/v1alpha1"
 	devfile "github.com/redhat-appstudio/application-service/pkg/devfile"
+	"github.com/redhat-appstudio/application-service/pkg/util"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 )
@@ -246,7 +248,7 @@ func (r *ComponentReconciler) updateApplicationDevfileModel(hasAppDevfileData da
 		if err != nil {
 			return err
 		}
-	} else if component.Spec.Source.ImageSource != nil {
+	} else if component.Spec.ContainerImage != "" {
 		var err error
 
 		// Initialize the attributes
@@ -269,7 +271,7 @@ func (r *ComponentReconciler) updateApplicationDevfileModel(hasAppDevfileData da
 		if componentImage != "" {
 			return fmt.Errorf("application already has a component with name %s", component.Name)
 		}
-		devSpec.Attributes = devfileAttributes.PutString(imageAttrString, component.Spec.Source.ImageSource.ContainerImage)
+		devSpec.Attributes = devfileAttributes.PutString(imageAttrString, component.Spec.ContainerImage)
 		hasAppDevfileData.SetDevfileWorkspaceSpec(*devSpec)
 
 	} else {
@@ -293,9 +295,6 @@ func (r *ComponentDetectionQueryReconciler) updateComponentStub(componentDetecti
 
 	log.Info(fmt.Sprintf("Devfiles detected: %v", len(devfilesMap)))
 
-	counter := 0
-	componentName := "component"
-
 	for context, devfileBytes := range devfilesMap {
 		log.Info(fmt.Sprintf("Currently reading the devfile for context %v", context))
 
@@ -315,19 +314,22 @@ func (r *ComponentDetectionQueryReconciler) updateComponentStub(componentDetecti
 			return err
 		}
 
+		componentName := "component"
 		if len(devfileMetadata.Name) > 0 {
-			componentName = devfileMetadata.Name
+			// use regex to see if metadata.name can be used as component name, since this will be used in kube resources
+			if matched := util.CheckWithRegex("^[a-z]([-a-z0-9]*[a-z0-9])?", devfileMetadata.Name); matched {
+				componentName = strings.ToLower(devfileMetadata.Name)
+			}
 		}
-		counter++
-		componentName = fmt.Sprintf("%d", counter) + "-" + componentName
+		componentName = checkComponentName(componentName, componentDetectionQuery.Status.ComponentDetected)
 
 		componentStub := appstudiov1alpha1.ComponentSpec{
 			ComponentName: componentName,
 			Application:   "insert-application-name",
-			Context:       context,
 			Source: appstudiov1alpha1.ComponentSource{
 				ComponentSourceUnion: appstudiov1alpha1.ComponentSourceUnion{
 					GitSource: &appstudiov1alpha1.GitSource{
+						Context:       context,
 						URL:           componentDetectionQuery.Spec.GitSource.URL,
 						DevfileURL:    devfilesURLMap[context],
 						DockerfileURL: dockerfileContextMap[context],
@@ -466,8 +468,8 @@ func (r *ComponentDetectionQueryReconciler) updateComponentStub(componentDetecti
 	for context, link := range dockerfileContextMap {
 		log.Info(fmt.Sprintf("Currently reading the Dockerfile for context %v", context))
 
-		counter++
-		componentName = fmt.Sprintf("%d", counter) + "-dockerfile"
+		componentName := "component"
+		componentName = checkComponentName(componentName, componentDetectionQuery.Status.ComponentDetected)
 
 		componentDetectionQuery.Status.ComponentDetected[componentName] = appstudiov1alpha1.ComponentDetectionDescription{
 			DevfileFound: false, // always false since there is only a dockerfile present for these contexts
@@ -476,10 +478,10 @@ func (r *ComponentDetectionQueryReconciler) updateComponentStub(componentDetecti
 			ComponentStub: appstudiov1alpha1.ComponentSpec{
 				ComponentName: componentName,
 				Application:   "insert-application-name",
-				Context:       context,
 				Source: appstudiov1alpha1.ComponentSource{
 					ComponentSourceUnion: appstudiov1alpha1.ComponentSourceUnion{
 						GitSource: &appstudiov1alpha1.GitSource{
+							Context:       context,
 							URL:           componentDetectionQuery.Spec.GitSource.URL,
 							DockerfileURL: link,
 						},
@@ -490,4 +492,23 @@ func (r *ComponentDetectionQueryReconciler) updateComponentStub(componentDetecti
 	}
 
 	return nil
+}
+
+// checkComponentName checks if name is unique in the component detected map, and increments the counter by 1 if it is not
+func checkComponentName(name string, componentDetected appstudiov1alpha1.ComponentDetectionMap) string {
+
+	counter := 0
+	updatedName := name
+
+	for {
+		if _, ok := componentDetected[updatedName]; ok {
+			counter++
+			updatedName = name + "-" + fmt.Sprintf("%d", counter)
+		} else {
+			name = updatedName
+			break
+		}
+	}
+
+	return name
 }

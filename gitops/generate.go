@@ -20,6 +20,7 @@ import (
 
 	routev1 "github.com/openshift/api/route/v1"
 	appstudiov1alpha1 "github.com/redhat-appstudio/application-service/api/v1alpha1"
+	"github.com/redhat-appstudio/application-service/gitops/prepare"
 	"github.com/redhat-appstudio/application-service/gitops/resources"
 	"github.com/spf13/afero"
 	appsv1 "k8s.io/api/apps/v1"
@@ -39,10 +40,13 @@ const (
 
 // Generate takes in a given Component CR and
 // spits out a deployment, service, and route file to disk
-func Generate(fs afero.Afero, gitOpsFolder string, outputFolder string, component appstudiov1alpha1.Component) error {
+func Generate(fs afero.Afero, gitOpsFolder string, outputFolder string, component appstudiov1alpha1.Component, gitopsConfig prepare.GitopsConfig) error {
 	deployment := generateDeployment(component)
 
-	k := resources.Kustomization{}
+	k := resources.Kustomization{
+		APIVersion: "kustomize.config.k8s.io/v1beta1",
+		Kind:       "Kustomization",
+	}
 	k.AddResources(deploymentFileName)
 	resources := map[string]interface{}{
 		deploymentFileName: deployment,
@@ -62,7 +66,7 @@ func Generate(fs afero.Afero, gitOpsFolder string, outputFolder string, componen
 		tektonResourcesDirName := ".tekton"
 		k.AddResources(tektonResourcesDirName + "/")
 
-		if err := GenerateBuild(fs, filepath.Join(outputFolder, tektonResourcesDirName), component); err != nil {
+		if err := GenerateBuild(fs, filepath.Join(outputFolder, tektonResourcesDirName), component, gitopsConfig); err != nil {
 			return err
 		}
 
@@ -86,7 +90,10 @@ func Generate(fs afero.Afero, gitOpsFolder string, outputFolder string, componen
 // If commonStoragePVC is non-nil, it will also add the common storage pvc yaml file to the parent kustomize. If it's nil, it will not be added
 func GenerateParentKustomize(fs afero.Afero, gitOpsFolder string, commonStoragePVC *corev1.PersistentVolumeClaim) error {
 	componentsFolder := filepath.Join(gitOpsFolder, "components")
-	k := resources.Kustomization{}
+	k := resources.Kustomization{
+		Kind:       "Kustomization",
+		APIVersion: "kustomize.config.k8s.io/v1beta1",
+	}
 
 	resources := map[string]interface{}{}
 
@@ -113,10 +120,8 @@ func GenerateParentKustomize(fs afero.Afero, gitOpsFolder string, commonStorageP
 
 func generateDeployment(component appstudiov1alpha1.Component) *appsv1.Deployment {
 	var containerImage string
-	if component.Spec.Source.ImageSource != nil && component.Spec.Source.ImageSource.ContainerImage != "" {
-		containerImage = component.Spec.Source.ImageSource.ContainerImage
-	} else {
-		containerImage = component.Spec.Build.ContainerImage
+	if component.Spec.ContainerImage != "" {
+		containerImage = component.Spec.ContainerImage
 	}
 	replicas := getReplicas(component)
 	k8sLabels := generateK8sLabels(component)
@@ -157,7 +162,7 @@ func generateDeployment(component appstudiov1alpha1.Component) *appsv1.Deploymen
 
 	// If a container image source was set in the component *and* a given secret was set for it,
 	// Set the secret as an image pull secret, in case the component references a private image component
-	if component.Spec.Source.ImageSource != nil && component.Spec.Secret != "" {
+	if component.Spec.ContainerImage != "" && component.Spec.Secret != "" {
 		deployment.Spec.Template.Spec.ImagePullSecrets = []corev1.LocalObjectReference{
 			{
 				Name: component.Spec.Secret,

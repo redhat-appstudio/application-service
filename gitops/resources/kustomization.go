@@ -21,6 +21,8 @@ import "sort"
 
 // Kustomization is a structural representation of the Kustomize file format.
 type Kustomization struct {
+	APIVersion   string            `json:"apiVersion,omitempty"`
+	Kind         string            `json:"kind,omitempty"`
 	Resources    []string          `json:"resources,omitempty"`
 	Bases        []string          `json:"bases,omitempty"`
 	CommonLabels map[string]string `json:"commonLabels,omitempty"`

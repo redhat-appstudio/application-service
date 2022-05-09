@@ -117,7 +117,7 @@ func ConvertImageComponentToDevfile(comp appstudiov1alpha1.Component) (data.Devf
 			ComponentUnion: v1alpha2.ComponentUnion{
 				Container: &v1alpha2.ContainerComponent{
 					Container: v1alpha2.Container{
-						Image: comp.Spec.Source.ImageSource.ContainerImage,
+						Image: comp.Spec.ContainerImage,
 					},
 				},
 			},

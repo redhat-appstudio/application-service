@@ -21,6 +21,7 @@ import (
 	"testing"
 
 	appstudiov1alpha1 "github.com/redhat-appstudio/application-service/api/v1alpha1"
+	"github.com/redhat-appstudio/application-service/gitops/prepare"
 	"github.com/redhat-appstudio/application-service/gitops/testutils"
 	"github.com/redhat-appstudio/application-service/pkg/util/ioutils"
 	"github.com/spf13/afero"
@@ -33,15 +34,13 @@ func TestGenerateAndPush(t *testing.T) {
 	componentName := "test-component"
 	component := appstudiov1alpha1.Component{
 		Spec: appstudiov1alpha1.ComponentSpec{
+			ContainerImage: "testimage:latest",
 			Source: appstudiov1alpha1.ComponentSource{
 				ComponentSourceUnion: appstudiov1alpha1.ComponentSourceUnion{
 					GitSource: &appstudiov1alpha1.GitSource{
 						URL: repo,
 					},
 				},
-			},
-			Build: appstudiov1alpha1.Build{
-				ContainerImage: "testimage:latest",
 			},
 			TargetPort: 5000,
 		},
@@ -496,14 +495,8 @@ func TestGenerateAndPush(t *testing.T) {
 			fs:   readOnlyFs,
 			component: appstudiov1alpha1.Component{
 				Spec: appstudiov1alpha1.ComponentSpec{
-					Source: appstudiov1alpha1.ComponentSource{
-						ComponentSourceUnion: appstudiov1alpha1.ComponentSourceUnion{
-							ImageSource: &appstudiov1alpha1.ImageSource{
-								ContainerImage: "quay.io/test/test",
-							},
-						},
-					},
-					TargetPort: 5000,
+					ContainerImage: "quay.io/test/test",
+					TargetPort:     5000,
 				},
 			},
 			errors: &testutils.ErrorStack{
@@ -565,7 +558,7 @@ func TestGenerateAndPush(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			e := testutils.NewMockExecutor(tt.outputs...)
 			e.Errors = tt.errors
-			err := GenerateAndPush(outputPath, repo, tt.component, e, tt.fs, "main", "/")
+			err := GenerateAndPush(outputPath, repo, tt.component, e, tt.fs, "main", "/", prepare.GitopsConfig{})
 
 			if tt.wantErrString != "" {
 				testutils.AssertErrorMatch(t, tt.wantErrString, err)

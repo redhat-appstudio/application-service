@@ -18,6 +18,8 @@ package util
 import (
 	"os"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
 )
 
 func TestSanitizeDisplayName(t *testing.T) {
@@ -190,11 +192,12 @@ func TestCloneRepo(t *testing.T) {
 
 func TestConvertGitHubURL(t *testing.T) {
 	tests := []struct {
-		name    string
-		url     string
-		useAPI  bool
-		wantUrl string
-		wantErr bool
+		name     string
+		url      string
+		revision string
+		useAPI   bool
+		wantUrl  string
+		wantErr  bool
 	}{
 		{
 			name:    "Successfully convert a github url to raw url",
@@ -202,14 +205,32 @@ func TestConvertGitHubURL(t *testing.T) {
 			wantUrl: "https://raw.githubusercontent.com/devfile-samples/devfile-sample-java-springboot-basic/main",
 		},
 		{
+			name:     "Successfully convert a github url with revision to raw url",
+			url:      "https://github.com/devfile-samples/devfile-sample-java-springboot-basic",
+			revision: "testbranch",
+			wantUrl:  "https://raw.githubusercontent.com/devfile-samples/devfile-sample-java-springboot-basic/testbranch",
+		},
+		{
 			name:    "Successfully convert a github url with a trailing / suffix to raw url",
 			url:     "https://github.com/devfile-samples/devfile-sample-java-springboot-basic/",
 			wantUrl: "https://raw.githubusercontent.com/devfile-samples/devfile-sample-java-springboot-basic/main",
 		},
 		{
+			name:     "Successfully convert a github url with revision and a trailing / suffix to raw url",
+			url:      "https://github.com/devfile-samples/devfile-sample-java-springboot-basic/",
+			revision: "testbranch",
+			wantUrl:  "https://raw.githubusercontent.com/devfile-samples/devfile-sample-java-springboot-basic/testbranch",
+		},
+		{
 			name:    "Successfully convert a github url with .git to raw url",
 			url:     "https://github.com/devfile-samples/devfile-sample-java-springboot-basic.git",
 			wantUrl: "https://raw.githubusercontent.com/devfile-samples/devfile-sample-java-springboot-basic/main",
+		},
+		{
+			name:     "Successfully convert a github url with revision and .git to raw url",
+			url:      "https://github.com/devfile-samples/devfile-sample-java-springboot-basic.git",
+			revision: "testbranch",
+			wantUrl:  "https://raw.githubusercontent.com/devfile-samples/devfile-sample-java-springboot-basic/testbranch",
 		},
 		{
 			name:    "A non github url",
@@ -220,6 +241,12 @@ func TestConvertGitHubURL(t *testing.T) {
 			name:    "A raw github url",
 			url:     "https://raw.githubusercontent.com/devfile-samples/devfile-sample-java-springboot-basic/main/devfile.yaml",
 			wantUrl: "https://raw.githubusercontent.com/devfile-samples/devfile-sample-java-springboot-basic/main/devfile.yaml",
+		},
+		{
+			name:     "A raw github url with revision",
+			url:      "https://raw.githubusercontent.com/devfile-samples/devfile-sample-java-springboot-basic/testbranch/devfile.yaml",
+			revision: "testbranch",
+			wantUrl:  "https://raw.githubusercontent.com/devfile-samples/devfile-sample-java-springboot-basic/testbranch/devfile.yaml",
 		},
 		{
 			name:    "A non-main branch github url",
@@ -235,7 +262,7 @@ func TestConvertGitHubURL(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			convertedUrl, err := ConvertGitHubURL(tt.url)
+			convertedUrl, err := ConvertGitHubURL(tt.url, tt.revision)
 			if tt.wantErr && (err == nil) {
 				t.Error("wanted error but got nil")
 			} else if !tt.wantErr && err != nil {
@@ -243,6 +270,41 @@ func TestConvertGitHubURL(t *testing.T) {
 			} else if convertedUrl != tt.wantUrl {
 				t.Errorf("ConvertGitHubURL; expected %v got %v", tt.wantUrl, convertedUrl)
 			}
+		})
+	}
+}
+
+func TestCheckWithRegex(t *testing.T) {
+	tests := []struct {
+		name      string
+		test      string
+		pattern   string
+		wantMatch bool
+	}{
+		{
+			name:      "matching string",
+			test:      "hi-00-HI",
+			pattern:   "^[a-z]([-a-z0-9]*[a-z0-9])?",
+			wantMatch: true,
+		},
+		{
+			name:      "not a matching string",
+			test:      "1-hi",
+			pattern:   "^[a-z]([-a-z0-9]*[a-z0-9])?",
+			wantMatch: false,
+		},
+		{
+			name:      "bad pattern",
+			test:      "hi-00-HI",
+			pattern:   "(abc",
+			wantMatch: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			gotMatch := CheckWithRegex(tt.pattern, tt.test)
+			assert.Equal(t, tt.wantMatch, gotMatch, "the values should match")
 		})
 	}
 }

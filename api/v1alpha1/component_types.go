@@ -36,16 +36,17 @@ type GitSource struct {
 	// If importing from git, the repository to create the component from
 	URL string `json:"url"`
 
+	// Specify a branch/tag/commit id. If not specified, default is `main`/`master`.
+	Revision string `json:"revision,omitempty"`
+
+	// A relative path inside the git repo containing the component
+	Context string `json:"context,omitempty"`
+
 	// If specified, the devfile at the URL will be used for the component.
 	DevfileURL string `json:"devfileUrl,omitempty"`
 
 	// If specified, the dockerfile at the URL will be used for the component.
 	DockerfileURL string `json:"dockerfileUrl,omitempty"`
-}
-
-type ImageSource struct {
-	// If importing from git, container image to create the component from
-	ContainerImage string `json:"containerImage"`
 }
 
 // ComponentSource describes the Component source
@@ -57,15 +58,6 @@ type ComponentSource struct {
 type ComponentSourceUnion struct {
 	// Git Source for a Component
 	GitSource *GitSource `json:"git,omitempty"`
-
-	// Image Source for a Component
-	ImageSource *ImageSource `json:"image,omitempty"`
-}
-
-// Build describes the various build artifacts associated with a given component
-type Build struct {
-	// The container image that is created during the component build.
-	ContainerImage string `json:"containerImage"`
 }
 
 // EDIT THIS FILE!  THIS IS SCAFFOLDING FOR YOU TO OWN!
@@ -93,8 +85,8 @@ type ComponentSpec struct {
 	// Source describes the Component source
 	Source ComponentSource `json:"source"`
 
-	// A relative path inside the git repo containing the component
-	Context string `json:"context,omitempty"`
+	// List of references to ReleaseStrategies to use when releasing the component
+	ReleaseStrategies []string `json:"releaseStrategies,omitempty"`
 
 	// Compute Resources required by this component
 	Resources corev1.ResourceRequirements `json:"resources,omitempty"`
@@ -111,8 +103,8 @@ type ComponentSpec struct {
 	// An array of environment variables to add to the component
 	Env []corev1.EnvVar `json:"env,omitempty"`
 
-	// The build artifacts associated with the component
-	Build Build `json:"build,omitempty"`
+	// The container image to build or create the component from
+	ContainerImage string `json:"containerImage,omitempty"`
 }
 
 // ComponentStatus defines the observed state of Component
