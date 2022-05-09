@@ -17,22 +17,34 @@ package controllers
 
 const (
 	// routeKey is the key to reference route
-	routeKey = "appstudio.has/route"
+	routeKey = "deployment/route"
 
 	// replicaKey is the key to reference replica
-	replicaKey = "appstudio.has/replicas"
+	replicaKey = "deployment/replicas"
 
 	// storageLimitKey is the key to reference storage limit
-	storageLimitKey = "appstudio.has/storageLimit"
-
-	// ephemeralStorageLimitKey is the key to reference ephemeral storage limit
-	ephemeralStorageLimitKey = "appstudio.has/ephemeralStorageLimit"
+	storageLimitKey = "deployment/storageLimit"
 
 	// storageRequestKey is the key to reference storage request
-	storageRequestKey = "appstudio.has/storageRequest"
+	storageRequestKey = "deployment/storageRequest"
 
-	// ephemeralStorageRequestKey is the key to reference ephemeral storage request
-	ephemeralStorageRequestKey = "appstudio.has/ephemeralStorageRequest"
+	// cpuLimitKey is the key to reference cpu limit
+	cpuLimitKey = "deployment/cpuLimit"
+
+	// cpuRequestKey is the key to reference cpu request
+	cpuRequestKey = "deployment/cpuRequest"
+
+	// memoryLimitKey is the key to reference memory limit
+	memoryLimitKey = "deployment/memoryLimit"
+
+	// memoryRequestKey is the key to reference memory request
+	memoryRequestKey = "deployment/memoryRequest"
+
+	// containerImagePortKey is the key to reference container image port
+	containerImagePortKey = "deployment/containerimage-port"
+
+	// containerImagePortKey is the key to reference container image port
+	containerENVKey = "deployment/containerENV"
 
 	// maxDevfileDiscoveryDepth is the depth of the directory to detect devfiles
 	maxDevfileDiscoveryDepth = 1

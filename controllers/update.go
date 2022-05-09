@@ -35,14 +35,14 @@ func (r *ComponentReconciler) updateComponentDevfileModel(hasCompDevfileData dat
 
 	devfileComponents, err := hasCompDevfileData.GetComponents(common.DevfileOptions{
 		ComponentOptions: common.ComponentOptions{
-			ComponentType: devfileAPIV1.ContainerComponentType,
+			ComponentType: devfileAPIV1.KubernetesComponentType,
 		},
 	})
 	if err != nil {
 		return err
 	}
 
-	for i, devfileComponent := range devfileComponents {
+	for _, devfileComponent := range devfileComponents {
 		compUpdateRequired := false
 
 		// Update for Route
@@ -50,11 +50,9 @@ func (r *ComponentReconciler) updateComponentDevfileModel(hasCompDevfileData dat
 			if len(devfileComponent.Attributes) == 0 {
 				devfileComponent.Attributes = attributes.Attributes{}
 			}
-			if component.Spec.Route != "" {
-				log.Info(fmt.Sprintf("setting devfile component %s attribute component.Spec.Route %s", devfileComponent.Name, component.Spec.Route))
-				devfileComponent.Attributes = devfileComponent.Attributes.PutString(routeKey, component.Spec.Route)
-				compUpdateRequired = true
-			}
+			log.Info(fmt.Sprintf("setting devfile component %s attribute component.Spec.Route %s", devfileComponent.Name, component.Spec.Route))
+			devfileComponent.Attributes = devfileComponent.Attributes.PutString(routeKey, component.Spec.Route)
+			compUpdateRequired = true
 		}
 
 		// Update for Replica
@@ -77,16 +75,32 @@ func (r *ComponentReconciler) updateComponentDevfileModel(hasCompDevfileData dat
 		}
 
 		// Update for Port
-		if i == 0 && component.Spec.TargetPort > 0 {
-			for i, endpoint := range devfileComponent.Container.Endpoints {
-				log.Info(fmt.Sprintf("setting devfile component %s endpoint %s port to %v", devfileComponent.Name, endpoint.Name, component.Spec.TargetPort))
-				endpoint.TargetPort = component.Spec.TargetPort
-				compUpdateRequired = true
-				devfileComponent.Container.Endpoints[i] = endpoint
+		currentPort := 0
+		if len(devfileComponent.Attributes) == 0 {
+			devfileComponent.Attributes = attributes.Attributes{}
+		} else {
+			var err error
+			currentPort = int(devfileComponent.Attributes.GetNumber(containerImagePortKey, &err))
+			if err != nil {
+				if _, ok := err.(*attributes.KeyNotFoundError); !ok {
+					return err
+				}
 			}
+		}
+		if currentPort != component.Spec.TargetPort {
+			log.Info(fmt.Sprintf("setting devfile component %s attribute component.Spec.TargetPort %v", devfileComponent.Name, component.Spec.TargetPort))
+			devfileComponent.Attributes = devfileComponent.Attributes.PutInteger(replicaKey, component.Spec.Replicas)
+			compUpdateRequired = true
 		}
 
 		// Update for Env
+		currentENV := []corev1.EnvVar{}
+		err := devfileComponent.Attributes.GetInto(containerENVKey, &currentENV)
+		if err != nil {
+			if _, ok := err.(*attributes.KeyNotFoundError); !ok {
+				return err
+			}
+		}
 		for _, env := range component.Spec.Env {
 			if env.ValueFrom != nil {
 				return fmt.Errorf("env.ValueFrom is not supported at the moment, use env.value")
@@ -96,22 +110,25 @@ func (r *ComponentReconciler) updateComponentDevfileModel(hasCompDevfileData dat
 			value := env.Value
 			isPresent := false
 
-			for i, devfileEnv := range devfileComponent.Container.Env {
+			for i, devfileEnv := range currentENV {
 				if devfileEnv.Name == name {
 					isPresent = true
 					log.Info(fmt.Sprintf("setting devfileComponent %s env %s value to %v", devfileComponent.Name, devfileEnv.Name, value))
 					devfileEnv.Value = value
-					devfileComponent.Container.Env[i] = devfileEnv
-					compUpdateRequired = true
+					currentENV[i] = devfileEnv
 				}
 			}
 
 			if !isPresent {
 				log.Info(fmt.Sprintf("appending to devfile component %s env %s : %v", devfileComponent.Name, name, value))
-				devfileComponent.Container.Env = append(devfileComponent.Container.Env, devfileAPIV1.EnvVar{Name: name, Value: value})
-				compUpdateRequired = true
+				currentENV = append(currentENV, env)
 			}
 
+			devfileComponent.Attributes = devfileComponent.Attributes.FromMap(map[string]interface{}{containerENVKey: currentENV}, &err)
+			if err != nil {
+				return err
+			}
+			compUpdateRequired = true
 		}
 
 		// Update for limits
@@ -119,17 +136,23 @@ func (r *ComponentReconciler) updateComponentDevfileModel(hasCompDevfileData dat
 		if len(limits) > 0 {
 			// CPU Limit
 			resourceCPULimit := limits[corev1.ResourceCPU]
-			if resourceCPULimit.String() != "" {
-				log.Info(fmt.Sprintf("setting devfile component %s cpu limit to %s", devfileComponent.Name, resourceCPULimit.String()))
-				devfileComponent.Container.CpuLimit = resourceCPULimit.String()
+			if len(devfileComponent.Attributes) == 0 {
+				devfileComponent.Attributes = attributes.Attributes{}
+			}
+			if resourceCPULimit.String() != "0" {
+				log.Info(fmt.Sprintf("setting devfile component %s attribute cpu limit to %s", devfileComponent.Name, resourceCPULimit.String()))
+				devfileComponent.Attributes = devfileComponent.Attributes.PutString(cpuLimitKey, resourceCPULimit.String())
 				compUpdateRequired = true
 			}
 
 			// Memory Limit
 			resourceMemoryLimit := limits[corev1.ResourceMemory]
-			if resourceMemoryLimit.String() != "" {
-				log.Info(fmt.Sprintf("setting devfile component %s memory limit to %s", devfileComponent.Name, resourceMemoryLimit.String()))
-				devfileComponent.Container.MemoryLimit = resourceMemoryLimit.String()
+			if len(devfileComponent.Attributes) == 0 {
+				devfileComponent.Attributes = attributes.Attributes{}
+			}
+			if resourceMemoryLimit.String() != "0" {
+				log.Info(fmt.Sprintf("setting devfile component %s attribute memory limit to %s", devfileComponent.Name, resourceMemoryLimit.String()))
+				devfileComponent.Attributes = devfileComponent.Attributes.PutString(memoryLimitKey, resourceMemoryLimit.String())
 				compUpdateRequired = true
 			}
 
@@ -143,17 +166,6 @@ func (r *ComponentReconciler) updateComponentDevfileModel(hasCompDevfileData dat
 				devfileComponent.Attributes = devfileComponent.Attributes.PutString(storageLimitKey, resourceStorageLimit.String())
 				compUpdateRequired = true
 			}
-
-			// Ephemeral Storage Limit
-			resourceEphemeralStorageLimit := limits[corev1.ResourceEphemeralStorage]
-			if len(devfileComponent.Attributes) == 0 {
-				devfileComponent.Attributes = attributes.Attributes{}
-			}
-			if resourceEphemeralStorageLimit.String() != "0" {
-				log.Info(fmt.Sprintf("updating devfile component %s attribute ephemeral storage limit to %s", devfileComponent.Name, resourceEphemeralStorageLimit.String()))
-				devfileComponent.Attributes = devfileComponent.Attributes.PutString(ephemeralStorageLimitKey, resourceEphemeralStorageLimit.String())
-				compUpdateRequired = true
-			}
 		}
 
 		// Update for requests
@@ -161,17 +173,23 @@ func (r *ComponentReconciler) updateComponentDevfileModel(hasCompDevfileData dat
 		if len(requests) > 0 {
 			// CPU Request
 			resourceCPURequest := requests[corev1.ResourceCPU]
-			if resourceCPURequest.String() != "" {
-				log.Info(fmt.Sprintf("setting devfile component %s cpu request  to %s", devfileComponent.Name, resourceCPURequest.String()))
-				devfileComponent.Container.CpuRequest = resourceCPURequest.String()
+			if len(devfileComponent.Attributes) == 0 {
+				devfileComponent.Attributes = attributes.Attributes{}
+			}
+			if resourceCPURequest.String() != "0" {
+				log.Info(fmt.Sprintf("updating devfile component %s attribute cpu request to %s", devfileComponent.Name, resourceCPURequest.String()))
+				devfileComponent.Attributes = devfileComponent.Attributes.PutString(cpuRequestKey, resourceCPURequest.String())
 				compUpdateRequired = true
 			}
 
 			// Memory Request
 			resourceMemoryRequest := requests[corev1.ResourceMemory]
-			if resourceMemoryRequest.String() != "" {
-				log.Info(fmt.Sprintf("setting devfile component %s memory request to %s", devfileComponent.Name, resourceMemoryRequest.String()))
-				devfileComponent.Container.MemoryRequest = resourceMemoryRequest.String()
+			if len(devfileComponent.Attributes) == 0 {
+				devfileComponent.Attributes = attributes.Attributes{}
+			}
+			if resourceMemoryRequest.String() != "0" {
+				log.Info(fmt.Sprintf("updating devfile component %s attribute memory request to %s", devfileComponent.Name, resourceMemoryRequest.String()))
+				devfileComponent.Attributes = devfileComponent.Attributes.PutString(memoryRequestKey, resourceMemoryRequest.String())
 				compUpdateRequired = true
 			}
 
@@ -183,17 +201,6 @@ func (r *ComponentReconciler) updateComponentDevfileModel(hasCompDevfileData dat
 			if resourceStorageRequest.String() != "0" {
 				log.Info(fmt.Sprintf("updating devfile component %s attribute storage request to %s", devfileComponent.Name, resourceStorageRequest.String()))
 				devfileComponent.Attributes = devfileComponent.Attributes.PutString(storageRequestKey, resourceStorageRequest.String())
-				compUpdateRequired = true
-			}
-
-			// Ephemeral Storage Request
-			resourceEphemeralStorageRequest := requests[corev1.ResourceEphemeralStorage]
-			if len(devfileComponent.Attributes) == 0 {
-				devfileComponent.Attributes = attributes.Attributes{}
-			}
-			if resourceEphemeralStorageRequest.String() != "0" {
-				log.Info(fmt.Sprintf("setting devfile component %s attribute ephemeral storage limit to %s", devfileComponent.Name, resourceEphemeralStorageRequest.String()))
-				devfileComponent.Attributes = devfileComponent.Attributes.PutString(ephemeralStorageRequestKey, resourceEphemeralStorageRequest.String())
 				compUpdateRequired = true
 			}
 		}
@@ -301,7 +308,7 @@ func (r *ComponentDetectionQueryReconciler) updateComponentStub(componentDetecti
 		devfileMetadata := compDevfileData.GetMetadata()
 		devfileContainerComponents, err := compDevfileData.GetComponents(common.DevfileOptions{
 			ComponentOptions: common.ComponentOptions{
-				ComponentType: devfileAPIV1.ContainerComponentType,
+				ComponentType: devfileAPIV1.KubernetesComponentType,
 			},
 		})
 		if err != nil {
@@ -402,21 +409,6 @@ func (r *ComponentDetectionQueryReconciler) updateComponentStub(componentDetecti
 				limits[corev1.ResourceStorage] = storageLimit
 			}
 
-			// Ephemeral Storage Limit
-			ephemeralStorageLimitString := devfileContainerComponents[0].Attributes.GetString(ephemeralStorageLimitKey, &err)
-			if err != nil {
-				if _, ok := err.(*attributes.KeyNotFoundError); !ok {
-					return err
-				}
-			}
-			if ephemeralStorageLimitString != "" {
-				ephemeralStorageLimit, err := resource.ParseQuantity(ephemeralStorageLimitString)
-				if err != nil {
-					return err
-				}
-				limits[corev1.ResourceEphemeralStorage] = ephemeralStorageLimit
-			}
-
 			// Devfile Request
 			if len(componentStub.Resources.Requests) == 0 {
 				componentStub.Resources.Requests = make(corev1.ResourceList)
@@ -454,21 +446,6 @@ func (r *ComponentDetectionQueryReconciler) updateComponentStub(componentDetecti
 					return err
 				}
 				requests[corev1.ResourceStorage] = storageRequest
-			}
-
-			// Ephemeral Storage Request
-			ephemeralStorageRequestString := devfileContainerComponents[0].Attributes.GetString(ephemeralStorageRequestKey, &err)
-			if err != nil {
-				if _, ok := err.(*attributes.KeyNotFoundError); !ok {
-					return err
-				}
-			}
-			if ephemeralStorageRequestString != "" {
-				ephemeralStorageRequest, err := resource.ParseQuantity(ephemeralStorageRequestString)
-				if err != nil {
-					return err
-				}
-				requests[corev1.ResourceEphemeralStorage] = ephemeralStorageRequest
 			}
 		}
 

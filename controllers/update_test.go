@@ -238,17 +238,20 @@ func TestUpdateComponentDevfileModel(t *testing.T) {
 
 	originalResources := corev1.ResourceRequirements{
 		Limits: corev1.ResourceList{
-			corev1.ResourceCPU:              core500mResource,
-			corev1.ResourceMemory:           storage1GiResource,
-			corev1.ResourceStorage:          storage1GiResource,
-			corev1.ResourceEphemeralStorage: storage1GiResource,
+			corev1.ResourceCPU:     core500mResource,
+			corev1.ResourceMemory:  storage1GiResource,
+			corev1.ResourceStorage: storage1GiResource,
 		},
 		Requests: corev1.ResourceList{
-			corev1.ResourceCPU:              core500mResource,
-			corev1.ResourceMemory:           storage1GiResource,
-			corev1.ResourceStorage:          storage1GiResource,
-			corev1.ResourceEphemeralStorage: storage1GiResource,
+			corev1.ResourceCPU:     core500mResource,
+			corev1.ResourceMemory:  storage1GiResource,
+			corev1.ResourceStorage: storage1GiResource,
 		},
+	}
+
+	envAttributes := attributes.Attributes{}.FromMap(map[string]interface{}{containerENVKey: []corev1.EnvVar{{Name: "FOO", Value: "foo"}}}, &err)
+	if err != nil {
+		t.Error(err)
 	}
 
 	env := []corev1.EnvVar{
@@ -270,12 +273,12 @@ func TestUpdateComponentDevfileModel(t *testing.T) {
 		wantErr        bool
 	}{
 		{
-			name: "No container component",
+			name: "No kubernetes component",
 			components: []devfileAPIV1.Component{
 				{
 					Name: "component1",
 					ComponentUnion: devfileAPIV1.ComponentUnion{
-						Kubernetes: &devfileAPIV1.KubernetesComponent{},
+						Container: &devfileAPIV1.ContainerComponent{},
 					},
 				},
 			},
@@ -286,31 +289,13 @@ func TestUpdateComponentDevfileModel(t *testing.T) {
 			},
 		},
 		{
-			name: "one container component",
+			name: "one kubernetes component",
 			components: []devfileAPIV1.Component{
 				{
-					Name: "component1",
+					Name:       "component1",
+					Attributes: envAttributes,
 					ComponentUnion: devfileAPIV1.ComponentUnion{
-						Container: &devfileAPIV1.ContainerComponent{
-							Container: devfileAPIV1.Container{
-								Env: []devfileAPIV1.EnvVar{
-									{
-										Name:  "FOO",
-										Value: "foo",
-									},
-								},
-							},
-							Endpoints: []devfileAPIV1.Endpoint{
-								{
-									Name:       "endpoint1",
-									TargetPort: 1001,
-								},
-								{
-									Name:       "endpoint2",
-									TargetPort: 1002,
-								},
-							},
-						},
+						Kubernetes: &devfileAPIV1.KubernetesComponent{},
 					},
 				},
 			},
@@ -429,28 +414,10 @@ func TestUpdateComponentDevfileModel(t *testing.T) {
 			name: "Component with envFrom component - should error out as it's not supported right now",
 			components: []devfileAPIV1.Component{
 				{
-					Name: "component1",
+					Name:       "component1",
+					Attributes: envAttributes,
 					ComponentUnion: devfileAPIV1.ComponentUnion{
-						Container: &devfileAPIV1.ContainerComponent{
-							Container: devfileAPIV1.Container{
-								Env: []devfileAPIV1.EnvVar{
-									{
-										Name:  "FOO",
-										Value: "foo",
-									},
-								},
-							},
-							Endpoints: []devfileAPIV1.Endpoint{
-								{
-									Name:       "endpoint1",
-									TargetPort: 1001,
-								},
-								{
-									Name:       "endpoint2",
-									TargetPort: 1002,
-								},
-							},
-						},
+						Kubernetes: &devfileAPIV1.KubernetesComponent{},
 					},
 				},
 			},
@@ -577,7 +544,7 @@ func TestUpdateComponentStub(t *testing.T) {
 					},
 				},
 			},
-			Attributes: attributes.Attributes{}.PutInteger(replicaKey, 1).PutString(routeKey, "route1").PutString(storageLimitKey, "400Mi").PutString(ephemeralStorageLimitKey, "400Mi").PutString(storageRequestKey, "200Mi").PutString(ephemeralStorageRequestKey, "200Mi"),
+			Attributes: attributes.Attributes{}.PutInteger(replicaKey, 1).PutString(routeKey, "route1").PutString(storageLimitKey, "400Mi").PutString(storageRequestKey, "200Mi"),
 		},
 		{
 			Name: "component2",
@@ -649,24 +616,6 @@ func TestUpdateComponentStub(t *testing.T) {
 		return
 	}
 
-	componentsEphemeralStorageLimitErr := []devfileAPIV1.Component{
-		{
-			Name: "component1",
-			ComponentUnion: devfileAPIV1.ComponentUnion{
-				Container: &devfileAPIV1.ContainerComponent{
-					Container: devfileAPIV1.Container{
-						Image: "image",
-					},
-				},
-			},
-			Attributes: attributes.Attributes{}.Put(ephemeralStorageLimitKey, []string{"a", "b"}, &err),
-		},
-	}
-	if err != nil {
-		t.Errorf("unexpected err: %+v", err)
-		return
-	}
-
 	componentsStorageRequestErr := []devfileAPIV1.Component{
 		{
 			Name: "component1",
@@ -678,24 +627,6 @@ func TestUpdateComponentStub(t *testing.T) {
 				},
 			},
 			Attributes: attributes.Attributes{}.Put(storageRequestKey, []string{"a", "b"}, &err),
-		},
-	}
-	if err != nil {
-		t.Errorf("unexpected err: %+v", err)
-		return
-	}
-
-	componentsEphemeralStorageRequestErr := []devfileAPIV1.Component{
-		{
-			Name: "component1",
-			ComponentUnion: devfileAPIV1.ComponentUnion{
-				Container: &devfileAPIV1.ContainerComponent{
-					Container: devfileAPIV1.Container{
-						Image: "image",
-					},
-				},
-			},
-			Attributes: attributes.Attributes{}.Put(ephemeralStorageRequestKey, []string{"a", "b"}, &err),
 		},
 	}
 	if err != nil {
@@ -745,20 +676,6 @@ func TestUpdateComponentStub(t *testing.T) {
 		},
 	}
 
-	componentsEphemeralStorageLimitParseErr := []devfileAPIV1.Component{
-		{
-			Name: "component1",
-			ComponentUnion: devfileAPIV1.ComponentUnion{
-				Container: &devfileAPIV1.ContainerComponent{
-					Container: devfileAPIV1.Container{
-						Image: "image",
-					},
-				},
-			},
-			Attributes: attributes.Attributes{}.PutString(ephemeralStorageLimitKey, "xyz"),
-		},
-	}
-
 	componentsCPURequestParseErr := []devfileAPIV1.Component{
 		{
 			Name: "component1",
@@ -798,20 +715,6 @@ func TestUpdateComponentStub(t *testing.T) {
 				},
 			},
 			Attributes: attributes.Attributes{}.PutString(storageRequestKey, "xyz"),
-		},
-	}
-
-	componentsEphemeralStorageRequestParseErr := []devfileAPIV1.Component{
-		{
-			Name: "component1",
-			ComponentUnion: devfileAPIV1.ComponentUnion{
-				Container: &devfileAPIV1.ContainerComponent{
-					Container: devfileAPIV1.Container{
-						Image: "image",
-					},
-				},
-			},
-			Attributes: attributes.Attributes{}.PutString(ephemeralStorageRequestKey, "xyz"),
 		},
 	}
 
@@ -1016,29 +919,6 @@ func TestUpdateComponentStub(t *testing.T) {
 			wantErr: true,
 		},
 		{
-			name: "Check err for ephemeral storage limit as non string",
-			devfilesDataMap: map[string]*v2.DevfileV2{
-				"./": {
-					Devfile: devfileAPIV1.Devfile{
-						DevfileHeader: devfile.DevfileHeader{
-							SchemaVersion: "2.1.0",
-							Metadata: devfile.DevfileMetadata{
-								Name:        "test-devfile",
-								Language:    "language",
-								ProjectType: "project",
-							},
-						},
-						DevWorkspaceTemplateSpec: devfileAPIV1.DevWorkspaceTemplateSpec{
-							DevWorkspaceTemplateSpecContent: devfileAPIV1.DevWorkspaceTemplateSpecContent{
-								Components: componentsEphemeralStorageLimitErr,
-							},
-						},
-					},
-				},
-			},
-			wantErr: true,
-		},
-		{
 			name: "Check err for storage request as non string",
 			devfilesDataMap: map[string]*v2.DevfileV2{
 				"./": {
@@ -1054,29 +934,6 @@ func TestUpdateComponentStub(t *testing.T) {
 						DevWorkspaceTemplateSpec: devfileAPIV1.DevWorkspaceTemplateSpec{
 							DevWorkspaceTemplateSpecContent: devfileAPIV1.DevWorkspaceTemplateSpecContent{
 								Components: componentsStorageRequestErr,
-							},
-						},
-					},
-				},
-			},
-			wantErr: true,
-		},
-		{
-			name: "Check err for ephemeral storage request as non string",
-			devfilesDataMap: map[string]*v2.DevfileV2{
-				"./": {
-					Devfile: devfileAPIV1.Devfile{
-						DevfileHeader: devfile.DevfileHeader{
-							SchemaVersion: "2.1.0",
-							Metadata: devfile.DevfileMetadata{
-								Name:        "test-devfile",
-								Language:    "language",
-								ProjectType: "project",
-							},
-						},
-						DevWorkspaceTemplateSpec: devfileAPIV1.DevWorkspaceTemplateSpec{
-							DevWorkspaceTemplateSpecContent: devfileAPIV1.DevWorkspaceTemplateSpecContent{
-								Components: componentsEphemeralStorageRequestErr,
 							},
 						},
 					},
@@ -1154,29 +1011,6 @@ func TestUpdateComponentStub(t *testing.T) {
 			wantErr: true,
 		},
 		{
-			name: "Check err for ephemeral storage limit parse err",
-			devfilesDataMap: map[string]*v2.DevfileV2{
-				"./": {
-					Devfile: devfileAPIV1.Devfile{
-						DevfileHeader: devfile.DevfileHeader{
-							SchemaVersion: "2.1.0",
-							Metadata: devfile.DevfileMetadata{
-								Name:        "test-devfile",
-								Language:    "language",
-								ProjectType: "project",
-							},
-						},
-						DevWorkspaceTemplateSpec: devfileAPIV1.DevWorkspaceTemplateSpec{
-							DevWorkspaceTemplateSpecContent: devfileAPIV1.DevWorkspaceTemplateSpecContent{
-								Components: componentsEphemeralStorageLimitParseErr,
-							},
-						},
-					},
-				},
-			},
-			wantErr: true,
-		},
-		{
 			name: "Check err for cpu request parse err",
 			devfilesDataMap: map[string]*v2.DevfileV2{
 				"./": {
@@ -1238,29 +1072,6 @@ func TestUpdateComponentStub(t *testing.T) {
 						DevWorkspaceTemplateSpec: devfileAPIV1.DevWorkspaceTemplateSpec{
 							DevWorkspaceTemplateSpecContent: devfileAPIV1.DevWorkspaceTemplateSpecContent{
 								Components: componentsStorageRequestParseErr,
-							},
-						},
-					},
-				},
-			},
-			wantErr: true,
-		},
-		{
-			name: "Check err for ephemeral storage request parse err",
-			devfilesDataMap: map[string]*v2.DevfileV2{
-				"./": {
-					Devfile: devfileAPIV1.Devfile{
-						DevfileHeader: devfile.DevfileHeader{
-							SchemaVersion: "2.1.0",
-							Metadata: devfile.DevfileMetadata{
-								Name:        "test-devfile",
-								Language:    "language",
-								ProjectType: "project",
-							},
-						},
-						DevWorkspaceTemplateSpec: devfileAPIV1.DevWorkspaceTemplateSpec{
-							DevWorkspaceTemplateSpecContent: devfileAPIV1.DevWorkspaceTemplateSpecContent{
-								Components: componentsEphemeralStorageRequestParseErr,
 							},
 						},
 					},
@@ -1373,10 +1184,6 @@ func TestUpdateComponentStub(t *testing.T) {
 									resourceStorageLimit := limits[corev1.ResourceStorage]
 									assert.Equal(t, resourceStorageLimit.String(), devfileComponent.Attributes.GetString(storageLimitKey, &err), "The storage limit should be the same")
 									assert.Nil(t, err, "err should be nil")
-
-									resourceEphemeralStorageLimit := limits[corev1.ResourceEphemeralStorage]
-									assert.Equal(t, resourceEphemeralStorageLimit.String(), devfileComponent.Attributes.GetString(ephemeralStorageLimitKey, &err), "The ephemeral storage limit should be the same")
-									assert.Nil(t, err, "err should be nil")
 								}
 
 								requests := hasCompDetection.ComponentStub.Resources.Requests
@@ -1389,10 +1196,6 @@ func TestUpdateComponentStub(t *testing.T) {
 
 									resourceStorageRequest := requests[corev1.ResourceStorage]
 									assert.Equal(t, resourceStorageRequest.String(), devfileComponent.Attributes.GetString(storageRequestKey, &err), "The storage request should be the same")
-									assert.Nil(t, err, "err should be nil")
-
-									resourceEphemeralStorageRequest := requests[corev1.ResourceEphemeralStorage]
-									assert.Equal(t, resourceEphemeralStorageRequest.String(), devfileComponent.Attributes.GetString(ephemeralStorageRequestKey, &err), "The ephemeral storage request should be the same")
 									assert.Nil(t, err, "err should be nil")
 								}
 
