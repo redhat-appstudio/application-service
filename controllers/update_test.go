@@ -1175,8 +1175,12 @@ func TestUpdateComponentStub(t *testing.T) {
 						}
 
 						for _, devfileComponent := range tt.devfilesDataMap[hasCompDetection.ComponentStub.Source.GitSource.Context].Components {
-							if devfileComponent.Container != nil {
-								for _, devfileEnv := range devfileComponent.Container.Env {
+							if devfileComponent.Kubernetes != nil {
+								componentAttributes := devfileComponent.Attributes
+								var containerENVs []corev1.EnvVar
+								err := componentAttributes.GetInto(containerENVKey, &containerENVs)
+								assert.Nil(t, err, "err should be nil")
+								for _, devfileEnv := range containerENVs {
 									matched := false
 									for _, compEnv := range hasCompDetection.ComponentStub.Env {
 										if devfileEnv.Name == compEnv.Name && devfileEnv.Value == compEnv.Value {
@@ -1186,20 +1190,15 @@ func TestUpdateComponentStub(t *testing.T) {
 									assert.True(t, matched, "env %s:%s should match", devfileEnv.Name, devfileEnv.Value)
 								}
 
-								for i, endpoint := range devfileComponent.Container.Endpoints {
-									if i == 0 {
-										assert.Equal(t, endpoint.TargetPort, hasCompDetection.ComponentStub.TargetPort, "target port should match")
-									}
-								}
-
-								var err error
 								limits := hasCompDetection.ComponentStub.Resources.Limits
 								if len(limits) > 0 {
 									resourceCPULimit := limits[corev1.ResourceCPU]
-									assert.Equal(t, resourceCPULimit.String(), devfileComponent.Container.CpuLimit, "The cpu limit should be the same")
+									assert.Equal(t, resourceCPULimit.String(), devfileComponent.Attributes.GetString(cpuLimitKey, &err), "The cpu limit should be the same")
+									assert.Nil(t, err, "err should be nil")
 
 									resourceMemoryLimit := limits[corev1.ResourceMemory]
-									assert.Equal(t, resourceMemoryLimit.String(), devfileComponent.Container.MemoryLimit, "The memory limit should be the same")
+									assert.Equal(t, resourceMemoryLimit.String(), devfileComponent.Attributes.GetString(memoryLimitKey, &err), "The memory limit should be the same")
+									assert.Nil(t, err, "err should be nil")
 
 									resourceStorageLimit := limits[corev1.ResourceStorage]
 									assert.Equal(t, resourceStorageLimit.String(), devfileComponent.Attributes.GetString(storageLimitKey, &err), "The storage limit should be the same")
@@ -1209,10 +1208,12 @@ func TestUpdateComponentStub(t *testing.T) {
 								requests := hasCompDetection.ComponentStub.Resources.Requests
 								if len(requests) > 0 {
 									resourceCPURequest := requests[corev1.ResourceCPU]
-									assert.Equal(t, resourceCPURequest.String(), devfileComponent.Container.CpuRequest, "The cpu request should be the same")
+									assert.Equal(t, resourceCPURequest.String(), devfileComponent.Attributes.GetString(cpuRequestKey, &err), "The cpu request should be the same")
+									assert.Nil(t, err, "err should be nil")
 
 									resourceMemoryRequest := requests[corev1.ResourceMemory]
-									assert.Equal(t, resourceMemoryRequest.String(), devfileComponent.Container.MemoryRequest, "The memory request should be the same")
+									assert.Equal(t, resourceMemoryRequest.String(), devfileComponent.Attributes.GetString(memoryRequestKey, &err), "The memory request should be the same")
+									assert.Nil(t, err, "err should be nil")
 
 									resourceStorageRequest := requests[corev1.ResourceStorage]
 									assert.Equal(t, resourceStorageRequest.String(), devfileComponent.Attributes.GetString(storageRequestKey, &err), "The storage request should be the same")
@@ -1220,6 +1221,9 @@ func TestUpdateComponentStub(t *testing.T) {
 								}
 
 								assert.Equal(t, hasCompDetection.ComponentStub.Replicas, int(devfileComponent.Attributes.GetNumber(replicaKey, &err)), "The replicas should be the same")
+								assert.Nil(t, err, "err should be nil")
+
+								assert.Equal(t, hasCompDetection.ComponentStub.TargetPort, int(devfileComponent.Attributes.GetNumber(containerImagePortKey, &err)), "The target port should be the same")
 								assert.Nil(t, err, "err should be nil")
 
 								assert.Equal(t, hasCompDetection.ComponentStub.Route, devfileComponent.Attributes.GetString(routeKey, &err), "The route should be the same")

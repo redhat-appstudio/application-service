@@ -125,7 +125,7 @@ func (r *ComponentReconciler) updateComponentDevfileModel(hasCompDevfileData dat
 				log.Info(fmt.Sprintf("appending to devfile component %s env %s : %v", devfileComponent.Name, name, value))
 				currentENV = append(currentENV, env)
 			}
-
+			var err error
 			devfileComponent.Attributes = devfileComponent.Attributes.FromMap(map[string]interface{}{containerENVKey: currentENV}, &err)
 			if err != nil {
 				return err
