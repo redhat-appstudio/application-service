@@ -91,7 +91,7 @@ func (r *ComponentReconciler) updateComponentDevfileModel(hasCompDevfileData dat
 		}
 		if currentPort != component.Spec.TargetPort {
 			log.Info(fmt.Sprintf("setting devfile component %s attribute component.Spec.TargetPort %v", devfileComponent.Name, component.Spec.TargetPort))
-			devfileComponent.Attributes = devfileComponent.Attributes.PutInteger(replicaKey, component.Spec.Replicas)
+			devfileComponent.Attributes = devfileComponent.Attributes.PutInteger(containerImagePortKey, component.Spec.TargetPort)
 			compUpdateRequired = true
 		}
 
@@ -305,7 +305,7 @@ func (r *ComponentDetectionQueryReconciler) updateComponentStub(componentDetecti
 		}
 
 		devfileMetadata := compDevfileData.GetMetadata()
-		devfileContainerComponents, err := compDevfileData.GetComponents(common.DevfileOptions{
+		devfileKubernetesComponents, err := compDevfileData.GetComponents(common.DevfileOptions{
 			ComponentOptions: common.ComponentOptions{
 				ComponentType: devfileAPIV1.KubernetesComponentType,
 			},
@@ -339,25 +339,27 @@ func (r *ComponentDetectionQueryReconciler) updateComponentStub(componentDetecti
 		}
 
 		// Since a devfile can have N container components, we only try to populate the stub with the first container component
-		if len(devfileContainerComponents) != 0 {
+		if len(devfileKubernetesComponents) != 0 {
+			kubernetesComponentAttribute := devfileKubernetesComponents[0].Attributes
+
 			// Devfile Env
-			for _, devfileEnv := range devfileContainerComponents[0].Container.Env {
-				componentStub.Env = append(componentStub.Env, corev1.EnvVar{
-					Name:  devfileEnv.Name,
-					Value: devfileEnv.Value,
-				})
+			err := kubernetesComponentAttribute.GetInto(containerENVKey, &componentStub.Env)
+			if err != nil {
+				if _, ok := err.(*attributes.KeyNotFoundError); !ok {
+					return err
+				}
 			}
 
 			// Devfile Port
-			for i, endpoint := range devfileContainerComponents[0].Container.Endpoints {
-				if i == 0 {
-					componentStub.TargetPort = endpoint.TargetPort
-					break
+			componentStub.TargetPort = int(kubernetesComponentAttribute.GetNumber(containerImagePortKey, &err))
+			if err != nil {
+				if _, ok := err.(*attributes.KeyNotFoundError); !ok {
+					return err
 				}
 			}
 
 			// Devfile Route
-			componentStub.Route = devfileContainerComponents[0].Attributes.GetString(routeKey, &err)
+			componentStub.Route = kubernetesComponentAttribute.GetString(routeKey, &err)
 			if err != nil {
 				if _, ok := err.(*attributes.KeyNotFoundError); !ok {
 					return err
@@ -365,7 +367,7 @@ func (r *ComponentDetectionQueryReconciler) updateComponentStub(componentDetecti
 			}
 
 			// Devfile Replica
-			componentStub.Replicas = int(devfileContainerComponents[0].Attributes.GetNumber(replicaKey, &err))
+			componentStub.Replicas = int(kubernetesComponentAttribute.GetNumber(replicaKey, &err))
 			if err != nil {
 				if _, ok := err.(*attributes.KeyNotFoundError); !ok {
 					return err
@@ -379,8 +381,14 @@ func (r *ComponentDetectionQueryReconciler) updateComponentStub(componentDetecti
 			limits := componentStub.Resources.Limits
 
 			// CPU Limit
-			if devfileContainerComponents[0].Container.CpuLimit != "" {
-				cpuLimit, err := resource.ParseQuantity(devfileContainerComponents[0].Container.CpuLimit)
+			cpuLimitString := kubernetesComponentAttribute.GetString(cpuLimitKey, &err)
+			if err != nil {
+				if _, ok := err.(*attributes.KeyNotFoundError); !ok {
+					return err
+				}
+			}
+			if cpuLimitString != "" {
+				cpuLimit, err := resource.ParseQuantity(cpuLimitString)
 				if err != nil {
 					return err
 				}
@@ -388,8 +396,14 @@ func (r *ComponentDetectionQueryReconciler) updateComponentStub(componentDetecti
 			}
 
 			// Memory Limit
-			if devfileContainerComponents[0].Container.MemoryLimit != "" {
-				memoryLimit, err := resource.ParseQuantity(devfileContainerComponents[0].Container.MemoryLimit)
+			memoryLimitString := kubernetesComponentAttribute.GetString(memoryLimitKey, &err)
+			if err != nil {
+				if _, ok := err.(*attributes.KeyNotFoundError); !ok {
+					return err
+				}
+			}
+			if memoryLimitString != "" {
+				memoryLimit, err := resource.ParseQuantity(memoryLimitString)
 				if err != nil {
 					return err
 				}
@@ -397,7 +411,7 @@ func (r *ComponentDetectionQueryReconciler) updateComponentStub(componentDetecti
 			}
 
 			// Storage Limit
-			storageLimitString := devfileContainerComponents[0].Attributes.GetString(storageLimitKey, &err)
+			storageLimitString := kubernetesComponentAttribute.GetString(storageLimitKey, &err)
 			if err != nil {
 				if _, ok := err.(*attributes.KeyNotFoundError); !ok {
 					return err
@@ -418,17 +432,29 @@ func (r *ComponentDetectionQueryReconciler) updateComponentStub(componentDetecti
 			requests := componentStub.Resources.Requests
 
 			// CPU Request
-			if devfileContainerComponents[0].Container.CpuRequest != "" {
-				CpuRequest, err := resource.ParseQuantity(devfileContainerComponents[0].Container.CpuRequest)
+			cpuRequestString := kubernetesComponentAttribute.GetString(cpuRequestKey, &err)
+			if err != nil {
+				if _, ok := err.(*attributes.KeyNotFoundError); !ok {
+					return err
+				}
+			}
+			if cpuRequestString != "" {
+				cpuRequest, err := resource.ParseQuantity(cpuRequestString)
 				if err != nil {
 					return err
 				}
-				requests[corev1.ResourceCPU] = CpuRequest
+				requests[corev1.ResourceCPU] = cpuRequest
 			}
 
 			// Memory Request
-			if devfileContainerComponents[0].Container.MemoryRequest != "" {
-				memoryRequest, err := resource.ParseQuantity(devfileContainerComponents[0].Container.MemoryRequest)
+			memoryRequestString := kubernetesComponentAttribute.GetString(memoryRequestKey, &err)
+			if err != nil {
+				if _, ok := err.(*attributes.KeyNotFoundError); !ok {
+					return err
+				}
+			}
+			if memoryRequestString != "" {
+				memoryRequest, err := resource.ParseQuantity(memoryRequestString)
 				if err != nil {
 					return err
 				}
@@ -436,7 +462,7 @@ func (r *ComponentDetectionQueryReconciler) updateComponentStub(componentDetecti
 			}
 
 			// Storage Request
-			storageRequestString := devfileContainerComponents[0].Attributes.GetString(storageRequestKey, &err)
+			storageRequestString := kubernetesComponentAttribute.GetString(storageRequestKey, &err)
 			if err != nil {
 				if _, ok := err.(*attributes.KeyNotFoundError); !ok {
 					return err
