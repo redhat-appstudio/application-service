@@ -20,7 +20,6 @@ import (
 	"context"
 	"fmt"
 	"net/url"
-	"path"
 	"reflect"
 	"time"
 
@@ -34,6 +33,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/builder"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
+	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	"sigs.k8s.io/controller-runtime/pkg/predicate"
 	"sigs.k8s.io/yaml"
 
@@ -82,7 +82,6 @@ type ComponentReconciler struct {
 // - https://pkg.go.dev/sigs.k8s.io/controller-runtime@v0.9.2/pkg/reconcile
 func (r *ComponentReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
 	log := r.Log.WithValues("Component", req.NamespacedName)
-	log.Info(fmt.Sprintf("Starting reconcile loop for %v", req.NamespacedName))
 
 	// Fetch the Component instance
 	var component appstudiov1alpha1.Component
@@ -102,6 +101,83 @@ func (r *ComponentReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 		component.Spec.ContainerImage = r.ImageRepository + ":" + component.Namespace + "-" + component.Name
 	}
 
+	// Get the Application CR
+	hasApplication := appstudiov1alpha1.Application{}
+	err = r.Get(ctx, types.NamespacedName{Name: component.Spec.Application, Namespace: component.Namespace}, &hasApplication)
+	if err != nil && !containsString(component.GetFinalizers(), compFinalizerName) {
+		// only requeue if there is no finalizer attached ie; first time component create
+		log.Error(err, fmt.Sprintf("Unable to get the Application %s, requeueing %v", component.Spec.Application, req.NamespacedName))
+		r.SetCreateConditionAndUpdateCR(ctx, &component, err)
+		return ctrl.Result{}, err
+	}
+
+	// If the Application CR devfile status is empty, requeue
+	if hasApplication.Status.Devfile == "" && !containsString(component.GetFinalizers(), compFinalizerName) {
+		log.Error(err, fmt.Sprintf("Application devfile model is empty. Before creating a Component, an instance of Application should be created. Requeueing %v", req.NamespacedName))
+		err := fmt.Errorf("application devfile model is empty")
+		r.SetCreateConditionAndUpdateCR(ctx, &component, err)
+		return ctrl.Result{}, err
+	}
+
+	// Check if the Component CR is under deletion
+	// If so: Remove the project from the Application devfile, remove the component dir from the Gitops repo and remove the finalizer.
+	if component.ObjectMeta.DeletionTimestamp.IsZero() {
+		log.Info(fmt.Sprintf(">>> MJF Delete timestamp is zero %v", req.NamespacedName))
+		if !containsString(component.GetFinalizers(), compFinalizerName) {
+			ownerReference := v1.OwnerReference{
+				APIVersion: hasApplication.APIVersion,
+				Kind:       hasApplication.Kind,
+				Name:       hasApplication.Name,
+				UID:        hasApplication.UID,
+			}
+			component.SetOwnerReferences(append(component.GetOwnerReferences(), ownerReference))
+
+			// Attach the finalizer and return to reset the reconciler loop
+			err := r.AddFinalizer(ctx, &component)
+			log.Info(fmt.Sprintf(">>> MJF adding finalizer %v %v", err, req.NamespacedName))
+			return ctrl.Result{}, err
+		}
+	} else {
+		log.Info(fmt.Sprintf(">>> MJF Delete timestamp is NOT zero %v", req.NamespacedName))
+		if hasApplication.Status.Devfile != "" && containsString(component.GetFinalizers(), compFinalizerName) {
+			// only attempt to finalize and update the gitops repo if an Application is present
+			log.Info(fmt.Sprintf(">>> MJF FINALIZER PRESENT %v", req.NamespacedName))
+			// A finalizer is present for the Component CR, so make sure we do the necessary cleanup steps
+			if err := r.Finalize(ctx, &component, &hasApplication); err != nil {
+				log.Info(fmt.Sprintf(">>> MJF FINALIZE ERROR: %v %v", err, req.NamespacedName))
+				finalizeCount, err := getCompFinalizeCount(&component)
+				log.Info(fmt.Sprintf(">>> MJF getting FINALIZE COUNT: %v %v", finalizeCount, req.NamespacedName))
+				if err == nil && finalizeCount < 5 {
+					log.Info(fmt.Sprintf(">>> MJF updating FINALIZE COUNT %v", req.NamespacedName))
+					// The Finalize function failed, so increment the finalize count and return
+					setCompFinalizeCount(&component, finalizeCount+1)
+					log.Info(fmt.Sprintf(">>> MJF updating COMPONENT %v", req.NamespacedName))
+					err := r.Update(ctx, &component)
+					if err != nil {
+						log.Error(err, "Error incrementing finalizer count on resource")
+					}
+					return ctrl.Result{}, nil
+				} else {
+					// if fail to delete the external dependency here, log the error, but don't return error
+					// Don't want to get stuck in a cycle of repeatedly trying to update the repository and failing
+					log.Error(err, "Unable to update GitOps repository for component %v in namespace %v", component.GetName(), component.GetNamespace())
+				}
+			}
+		}
+
+		// Remove the finalizer if no Application is present or an Application is present at this stage
+		if containsString(component.GetFinalizers(), compFinalizerName) {
+			log.Info(fmt.Sprintf(">>> MJF REMOVING FINALIZER %v", req.NamespacedName))
+			// remove the finalizer from the list and update it.
+			controllerutil.RemoveFinalizer(&component, compFinalizerName)
+			if err := r.Update(ctx, &component); err != nil {
+				log.Info(fmt.Sprintf(">>> MJF err updating after removing finalizer %v %v", err, req.NamespacedName))
+				return ctrl.Result{}, err
+			}
+		}
+	}
+
+	log.Info(fmt.Sprintf("Starting reconcile loop for %v", req.NamespacedName))
 	// If the devfile hasn't been populated, the CR was just created
 	var gitToken string
 	if component.Status.Devfile == "" {
@@ -147,7 +223,7 @@ func (r *ComponentReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 					if context == "" {
 						devfileDir = gitURL
 					} else {
-						devfileDir = path.Join(gitURL, context)
+						devfileDir = gitURL + "/" + context
 					}
 
 					devfileBytes, err = devfile.DownloadDevfile(devfileDir)
@@ -216,14 +292,14 @@ func (r *ComponentReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 			return ctrl.Result{}, nil
 		}
 
-		// Get the Application CR
-		hasApplication := appstudiov1alpha1.Application{}
-		err = r.Get(ctx, types.NamespacedName{Name: component.Spec.Application, Namespace: component.Namespace}, &hasApplication)
-		if err != nil {
-			log.Error(err, fmt.Sprintf("Unable to get the Application %s, requeueing %v", component.Spec.Application, req.NamespacedName))
-			r.SetCreateConditionAndUpdateCR(ctx, &component, err)
-			return ctrl.Result{}, err
-		}
+		// // Get the Application CR
+		// hasApplication := appstudiov1alpha1.Application{}
+		// err = r.Get(ctx, types.NamespacedName{Name: component.Spec.Application, Namespace: component.Namespace}, &hasApplication)
+		// if err != nil {
+		// 	log.Error(err, fmt.Sprintf("Unable to get the Application %s, requeueing %v", component.Spec.Application, req.NamespacedName))
+		// 	r.SetCreateConditionAndUpdateCR(ctx, &component, err)
+		// 	return ctrl.Result{}, err
+		// }
 
 		if hasApplication.Status.Devfile != "" {
 			// Get the devfile of the hasApp CR
@@ -290,12 +366,14 @@ func (r *ComponentReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 
 			r.SetCreateConditionAndUpdateCR(ctx, &component, nil)
 
-		} else {
-			log.Error(err, fmt.Sprintf("Application devfile model is empty. Before creating a Component, an instance of Application should be created. Requeueing %v", req.NamespacedName))
-			err := fmt.Errorf("application devfile model is empty")
-			r.SetCreateConditionAndUpdateCR(ctx, &component, err)
-			return ctrl.Result{}, err
 		}
+
+		// else {
+		// 	log.Error(err, fmt.Sprintf("Application devfile model is empty. Before creating a Component, an instance of Application should be created. Requeueing %v", req.NamespacedName))
+		// 	err := fmt.Errorf("application devfile model is empty")
+		// 	r.SetCreateConditionAndUpdateCR(ctx, &component, err)
+		// 	return ctrl.Result{}, err
+		// }
 
 	} else {
 

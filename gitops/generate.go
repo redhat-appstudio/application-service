@@ -112,6 +112,16 @@ func GenerateParentKustomize(fs afero.Afero, gitOpsFolder string, commonStorageP
 		resources["common-storage-pvc.yaml"] = commonStoragePVC
 		k.AddResources("common-storage-pvc.yaml")
 	}
+
+	// if the common storage PVC already exist, make sure too add it to the parent kustomize file
+	commonStorageExist, err := fs.Exists(filepath.Join(gitOpsFolder, "common-storage-pvc.yaml"))
+	if err != nil {
+		return err
+	}
+	if commonStorageExist {
+		k.AddResources("common-storage-pvc.yaml")
+	}
+
 	resources["kustomization.yaml"] = k
 
 	_, err = yaml.WriteResources(fs, gitOpsFolder, resources)
