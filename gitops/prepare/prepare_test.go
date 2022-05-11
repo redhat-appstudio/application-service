@@ -99,7 +99,7 @@ func TestResolveBuildBundle(t *testing.T) {
 				},
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      BuildBundleConfigMapName,
-					Namespace: BuildBundleDefaultNamepace,
+					Namespace: BuildBundleDefaultNamespace,
 				},
 			},
 			want: "quay.io/foo/bar:2",
@@ -121,7 +121,7 @@ func TestResolveBuildBundle(t *testing.T) {
 				},
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      BuildBundleConfigMapName,
-					Namespace: BuildBundleDefaultNamepace,
+					Namespace: BuildBundleDefaultNamespace,
 				},
 			},
 			want: FallbackBuildBundle,
@@ -138,7 +138,7 @@ func TestResolveBuildBundle(t *testing.T) {
 				},
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      BuildBundleConfigMapName,
-					Namespace: BuildBundleDefaultNamepace,
+					Namespace: BuildBundleDefaultNamespace,
 				},
 			},
 			want: FallbackBuildBundle,
