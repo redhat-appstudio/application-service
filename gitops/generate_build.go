@@ -113,13 +113,15 @@ func DetermineBuildExecution(component appstudiov1alpha1.Component, params []tek
 				},
 				SubPath: component.Name + "/" + workspaceSubPath,
 			},
-			{
-				Name: "registry-auth",
-				Secret: &corev1.SecretVolumeSource{
-					SecretName: "redhat-appstudio-registry-pull-secret",
-				},
-			},
 		},
+	}
+	if gitopsConfig.AppStudioRegistrySecretPresent {
+		pipelineRunSpec.Workspaces = append(pipelineRunSpec.Workspaces, tektonapi.WorkspaceBinding{
+			Name: "registry-auth",
+			Secret: &corev1.SecretVolumeSource{
+				SecretName: "redhat-appstudio-registry-pull-secret",
+			},
+		})
 	}
 	return pipelineRunSpec
 }

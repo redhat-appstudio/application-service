@@ -124,15 +124,16 @@ func TestGenerateInitialBuildPipelineRun(t *testing.T) {
 		},
 	}
 
-	gitopsConfig := prepare.GitopsConfig{BuildBundle: "quay.io/redhat-appstudio/build-templates-bundle:0.0.1"}
+	buildBundle := "quay.io/redhat-appstudio/build-templates-bundle:0.0.1"
 
 	type args struct {
 		component appstudiov1alpha1.Component
 	}
 	tests := []struct {
-		name string
-		args args
-		want tektonapi.PipelineRun
+		name                  string
+		args                  args
+		registrySecretMissing bool
+		want                  tektonapi.PipelineRun
 	}{
 		{
 			name: "generate initial build pipelien run",
@@ -147,7 +148,7 @@ func TestGenerateInitialBuildPipelineRun(t *testing.T) {
 				},
 				Spec: tektonapi.PipelineRunSpec{
 					PipelineRef: &tektonapi.PipelineRef{
-						Bundle: gitopsConfig.BuildBundle,
+						Bundle: buildBundle,
 						Name:   "noop",
 					},
 					Params: []tektonapi.Param{
@@ -184,9 +185,55 @@ func TestGenerateInitialBuildPipelineRun(t *testing.T) {
 				},
 			},
 		},
+		{
+			name:                  "generate initial build pipelien run no registry secret",
+			registrySecretMissing: true,
+			args: args{
+				component: component,
+			},
+			want: tektonapi.PipelineRun{
+				ObjectMeta: metav1.ObjectMeta{
+					GenerateName: "testcomponent-",
+					Namespace:    "kcpworkspacename",
+					Labels:       getBuildCommonLabelsForComponent(&component),
+				},
+				Spec: tektonapi.PipelineRunSpec{
+					PipelineRef: &tektonapi.PipelineRef{
+						Bundle: buildBundle,
+						Name:   "noop",
+					},
+					Params: []tektonapi.Param{
+						{
+							Name: "git-url",
+							Value: tektonapi.ArrayOrString{
+								Type:      tektonapi.ParamTypeString,
+								StringVal: "https://host/git-repo",
+							},
+						},
+						{
+							Name: "output-image",
+							Value: tektonapi.ArrayOrString{
+								Type:      tektonapi.ParamTypeString,
+								StringVal: "",
+							},
+						},
+					},
+					Workspaces: []tektonapi.WorkspaceBinding{
+						{
+							Name: "workspace",
+							PersistentVolumeClaim: &corev1.PersistentVolumeClaimVolumeSource{
+								ClaimName: "appstudio",
+							},
+							SubPath: "testcomponent/" + getInitialBuildWorkspaceSubpath(),
+						},
+					},
+				},
+			},
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			gitopsConfig := prepare.GitopsConfig{BuildBundle: buildBundle, AppStudioRegistrySecretPresent: !tt.registrySecretMissing}
 			if got := GenerateInitialBuildPipelineRun(tt.args.component, gitopsConfig); !reflect.DeepEqual(got, tt.want) {
 				t.Errorf("GenerateInitialBuildPipelineRun() = %v, want %v", got, tt.want)
 			}
@@ -201,12 +248,13 @@ func TestDetermineBuildExecution(t *testing.T) {
 		workspaceSubPath string
 	}
 
-	gitopsConfig := prepare.GitopsConfig{BuildBundle: "quay.io/redhat-appstudio/build-templates-bundle:0.0.1"}
+	buildBundle := "quay.io/redhat-appstudio/build-templates-bundle:0.0.1"
 
 	tests := []struct {
-		name string
-		args args
-		want tektonapi.PipelineRunSpec
+		name                  string
+		args                  args
+		registrySecretMissing bool
+		want                  tektonapi.PipelineRunSpec
 	}{
 		{
 			name: "for non webhooks",
@@ -222,7 +270,7 @@ func TestDetermineBuildExecution(t *testing.T) {
 			},
 			want: tektonapi.PipelineRunSpec{
 				PipelineRef: &tektonapi.PipelineRef{
-					Bundle: gitopsConfig.BuildBundle,
+					Bundle: buildBundle,
 					Name:   "noop",
 				},
 				Params: []tektonapi.Param{},
@@ -257,7 +305,7 @@ func TestDetermineBuildExecution(t *testing.T) {
 			},
 			want: tektonapi.PipelineRunSpec{
 				PipelineRef: &tektonapi.PipelineRef{
-					Bundle: gitopsConfig.BuildBundle,
+					Bundle: buildBundle,
 					Name:   "noop",
 				},
 				Params: []tektonapi.Param{},
@@ -278,9 +326,40 @@ func TestDetermineBuildExecution(t *testing.T) {
 				},
 			},
 		},
+		{
+			name:                  "no registry secret",
+			registrySecretMissing: true,
+			args: args{
+				component: appstudiov1alpha1.Component{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "testcomponent",
+						Namespace: "kcpworkspacename",
+					},
+				},
+				workspaceSubPath: "a-long-git-reference",
+				params:           []tektonapi.Param{},
+			},
+			want: tektonapi.PipelineRunSpec{
+				PipelineRef: &tektonapi.PipelineRef{
+					Bundle: buildBundle,
+					Name:   "noop",
+				},
+				Params: []tektonapi.Param{},
+				Workspaces: []tektonapi.WorkspaceBinding{
+					{
+						Name: "workspace",
+						PersistentVolumeClaim: &corev1.PersistentVolumeClaimVolumeSource{
+							ClaimName: "appstudio",
+						},
+						SubPath: "testcomponent/a-long-git-reference",
+					},
+				},
+			},
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			gitopsConfig := prepare.GitopsConfig{BuildBundle: buildBundle, AppStudioRegistrySecretPresent: !tt.registrySecretMissing}
 			if got := DetermineBuildExecution(tt.args.component, tt.args.params, tt.args.workspaceSubPath, gitopsConfig); !reflect.DeepEqual(got, tt.want) {
 				t.Errorf("DetermineBuildExecution() = %v, want %v", got, tt.want)
 			}
