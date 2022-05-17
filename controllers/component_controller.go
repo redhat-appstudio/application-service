@@ -100,6 +100,12 @@ func (r *ComponentReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 
 	if component.Spec.ContainerImage == "" {
 		component.Spec.ContainerImage = r.ImageRepository + ":" + component.Namespace + "-" + component.Name
+		if err := r.Client.Update(ctx, &component); err != nil {
+			log.Error(err, fmt.Sprintf("Failed to set default component image: %s", component.Spec.ContainerImage))
+			return ctrl.Result{}, err
+		}
+		log.Info(fmt.Sprintf("Set component image to default value: %s", component.Spec.ContainerImage))
+		return ctrl.Result{Requeue: true}, nil
 	}
 
 	// If the devfile hasn't been populated, the CR was just created
@@ -197,7 +203,7 @@ func (r *ComponentReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 				r.SetCreateConditionAndUpdateCR(ctx, &component, err)
 				return ctrl.Result{}, nil
 			}
-		} else if component.Spec.ContainerImage != "" {
+		} else {
 			// An image component was specified
 			// Generate a stub devfile for the component
 			compDevfileData, err = devfile.ConvertImageComponentToDevfile(component)
@@ -267,10 +273,8 @@ func (r *ComponentReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 				return ctrl.Result{}, err
 			}
 
-			if component.Spec.ContainerImage != "" {
-				// Set the container image in the status
-				component.Status.ContainerImage = component.Spec.ContainerImage
-			}
+			// Set the container image in the status
+			component.Status.ContainerImage = component.Spec.ContainerImage
 
 			log.Info(fmt.Sprintf("Adding the GitOps repository information to the status for component %v", req.NamespacedName))
 			err = setGitopsStatus(&component, hasAppDevfileData)
@@ -324,10 +328,8 @@ func (r *ComponentReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 			r.SetUpdateConditionAndUpdateCR(ctx, &component, err)
 			return ctrl.Result{}, nil
 		}
-		var containerImage string
-		if component.Spec.ContainerImage != "" {
-			containerImage = component.Spec.ContainerImage
-		}
+
+		containerImage := component.Spec.ContainerImage
 		isUpdated := !reflect.DeepEqual(oldCompDevfileData, hasCompDevfileData) || containerImage != component.Status.ContainerImage
 		if isUpdated {
 			log.Info(fmt.Sprintf("The Component was updated %v", req.NamespacedName))
@@ -339,10 +341,7 @@ func (r *ComponentReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 			}
 
 			// Generate and push the gitops resources
-			if component.Spec.ContainerImage != "" {
-				component.Status.ContainerImage = component.Spec.ContainerImage
-			}
-
+			component.Status.ContainerImage = component.Spec.ContainerImage
 			if err := r.generateGitops(ctx, &component); err != nil {
 				errMsg := fmt.Sprintf("Unable to generate gitops resources for component %v", req.NamespacedName)
 				log.Error(err, errMsg)
