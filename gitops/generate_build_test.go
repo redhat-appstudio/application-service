@@ -16,7 +16,9 @@ limitations under the License.
 package gitops
 
 import (
+	"encoding/json"
 	"reflect"
+	"strings"
 	"testing"
 
 	"github.com/devfile/api/v2/pkg/apis/workspaces/v1alpha2"
@@ -79,9 +81,11 @@ func TestNormalizeOutputImageURL(t *testing.T) {
 		outputImage string
 	}
 	tests := []struct {
-		name string
-		args args
-		want string
+		name        string
+		namespace   string
+		args        args
+		want        string
+		expectError bool
 	}{
 		{
 			name: "not a fully qualified url",
@@ -104,10 +108,34 @@ func TestNormalizeOutputImageURL(t *testing.T) {
 			},
 			want: "quay.io/foo/bar:tag-$(tt.params.git-revision)",
 		},
+		{
+			name:      "fully qualified url to default repo, matching user",
+			namespace: "mytag",
+			args: args{
+				outputImage: DefaultImageRepo + ":mytag",
+			},
+			want: DefaultImageRepo + ":mytag-$(tt.params.git-revision)",
+		},
+		{
+			name:      "fully qualified url to default repo, mismatched users",
+			namespace: "yourtag",
+			args: args{
+				outputImage: DefaultImageRepo + ":mytag",
+			},
+			want:        "",
+			expectError: true,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := normalizeOutputImageURL(tt.args.outputImage); got != tt.want {
+			got, err := normalizeOutputImageURL(tt.args.outputImage, tt.namespace)
+			if err == nil && tt.expectError {
+				t.Errorf("normalizeOutputImageURL() expected error but got none")
+			}
+			if err != nil && !tt.expectError {
+				t.Errorf("normalizeOutputImageURL() got unexpected error: %s", err.Error())
+			}
+			if got != tt.want {
 				t.Errorf("normalizeOutputImageURL() = %v, want %v", got, tt.want)
 			}
 		})
@@ -377,6 +405,101 @@ func TestDetermineBuildPipeline(t *testing.T) {
 	}
 }
 
+func TestGenerateTriggerTemplate(t *testing.T) {
+	tests := []struct {
+		name         string
+		component    appstudiov1alpha1.Component
+		gitopsConfig prepare.GitopsConfig
+		// given the byte serialization around the pipelinerun, we just verify the component related changes vs. deepequal
+		wantErr bool
+	}{
+		{
+			name: "working",
+			component: appstudiov1alpha1.Component{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "testcomponent",
+					Namespace: "kcpworkspacename",
+				},
+				Spec: appstudiov1alpha1.ComponentSpec{
+					Source: appstudiov1alpha1.ComponentSource{
+						ComponentSourceUnion: appstudiov1alpha1.ComponentSourceUnion{
+							GitSource: &appstudiov1alpha1.GitSource{
+								URL: "https://a/b/c",
+							},
+						},
+					},
+				},
+			},
+		},
+		{
+			name:    "default repo mismatched user error on non initial build",
+			wantErr: true,
+			component: appstudiov1alpha1.Component{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "testcomponent",
+					Namespace: "kcpworkspacename",
+				},
+				Spec: appstudiov1alpha1.ComponentSpec{
+					ContainerImage: DefaultImageRepo + ":mytag",
+					Source: appstudiov1alpha1.ComponentSource{
+						ComponentSourceUnion: appstudiov1alpha1.ComponentSourceUnion{
+							GitSource: &appstudiov1alpha1.GitSource{
+								URL: "https://a/b/c",
+							},
+						},
+					},
+				},
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := GenerateTriggerTemplate(tt.component, tt.gitopsConfig)
+			if err != nil && !tt.wantErr {
+				t.Errorf("GenerateTriggerTemplate() unexpected error: %s", err.Error())
+			}
+			if err == nil && tt.wantErr {
+				t.Errorf("GenerateTriggerTemplate() did not get expected error")
+			}
+			if !tt.wantErr {
+				if got == nil {
+					t.Errorf("GenerateTriggerTemplate() nil trigger template")
+				} else {
+					// we employ the else here so staticcheck does not complain, since it does not understand what t.Errorf does
+					if got.Namespace != tt.component.Namespace {
+						t.Errorf("GenerateTriggerTemplate() namespace mismatch: got %s want %s", got.Namespace, tt.component.Namespace)
+					}
+					if got.Name != tt.component.Name {
+						t.Errorf("GenerateTriggerTemplate() name mismatch: got %s want %s", got.Name, tt.component.Name)
+					}
+					// reverse engineer the PipelineRun
+					var pr tektonapi.PipelineRun
+					for _, rt := range got.Spec.ResourceTemplates {
+						err := json.Unmarshal(rt.Raw, &pr)
+						if err != nil {
+							t.Errorf("GenerateTriggerTemplate() error unmarshalling pipelinerun: %s", err.Error())
+						}
+						if !strings.HasPrefix(pr.GenerateName, tt.component.Name) {
+							t.Errorf("GenerateTriggerTemplate() generate name mismatch, got %s want prefix %s", pr.GenerateName, tt.component.Namespace)
+						}
+						if pr.Namespace != tt.component.Namespace {
+							t.Errorf("GenerateTriggerTemplate() namespace mismatch: got %s want %s", pr.Namespace, tt.component.Namespace)
+						}
+						compA, ok := pr.Annotations["build.appstudio.openshift.io/component"]
+						if !ok || compA != tt.component.Name {
+							t.Errorf("GenerateTriggerTemplate() component annotation incorrect: %v %s", ok, compA)
+						}
+						appA, ok := pr.Annotations["build.appstudio.openshift.io/application"]
+						if !ok || appA != tt.component.Spec.Application {
+							t.Errorf("GenerateTriggerTemplate() app annotation incorrect: %v %s", ok, appA)
+						}
+					}
+				}
+			}
+		})
+	}
+}
+
 func TestGetParamsForComponentBuild(t *testing.T) {
 	getDevfileWithOuterloopBuildDockerfile := func() string {
 		devfileVersion := string(data.APISchemaVersion220)
@@ -391,6 +514,7 @@ func TestGetParamsForComponentBuild(t *testing.T) {
 		IsInitialBuild bool
 		component      appstudiov1alpha1.Component
 		want           []tektonapi.Param
+		wantErr        bool
 	}{
 		{
 			name:           "use the image as is",
@@ -424,6 +548,28 @@ func TestGetParamsForComponentBuild(t *testing.T) {
 					Value: tektonapi.ArrayOrString{
 						Type:      tektonapi.ParamTypeString,
 						StringVal: "whatever-is-set",
+					},
+				},
+			},
+		},
+
+		{
+			name:    "default repo mismatched user error on non initial build",
+			wantErr: true,
+			want:    []tektonapi.Param{},
+			component: appstudiov1alpha1.Component{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "testcomponent",
+					Namespace: "kcpworkspacename",
+				},
+				Spec: appstudiov1alpha1.ComponentSpec{
+					ContainerImage: DefaultImageRepo + ":mytag",
+					Source: appstudiov1alpha1.ComponentSource{
+						ComponentSourceUnion: appstudiov1alpha1.ComponentSourceUnion{
+							GitSource: &appstudiov1alpha1.GitSource{
+								URL: "https://a/b/c",
+							},
+						},
 					},
 				},
 			},
@@ -523,7 +669,14 @@ func TestGetParamsForComponentBuild(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := getParamsForComponentBuild(tt.component, tt.IsInitialBuild); !reflect.DeepEqual(got, tt.want) {
+			got, err := getParamsForComponentBuild(tt.component, tt.IsInitialBuild)
+			if err != nil && !tt.wantErr {
+				t.Errorf("GetParamsForComponentBuild() unexpected error: %s", err.Error())
+			}
+			if err == nil && tt.wantErr {
+				t.Errorf("GetParamsForComponentBuild() did not get expected error")
+			}
+			if !reflect.DeepEqual(got, tt.want) {
 				t.Errorf("GetParamsForComponentBuild() = %v, want %v", got, tt.want)
 			}
 		})

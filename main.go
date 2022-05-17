@@ -106,8 +106,9 @@ func main() {
 	// Retrieve the name of the default repository to use
 	imageRepository := os.Getenv("IMAGE_REPOSITORY")
 	if imageRepository == "" {
-		imageRepository = "quay.io/redhat-appstudio/user-workload"
+		imageRepository = gitops.DefaultImageRepo
 	}
+	gitops.SetDefaultImageRepo(imageRepository)
 
 	// Retrieve the option to specify a custom devfile registry
 	devfileRegistryURL := os.Getenv("DEVFILE_REGISTRY_URL")
