@@ -20,7 +20,6 @@ import (
 	"context"
 	"fmt"
 	"net/url"
-	"strconv"
 
 	appstudiov1alpha1 "github.com/redhat-appstudio/application-service/api/v1alpha1"
 	"github.com/redhat-appstudio/application-service/gitops"
@@ -32,6 +31,7 @@ import (
 
 const compFinalizerName = "component.appstudio.redhat.com/finalizer"
 
+// AddFinalizer adds the finalizer to the Component CR and initiates the finalize count on the annotation
 func (r *ComponentReconciler) AddFinalizer(ctx context.Context, component *appstudiov1alpha1.Component) error {
 	controllerutil.AddFinalizer(component, compFinalizerName)
 
@@ -45,24 +45,31 @@ func (r *ComponentReconciler) AddFinalizer(ctx context.Context, component *appst
 	return r.Update(ctx, component)
 }
 
-// Finalize deletes the corresponding GitOps repo for the given Application CR.
+// Finalize deletes the corresponding devfile project or the devfile attribute entry from the Application CR and also deletes the corresponding GitOps repo's Component dir
+// & updates the parent kustomize for the given Component CR.
 func (r *ComponentReconciler) Finalize(ctx context.Context, component *appstudiov1alpha1.Component, application *appstudiov1alpha1.Application) error {
-	log := r.Log.WithValues("Component", component.Name)
-
-	log.Info(fmt.Sprintf(">>> MJF getting the application devfile"))
 	// Get the Application CR devfile
 	devfileObj, err := devfile.ParseDevfileModel(application.Status.Devfile)
 	if err != nil {
 		return err
 	}
 
-	log.Info(fmt.Sprintf(">>> MJF deleting the application devfile project"))
-	err = devfileObj.DeleteProject(component.Spec.ComponentName)
-	if err != nil {
-		return err
+	if component.Spec.Source.GitSource != nil {
+		err = devfileObj.DeleteProject(component.Spec.ComponentName)
+		if err != nil {
+			return err
+		}
+	} else if component.Spec.Source.ImageSource != nil {
+		devSpec := devfileObj.GetDevfileWorkspaceSpec()
+		if devSpec != nil {
+			attributes := devSpec.Attributes
+			delete(attributes, fmt.Sprintf("containerImage/%s", component.Spec.ComponentName))
+			devSpec.Attributes = attributes
+			devfileObj.SetDevfileWorkspaceSpec(*devSpec)
+		}
+
 	}
 
-	log.Info(fmt.Sprintf(">>> MJF yaml marshalling the application devfile"))
 	yamldevfileObj, err := yaml.Marshal(devfileObj)
 	if err != nil {
 		return nil
@@ -90,7 +97,6 @@ func (r *ComponentReconciler) Finalize(ctx context.Context, component *appstudio
 		gitOpsContext = "/"
 	}
 
-	log.Info(fmt.Sprintf(">>> MJF parsing gitops url"))
 	// Construct the remote URL for the gitops repository
 	parsedURL, err := url.Parse(gitOpsURL)
 	if err != nil {
@@ -99,43 +105,21 @@ func (r *ComponentReconciler) Finalize(ctx context.Context, component *appstudio
 	parsedURL.User = url.User(r.GitToken)
 	remoteURL := parsedURL.String()
 
-	log.Info(fmt.Sprintf(">>> creating temp path"))
 	// Create a temp folder to create the gitops resources in
 	tempDir, err := ioutils.CreateTempPath(component.Name, r.AppFS)
 	if err != nil {
 		return fmt.Errorf("unable to create temp directory for gitops resources due to error: %v", err)
 	}
 
-	log.Info(fmt.Sprintf(">>> MJF before RemoveAndPush"))
 	err = gitops.RemoveAndPush(tempDir, remoteURL, *component, r.Executor, r.AppFS, gitOpsBranch, gitOpsContext)
 	if err != nil {
 		return err
 	}
 
-	log.Info(fmt.Sprintf(">>> MJF before removing tempDir"))
 	err = r.AppFS.RemoveAll(tempDir)
 	if err != nil {
 		return err
 	}
 
-	log.Info(fmt.Sprintf(">>> MJF before application update and return"))
 	return r.Status().Update(ctx, application)
-}
-
-func getCompFinalizeCount(component *appstudiov1alpha1.Component) (int, error) {
-	componentAnnotations := component.GetAnnotations()
-	if componentAnnotations == nil {
-		componentAnnotations = make(map[string]string)
-		componentAnnotations[finalizeCount] = "0"
-	}
-	finalizeCountAnnotation := componentAnnotations[finalizeCount]
-	return strconv.Atoi(finalizeCountAnnotation)
-}
-
-func setCompFinalizeCount(component *appstudiov1alpha1.Component, count int) {
-	componentAnnotations := component.GetAnnotations()
-	if componentAnnotations == nil {
-		componentAnnotations = make(map[string]string)
-	}
-	componentAnnotations[finalizeCount] = strconv.Itoa(count)
 }

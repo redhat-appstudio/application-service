@@ -30,10 +30,9 @@ import (
 	. "github.com/onsi/gomega"
 	appstudiov1alpha1 "github.com/redhat-appstudio/application-service/api/v1alpha1"
 	devfile "github.com/redhat-appstudio/application-service/pkg/devfile"
+	"sigs.k8s.io/yaml"
 
 	corev1 "k8s.io/api/core/v1"
-
-	"sigs.k8s.io/yaml"
 
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -479,7 +478,7 @@ var _ = Describe("Component controller", func() {
 			Eventually(func() bool {
 				k8sClient.Get(context.Background(), hasCompLookupKey, createdHasComp)
 				return len(createdHasComp.Status.Conditions) > 0
-			}, timeout, interval).Should(BeTrue())
+			}, timeout40s, interval).Should(BeTrue())
 
 			// Validate that the built container image was set in the status
 			Expect(createdHasComp.Status.ContainerImage).Should(Equal("quay.io/test/test-image:latest"))
@@ -954,22 +953,7 @@ var _ = Describe("Component controller", func() {
 			applicationName := HASAppName + "11"
 			componentName := HASCompName + "11"
 
-			hasApp := &appstudiov1alpha1.Application{
-				TypeMeta: metav1.TypeMeta{
-					APIVersion: "appstudio.redhat.com/v1alpha1",
-					Kind:       "Application",
-				},
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      applicationName,
-					Namespace: HASAppNamespace,
-				},
-				Spec: appstudiov1alpha1.ApplicationSpec{
-					DisplayName: DisplayName,
-					Description: Description,
-				},
-			}
-
-			Expect(k8sClient.Create(ctx, hasApp)).Should(Succeed())
+			createAndFetchSimpleApp(applicationName, HASAppNamespace, DisplayName, Description)
 
 			hasComp := &appstudiov1alpha1.Component{
 				TypeMeta: metav1.TypeMeta{
@@ -1025,22 +1009,7 @@ var _ = Describe("Component controller", func() {
 			applicationName := HASAppName + "12"
 			componentName := HASCompName + "12"
 
-			hasApp := &appstudiov1alpha1.Application{
-				TypeMeta: metav1.TypeMeta{
-					APIVersion: "appstudio.redhat.com/v1alpha1",
-					Kind:       "Application",
-				},
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      applicationName,
-					Namespace: HASAppNamespace,
-				},
-				Spec: appstudiov1alpha1.ApplicationSpec{
-					DisplayName: DisplayName,
-					Description: Description,
-				},
-			}
-
-			Expect(k8sClient.Create(ctx, hasApp)).Should(Succeed())
+			createAndFetchSimpleApp(applicationName, HASAppNamespace, DisplayName, Description)
 
 			hasComp := &appstudiov1alpha1.Component{
 				TypeMeta: metav1.TypeMeta{
@@ -1319,7 +1288,7 @@ var _ = Describe("Component controller", func() {
 						ComponentSourceUnion: appstudiov1alpha1.ComponentSourceUnion{
 							GitSource: &appstudiov1alpha1.GitSource{
 								URL:     "https://github.com/devfile-samples/devfile-sample-python-basic",
-								Context: "/docker",
+								Context: "docker",
 							},
 						},
 					},
@@ -1338,7 +1307,7 @@ var _ = Describe("Component controller", func() {
 
 			// Make sure the err was set
 			Expect(createdHasComp.Status.Conditions[len(createdHasComp.Status.Conditions)-1].Reason).Should(Equal("Error"))
-			Expect(strings.ToLower(createdHasComp.Status.Conditions[len(createdHasComp.Status.Conditions)-1].Message)).Should(ContainSubstring("unable to find devfile in the specified location https:/raw.githubusercontent.com/devfile-samples/devfile-sample-python-basic/main/docker"))
+			Expect(strings.ToLower(createdHasComp.Status.Conditions[len(createdHasComp.Status.Conditions)-1].Message)).Should(ContainSubstring("unable to find devfile in the specified location https://raw.githubusercontent.com/devfile-samples/devfile-sample-python-basic/main/docker"))
 
 			hasAppLookupKey := types.NamespacedName{Name: applicationName, Namespace: HASAppNamespace}
 
@@ -1522,7 +1491,6 @@ var _ = Describe("Component controller", func() {
 			deleteHASAppCR(hasAppLookupKey)
 		})
 	})
-
 })
 
 type updateChecklist struct {

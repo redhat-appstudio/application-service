@@ -21,6 +21,9 @@ import (
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
+	"github.com/spf13/afero"
+
+	corev1 "k8s.io/api/core/v1"
 )
 
 type MockExecutor struct {
@@ -46,6 +49,10 @@ func NewMockExecutor(outputs ...[]byte) *MockExecutor {
 func (m *MockExecutor) Execute(basedir, command string, args ...string) ([]byte, error) {
 	m.Executed = append(m.Executed, Execution{BaseDir: basedir, Command: command, Args: args})
 	return m.Outputs.Pop(), m.Errors.Pop()
+}
+
+func (m *MockExecutor) GenerateParentKustomize(fs afero.Afero, gitOpsFolder string, commonStoragePVC *corev1.PersistentVolumeClaim) error {
+	return m.Errors.Pop()
 }
 
 func (m *MockExecutor) AssertCommandsExecuted(t *testing.T, want []Execution) {

@@ -25,6 +25,7 @@ import (
 
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
@@ -97,10 +98,6 @@ func (r *ComponentReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 		return ctrl.Result{}, err
 	}
 
-	if component.Spec.ContainerImage == "" {
-		component.Spec.ContainerImage = r.ImageRepository + ":" + component.Namespace + "-" + component.Name
-	}
-
 	// Get the Application CR
 	hasApplication := appstudiov1alpha1.Application{}
 	err = r.Get(ctx, types.NamespacedName{Name: component.Spec.Application, Namespace: component.Namespace}, &hasApplication)
@@ -122,7 +119,6 @@ func (r *ComponentReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 	// Check if the Component CR is under deletion
 	// If so: Remove the project from the Application devfile, remove the component dir from the Gitops repo and remove the finalizer.
 	if component.ObjectMeta.DeletionTimestamp.IsZero() {
-		log.Info(fmt.Sprintf(">>> MJF Delete timestamp is zero %v", req.NamespacedName))
 		if !containsString(component.GetFinalizers(), compFinalizerName) {
 			ownerReference := v1.OwnerReference{
 				APIVersion: hasApplication.APIVersion,
@@ -134,50 +130,38 @@ func (r *ComponentReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 
 			// Attach the finalizer and return to reset the reconciler loop
 			err := r.AddFinalizer(ctx, &component)
-			log.Info(fmt.Sprintf(">>> MJF adding finalizer %v %v", err, req.NamespacedName))
-			return ctrl.Result{}, err
+			if err != nil {
+				return ctrl.Result{}, err
+			}
+			log.Info(fmt.Sprintf("added the finalizer %v", req.NamespacedName))
 		}
 	} else {
-		log.Info(fmt.Sprintf(">>> MJF Delete timestamp is NOT zero %v", req.NamespacedName))
-		if hasApplication.Status.Devfile != "" && containsString(component.GetFinalizers(), compFinalizerName) {
-			// only attempt to finalize and update the gitops repo if an Application is present
-			log.Info(fmt.Sprintf(">>> MJF FINALIZER PRESENT %v", req.NamespacedName))
+		if hasApplication.Status.Devfile != "" && len(component.Status.Conditions) > 0 && component.Status.Conditions[len(component.Status.Conditions)-1].Status == metav1.ConditionTrue && containsString(component.GetFinalizers(), compFinalizerName) {
+			// only attempt to finalize and update the gitops repo if an Application is present & the previous Component status is good
 			// A finalizer is present for the Component CR, so make sure we do the necessary cleanup steps
 			if err := r.Finalize(ctx, &component, &hasApplication); err != nil {
-				log.Info(fmt.Sprintf(">>> MJF FINALIZE ERROR: %v %v", err, req.NamespacedName))
-				finalizeCount, err := getCompFinalizeCount(&component)
-				log.Info(fmt.Sprintf(">>> MJF getting FINALIZE COUNT: %v %v", finalizeCount, req.NamespacedName))
-				if err == nil && finalizeCount < 5 {
-					log.Info(fmt.Sprintf(">>> MJF updating FINALIZE COUNT %v", req.NamespacedName))
-					// The Finalize function failed, so increment the finalize count and return
-					setCompFinalizeCount(&component, finalizeCount+1)
-					log.Info(fmt.Sprintf(">>> MJF updating COMPONENT %v", req.NamespacedName))
-					err := r.Update(ctx, &component)
-					if err != nil {
-						log.Error(err, "Error incrementing finalizer count on resource")
-					}
-					return ctrl.Result{}, nil
-				} else {
-					// if fail to delete the external dependency here, log the error, but don't return error
-					// Don't want to get stuck in a cycle of repeatedly trying to update the repository and failing
-					log.Error(err, "Unable to update GitOps repository for component %v in namespace %v", component.GetName(), component.GetNamespace())
-				}
+				// if fail to delete the external dependency here, log the error, but don't return error
+				// Don't want to get stuck in a cycle of repeatedly trying to update the repository and failing
+				log.Error(err, "Unable to update GitOps repository for component %v in namespace %v", component.GetName(), component.GetNamespace())
 			}
 		}
 
 		// Remove the finalizer if no Application is present or an Application is present at this stage
 		if containsString(component.GetFinalizers(), compFinalizerName) {
-			log.Info(fmt.Sprintf(">>> MJF REMOVING FINALIZER %v", req.NamespacedName))
 			// remove the finalizer from the list and update it.
 			controllerutil.RemoveFinalizer(&component, compFinalizerName)
 			if err := r.Update(ctx, &component); err != nil {
-				log.Info(fmt.Sprintf(">>> MJF err updating after removing finalizer %v %v", err, req.NamespacedName))
 				return ctrl.Result{}, err
 			}
 		}
 	}
 
 	log.Info(fmt.Sprintf("Starting reconcile loop for %v", req.NamespacedName))
+
+	if component.Spec.ContainerImage == "" {
+		component.Spec.ContainerImage = r.ImageRepository + ":" + component.Namespace + "-" + component.Name
+	}
+
 	// If the devfile hasn't been populated, the CR was just created
 	var gitToken string
 	if component.Status.Devfile == "" {

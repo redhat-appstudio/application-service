@@ -811,6 +811,7 @@ func TestRemoveAndPush(t *testing.T) {
 					nil,
 					nil,
 					nil,
+					nil,
 				},
 			},
 			outputs: [][]byte{
@@ -850,6 +851,7 @@ func TestRemoveAndPush(t *testing.T) {
 			errors: &testutils.ErrorStack{
 				Errors: []error{
 					errors.New("Permission Denied"),
+					nil,
 					nil,
 					nil,
 					nil,
@@ -899,6 +901,7 @@ func TestRemoveAndPush(t *testing.T) {
 			errors: &testutils.ErrorStack{
 				Errors: []error{
 					errors.New("Fatal error"),
+					nil,
 					nil,
 					nil,
 					nil,
@@ -961,6 +964,7 @@ func TestRemoveAndPush(t *testing.T) {
 					nil,
 					nil,
 					nil,
+					nil,
 				},
 			},
 			outputs: [][]byte{
@@ -1015,7 +1019,14 @@ func TestRemoveAndPush(t *testing.T) {
 			name:      "kustomize generate failure",
 			fs:        readOnlyFs,
 			component: component,
-			errors:    &testutils.ErrorStack{},
+			errors: &testutils.ErrorStack{
+				Errors: []error{
+					errors.New("access error"),
+					nil,
+					nil,
+					nil,
+				},
+			},
 			want: []testutils.Execution{
 				{
 					BaseDir: outputPath,
@@ -1033,45 +1044,7 @@ func TestRemoveAndPush(t *testing.T) {
 					Args:    []string{"-rf", componentPath},
 				},
 			},
-			wantErrString: "failed to re-generate the gitops resources in \"/fake/path/test-component/components/test-component\" for component \"test-component\"",
-		},
-		{
-			name: "gitops generate failure - image component",
-			fs:   readOnlyFs,
-			component: appstudiov1alpha1.Component{
-				ObjectMeta: v1.ObjectMeta{
-					Name: "test-component",
-				},
-				Spec: appstudiov1alpha1.ComponentSpec{
-					Source: appstudiov1alpha1.ComponentSource{
-						ComponentSourceUnion: appstudiov1alpha1.ComponentSourceUnion{
-							ImageSource: &appstudiov1alpha1.ImageSource{
-								ContainerImage: "quay.io/test/test",
-							},
-						},
-					},
-					TargetPort: 5000,
-				},
-			},
-			errors: &testutils.ErrorStack{},
-			want: []testutils.Execution{
-				{
-					BaseDir: outputPath,
-					Command: "git",
-					Args:    []string{"clone", repo, "test-component"},
-				},
-				{
-					BaseDir: repoPath,
-					Command: "git",
-					Args:    []string{"switch", "main"},
-				},
-				{
-					BaseDir: repoPath,
-					Command: "rm",
-					Args:    []string{"-rf", componentPath},
-				},
-			},
-			wantErrString: "failed to re-generate the gitops resources in \"/fake/path/test-component/components/test-component\" for component \"test-component\": open /fake/path/test-component/components: no such file or directory",
+			wantErrString: "failed to re-generate the gitops resources in \"/fake/path/test-component/components/test-component\" for component \"test-component\": access error",
 		},
 	}
 

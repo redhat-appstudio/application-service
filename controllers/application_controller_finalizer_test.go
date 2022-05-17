@@ -96,6 +96,7 @@ var _ = Describe("Application controller finalizer counter tests", func() {
 			fetchedHasApp := createAndFetchSimpleApp(AppName, AppNamespace, DisplayName, Description)
 			Expect(fetchedHasApp.Status.Devfile).Should(Not(Equal("")))
 			curDevfile, err := devfile.ParseDevfileModel(fetchedHasApp.Status.Devfile)
+			Expect(err).ToNot(HaveOccurred())
 
 			// Set an invalid gitops URL and update the status of the resource
 			devfileMeta := curDevfile.GetMetadata()
