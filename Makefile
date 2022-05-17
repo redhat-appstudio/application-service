@@ -139,7 +139,7 @@ build: generate fmt vet ## Build manager binary.
 run: manifests generate fmt vet ## Run a controller from your host.
 	go run ./main.go
 
-docker-build: # test ## Build docker image with the manager.
+docker-build: test ## Build docker image with the manager.
 	docker build --build-arg ENABLE_WEBHOOKS=${ENABLE_WEBHOOKS} -t ${IMG} .
 
 docker-push: ## Push docker image with the manager.
