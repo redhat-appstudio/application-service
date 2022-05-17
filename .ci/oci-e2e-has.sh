@@ -9,6 +9,7 @@ set -u
 command -v e2e-appstudio >/dev/null 2>&1 || { echo "e2e-appstudio bin is not installed. Please install it from: https://github.com/redhat-appstudio/e2e-tests."; exit 1; }
 command -v kubectl >/dev/null 2>&1 || { echo "kubectl is not installed. Aborting."; exit 1; }
 
+export HAS_PR_OWNER, HAS_PR_SHA
 export WORKSPACE=$(dirname $(dirname $(readlink -f "$0")));
 export TEST_SUITE="has-suite"
 export APPLICATION_NAMESPACE="openshift-gitops"
@@ -23,6 +24,13 @@ export OPENSHIFT_CI_CONTROLLER_TAG=${HAS_CONTROLLER_IMAGE_TAG:-"redhat-appstudio
 
 export HAS_IMAGE_REPO=${OPENSHIFT_CI_CONTROLLER_IMAGE:-"quay.io/redhat-appstudio/application-service"}
 export HAS_IMAGE_TAG=${OPENSHIFT_CI_CONTROLLER_TAG:-"next"}
+
+if [[ -n "${JOB_SPEC}" && "${REPO_NAME}" == "application-service" ]]; then
+    # Extract PR author and commit SHA to also override default kustomization in infra-deployments repo
+    # https://github.com/redhat-appstudio/infra-deployments/blob/1d623e2278aecbdf266f374e02cf3f55de62a42f/hack/preview.sh#L91
+    HAS_PR_OWNER=$(jq -r '.refs.pulls[0].author' <<< "$JOB_SPEC")
+    HAS_PR_SHA=$(jq -r '.refs.pulls[0].sha' <<< "$JOB_SPEC")
+fi
 
 # Available openshift ci environments https://docs.ci.openshift.org/docs/architecture/step-registry/#available-environment-variables
 export ARTIFACTS_DIR=${ARTIFACT_DIR:-"/tmp/appstudio"}
