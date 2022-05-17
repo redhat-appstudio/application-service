@@ -1,4 +1,4 @@
-FROM quay.io/redhat-appstudio/e2e-tests:latest as e2e
+FROM quay.io/jcollier/e2e:latest as e2e
 FROM registry.ci.openshift.org/openshift/release:golang-1.16
 
 SHELL ["/bin/bash", "-c"]
