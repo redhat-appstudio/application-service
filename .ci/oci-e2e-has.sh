@@ -9,7 +9,7 @@ set -u
 command -v e2e-appstudio >/dev/null 2>&1 || { echo "e2e-appstudio bin is not installed. Please install it from: https://github.com/redhat-appstudio/e2e-tests."; exit 1; }
 command -v kubectl >/dev/null 2>&1 || { echo "kubectl is not installed. Aborting."; exit 1; }
 
-export HAS_PR_OWNER, HAS_PR_SHA
+export HAS_PR_OWNER HAS_PR_SHA
 export WORKSPACE=$(dirname $(dirname $(readlink -f "$0")));
 export TEST_SUITE="has-suite"
 export APPLICATION_NAMESPACE="openshift-gitops"
