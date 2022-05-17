@@ -26,7 +26,6 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/util/workqueue"
@@ -120,7 +119,7 @@ func (r *ComponentReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 	// If so: Remove the project from the Application devfile, remove the component dir from the Gitops repo and remove the finalizer.
 	if component.ObjectMeta.DeletionTimestamp.IsZero() {
 		if !containsString(component.GetFinalizers(), compFinalizerName) {
-			ownerReference := v1.OwnerReference{
+			ownerReference := metav1.OwnerReference{
 				APIVersion: hasApplication.APIVersion,
 				Kind:       hasApplication.Kind,
 				Name:       hasApplication.Name,
@@ -405,7 +404,7 @@ func (r *ComponentReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 
 	// Get the Webhook from the event listener route and update it
 	// Only attempt to get it if the build generation succeeded, otherwise the route won't exist
-	if component.Status.Conditions[len(component.Status.Conditions)-1].Status == v1.ConditionTrue &&
+	if component.Status.Conditions[len(component.Status.Conditions)-1].Status == metav1.ConditionTrue &&
 		component.Spec.Source.GitSource != nil && component.Spec.Source.GitSource.URL != "" {
 		createdWebhook := &routev1.Route{}
 		err = r.Client.Get(ctx, types.NamespacedName{Name: "el" + component.Name, Namespace: component.Namespace}, createdWebhook)
