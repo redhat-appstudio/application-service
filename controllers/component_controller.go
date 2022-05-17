@@ -276,15 +276,6 @@ func (r *ComponentReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 			return ctrl.Result{}, nil
 		}
 
-		// // Get the Application CR
-		// hasApplication := appstudiov1alpha1.Application{}
-		// err = r.Get(ctx, types.NamespacedName{Name: component.Spec.Application, Namespace: component.Namespace}, &hasApplication)
-		// if err != nil {
-		// 	log.Error(err, fmt.Sprintf("Unable to get the Application %s, requeueing %v", component.Spec.Application, req.NamespacedName))
-		// 	r.SetCreateConditionAndUpdateCR(ctx, &component, err)
-		// 	return ctrl.Result{}, err
-		// }
-
 		if hasApplication.Status.Devfile != "" {
 			// Get the devfile of the hasApp CR
 			hasAppDevfileData, err := devfile.ParseDevfileModel(hasApplication.Status.Devfile)
@@ -351,14 +342,6 @@ func (r *ComponentReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 			r.SetCreateConditionAndUpdateCR(ctx, &component, nil)
 
 		}
-
-		// else {
-		// 	log.Error(err, fmt.Sprintf("Application devfile model is empty. Before creating a Component, an instance of Application should be created. Requeueing %v", req.NamespacedName))
-		// 	err := fmt.Errorf("application devfile model is empty")
-		// 	r.SetCreateConditionAndUpdateCR(ctx, &component, err)
-		// 	return ctrl.Result{}, err
-		// }
-
 	} else {
 
 		// If the model already exists, see if fields have been updated
