@@ -31,17 +31,9 @@ import (
 
 const compFinalizerName = "component.appstudio.redhat.com/finalizer"
 
-// AddFinalizer adds the finalizer to the Component CR and initiates the finalize count on the annotation
+// AddFinalizer adds the finalizer to the Component CR
 func (r *ComponentReconciler) AddFinalizer(ctx context.Context, component *appstudiov1alpha1.Component) error {
 	controllerutil.AddFinalizer(component, compFinalizerName)
-
-	// Initialize the finalizer counter
-	compAnnotations := component.ObjectMeta.GetAnnotations()
-	if compAnnotations == nil {
-		compAnnotations = make(map[string]string)
-	}
-	compAnnotations[finalizeCount] = "0"
-	component.SetAnnotations(compAnnotations)
 	return r.Update(ctx, component)
 }
 
@@ -59,7 +51,7 @@ func (r *ComponentReconciler) Finalize(ctx context.Context, component *appstudio
 		if err != nil {
 			return err
 		}
-	} else if component.Spec.Source.ImageSource != nil {
+	} else if component.Spec.ContainerImage != "" {
 		devSpec := devfileObj.GetDevfileWorkspaceSpec()
 		if devSpec != nil {
 			attributes := devSpec.Attributes

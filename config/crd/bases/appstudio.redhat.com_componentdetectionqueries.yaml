@@ -304,7 +304,6 @@ spec:
                       required:
                       - application
                       - componentName
-                      - source
                       type: object
                     devfileFound:
                       description: DevfileFound tells if a devfile is found in the

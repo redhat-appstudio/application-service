@@ -572,9 +572,6 @@ func TestRemoveAndPush(t *testing.T) {
 					},
 				},
 			},
-			Build: appstudiov1alpha1.Build{
-				ContainerImage: "testimage:latest",
-			},
 			TargetPort: 5000,
 		},
 	}

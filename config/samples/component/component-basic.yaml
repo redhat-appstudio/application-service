@@ -5,7 +5,6 @@ metadata:
 spec:
   componentName: backend
   application: application-sample
-  context: devfile-sample-python-basic
   replicas: 1
   targetPort: 1111
   route: route111
