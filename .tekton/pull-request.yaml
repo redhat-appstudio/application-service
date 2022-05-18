@@ -16,8 +16,7 @@ spec:
       value: "quay.io/redhat-appstudio/pull-request-builds:has-{{revision}}"
   pipelineRef:
     name: docker-build
-    bundle: quay.io/redhat-appstudio/build-templates-bundle:0866720a87aec4675074069cd16662d8e01237cf
-  serviceAccountName: pipeline
+    bundle: quay.io/redhat-appstudio/hacbs-core-service-templates-bundle:latest
   workspaces:
     - name: workspace
       persistentVolumeClaim:
