@@ -337,6 +337,7 @@ func GenerateTriggerTemplate(component appstudiov1alpha1.Component, gitopsConfig
 			GenerateName: component.Name + "-",
 			Namespace:    component.Namespace,
 			Annotations:  getBuildCommonLabelsForComponent(&component),
+			Labels:       getBuildCommonLabelsForComponent(&component),
 		},
 		TypeMeta: metav1.TypeMeta{
 			Kind:       "PipelineRun",
