@@ -41,9 +41,9 @@ const (
 	memoryRequestKey = "deployment/memoryRequest"
 
 	// containerImagePortKey is the key to reference container image port
-	containerImagePortKey = "deployment/containerimage-port"
+	containerImagePortKey = "deployment/container-port"
 
-	// containerImagePortKey is the key to reference container image port
+	// containerENVKey is the key to reference container environment variables
 	containerENVKey = "deployment/containerENV"
 
 	// maxDevfileDiscoveryDepth is the depth of the directory to detect devfiles

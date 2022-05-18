@@ -1610,7 +1610,7 @@ func verifyHASComponentUpdates(devfile data.DevfileData, checklist updateCheckli
 			memoryLimit := componentAttributes.Get(memoryLimitKey, &err)
 			if goPkgTest == nil {
 				Expect(err).Should(Not(HaveOccurred()))
-				Expect(memoryLimit).Should(Equal(memoryLimitChecklist.String()))
+				Expect(memoryLimit.(string)).Should(Equal(memoryLimitChecklist.String()))
 			} else if err != nil {
 				goPkgTest.Error(err)
 			} else if memoryLimit.(string) != memoryLimitChecklist.String() {
