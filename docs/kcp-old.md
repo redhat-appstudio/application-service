@@ -1,33 +1,37 @@
 # Running HAS in KCP
 
-## Prereqs
+## Running KCP
 
-- Access to a hosted KCP environment
-- An active KCP workspace, with an OpenShift-based `WorkloadCluster` inside it.
+1) Git clone https://github.com/kcp-dev/kcp and cd into `kcp`
 
-## Before Deployment
+2) In a terminal window, run `go run ./cmd/kcp start`
 
-Before you deploy HAS on KCP, make sure you create the `has-github-token` secret in the namespace you will be deploying HAS within:
+## Running the Operator
 
-```bash
-kubectl create secret generic has-github-token --from-literal=token=$TOKEN -n application-service-system
-```
+Before running the following commands, ensure that you have the following environment variables exported:
 
-If `kubectl` complains that `application-service-system` does not exist, create it, and then retry the command.
+1. `KUBECONFIG=<path-to-kcp>/.kcp/data/admin.kubeconfig` Set to the path of KCP's kubeconfig
 
-where `$TOKEN` is the GitHub token to be used with HAS, as described [here](https://github.com/redhat-appstudio/application-service#creating-a-github-secret-for-has).
+2. `GITHUB_AUTH_TOKEN=<github-token>` Set to a GitHub Personal Access Token with `repo` and `delete_repo` permissions.
 
-## Deploying the Operator
+3. (Optional) `GITHUB_ORG=<github-org>` Set to a GitHub org (or account) if you do not have write access to `redhat-appstudio-appdata`.
 
-To deploy HAS on KCP, just run:
+KCP has the rudimentary Kubernetes resources, hence as a result admission & validating webhooks wont work on KCP. There is currently an [issue](https://github.com/kcp-dev/kcp/issues/143) on KCP to discuss when the feature would be installed on KCP. To disable webhooks and the certificate manager to run the operator, complete the following steps:
 
-```bash
-kustomize build config/kcp | kubectl apply -f -
-```
+1. Search for `# Comment for KCP` in files `config/crd/kustomization.yaml`, `config/default/kustomization.yaml` and comment out the webhooks and cert-manager sections as instructed
 
-Next, run `kubectl get deploy -n application-service-system` to validate that HAS was successfully deployed and synced to the workload cluster.
+2. Run `make bundle` and it should update the bundles without the webhook and cert-manager
+   
+3. export `ENABLE_WEBHOOKS=false` to disable all the webhook controller logic
 
-By default, Webhooks will **not** be installed with HAS. If you wish to install Webhooks on top of HAS, [please see this doc](./kcp-webhooks.md).
+Once the above prerequisites have been met, run the following commands:
+
+1. `make build` to build the HAS operator binary
+
+2. `make install-kcp` to install the HAS CRDs onto the KCP instance
+
+3. `./bin/manager` to run the operator
+
 
 ## Testing HAS
 
