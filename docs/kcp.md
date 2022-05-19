@@ -22,7 +22,7 @@ where `$TOKEN` is the GitHub token to be used with HAS, as described [here](http
 To deploy HAS on KCP, just run:
 
 ```bash
-kustomize build config/kcp | kubectl apply -f -
+make deploy-kcp
 ```
 
 Next, run `kubectl get deploy -n application-service-system` to validate that HAS was successfully deployed and synced to the workload cluster.
