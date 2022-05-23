@@ -88,7 +88,7 @@ func TestNormalizeOutputImageURL(t *testing.T) {
 			args: args{
 				outputImage: "quay.io/foo/bar",
 			},
-			want: "quay.io/foo/bar:$(tt.params.git-revision)",
+			want: "quay.io/foo/bar:latest-$(tt.params.git-revision)",
 		},
 		{
 			name: "fully qualified url",
@@ -96,6 +96,13 @@ func TestNormalizeOutputImageURL(t *testing.T) {
 				outputImage: "quay.io/foo/bar:latest",
 			},
 			want: "quay.io/foo/bar:latest-$(tt.params.git-revision)",
+		},
+		{
+			name: "contains git revision suffix in tag",
+			args: args{
+				outputImage: "quay.io/foo/bar:tag-29b0823364ba05bd5a9d3a89d4e6cad57d2d3723",
+			},
+			want: "quay.io/foo/bar:tag-$(tt.params.git-revision)",
 		},
 	}
 	for _, tt := range tests {

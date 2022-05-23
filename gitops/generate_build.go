@@ -18,6 +18,7 @@ package gitops
 
 import (
 	"encoding/json"
+	"regexp"
 	"strings"
 	"time"
 
@@ -172,19 +173,24 @@ func determineBuildPipeline(component appstudiov1alpha1.Component) string {
 }
 
 func normalizeOutputImageURL(outputImage string) string {
+	// Check if the image has commit SHA suffix and delete it if so
+	shaSuffixRegExp := regexp.MustCompile(`(.+)-[0-9a-f]{40}$`)
+	foundImage := shaSuffixRegExp.FindSubmatch([]byte(outputImage))
+	if foundImage != nil {
+		// The outputImage matches regexp above and has format: image-sha1234
+		// Do not use the suffix in gitops repository.
+		outputImage = string(foundImage[1])
+	}
 
-	// if provided image format was
-	//
-	// quay.io/foo/bar:mytag , then
-	// push to quay.io/foo/bar:mytag-git-revision
-	//
-	// else,
-	// push to quay.io/foo/bar:git-revision
-
+	// If provided image has a tag, then append dash and git revision to it.
+	// Otherwise, use git revision as the tag.
+	// Examples:
+	//   quay.io/foo/bar:mytag ==> quay.io/foo/bar:mytag-git-revision
+	//   quay.io/foo/bar       ==> quay.io/foo/bar:latest-git-revision
 	if strings.Contains(outputImage, ":") {
 		outputImage = outputImage + "-" + "$(tt.params.git-revision)"
 	} else {
-		outputImage = outputImage + ":" + "$(tt.params.git-revision)"
+		outputImage = outputImage + ":latest-" + "$(tt.params.git-revision)"
 	}
 	return outputImage
 }
