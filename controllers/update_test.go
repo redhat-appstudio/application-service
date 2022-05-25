@@ -488,6 +488,16 @@ func TestUpdateComponentStub(t *testing.T) {
 		},
 	}
 
+	componentsContainerPortErr := []devfileAPIV1.Component{
+		{
+			Name: "component1",
+			ComponentUnion: devfileAPIV1.ComponentUnion{
+				Kubernetes: &devfileAPIV1.KubernetesComponent{},
+			},
+			Attributes: attributes.Attributes{}.PutBoolean(containerImagePortKey, true),
+		},
+	}
+
 	componentsRouteErr := []devfileAPIV1.Component{
 		{
 			Name: "component1",
@@ -793,6 +803,29 @@ func TestUpdateComponentStub(t *testing.T) {
 						DevWorkspaceTemplateSpec: devfileAPIV1.DevWorkspaceTemplateSpec{
 							DevWorkspaceTemplateSpecContent: devfileAPIV1.DevWorkspaceTemplateSpecContent{
 								Components: componentsReplicaErr,
+							},
+						},
+					},
+				},
+			},
+			wantErr: true,
+		},
+		{
+			name: "Check err for container port as non integer",
+			devfilesDataMap: map[string]*v2.DevfileV2{
+				"./": {
+					Devfile: devfileAPIV1.Devfile{
+						DevfileHeader: devfile.DevfileHeader{
+							SchemaVersion: "2.1.0",
+							Metadata: devfile.DevfileMetadata{
+								Name:        "test-devfile",
+								Language:    "language",
+								ProjectType: "project",
+							},
+						},
+						DevWorkspaceTemplateSpec: devfileAPIV1.DevWorkspaceTemplateSpec{
+							DevWorkspaceTemplateSpecContent: devfileAPIV1.DevWorkspaceTemplateSpecContent{
+								Components: componentsContainerPortErr,
 							},
 						},
 					},
