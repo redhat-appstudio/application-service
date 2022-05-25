@@ -150,7 +150,6 @@ func TestConvertApplicationToDevfile(t *testing.T) {
 }
 
 func TestConvertImageComponentToDevfile(t *testing.T) {
-	//devfileAttributes := attributes.Attributes{}.PutString("gitOpsRepository.url", "https://github.com/testorg/petclinic-gitops").PutString("appModelRepository.url", "https://github.com/testorg/petclinic-app"),
 	tests := []struct {
 		name        string
 		comp        appstudiov1alpha1.Component
@@ -176,11 +175,13 @@ func TestConvertImageComponentToDevfile(t *testing.T) {
 						DevWorkspaceTemplateSpecContent: v1alpha2.DevWorkspaceTemplateSpecContent{
 							Components: []v1alpha2.Component{
 								{
-									Name: "container",
+									Name: "kubernetes",
 									ComponentUnion: v1alpha2.ComponentUnion{
-										Container: &v1alpha2.ContainerComponent{
-											Container: v1alpha2.Container{
-												Image: "quay.io/test/someimage:latest",
+										Kubernetes: &v1alpha2.KubernetesComponent{
+											K8sLikeComponent: v1alpha2.K8sLikeComponent{
+												K8sLikeComponentLocation: v1alpha2.K8sLikeComponentLocation{
+													Inlined: "placeholder",
+												},
 											},
 										},
 									},
@@ -276,18 +277,18 @@ func TestCreateDevfileForDockerfileBuild(t *testing.T) {
 				assert.Equal(t, "dockerfile-component", metadata.Name, "Devfile metadata name should be equal")
 				assert.Equal(t, "Basic Devfile for a Dockerfile Component", metadata.Description, "Devfile metadata description should be equal")
 
-				// Container Component
-				if containerComponents, err := gotDevfile.GetComponents(common.DevfileOptions{
+				// Kubernetes Component
+				if kubernetesComponents, err := gotDevfile.GetComponents(common.DevfileOptions{
 					ComponentOptions: common.ComponentOptions{
-						ComponentType: v1alpha2.ContainerComponentType,
+						ComponentType: v1alpha2.KubernetesComponentType,
 					},
 				}); err != nil {
 					t.Errorf("unexpected error %v", err)
-				} else if len(containerComponents) != 1 {
-					t.Error("expected 1 container component")
+				} else if len(kubernetesComponents) != 1 {
+					t.Error("expected 1 Kubernetes component")
 				} else {
-					assert.Equal(t, "container", containerComponents[0].Name, "component name should be equal")
-					assert.Equal(t, "no-op", containerComponents[0].Container.Image, "container image should be equal")
+					assert.Equal(t, "kubernetes", kubernetesComponents[0].Name, "component name should be equal")
+					assert.Equal(t, "placeholder", kubernetesComponents[0].Kubernetes.Inlined, "the inlined content should match placeholder")
 				}
 
 				// Image Component

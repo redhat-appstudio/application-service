@@ -111,13 +111,16 @@ func ConvertImageComponentToDevfile(comp appstudiov1alpha1.Component) (data.Devf
 	})
 
 	// Generate a stub container component for the devfile
+	// ToDo: devfile library should provide a kubernetes component writer to allow writing the inlined deployment spec
 	components := []v1alpha2.Component{
 		{
-			Name: "container",
+			Name: "kubernetes",
 			ComponentUnion: v1alpha2.ComponentUnion{
-				Container: &v1alpha2.ContainerComponent{
-					Container: v1alpha2.Container{
-						Image: comp.Spec.ContainerImage,
+				Kubernetes: &v1alpha2.KubernetesComponent{
+					K8sLikeComponent: v1alpha2.K8sLikeComponent{
+						K8sLikeComponentLocation: v1alpha2.K8sLikeComponentLocation{
+							Inlined: "placeholder",
+						},
 					},
 				},
 			},
@@ -163,12 +166,15 @@ func CreateDevfileForDockerfileBuild(uri, context string) (data.DevfileData, err
 				},
 			},
 		},
+		// ToDo: devfile library should provide a kubernetes component writer to allow writing the inlined deployment spec
 		{
-			Name: "container",
+			Name: "kubernetes",
 			ComponentUnion: v1alpha2.ComponentUnion{
-				Container: &v1alpha2.ContainerComponent{
-					Container: v1alpha2.Container{
-						Image: "no-op",
+				Kubernetes: &v1alpha2.KubernetesComponent{
+					K8sLikeComponent: v1alpha2.K8sLikeComponent{
+						K8sLikeComponentLocation: v1alpha2.K8sLikeComponentLocation{
+							Inlined: "placeholder",
+						},
 					},
 				},
 			},

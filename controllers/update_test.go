@@ -218,17 +218,20 @@ func TestUpdateComponentDevfileModel(t *testing.T) {
 
 	originalResources := corev1.ResourceRequirements{
 		Limits: corev1.ResourceList{
-			corev1.ResourceCPU:              core500mResource,
-			corev1.ResourceMemory:           storage1GiResource,
-			corev1.ResourceStorage:          storage1GiResource,
-			corev1.ResourceEphemeralStorage: storage1GiResource,
+			corev1.ResourceCPU:     core500mResource,
+			corev1.ResourceMemory:  storage1GiResource,
+			corev1.ResourceStorage: storage1GiResource,
 		},
 		Requests: corev1.ResourceList{
-			corev1.ResourceCPU:              core500mResource,
-			corev1.ResourceMemory:           storage1GiResource,
-			corev1.ResourceStorage:          storage1GiResource,
-			corev1.ResourceEphemeralStorage: storage1GiResource,
+			corev1.ResourceCPU:     core500mResource,
+			corev1.ResourceMemory:  storage1GiResource,
+			corev1.ResourceStorage: storage1GiResource,
 		},
+	}
+
+	envAttributes := attributes.Attributes{}.FromMap(map[string]interface{}{containerENVKey: []corev1.EnvVar{{Name: "FOO", Value: "foo"}}}, &err)
+	if err != nil {
+		t.Error(err)
 	}
 
 	env := []corev1.EnvVar{
@@ -250,12 +253,12 @@ func TestUpdateComponentDevfileModel(t *testing.T) {
 		wantErr        bool
 	}{
 		{
-			name: "No container component",
+			name: "No kubernetes component",
 			components: []devfileAPIV1.Component{
 				{
 					Name: "component1",
 					ComponentUnion: devfileAPIV1.ComponentUnion{
-						Kubernetes: &devfileAPIV1.KubernetesComponent{},
+						Container: &devfileAPIV1.ContainerComponent{},
 					},
 				},
 			},
@@ -266,31 +269,13 @@ func TestUpdateComponentDevfileModel(t *testing.T) {
 			},
 		},
 		{
-			name: "one container component",
+			name: "one kubernetes component",
 			components: []devfileAPIV1.Component{
 				{
-					Name: "component1",
+					Name:       "component1",
+					Attributes: envAttributes.PutInteger(containerImagePortKey, 1001),
 					ComponentUnion: devfileAPIV1.ComponentUnion{
-						Container: &devfileAPIV1.ContainerComponent{
-							Container: devfileAPIV1.Container{
-								Env: []devfileAPIV1.EnvVar{
-									{
-										Name:  "FOO",
-										Value: "foo",
-									},
-								},
-							},
-							Endpoints: []devfileAPIV1.Endpoint{
-								{
-									Name:       "endpoint1",
-									TargetPort: 1001,
-								},
-								{
-									Name:       "endpoint2",
-									TargetPort: 1002,
-								},
-							},
-						},
+						Kubernetes: &devfileAPIV1.KubernetesComponent{},
 					},
 				},
 			},
@@ -315,57 +300,20 @@ func TestUpdateComponentDevfileModel(t *testing.T) {
 			updateExpected: true,
 		},
 		{
-			name: "two container components",
+			name: "two kubernetes components",
 			components: []devfileAPIV1.Component{
 				{
-					Name: "component1",
+					Name:       "component1",
+					Attributes: envAttributes.PutInteger(containerImagePortKey, 1001),
 					ComponentUnion: devfileAPIV1.ComponentUnion{
-						Container: &devfileAPIV1.ContainerComponent{
-							Container: devfileAPIV1.Container{
-								Env: []devfileAPIV1.EnvVar{
-									{
-										Name:  "FOO",
-										Value: "foo",
-									},
-								},
-							},
-							Endpoints: []devfileAPIV1.Endpoint{
-								{
-									Name:       "endpoint1",
-									TargetPort: 1001,
-								},
-								{
-									Name:       "endpoint2",
-									TargetPort: 1002,
-								},
-							},
-						},
+						Kubernetes: &devfileAPIV1.KubernetesComponent{},
 					},
 				},
 				{
-					Name: "component2",
+					Name:       "component2",
+					Attributes: envAttributes.PutInteger(containerImagePortKey, 3333).PutString(memoryLimitKey, "2Gi"),
 					ComponentUnion: devfileAPIV1.ComponentUnion{
-						Container: &devfileAPIV1.ContainerComponent{
-							Container: devfileAPIV1.Container{
-								Env: []devfileAPIV1.EnvVar{
-									{
-										Name:  "FOO",
-										Value: "foo",
-									},
-								},
-								MemoryLimit: "2Gi",
-							},
-							Endpoints: []devfileAPIV1.Endpoint{
-								{
-									Name:       "endpoint3",
-									TargetPort: 3333,
-								},
-								{
-									Name:       "endpoint4",
-									TargetPort: 4444,
-								},
-							},
-						},
+						Kubernetes: &devfileAPIV1.KubernetesComponent{},
 					},
 				},
 			},
@@ -388,49 +336,15 @@ func TestUpdateComponentDevfileModel(t *testing.T) {
 				},
 			},
 			updateExpected: true,
-		},
-		{
-			name: "No container component",
-			components: []devfileAPIV1.Component{
-				{
-					Name: "component1",
-					ComponentUnion: devfileAPIV1.ComponentUnion{
-						Kubernetes: &devfileAPIV1.KubernetesComponent{},
-					},
-				},
-			},
-			component: appstudiov1alpha1.Component{
-				Spec: appstudiov1alpha1.ComponentSpec{
-					ComponentName: "componentName",
-				},
-			},
 		},
 		{
 			name: "Component with envFrom component - should error out as it's not supported right now",
 			components: []devfileAPIV1.Component{
 				{
-					Name: "component1",
+					Name:       "component1",
+					Attributes: envAttributes,
 					ComponentUnion: devfileAPIV1.ComponentUnion{
-						Container: &devfileAPIV1.ContainerComponent{
-							Container: devfileAPIV1.Container{
-								Env: []devfileAPIV1.EnvVar{
-									{
-										Name:  "FOO",
-										Value: "foo",
-									},
-								},
-							},
-							Endpoints: []devfileAPIV1.Endpoint{
-								{
-									Name:       "endpoint1",
-									TargetPort: 1001,
-								},
-								{
-									Name:       "endpoint2",
-									TargetPort: 1002,
-								},
-							},
-						},
+						Kubernetes: &devfileAPIV1.KubernetesComponent{},
 					},
 				},
 			},
@@ -526,51 +440,38 @@ func TestUpdateComponentDevfileModel(t *testing.T) {
 }
 
 func TestUpdateComponentStub(t *testing.T) {
+	var err error
+	envAttributes := attributes.Attributes{}.FromMap(map[string]interface{}{containerENVKey: []corev1.EnvVar{{Name: "name1", Value: "value1"}}}, &err)
+	if err != nil {
+		t.Error(err)
+	}
 
 	componentsValid := []devfileAPIV1.Component{
 		{
 			Name: "component1",
+			Attributes: envAttributes.PutInteger(replicaKey, 1).PutString(routeKey, "route1").PutInteger(
+				containerImagePortKey, 1001).PutString(cpuLimitKey, "2").PutString(cpuRequestKey, "700m").PutString(
+				memoryLimitKey, "500Mi").PutString(memoryRequestKey, "400Mi").PutString(
+				storageLimitKey, "400Mi").PutString(storageRequestKey, "200Mi"),
 			ComponentUnion: devfileAPIV1.ComponentUnion{
-				Container: &devfileAPIV1.ContainerComponent{
-					Endpoints: []devfileAPIV1.Endpoint{
-						{
-							Name:       "endpoint1",
-							TargetPort: 1001,
+				Kubernetes: &devfileAPIV1.KubernetesComponent{
+					K8sLikeComponent: devfileAPIV1.K8sLikeComponent{
+						K8sLikeComponentLocation: devfileAPIV1.K8sLikeComponentLocation{
+							Uri: "testLocation",
 						},
-						{
-							Name:       "endpoint2",
-							TargetPort: 1002,
-						},
-					},
-					Container: devfileAPIV1.Container{
-						Image: "image",
-						Env: []devfileAPIV1.EnvVar{
-							{
-								Name:  "name1",
-								Value: "value1",
-							},
-						},
-						CpuLimit:      "2",
-						CpuRequest:    "700m",
-						MemoryLimit:   "500Mi",
-						MemoryRequest: "400Mi",
 					},
 				},
 			},
-			Attributes: attributes.Attributes{}.PutInteger(replicaKey, 1).PutString(routeKey, "route1").PutString(storageLimitKey, "400Mi").PutString(ephemeralStorageLimitKey, "400Mi").PutString(storageRequestKey, "200Mi").PutString(ephemeralStorageRequestKey, "200Mi"),
 		},
 		{
-			Name: "component2",
+			Name:       "component2",
+			Attributes: attributes.Attributes{}.PutInteger(containerImagePortKey, 1003),
 			ComponentUnion: devfileAPIV1.ComponentUnion{
-				Container: &devfileAPIV1.ContainerComponent{
-					Endpoints: []devfileAPIV1.Endpoint{
-						{
-							Name:       "endpoint22",
-							TargetPort: 1003,
+				Kubernetes: &devfileAPIV1.KubernetesComponent{
+					K8sLikeComponent: devfileAPIV1.K8sLikeComponent{
+						K8sLikeComponentLocation: devfileAPIV1.K8sLikeComponentLocation{
+							Uri: "testLocation",
 						},
-					},
-					Container: devfileAPIV1.Container{
-						Image: "image2",
 					},
 				},
 			},
@@ -581,27 +482,27 @@ func TestUpdateComponentStub(t *testing.T) {
 		{
 			Name: "component1",
 			ComponentUnion: devfileAPIV1.ComponentUnion{
-				Container: &devfileAPIV1.ContainerComponent{
-					Container: devfileAPIV1.Container{
-						Image: "image",
-					},
-				},
+				Kubernetes: &devfileAPIV1.KubernetesComponent{},
 			},
 			Attributes: attributes.Attributes{}.PutBoolean(replicaKey, true),
 		},
 	}
 
-	var err error
+	componentsContainerPortErr := []devfileAPIV1.Component{
+		{
+			Name: "component1",
+			ComponentUnion: devfileAPIV1.ComponentUnion{
+				Kubernetes: &devfileAPIV1.KubernetesComponent{},
+			},
+			Attributes: attributes.Attributes{}.PutBoolean(containerImagePortKey, true),
+		},
+	}
 
 	componentsRouteErr := []devfileAPIV1.Component{
 		{
 			Name: "component1",
 			ComponentUnion: devfileAPIV1.ComponentUnion{
-				Container: &devfileAPIV1.ContainerComponent{
-					Container: devfileAPIV1.Container{
-						Image: "image",
-					},
-				},
+				Kubernetes: &devfileAPIV1.KubernetesComponent{},
 			},
 			Attributes: attributes.Attributes{}.Put(routeKey, []string{"a", "b"}, &err),
 		},
@@ -615,31 +516,9 @@ func TestUpdateComponentStub(t *testing.T) {
 		{
 			Name: "component1",
 			ComponentUnion: devfileAPIV1.ComponentUnion{
-				Container: &devfileAPIV1.ContainerComponent{
-					Container: devfileAPIV1.Container{
-						Image: "image",
-					},
-				},
+				Kubernetes: &devfileAPIV1.KubernetesComponent{},
 			},
 			Attributes: attributes.Attributes{}.Put(storageLimitKey, []string{"a", "b"}, &err),
-		},
-	}
-	if err != nil {
-		t.Errorf("unexpected err: %+v", err)
-		return
-	}
-
-	componentsEphemeralStorageLimitErr := []devfileAPIV1.Component{
-		{
-			Name: "component1",
-			ComponentUnion: devfileAPIV1.ComponentUnion{
-				Container: &devfileAPIV1.ContainerComponent{
-					Container: devfileAPIV1.Container{
-						Image: "image",
-					},
-				},
-			},
-			Attributes: attributes.Attributes{}.Put(ephemeralStorageLimitKey, []string{"a", "b"}, &err),
 		},
 	}
 	if err != nil {
@@ -651,11 +530,7 @@ func TestUpdateComponentStub(t *testing.T) {
 		{
 			Name: "component1",
 			ComponentUnion: devfileAPIV1.ComponentUnion{
-				Container: &devfileAPIV1.ContainerComponent{
-					Container: devfileAPIV1.Container{
-						Image: "image",
-					},
-				},
+				Kubernetes: &devfileAPIV1.KubernetesComponent{},
 			},
 			Attributes: attributes.Attributes{}.Put(storageRequestKey, []string{"a", "b"}, &err),
 		},
@@ -665,17 +540,13 @@ func TestUpdateComponentStub(t *testing.T) {
 		return
 	}
 
-	componentsEphemeralStorageRequestErr := []devfileAPIV1.Component{
+	componentsCpuLimitErr := []devfileAPIV1.Component{
 		{
 			Name: "component1",
 			ComponentUnion: devfileAPIV1.ComponentUnion{
-				Container: &devfileAPIV1.ContainerComponent{
-					Container: devfileAPIV1.Container{
-						Image: "image",
-					},
-				},
+				Kubernetes: &devfileAPIV1.KubernetesComponent{},
 			},
-			Attributes: attributes.Attributes{}.Put(ephemeralStorageRequestKey, []string{"a", "b"}, &err),
+			Attributes: attributes.Attributes{}.Put(cpuLimitKey, []string{"a", "b"}, &err),
 		},
 	}
 	if err != nil {
@@ -683,17 +554,55 @@ func TestUpdateComponentStub(t *testing.T) {
 		return
 	}
 
-	componentsCPULimitParseErr := []devfileAPIV1.Component{
+	componentsCpuRequestErr := []devfileAPIV1.Component{
 		{
 			Name: "component1",
 			ComponentUnion: devfileAPIV1.ComponentUnion{
-				Container: &devfileAPIV1.ContainerComponent{
-					Container: devfileAPIV1.Container{
-						Image:    "image",
-						CpuLimit: "xyz",
-					},
-				},
+				Kubernetes: &devfileAPIV1.KubernetesComponent{},
 			},
+			Attributes: attributes.Attributes{}.Put(cpuRequestKey, []string{"a", "b"}, &err),
+		},
+	}
+	if err != nil {
+		t.Errorf("unexpected err: %+v", err)
+		return
+	}
+
+	componentsMemoryLimitErr := []devfileAPIV1.Component{
+		{
+			Name: "component1",
+			ComponentUnion: devfileAPIV1.ComponentUnion{
+				Kubernetes: &devfileAPIV1.KubernetesComponent{},
+			},
+			Attributes: attributes.Attributes{}.Put(memoryLimitKey, []string{"a", "b"}, &err),
+		},
+	}
+	if err != nil {
+		t.Errorf("unexpected err: %+v", err)
+		return
+	}
+
+	componentsMemoryRequestErr := []devfileAPIV1.Component{
+		{
+			Name: "component1",
+			ComponentUnion: devfileAPIV1.ComponentUnion{
+				Kubernetes: &devfileAPIV1.KubernetesComponent{},
+			},
+			Attributes: attributes.Attributes{}.Put(memoryRequestKey, []string{"a", "b"}, &err),
+		},
+	}
+	if err != nil {
+		t.Errorf("unexpected err: %+v", err)
+		return
+	}
+
+	componentsCpuLimitParseErr := []devfileAPIV1.Component{
+		{
+			Name: "component1",
+			ComponentUnion: devfileAPIV1.ComponentUnion{
+				Kubernetes: &devfileAPIV1.KubernetesComponent{},
+			},
+			Attributes: attributes.Attributes{}.PutString(cpuLimitKey, "xyz"),
 		},
 	}
 
@@ -701,13 +610,9 @@ func TestUpdateComponentStub(t *testing.T) {
 		{
 			Name: "component1",
 			ComponentUnion: devfileAPIV1.ComponentUnion{
-				Container: &devfileAPIV1.ContainerComponent{
-					Container: devfileAPIV1.Container{
-						Image:       "image",
-						MemoryLimit: "xyz",
-					},
-				},
+				Kubernetes: &devfileAPIV1.KubernetesComponent{},
 			},
+			Attributes: attributes.Attributes{}.PutString(memoryLimitKey, "xyz"),
 		},
 	}
 
@@ -715,41 +620,19 @@ func TestUpdateComponentStub(t *testing.T) {
 		{
 			Name: "component1",
 			ComponentUnion: devfileAPIV1.ComponentUnion{
-				Container: &devfileAPIV1.ContainerComponent{
-					Container: devfileAPIV1.Container{
-						Image: "image",
-					},
-				},
+				Kubernetes: &devfileAPIV1.KubernetesComponent{},
 			},
 			Attributes: attributes.Attributes{}.PutString(storageLimitKey, "xyz"),
 		},
 	}
 
-	componentsEphemeralStorageLimitParseErr := []devfileAPIV1.Component{
+	componentsCpuRequestParseErr := []devfileAPIV1.Component{
 		{
 			Name: "component1",
 			ComponentUnion: devfileAPIV1.ComponentUnion{
-				Container: &devfileAPIV1.ContainerComponent{
-					Container: devfileAPIV1.Container{
-						Image: "image",
-					},
-				},
+				Kubernetes: &devfileAPIV1.KubernetesComponent{},
 			},
-			Attributes: attributes.Attributes{}.PutString(ephemeralStorageLimitKey, "xyz"),
-		},
-	}
-
-	componentsCPURequestParseErr := []devfileAPIV1.Component{
-		{
-			Name: "component1",
-			ComponentUnion: devfileAPIV1.ComponentUnion{
-				Container: &devfileAPIV1.ContainerComponent{
-					Container: devfileAPIV1.Container{
-						Image:      "image",
-						CpuRequest: "xyz",
-					},
-				},
-			},
+			Attributes: attributes.Attributes{}.PutString(cpuRequestKey, "xyz"),
 		},
 	}
 
@@ -757,13 +640,9 @@ func TestUpdateComponentStub(t *testing.T) {
 		{
 			Name: "component1",
 			ComponentUnion: devfileAPIV1.ComponentUnion{
-				Container: &devfileAPIV1.ContainerComponent{
-					Container: devfileAPIV1.Container{
-						Image:         "image",
-						MemoryRequest: "xyz",
-					},
-				},
+				Kubernetes: &devfileAPIV1.KubernetesComponent{},
 			},
+			Attributes: attributes.Attributes{}.PutString(memoryRequestKey, "xyz"),
 		},
 	}
 
@@ -771,27 +650,9 @@ func TestUpdateComponentStub(t *testing.T) {
 		{
 			Name: "component1",
 			ComponentUnion: devfileAPIV1.ComponentUnion{
-				Container: &devfileAPIV1.ContainerComponent{
-					Container: devfileAPIV1.Container{
-						Image: "image",
-					},
-				},
+				Kubernetes: &devfileAPIV1.KubernetesComponent{},
 			},
 			Attributes: attributes.Attributes{}.PutString(storageRequestKey, "xyz"),
-		},
-	}
-
-	componentsEphemeralStorageRequestParseErr := []devfileAPIV1.Component{
-		{
-			Name: "component1",
-			ComponentUnion: devfileAPIV1.ComponentUnion{
-				Container: &devfileAPIV1.ContainerComponent{
-					Container: devfileAPIV1.Container{
-						Image: "image",
-					},
-				},
-			},
-			Attributes: attributes.Attributes{}.PutString(ephemeralStorageRequestKey, "xyz"),
 		},
 	}
 
@@ -804,7 +665,7 @@ func TestUpdateComponentStub(t *testing.T) {
 		wantErr          bool
 	}{
 		{
-			name: "Container Components present",
+			name: "Kubernetes Components present",
 			devfilesDataMap: map[string]*v2.DevfileV2{
 				"./": {
 					Devfile: devfileAPIV1.Devfile{
@@ -826,7 +687,7 @@ func TestUpdateComponentStub(t *testing.T) {
 			},
 		},
 		{
-			name: "Container Components present with a devfile URL",
+			name: "Kubernetes Components present with a devfile URL",
 			devfilesDataMap: map[string]*v2.DevfileV2{
 				"./": {
 					Devfile: devfileAPIV1.Devfile{
@@ -851,7 +712,7 @@ func TestUpdateComponentStub(t *testing.T) {
 			},
 		},
 		{
-			name: "Container Components present with a devfile & dockerfile URL",
+			name: "Kubernetes Components present with a devfile & dockerfile URL",
 			devfilesDataMap: map[string]*v2.DevfileV2{
 				"./": {
 					Devfile: devfileAPIV1.Devfile{
@@ -885,7 +746,7 @@ func TestUpdateComponentStub(t *testing.T) {
 			},
 		},
 		{
-			name: "No Container Components present",
+			name: "No Kubernetes Components present",
 			devfilesDataMap: map[string]*v2.DevfileV2{
 				"./": {
 					Devfile: devfileAPIV1.Devfile{
@@ -950,6 +811,29 @@ func TestUpdateComponentStub(t *testing.T) {
 			wantErr: true,
 		},
 		{
+			name: "Check err for container port as non integer",
+			devfilesDataMap: map[string]*v2.DevfileV2{
+				"./": {
+					Devfile: devfileAPIV1.Devfile{
+						DevfileHeader: devfile.DevfileHeader{
+							SchemaVersion: "2.1.0",
+							Metadata: devfile.DevfileMetadata{
+								Name:        "test-devfile",
+								Language:    "language",
+								ProjectType: "project",
+							},
+						},
+						DevWorkspaceTemplateSpec: devfileAPIV1.DevWorkspaceTemplateSpec{
+							DevWorkspaceTemplateSpecContent: devfileAPIV1.DevWorkspaceTemplateSpecContent{
+								Components: componentsContainerPortErr,
+							},
+						},
+					},
+				},
+			},
+			wantErr: true,
+		},
+		{
 			name: "Check err for route as non string",
 			devfilesDataMap: map[string]*v2.DevfileV2{
 				"./": {
@@ -996,29 +880,6 @@ func TestUpdateComponentStub(t *testing.T) {
 			wantErr: true,
 		},
 		{
-			name: "Check err for ephemeral storage limit as non string",
-			devfilesDataMap: map[string]*v2.DevfileV2{
-				"./": {
-					Devfile: devfileAPIV1.Devfile{
-						DevfileHeader: devfile.DevfileHeader{
-							SchemaVersion: "2.1.0",
-							Metadata: devfile.DevfileMetadata{
-								Name:        "test-devfile",
-								Language:    "language",
-								ProjectType: "project",
-							},
-						},
-						DevWorkspaceTemplateSpec: devfileAPIV1.DevWorkspaceTemplateSpec{
-							DevWorkspaceTemplateSpecContent: devfileAPIV1.DevWorkspaceTemplateSpecContent{
-								Components: componentsEphemeralStorageLimitErr,
-							},
-						},
-					},
-				},
-			},
-			wantErr: true,
-		},
-		{
 			name: "Check err for storage request as non string",
 			devfilesDataMap: map[string]*v2.DevfileV2{
 				"./": {
@@ -1042,7 +903,7 @@ func TestUpdateComponentStub(t *testing.T) {
 			wantErr: true,
 		},
 		{
-			name: "Check err for ephemeral storage request as non string",
+			name: "Check err for cpu limit as non string",
 			devfilesDataMap: map[string]*v2.DevfileV2{
 				"./": {
 					Devfile: devfileAPIV1.Devfile{
@@ -1056,7 +917,76 @@ func TestUpdateComponentStub(t *testing.T) {
 						},
 						DevWorkspaceTemplateSpec: devfileAPIV1.DevWorkspaceTemplateSpec{
 							DevWorkspaceTemplateSpecContent: devfileAPIV1.DevWorkspaceTemplateSpecContent{
-								Components: componentsEphemeralStorageRequestErr,
+								Components: componentsCpuLimitErr,
+							},
+						},
+					},
+				},
+			},
+			wantErr: true,
+		},
+		{
+			name: "Check err for cpu request as non string",
+			devfilesDataMap: map[string]*v2.DevfileV2{
+				"./": {
+					Devfile: devfileAPIV1.Devfile{
+						DevfileHeader: devfile.DevfileHeader{
+							SchemaVersion: "2.1.0",
+							Metadata: devfile.DevfileMetadata{
+								Name:        "test-devfile",
+								Language:    "language",
+								ProjectType: "project",
+							},
+						},
+						DevWorkspaceTemplateSpec: devfileAPIV1.DevWorkspaceTemplateSpec{
+							DevWorkspaceTemplateSpecContent: devfileAPIV1.DevWorkspaceTemplateSpecContent{
+								Components: componentsCpuRequestErr,
+							},
+						},
+					},
+				},
+			},
+			wantErr: true,
+		},
+		{
+			name: "Check err for memory limit as non string",
+			devfilesDataMap: map[string]*v2.DevfileV2{
+				"./": {
+					Devfile: devfileAPIV1.Devfile{
+						DevfileHeader: devfile.DevfileHeader{
+							SchemaVersion: "2.1.0",
+							Metadata: devfile.DevfileMetadata{
+								Name:        "test-devfile",
+								Language:    "language",
+								ProjectType: "project",
+							},
+						},
+						DevWorkspaceTemplateSpec: devfileAPIV1.DevWorkspaceTemplateSpec{
+							DevWorkspaceTemplateSpecContent: devfileAPIV1.DevWorkspaceTemplateSpecContent{
+								Components: componentsMemoryLimitErr,
+							},
+						},
+					},
+				},
+			},
+			wantErr: true,
+		},
+		{
+			name: "Check err for memory request as non string",
+			devfilesDataMap: map[string]*v2.DevfileV2{
+				"./": {
+					Devfile: devfileAPIV1.Devfile{
+						DevfileHeader: devfile.DevfileHeader{
+							SchemaVersion: "2.1.0",
+							Metadata: devfile.DevfileMetadata{
+								Name:        "test-devfile",
+								Language:    "language",
+								ProjectType: "project",
+							},
+						},
+						DevWorkspaceTemplateSpec: devfileAPIV1.DevWorkspaceTemplateSpec{
+							DevWorkspaceTemplateSpecContent: devfileAPIV1.DevWorkspaceTemplateSpecContent{
+								Components: componentsMemoryRequestErr,
 							},
 						},
 					},
@@ -1079,7 +1009,7 @@ func TestUpdateComponentStub(t *testing.T) {
 						},
 						DevWorkspaceTemplateSpec: devfileAPIV1.DevWorkspaceTemplateSpec{
 							DevWorkspaceTemplateSpecContent: devfileAPIV1.DevWorkspaceTemplateSpecContent{
-								Components: componentsCPULimitParseErr,
+								Components: componentsCpuLimitParseErr,
 							},
 						},
 					},
@@ -1134,29 +1064,6 @@ func TestUpdateComponentStub(t *testing.T) {
 			wantErr: true,
 		},
 		{
-			name: "Check err for ephemeral storage limit parse err",
-			devfilesDataMap: map[string]*v2.DevfileV2{
-				"./": {
-					Devfile: devfileAPIV1.Devfile{
-						DevfileHeader: devfile.DevfileHeader{
-							SchemaVersion: "2.1.0",
-							Metadata: devfile.DevfileMetadata{
-								Name:        "test-devfile",
-								Language:    "language",
-								ProjectType: "project",
-							},
-						},
-						DevWorkspaceTemplateSpec: devfileAPIV1.DevWorkspaceTemplateSpec{
-							DevWorkspaceTemplateSpecContent: devfileAPIV1.DevWorkspaceTemplateSpecContent{
-								Components: componentsEphemeralStorageLimitParseErr,
-							},
-						},
-					},
-				},
-			},
-			wantErr: true,
-		},
-		{
 			name: "Check err for cpu request parse err",
 			devfilesDataMap: map[string]*v2.DevfileV2{
 				"./": {
@@ -1171,7 +1078,7 @@ func TestUpdateComponentStub(t *testing.T) {
 						},
 						DevWorkspaceTemplateSpec: devfileAPIV1.DevWorkspaceTemplateSpec{
 							DevWorkspaceTemplateSpecContent: devfileAPIV1.DevWorkspaceTemplateSpecContent{
-								Components: componentsCPURequestParseErr,
+								Components: componentsCpuRequestParseErr,
 							},
 						},
 					},
@@ -1218,29 +1125,6 @@ func TestUpdateComponentStub(t *testing.T) {
 						DevWorkspaceTemplateSpec: devfileAPIV1.DevWorkspaceTemplateSpec{
 							DevWorkspaceTemplateSpecContent: devfileAPIV1.DevWorkspaceTemplateSpecContent{
 								Components: componentsStorageRequestParseErr,
-							},
-						},
-					},
-				},
-			},
-			wantErr: true,
-		},
-		{
-			name: "Check err for ephemeral storage request parse err",
-			devfilesDataMap: map[string]*v2.DevfileV2{
-				"./": {
-					Devfile: devfileAPIV1.Devfile{
-						DevfileHeader: devfile.DevfileHeader{
-							SchemaVersion: "2.1.0",
-							Metadata: devfile.DevfileMetadata{
-								Name:        "test-devfile",
-								Language:    "language",
-								ProjectType: "project",
-							},
-						},
-						DevWorkspaceTemplateSpec: devfileAPIV1.DevWorkspaceTemplateSpec{
-							DevWorkspaceTemplateSpecContent: devfileAPIV1.DevWorkspaceTemplateSpecContent{
-								Components: componentsEphemeralStorageRequestParseErr,
 							},
 						},
 					},
@@ -1324,8 +1208,12 @@ func TestUpdateComponentStub(t *testing.T) {
 						}
 
 						for _, devfileComponent := range tt.devfilesDataMap[hasCompDetection.ComponentStub.Source.GitSource.Context].Components {
-							if devfileComponent.Container != nil {
-								for _, devfileEnv := range devfileComponent.Container.Env {
+							if devfileComponent.Kubernetes != nil {
+								componentAttributes := devfileComponent.Attributes
+								var containerENVs []corev1.EnvVar
+								err := componentAttributes.GetInto(containerENVKey, &containerENVs)
+								assert.Nil(t, err, "err should be nil")
+								for _, devfileEnv := range containerENVs {
 									matched := false
 									for _, compEnv := range hasCompDetection.ComponentStub.Env {
 										if devfileEnv.Name == compEnv.Name && devfileEnv.Value == compEnv.Value {
@@ -1335,54 +1223,46 @@ func TestUpdateComponentStub(t *testing.T) {
 									assert.True(t, matched, "env %s:%s should match", devfileEnv.Name, devfileEnv.Value)
 								}
 
-								for i, endpoint := range devfileComponent.Container.Endpoints {
-									if i == 0 {
-										assert.Equal(t, endpoint.TargetPort, hasCompDetection.ComponentStub.TargetPort, "target port should match")
-									}
-								}
-
-								var err error
 								limits := hasCompDetection.ComponentStub.Resources.Limits
 								if len(limits) > 0 {
 									resourceCPULimit := limits[corev1.ResourceCPU]
-									assert.Equal(t, resourceCPULimit.String(), devfileComponent.Container.CpuLimit, "The cpu limit should be the same")
+									assert.Equal(t, resourceCPULimit.String(), devfileComponent.Attributes.GetString(cpuLimitKey, &err), "The cpu limit should be the same")
+									assert.Nil(t, err, "err should be nil")
 
 									resourceMemoryLimit := limits[corev1.ResourceMemory]
-									assert.Equal(t, resourceMemoryLimit.String(), devfileComponent.Container.MemoryLimit, "The memory limit should be the same")
+									assert.Equal(t, resourceMemoryLimit.String(), devfileComponent.Attributes.GetString(memoryLimitKey, &err), "The memory limit should be the same")
+									assert.Nil(t, err, "err should be nil")
 
 									resourceStorageLimit := limits[corev1.ResourceStorage]
 									assert.Equal(t, resourceStorageLimit.String(), devfileComponent.Attributes.GetString(storageLimitKey, &err), "The storage limit should be the same")
-									assert.Nil(t, err, "err should be nil")
-
-									resourceEphemeralStorageLimit := limits[corev1.ResourceEphemeralStorage]
-									assert.Equal(t, resourceEphemeralStorageLimit.String(), devfileComponent.Attributes.GetString(ephemeralStorageLimitKey, &err), "The ephemeral storage limit should be the same")
 									assert.Nil(t, err, "err should be nil")
 								}
 
 								requests := hasCompDetection.ComponentStub.Resources.Requests
 								if len(requests) > 0 {
 									resourceCPURequest := requests[corev1.ResourceCPU]
-									assert.Equal(t, resourceCPURequest.String(), devfileComponent.Container.CpuRequest, "The cpu request should be the same")
+									assert.Equal(t, resourceCPURequest.String(), devfileComponent.Attributes.GetString(cpuRequestKey, &err), "The cpu request should be the same")
+									assert.Nil(t, err, "err should be nil")
 
 									resourceMemoryRequest := requests[corev1.ResourceMemory]
-									assert.Equal(t, resourceMemoryRequest.String(), devfileComponent.Container.MemoryRequest, "The memory request should be the same")
+									assert.Equal(t, resourceMemoryRequest.String(), devfileComponent.Attributes.GetString(memoryRequestKey, &err), "The memory request should be the same")
+									assert.Nil(t, err, "err should be nil")
 
 									resourceStorageRequest := requests[corev1.ResourceStorage]
 									assert.Equal(t, resourceStorageRequest.String(), devfileComponent.Attributes.GetString(storageRequestKey, &err), "The storage request should be the same")
-									assert.Nil(t, err, "err should be nil")
-
-									resourceEphemeralStorageRequest := requests[corev1.ResourceEphemeralStorage]
-									assert.Equal(t, resourceEphemeralStorageRequest.String(), devfileComponent.Attributes.GetString(ephemeralStorageRequestKey, &err), "The ephemeral storage request should be the same")
 									assert.Nil(t, err, "err should be nil")
 								}
 
 								assert.Equal(t, hasCompDetection.ComponentStub.Replicas, int(devfileComponent.Attributes.GetNumber(replicaKey, &err)), "The replicas should be the same")
 								assert.Nil(t, err, "err should be nil")
 
+								assert.Equal(t, hasCompDetection.ComponentStub.TargetPort, int(devfileComponent.Attributes.GetNumber(containerImagePortKey, &err)), "The target port should be the same")
+								assert.Nil(t, err, "err should be nil")
+
 								assert.Equal(t, hasCompDetection.ComponentStub.Route, devfileComponent.Attributes.GetString(routeKey, &err), "The route should be the same")
 								assert.Nil(t, err, "err should be nil")
 
-								break // dont check for the second container
+								break // dont check for the second Kubernetes component
 							}
 						}
 					}
