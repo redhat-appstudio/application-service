@@ -574,7 +574,7 @@ func TestGenerateParentKustomize(t *testing.T) {
 				// Test that the common storage pvc was added when appropriate
 				if tt.pvc != nil {
 					if len(k.Resources) != 1 {
-						t.Errorf("expected %v kustomization resources, got %v", 3, len(k.Resources))
+						t.Errorf("expected %v kustomization resources, got %v", 1, len(k.Resources))
 					}
 					if k.Resources[0] != "common-storage-pvc.yaml" {
 						t.Errorf("expected common storage pvc path %v, got %v", "common-storage-pvc.yaml", k.Resources[0])

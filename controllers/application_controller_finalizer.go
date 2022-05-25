@@ -30,6 +30,7 @@ import (
 const appFinalizerName = "application.appstudio.redhat.com/finalizer"
 const finalizeCount = "finalizeCount"
 
+// AddFinalizer adds the finalizer to the Application CR and initiates the finalize count on the annotation
 func (r *ApplicationReconciler) AddFinalizer(ctx context.Context, application *appstudiov1alpha1.Application) error {
 	controllerutil.AddFinalizer(application, appFinalizerName)
 
@@ -77,6 +78,7 @@ func containsString(slice []string, s string) bool {
 	return false
 }
 
+// getFinalizeCount gets the finalize count for the Application CR
 func getFinalizeCount(application *appstudiov1alpha1.Application) (int, error) {
 	applicationAnnotations := application.GetAnnotations()
 	if applicationAnnotations == nil {
@@ -87,6 +89,7 @@ func getFinalizeCount(application *appstudiov1alpha1.Application) (int, error) {
 	return strconv.Atoi(finalizeCountAnnotation)
 }
 
+// setCompFinalizeCount sets the finalize count for the Application CR
 func setFinalizeCount(application *appstudiov1alpha1.Application, count int) {
 	applicationAnnotations := application.GetAnnotations()
 	if applicationAnnotations == nil {

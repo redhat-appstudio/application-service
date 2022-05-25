@@ -83,7 +83,7 @@ type ComponentSpec struct {
 	Secret string `json:"secret,omitempty"`
 
 	// Source describes the Component source
-	Source ComponentSource `json:"source"`
+	Source ComponentSource `json:"source,omitempty"`
 
 	// List of references to ReleaseStrategies to use when releasing the component
 	ReleaseStrategies []string `json:"releaseStrategies,omitempty"`
