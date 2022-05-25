@@ -33,18 +33,23 @@ const (
 	BuildBundleConfigMapKey = "default_build_bundle"
 	// fallback bundle that will be used in case the bundle resolution fails
 	FallbackBuildBundle = "quay.io/redhat-appstudio/build-templates-bundle:8201a567956ba6d2095d615ea2c0f6ab35f9ba5f"
+	// default secret for app studio registry
+	RegistrySecret = "redhat-appstudio-registry-pull-secret"
 )
 
 // Holds data that needs to be queried from the cluster in order for the gitops generation function to work
 // This struct is left here so more data can be added as needed
 type GitopsConfig struct {
 	BuildBundle string
+
+	AppStudioRegistrySecretPresent bool
 }
 
 func PrepareGitopsConfig(ctx context.Context, cli client.Client, component appstudiov1alpha1.Component) GitopsConfig {
 	data := GitopsConfig{}
 
 	data.BuildBundle = resolveBuildBundle(ctx, cli, component)
+	data.AppStudioRegistrySecretPresent = resolveRegistrySecretPresence(ctx, cli, component)
 
 	return data
 }
@@ -67,4 +72,12 @@ func resolveBuildBundle(ctx context.Context, cli client.Client, component appstu
 	}
 
 	return FallbackBuildBundle
+}
+
+// Determines whether the 'redhat-appstudio-registry-pull-secret' Secret exists, so that the Generate* functions
+// can avoid declaring a secret volume workspace for the Secret when the Secret is not available.
+func resolveRegistrySecretPresence(ctx context.Context, cli client.Client, component appstudiov1alpha1.Component) bool {
+	registrySecret := &corev1.Secret{}
+	err := cli.Get(ctx, types.NamespacedName{Name: RegistrySecret, Namespace: component.Namespace}, registrySecret)
+	return err == nil
 }
