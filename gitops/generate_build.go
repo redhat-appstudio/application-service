@@ -18,6 +18,7 @@ package gitops
 
 import (
 	"encoding/json"
+	"fmt"
 	"regexp"
 	"strings"
 	"time"
@@ -115,6 +116,9 @@ func DetermineBuildExecution(component appstudiov1alpha1.Component, params []tek
 				SubPath: component.Name + "/" + workspaceSubPath,
 			},
 		},
+	}
+	if gitopsConfig.Log != nil {
+		gitopsConfig.Log.Info(fmt.Sprintf("GGM DetermineBuildExecution component %s:%s AppStudioRegistrySecretPresent %v", component.Namespace, component.Name, gitopsConfig.AppStudioRegistrySecretPresent))
 	}
 	if gitopsConfig.AppStudioRegistrySecretPresent {
 		pipelineRunSpec.Workspaces = append(pipelineRunSpec.Workspaces, tektonapi.WorkspaceBinding{

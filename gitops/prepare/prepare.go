@@ -17,11 +17,14 @@ package prepare
 
 import (
 	"context"
+	"fmt"
 
 	appstudiov1alpha1 "github.com/redhat-appstudio/application-service/api/v1alpha1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+
+	"github.com/go-logr/logr"
 )
 
 const (
@@ -43,13 +46,19 @@ type GitopsConfig struct {
 	BuildBundle string
 
 	AppStudioRegistrySecretPresent bool
+
+	Log *logr.Logger
 }
 
-func PrepareGitopsConfig(ctx context.Context, cli client.Client, component appstudiov1alpha1.Component) GitopsConfig {
+func PrepareGitopsConfig(ctx context.Context, cli client.Client, component appstudiov1alpha1.Component, log *logr.Logger) GitopsConfig {
 	data := GitopsConfig{}
 
 	data.BuildBundle = resolveBuildBundle(ctx, cli, component)
-	data.AppStudioRegistrySecretPresent = resolveRegistrySecretPresence(ctx, cli, component)
+	data.AppStudioRegistrySecretPresent = resolveRegistrySecretPresence(ctx, cli, component, log)
+	if log != nil {
+		log.Info(fmt.Sprintf("GGM PrepareGitopsConfig for component %s:%s AppStudioRegistrySecretPresent %v", component.Namespace, component.Name, data.AppStudioRegistrySecretPresent))
+	}
+	data.Log = log
 
 	return data
 }
@@ -76,8 +85,13 @@ func resolveBuildBundle(ctx context.Context, cli client.Client, component appstu
 
 // Determines whether the 'redhat-appstudio-registry-pull-secret' Secret exists, so that the Generate* functions
 // can avoid declaring a secret volume workspace for the Secret when the Secret is not available.
-func resolveRegistrySecretPresence(ctx context.Context, cli client.Client, component appstudiov1alpha1.Component) bool {
+func resolveRegistrySecretPresence(ctx context.Context, cli client.Client, component appstudiov1alpha1.Component, log *logr.Logger) bool {
 	registrySecret := &corev1.Secret{}
-	err := cli.Get(ctx, types.NamespacedName{Name: RegistrySecret, Namespace: component.Namespace}, registrySecret)
+	name := types.NamespacedName{Name: RegistrySecret, Namespace: component.Namespace}
+	err := cli.Get(ctx, name, registrySecret)
+	if log != nil {
+		log.Info(fmt.Sprintf("GGM resolveRegistrySecretPresence err on secret %s: %#v", name, err))
+		log.Info(fmt.Sprintf("GGM resolveRegistrySecretPresence secret %s: %#v", name, registrySecret))
+	}
 	return err == nil
 }

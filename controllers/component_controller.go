@@ -170,6 +170,7 @@ func (r *ComponentReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 
 	// If the devfile hasn't been populated, the CR was just created
 	var gitToken string
+	log.Info(fmt.Sprintf("GGM component %s:%s req %s comp status devfile len %d", component.Namespace, component.Name, req.NamespacedName.String(), len(component.Status.Devfile)))
 	if component.Status.Devfile == "" {
 
 		source := component.Spec.Source
@@ -282,6 +283,7 @@ func (r *ComponentReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 			return ctrl.Result{}, nil
 		}
 
+		log.Info(fmt.Sprintf("GGM main component reconciler, len of has application devfile check: %s:%s with len %d", component.Namespace, component.Name, len(hasApplication.Status.Devfile)))
 		if hasApplication.Status.Devfile != "" {
 			// Get the devfile of the hasApp CR
 			hasAppDevfileData, err := devfile.ParseDevfileModel(hasApplication.Status.Devfile)
@@ -335,6 +337,7 @@ func (r *ComponentReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 				return ctrl.Result{}, err
 			}
 
+			log.Info(fmt.Sprintf("GGM main component reconciler, calling generateGitOps: %s:%s", component.Namespace, component.Name))
 			// Generate and push the gitops resources
 			if err := r.generateGitops(ctx, &component); err != nil {
 				errMsg := fmt.Sprintf("Unable to generate gitops resources for component %v", req.NamespacedName)
@@ -471,7 +474,7 @@ func (r *ComponentReconciler) generateGitops(ctx context.Context, component *app
 	}
 
 	// Generate and push the gitops resources
-	gitopsConfig := prepare.PrepareGitopsConfig(ctx, r.Client, *component)
+	gitopsConfig := prepare.PrepareGitopsConfig(ctx, r.Client, *component, &log)
 
 	err = gitops.GenerateAndPush(tempDir, remoteURL, *component, r.Executor, r.AppFS, gitOpsBranch, gitOpsContext, gitopsConfig)
 	if err != nil {

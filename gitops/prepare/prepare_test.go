@@ -45,7 +45,7 @@ func TestPrepareGitopsConfig(t *testing.T) {
 	}
 
 	t.Run("", func(t *testing.T) {
-		if got := PrepareGitopsConfig(context.TODO(), client, component); got != want {
+		if got := PrepareGitopsConfig(context.TODO(), client, component, nil); got != want {
 			t.Errorf("ResolveBuildBundle() = %v, want %v", got, want)
 		}
 	})
@@ -200,7 +200,7 @@ func TestResolveRegistrySecretPresence(t *testing.T) {
 				client = fake.NewClientBuilder().WithRuntimeObjects(tt.data).Build()
 			}
 
-			if got := resolveRegistrySecretPresence(ctx, client, component); got != tt.want {
+			if got := resolveRegistrySecretPresence(ctx, client, component, nil); got != tt.want {
 				t.Errorf("ResolveBuildBundle() = %v, want %v", got, tt.want)
 			}
 		})
