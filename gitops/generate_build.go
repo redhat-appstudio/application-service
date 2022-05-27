@@ -18,6 +18,7 @@ package gitops
 
 import (
 	"encoding/json"
+	"fmt"
 	"regexp"
 	"strings"
 	"time"
@@ -45,7 +46,21 @@ const (
 	buildTriggerTemplateFileName  = "trigger-template.yaml"
 	buildEventListenerFileName    = "event-listener.yaml"
 	buildWebhookRouteFileName     = "build-webhook-route.yaml"
+
+	DefaultImageRepo = "quay.io/redhat-appstudio/user-workload"
 )
+
+var (
+	imageRegistry = DefaultImageRepo
+)
+
+func GetDefaultImageRepo() string {
+	return imageRegistry
+}
+
+func SetDefaultImageRepo(repo string) {
+	imageRegistry = repo
+}
 
 func GenerateBuild(fs afero.Fs, outputFolder string, component appstudiov1alpha1.Component, gitopsConfig prepare.GitopsConfig) error {
 	//commonStoragePVC := GenerateCommonStorage(component, "appstudio")
@@ -79,7 +94,9 @@ func GenerateBuild(fs afero.Fs, outputFolder string, component appstudiov1alpha1
 
 // GenerateInitialBuildPipelineRun generates pipeline run for initial build of the component.
 func GenerateInitialBuildPipelineRun(component appstudiov1alpha1.Component, gitopsConfig prepare.GitopsConfig) tektonapi.PipelineRun {
-	initialBuildSpec := DetermineBuildExecution(component, getParamsForComponentBuild(component, true), getInitialBuildWorkspaceSubpath(), gitopsConfig)
+	// normalizeOutputImageURL is not called with initial builds so we can ignore the error here
+	params, _ := getParamsForComponentBuild(component, true)
+	initialBuildSpec := DetermineBuildExecution(component, params, getInitialBuildWorkspaceSubpath(), gitopsConfig)
 
 	return tektonapi.PipelineRun{
 		ObjectMeta: metav1.ObjectMeta{
@@ -174,7 +191,7 @@ func determineBuildPipeline(component appstudiov1alpha1.Component) string {
 	return "noop"
 }
 
-func normalizeOutputImageURL(outputImage string) string {
+func normalizeOutputImageURL(outputImage, namespace string) (string, error) {
 	// Check if the image has commit SHA suffix and delete it if so
 	shaSuffixRegExp := regexp.MustCompile(`(.+)-[0-9a-f]{40}$`)
 	foundImage := shaSuffixRegExp.FindSubmatch([]byte(outputImage))
@@ -190,22 +207,35 @@ func normalizeOutputImageURL(outputImage string) string {
 	//   quay.io/foo/bar:mytag ==> quay.io/foo/bar:mytag-git-revision
 	//   quay.io/foo/bar       ==> quay.io/foo/bar:latest-git-revision
 	if strings.Contains(outputImage, ":") {
+		// do not allow use of the default registry and a different user's tag
+		if strings.HasPrefix(outputImage, GetDefaultImageRepo()) {
+			userTags := strings.SplitAfterN(outputImage, ":", 2)
+			if len(userTags) > 0 {
+				userTag := userTags[1]
+				if userTag != namespace {
+					return "", fmt.Errorf("invalid user image tag combination of default repo %s and component namesapce %s", outputImage, namespace)
+				}
+			}
+		}
 		outputImage = outputImage + "-" + "$(tt.params.git-revision)"
 	} else {
 		outputImage = outputImage + ":latest-" + "$(tt.params.git-revision)"
 	}
-	return outputImage
+	return outputImage, nil
 }
 
 // getParamsForComponentBuild would return the 'input' parameters for the PipelineRun
 // that would build an image from source of the Component.
 // The key difference between webhook (regular) triggered PipelineRuns and user-triggered (initial) PipelineRuns
 // is that the git revision appended to the output image tag in case of webhook build.
-func getParamsForComponentBuild(component appstudiov1alpha1.Component, isInitialBuild bool) []tektonapi.Param {
+func getParamsForComponentBuild(component appstudiov1alpha1.Component, isInitialBuild bool) ([]tektonapi.Param, error) {
 	sourceCode := component.Spec.Source.GitSource.URL
 	outputImage := component.Spec.ContainerImage
+	var err error
 	if !isInitialBuild {
-		outputImage = normalizeOutputImageURL(component.Spec.ContainerImage)
+		if outputImage, err = normalizeOutputImageURL(component.Spec.ContainerImage, component.Namespace); err != nil {
+			return []tektonapi.Param{}, err
+		}
 	}
 
 	// Default required parameters
@@ -261,7 +291,7 @@ func getParamsForComponentBuild(component appstudiov1alpha1.Component, isInitial
 
 	}
 
-	return params
+	return params, err
 }
 
 func getBuildCommonLabelsForComponent(component *appstudiov1alpha1.Component) map[string]string {
@@ -339,7 +369,11 @@ func GenerateBuildWebhookRoute(component appstudiov1alpha1.Component) routev1.Ro
 // which defines how a webhook-based trigger event would be handled -
 // In this case, a PipelineRun to build an image would be created.
 func GenerateTriggerTemplate(component appstudiov1alpha1.Component, gitopsConfig prepare.GitopsConfig) (*triggersapi.TriggerTemplate, error) {
-	webhookBasedBuildTemplate := DetermineBuildExecution(component, getParamsForComponentBuild(component, false), "$(tt.params.git-revision)", gitopsConfig)
+	params, err := getParamsForComponentBuild(component, false)
+	if err != nil {
+		return nil, err
+	}
+	webhookBasedBuildTemplate := DetermineBuildExecution(component, params, "$(tt.params.git-revision)", gitopsConfig)
 	resoureTemplatePipelineRun := tektonapi.PipelineRun{
 		ObjectMeta: metav1.ObjectMeta{
 			GenerateName: component.Name + "-",
