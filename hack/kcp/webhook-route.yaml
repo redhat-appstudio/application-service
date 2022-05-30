@@ -5,6 +5,7 @@ metadata:
   annotations:
     kubernetes.io/tls-acme: 'true'
 spec:
+  host: <REPLACE_HOST>
   to:
     kind: Service
     name: webhook-service
@@ -14,8 +15,6 @@ spec:
   tls:
     termination: reencrypt
     destinationCACertificate: |
-      -----BEGIN CERTIFICATE-----
-      FAKECERTIFICATE
-      -----END CERTIFICATE-----
+      <REPLACE_CERT>
     insecureEdgeTerminationPolicy: None
   wildcardPolicy: None
