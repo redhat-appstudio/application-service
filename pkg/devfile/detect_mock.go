@@ -26,36 +26,6 @@ import (
 type MockAlizerClient struct {
 }
 
-// Analyze is a wrapper call to Alizer's Analyze()
-func (a MockAlizerClient) Analyze(path string) ([]language.Language, error) {
-	if strings.Contains(path, "errorAnalyze") {
-		return nil, fmt.Errorf("dummy Analyze err")
-	} else if strings.Contains(path, "devfile-sample-nodejs-basic") {
-		return []language.Language{
-			{
-				Name:              "nodejs",
-				UsageInPercentage: 60.4,
-				CanBeComponent:    true,
-			},
-		}, nil
-	} else if !strings.Contains(path, "springboot") && !strings.Contains(path, "python") {
-		return nil, nil
-	}
-
-	return []language.Language{
-		{
-			Name:              "springboot",
-			UsageInPercentage: 60.4,
-			CanBeComponent:    true,
-		},
-		{
-			Name:              "python",
-			UsageInPercentage: 22.4,
-			CanBeComponent:    true,
-		},
-	}, nil
-}
-
 // DetectComponents is a wrapper call to Alizer's DetectComponents()
 func (a MockAlizerClient) DetectComponents(path string) ([]recognizer.Component, error) {
 	if strings.Contains(path, "errorAnalyze") {

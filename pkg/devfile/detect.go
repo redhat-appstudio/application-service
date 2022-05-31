@@ -30,7 +30,6 @@ import (
 )
 
 type Alizer interface {
-	Analyze(path string) ([]language.Language, error)
 	SelectDevFileFromTypes(path string, devFileTypes []recognizer.DevFileType) (recognizer.DevFileType, error)
 	DetectComponents(path string) ([]recognizer.Component, error)
 }
@@ -245,12 +244,6 @@ func (a AlizerClient) DetectComponents(path string) ([]recognizer.Component, err
 // AnalyzeAndDetectDevfile analyzes and attempts to detect a devfile from the devfile registry for a given local path
 func AnalyzeAndDetectDevfile(a Alizer, path, devfileRegistryURL string) ([]byte, string, string, error) {
 	var devfileBytes []byte
-
-	// alizerLanguages, err := a.DetectComponents()
-	// if err != nil {
-	// 	return nil, "", "", err
-	// }
-
 	alizerDevfileTypes, err := getAlizerDevfileTypes(devfileRegistryURL)
 	if err != nil {
 		return nil, "", "", err
@@ -265,6 +258,7 @@ func AnalyzeAndDetectDevfile(a Alizer, path, devfileRegistryURL string) ([]byte,
 		return nil, "", "", &NoDevfileFound{Location: path}
 	}
 
+	// Assuming it's a single component. as multi-component should be handled before
 	for _, language := range alizerComponents[0].Languages {
 		if language.CanBeComponent {
 			// if we get one language analysis that can be a component
