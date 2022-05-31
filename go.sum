@@ -1828,8 +1828,8 @@ github.com/redhat-appstudio/service-provider-integration-operator v0.4.3 h1:MxJH
 github.com/redhat-appstudio/service-provider-integration-operator v0.4.3/go.mod h1:S7NKaaZ0rhCrmHGqae9i21ROY23LurTtII3eMKqxjBQ=
 github.com/redhat-appstudio/service-provider-integration-scm-file-retriever v0.4.3 h1:0hOM7z6/3WvY3YlmnrqtEaGyrx2+CzYQM+UG45dO7EE=
 github.com/redhat-appstudio/service-provider-integration-scm-file-retriever v0.4.3/go.mod h1:hzWm/OOlLXmtF8Qwox3GZlfGJAjVM7KaRkbBjmYAI9k=
-github.com/redhat-developer/alizer/go v0.0.0-20220215154256-33df7feef4ae h1:N2wsIYtziHQ51GNcJY5YcB0YldpR5BwPoTvby+l0vy8=
-github.com/redhat-developer/alizer/go v0.0.0-20220215154256-33df7feef4ae/go.mod h1:EKkrP0Am7Xt/yg3dF8uH1SSoOcaZmBom8Iy6CJPPDok=
+github.com/redhat-developer/alizer/go v0.0.0-20220530162645-f27a60be88a1 h1:uhf+ll3f7uFvNGBndseVpiGEt6vLiw9vjCg2YH13uk4=
+github.com/redhat-developer/alizer/go v0.0.0-20220530162645-f27a60be88a1/go.mod h1:EKkrP0Am7Xt/yg3dF8uH1SSoOcaZmBom8Iy6CJPPDok=
 github.com/renier/xmlrpc v0.0.0-20170708154548-ce4a1a486c03/go.mod h1:gRAiPF5C5Nd0eyyRdqIu9qTiFSoZzpTq727b5B8fkkU=
 github.com/rickb777/date v1.13.0/go.mod h1:GZf3LoGnxPWjX+/1TXOuzHefZFDovTyNLHDMd3qH70k=
 github.com/rickb777/plural v1.2.1/go.mod h1:j058+3M5QQFgcZZ2oKIOekcygoZUL8gKW5yRO14BuAw=

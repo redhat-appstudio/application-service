@@ -32,6 +32,7 @@ import (
 type Alizer interface {
 	Analyze(path string) ([]language.Language, error)
 	SelectDevFileFromTypes(path string, devFileTypes []recognizer.DevFileType) (recognizer.DevFileType, error)
+	DetectComponents(path string) ([]recognizer.Component, error)
 }
 
 type AlizerClient struct {
@@ -233,24 +234,38 @@ func (a AlizerClient) Analyze(path string) ([]language.Language, error) {
 
 // SelectDevFileFromTypes is a wrapper call to Alizer's SelectDevFileFromTypes()
 func (a AlizerClient) SelectDevFileFromTypes(path string, devFileTypes []recognizer.DevFileType) (recognizer.DevFileType, error) {
-	return recognizer.SelectDevFileFromTypes(path, devFileTypes)
+	index, err := recognizer.SelectDevFileFromTypes(path, devFileTypes)
+	return devFileTypes[index], err
+}
+
+func (a AlizerClient) DetectComponents(path string) ([]recognizer.Component, error) {
+	return recognizer.DetectComponents(path)
 }
 
 // AnalyzeAndDetectDevfile analyzes and attempts to detect a devfile from the devfile registry for a given local path
 func AnalyzeAndDetectDevfile(a Alizer, path, devfileRegistryURL string) ([]byte, string, string, error) {
 	var devfileBytes []byte
 
-	alizerLanguages, err := a.Analyze(path)
-	if err != nil {
-		return nil, "", "", err
-	}
+	// alizerLanguages, err := a.DetectComponents()
+	// if err != nil {
+	// 	return nil, "", "", err
+	// }
 
 	alizerDevfileTypes, err := getAlizerDevfileTypes(devfileRegistryURL)
 	if err != nil {
 		return nil, "", "", err
 	}
 
-	for _, language := range alizerLanguages {
+	alizerComponents, err := a.DetectComponents(path)
+	if err != nil {
+		return nil, "", "", err
+	}
+
+	if alizerComponents == nil || len(alizerComponents) == 0 {
+		return nil, "", "", &NoDevfileFound{Location: path}
+	}
+
+	for _, language := range alizerComponents[0].Languages {
 		if language.CanBeComponent {
 			// if we get one language analysis that can be a component
 			// we can then determine a devfile from the registry and return

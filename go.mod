@@ -18,7 +18,7 @@ require (
 	github.com/onsi/gomega v1.19.0
 	github.com/openshift/api v0.0.0-20200930075302-db52bc4ef99f
 	github.com/redhat-appstudio/service-provider-integration-scm-file-retriever v0.4.3
-	github.com/redhat-developer/alizer/go v0.0.0-20220215154256-33df7feef4ae
+	github.com/redhat-developer/alizer/go v0.0.0-20220530162645-f27a60be88a1
 	github.com/spf13/afero v1.8.0
 	github.com/stretchr/testify v1.7.0
 	github.com/tektoncd/pipeline v0.33.0
