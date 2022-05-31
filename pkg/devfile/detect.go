@@ -254,7 +254,7 @@ func AnalyzeAndDetectDevfile(a Alizer, path, devfileRegistryURL string) ([]byte,
 		return nil, "", "", err
 	}
 
-	if alizerComponents == nil || len(alizerComponents) == 0 {
+	if len(alizerComponents) == 0 {
 		return nil, "", "", &NoDevfileFound{Location: path}
 	}
 
