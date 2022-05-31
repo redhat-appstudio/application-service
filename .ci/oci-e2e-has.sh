@@ -67,6 +67,12 @@ function executeE2ETests() {
     ${WORKSPACE}/tmp/e2e-tests/bin/e2e-appstudio --ginkgo.junit-report="${ARTIFACTS_DIR}"/e2e-report.xml --ginkgo.focus="${TEST_SUITE}"
 }
 
+
+# Initiate openshift ci users
+export KUBECONFIG_TEST="/tmp/kubeconfig"
+curl https://raw.githubusercontent.com/redhat-appstudio/e2e-tests/main/scripts/provision-openshift-user.sh | bash -s
+export KUBECONFIG="${KUBECONFIG_TEST}"
+
 curl https://raw.githubusercontent.com/redhat-appstudio/e2e-tests/main/scripts/install-appstudio-e2e-mode.sh | bash -s install
 
 export -f waitAppStudioToBeReady

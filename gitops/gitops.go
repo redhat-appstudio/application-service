@@ -23,20 +23,23 @@ import (
 	appstudiov1alpha1 "github.com/redhat-appstudio/application-service/api/v1alpha1"
 	"github.com/redhat-appstudio/application-service/gitops/prepare"
 	"github.com/spf13/afero"
+	corev1 "k8s.io/api/core/v1"
 )
 
 type Executor interface {
 	Execute(baseDir, command string, args ...string) ([]byte, error)
+	GenerateParentKustomize(fs afero.Afero, gitOpsFolder string, commonStoragePVC *corev1.PersistentVolumeClaim) error
 }
 
-// GenerateAndPush takes in the flollowing args and generates the gitops resources for a given component
-// 1. outputPath: Where to output the gitops resources to.
+// GenerateAndPush takes in the following args and generates the gitops resources for a given component
+// 1. outputPath: Where to output the gitops resources to
 // 2. remote: A string of the form https://$token@github.com/<org>/<repo>. Corresponds to the component's gitops repository
 // 2. component: A component struct corresponding to a single Component in an Application in AS
 // 4. The executor to use to execute the git commands (either gitops.executor or gitops.mockExecutor)
 // 5. The filesystem object used to create (either ioutils.NewFilesystem() or ioutils.NewMemoryFilesystem())
 // 6. The branch to push to
 // 7. The path within the repository to generate the resources in
+// 8. The gitops config containing the build bundle;
 // Adapted from https://github.com/redhat-developer/kam/blob/master/pkg/pipelines/utils.go#L79
 func GenerateAndPush(outputPath string, remote string, component appstudiov1alpha1.Component, e Executor, appFs afero.Afero, branch string, context string, gitopsConfig prepare.GitopsConfig) error {
 	componentName := component.Name
@@ -84,6 +87,59 @@ func GenerateAndPush(outputPath string, remote string, component appstudiov1alph
 	return nil
 }
 
+// RemoveAndPush takes in the following args and updates the gitops resources by removing the given component
+// 1. outputPath: Where to output the gitops resources to
+// 2. remote: A string of the form https://$token@github.com/<org>/<repo>. Corresponds to the component's gitops repository
+// 2. component: A component struct corresponding to a single Component in an Application in AS
+// 4. The executor to use to execute the git commands (either gitops.executor or gitops.mockExecutor)
+// 5. The filesystem object used to create (either ioutils.NewFilesystem() or ioutils.NewMemoryFilesystem())
+// 6. The branch to push to
+// 7. The path within the repository to generate the resources in
+func RemoveAndPush(outputPath string, remote string, component appstudiov1alpha1.Component, e Executor, appFs afero.Afero, branch string, context string) error {
+	componentName := component.Name
+	if out, err := e.Execute(outputPath, "git", "clone", remote, componentName); err != nil {
+		return fmt.Errorf("failed to clone git repository in %q %q: %s", outputPath, string(out), err)
+	}
+
+	repoPath := filepath.Join(outputPath, componentName)
+
+	// Checkout the specified branch
+	if _, err := e.Execute(repoPath, "git", "switch", branch); err != nil {
+		if out, err := e.Execute(repoPath, "git", "checkout", "-b", branch); err != nil {
+			return fmt.Errorf("failed to checkout branch %q in %q %q: %s", branch, repoPath, string(out), err)
+		}
+	}
+
+	// Generate the gitops resources and update the parent kustomize yaml file
+	gitopsFolder := filepath.Join(repoPath, context)
+	componentPath := filepath.Join(gitopsFolder, "components", componentName)
+	if out, err := e.Execute(repoPath, "rm", "-rf", componentPath); err != nil {
+		return fmt.Errorf("failed to delete %q folder in repository in %q %q: %s", componentPath, repoPath, string(out), err)
+	}
+	if err := e.GenerateParentKustomize(appFs, gitopsFolder, nil); err != nil {
+		return fmt.Errorf("failed to re-generate the gitops resources in %q for component %q: %s", componentPath, componentName, err)
+	}
+
+	if out, err := e.Execute(repoPath, "git", "add", "."); err != nil {
+		return fmt.Errorf("failed to add files for component %q to repository in %q %q: %s", componentName, repoPath, string(out), err)
+	}
+
+	// See if any files changed, and if so, commit and push them up to the repository
+	if out, err := e.Execute(repoPath, "git", "--no-pager", "diff", "--cached"); err != nil {
+		return fmt.Errorf("failed to check git diff in repository %q %q: %s", repoPath, string(out), err)
+	} else if string(out) != "" {
+		// Commit the changes and push
+		if out, err := e.Execute(repoPath, "git", "commit", "-m", fmt.Sprintf("Removed component %s", componentName)); err != nil {
+			return fmt.Errorf("failed to commit files to repository in %q %q: %s", repoPath, string(out), err)
+		}
+		if out, err := e.Execute(repoPath, "git", "push", "origin", branch); err != nil {
+			return fmt.Errorf("failed push remote to repository %q %q: %s", remote, string(out), err)
+		}
+	}
+
+	return nil
+}
+
 // NewCmdExecutor creates and returns an executor implementation that uses
 // exec.Command to execute the commands.
 func NewCmdExecutor() CmdExecutor {
@@ -98,4 +154,8 @@ func (e CmdExecutor) Execute(baseDir, command string, args ...string) ([]byte, e
 	c.Dir = baseDir
 	output, err := c.CombinedOutput()
 	return output, err
+}
+
+func (e CmdExecutor) GenerateParentKustomize(fs afero.Afero, gitOpsFolder string, commonStoragePVC *corev1.PersistentVolumeClaim) error {
+	return GenerateParentKustomize(fs, gitOpsFolder, commonStoragePVC)
 }

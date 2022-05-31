@@ -988,8 +988,6 @@ var _ = Describe("Component Detection Query controller", func() {
 				// Make sure the right status is set
 				Expect(createdHasCompDetectionQuery.Status.Conditions[1].Message).Should(ContainSubstring("ComponentDetectionQuery has successfully finished"))
 
-				fmt.Printf("detected mjf are %+v\n", createdHasCompDetectionQuery.Status.ComponentDetected)
-
 				// Make sure the devfiles are detected
 				Expect(len(createdHasCompDetectionQuery.Status.ComponentDetected)).Should(Equal(1))
 				for _, componentDesc := range createdHasCompDetectionQuery.Status.ComponentDetected {
