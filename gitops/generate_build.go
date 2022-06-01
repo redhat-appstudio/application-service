@@ -191,7 +191,18 @@ func determineBuildPipeline(component appstudiov1alpha1.Component) string {
 	return "noop"
 }
 
-func normalizeOutputImageURL(outputImage, namespace string) (string, error) {
+func protectDefaultImageRepo(outputImage, namespace string) error {
+	// do not allow use of the default registry and a different user's tag
+	if strings.HasPrefix(outputImage, GetDefaultImageRepo()) {
+		if !strings.HasPrefix(outputImage, GetDefaultImageRepo()+":"+namespace+"-") || !strings.Contains(outputImage, ":") {
+			return fmt.Errorf("invalid user image tag combination of default repo %s and component namespace %s", outputImage, namespace)
+		}
+	}
+
+	return nil
+}
+
+func normalizeOutputImageURL(outputImage string) string {
 	// Check if the image has commit SHA suffix and delete it if so
 	shaSuffixRegExp := regexp.MustCompile(`(.+)-[0-9a-f]{40}$`)
 	foundImage := shaSuffixRegExp.FindSubmatch([]byte(outputImage))
@@ -207,21 +218,11 @@ func normalizeOutputImageURL(outputImage, namespace string) (string, error) {
 	//   quay.io/foo/bar:mytag ==> quay.io/foo/bar:mytag-git-revision
 	//   quay.io/foo/bar       ==> quay.io/foo/bar:latest-git-revision
 	if strings.Contains(outputImage, ":") {
-		// do not allow use of the default registry and a different user's tag
-		if strings.HasPrefix(outputImage, GetDefaultImageRepo()) {
-			userTags := strings.SplitAfterN(outputImage, ":", 2)
-			if len(userTags) > 0 {
-				userTag := userTags[1]
-				if userTag != namespace {
-					return "", fmt.Errorf("invalid user image tag combination of default repo %s and component namesapce %s", outputImage, namespace)
-				}
-			}
-		}
 		outputImage = outputImage + "-" + "$(tt.params.git-revision)"
 	} else {
 		outputImage = outputImage + ":latest-" + "$(tt.params.git-revision)"
 	}
-	return outputImage, nil
+	return outputImage
 }
 
 // getParamsForComponentBuild would return the 'input' parameters for the PipelineRun
@@ -232,10 +233,13 @@ func getParamsForComponentBuild(component appstudiov1alpha1.Component, isInitial
 	sourceCode := component.Spec.Source.GitSource.URL
 	outputImage := component.Spec.ContainerImage
 	var err error
+
+	if err = protectDefaultImageRepo(outputImage, component.Namespace); err != nil {
+		return []tektonapi.Param{}, err
+	}
+
 	if !isInitialBuild {
-		if outputImage, err = normalizeOutputImageURL(component.Spec.ContainerImage, component.Namespace); err != nil {
-			return []tektonapi.Param{}, err
-		}
+		outputImage = normalizeOutputImageURL(component.Spec.ContainerImage)
 	}
 
 	// Default required parameters
