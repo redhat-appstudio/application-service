@@ -10,7 +10,7 @@ webhooks:
   - v1
   - v1beta1
   clientConfig:
-    url: <REPLACE_HOST>
+    url: <REPLACE_HOST>/mutate-appstudio-redhat-com-v1alpha1-application
   failurePolicy: Fail
   name: mapplication.kb.io
   rules:
@@ -28,7 +28,7 @@ webhooks:
   - v1
   - v1beta1
   clientConfig:
-    url: <REPLACE_HOST>
+    url: <REPLACE_HOST>/mutate-appstudio-redhat-com-v1alpha1-component
   failurePolicy: Fail
   name: mcomponent.kb.io
   rules:
@@ -54,7 +54,7 @@ webhooks:
   - v1
   - v1beta1
   clientConfig:
-    url: <REPLACE_HOST>
+    url: <REPLACE_HOST>/validate-appstudio-redhat-com-v1alpha1-application
   failurePolicy: Fail
   name: vapplication.kb.io
   rules:
@@ -72,7 +72,7 @@ webhooks:
   - v1
   - v1beta1
   clientConfig:
-    url: <REPLACE_HOST>
+    url: <REPLACE_HOST>/validate-appstudio-redhat-com-v1alpha1-component
   failurePolicy: Fail
   name: vcomponent.kb.io
   rules:
