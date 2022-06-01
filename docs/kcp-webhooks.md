@@ -74,7 +74,7 @@ Next, switch to the workload cluster:
 
 Next, switch back to KCP and do the following
 
-7) Open `config/kcp-webhook/manifests.yaml` in an editor and change all occurrences of `<REPLACE_ME>` to the exposed Route URL from the previous step
+7) Open `config/kcp-webhook/manifests.yaml` in an editor and change all occurrences of `<REPLACE_HOST>` to the exposed Route URL from the previous step
 
     - There should be 4 occurrences that need to be changed.
 
