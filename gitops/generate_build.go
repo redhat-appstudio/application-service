@@ -93,9 +93,12 @@ func GenerateBuild(fs afero.Fs, outputFolder string, component appstudiov1alpha1
 }
 
 // GenerateInitialBuildPipelineRun generates pipeline run for initial build of the component.
-func GenerateInitialBuildPipelineRun(component appstudiov1alpha1.Component, gitopsConfig prepare.GitopsConfig) tektonapi.PipelineRun {
+func GenerateInitialBuildPipelineRun(component appstudiov1alpha1.Component, gitopsConfig prepare.GitopsConfig) (tektonapi.PipelineRun, error) {
 	// normalizeOutputImageURL is not called with initial builds so we can ignore the error here
-	params, _ := getParamsForComponentBuild(component, true)
+	params, err := getParamsForComponentBuild(component, true)
+	if err != nil {
+		return tektonapi.PipelineRun{}, err
+	}
 	initialBuildSpec := DetermineBuildExecution(component, params, getInitialBuildWorkspaceSubpath(), gitopsConfig)
 
 	return tektonapi.PipelineRun{
@@ -105,7 +108,7 @@ func GenerateInitialBuildPipelineRun(component appstudiov1alpha1.Component, gito
 			Labels:       getBuildCommonLabelsForComponent(&component),
 		},
 		Spec: initialBuildSpec,
-	}
+	}, nil
 }
 
 func getInitialBuildWorkspaceSubpath() string {

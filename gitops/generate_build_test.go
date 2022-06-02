@@ -208,9 +208,10 @@ func TestGenerateInitialBuildPipelineRun(t *testing.T) {
 		args                  args
 		registrySecretMissing bool
 		want                  tektonapi.PipelineRun
+		expectError           bool
 	}{
 		{
-			name: "generate initial build pipelien run",
+			name: "generate initial build pipeline run",
 			args: args{
 				component: component,
 			},
@@ -260,7 +261,7 @@ func TestGenerateInitialBuildPipelineRun(t *testing.T) {
 			},
 		},
 		{
-			name:                  "generate initial build pipelien run no registry secret",
+			name:                  "generate initial build pipeline run no registry secret",
 			registrySecretMissing: true,
 			args: args{
 				component: component,
@@ -304,11 +305,41 @@ func TestGenerateInitialBuildPipelineRun(t *testing.T) {
 				},
 			},
 		},
+		{
+			name:        "generate initial build pipeline run, protected default repo",
+			expectError: true,
+			args: args{
+				component: appstudiov1alpha1.Component{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "testcomponent",
+						Namespace: "kcpworkspacename",
+					},
+					Spec: appstudiov1alpha1.ComponentSpec{
+						Source: appstudiov1alpha1.ComponentSource{
+							ComponentSourceUnion: appstudiov1alpha1.ComponentSourceUnion{
+								GitSource: &appstudiov1alpha1.GitSource{
+									URL: "https://host/git-repo",
+								},
+							},
+						},
+						ContainerImage: DefaultImageRepo + ":mytag",
+					},
+				},
+			},
+			want: tektonapi.PipelineRun{},
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			gitopsConfig := prepare.GitopsConfig{BuildBundle: buildBundle, AppStudioRegistrySecretPresent: !tt.registrySecretMissing}
-			if got := GenerateInitialBuildPipelineRun(tt.args.component, gitopsConfig); !reflect.DeepEqual(got, tt.want) {
+			got, err := GenerateInitialBuildPipelineRun(tt.args.component, gitopsConfig)
+			if err == nil && tt.expectError {
+				t.Errorf("GenerateInitialBuildPipelineRun() expected error but got none")
+			}
+			if err != nil && !tt.expectError {
+				t.Errorf("GenerateInitialBuildPipelineRun() got unexpected error: %s", err.Error())
+			}
+			if err == nil && !reflect.DeepEqual(got, tt.want) {
 				t.Errorf("GenerateInitialBuildPipelineRun() = %v, want %v", got, tt.want)
 			}
 		})
