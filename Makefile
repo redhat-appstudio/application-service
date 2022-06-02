@@ -169,6 +169,12 @@ deploy: manifests kustomize ## Deploy controller to the K8s cluster specified in
 undeploy: ## Undeploy controller from the K8s cluster specified in ~/.kube/config.
 	$(KUSTOMIZE) build config/default | kubectl delete -f -
 
+deploy-kcp: install ## Install CRDs and deploy HAS on KCP
+	cd config/manager && $(KUSTOMIZE) edit set image controller=${IMG}
+	GITHUB_ORG=${GITHUB_ORG} DEVFILE_REGISTRY_URL=${DEVFILE_REGISTRY_URL} $(KUSTOMIZE) build config/kcp | kubectl apply -f -
+
+undeploy-kcp: # Undeploy HAS from KCP (including CRDs)
+	$(KUSTOMIZE) build config/kcp | kubectl delete -f -
 
 CONTROLLER_GEN = $(shell pwd)/bin/controller-gen
 controller-gen: ## Download controller-gen locally if necessary.

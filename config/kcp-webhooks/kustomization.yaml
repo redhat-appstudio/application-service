@@ -1,0 +1,40 @@
+# Adds namespace to all resources.
+namespace: application-service-system
+
+# Value of this field is prepended to the
+# names of all resources, e.g. a deployment named
+# "wordpress" becomes "alices-wordpress".
+# Note that it should also match with the prefix (text before '-') of the namespace
+# field above.
+namePrefix: application-service-
+
+resources:
+- manifests.yaml
+
+bases:
+- ../manager
+
+patchesStrategicMerge:
+- manager_webhook_patch.yaml
+
+- webhookcainjection_patch.yaml
+
+patches:
+- patch: |-
+    - op: add
+      path: /spec/template/spec/containers/0/env/-
+      value:
+        name: ENABLE_WEBHOOKS
+        value: "true"
+  target:
+    kind: Deployment
+    name: controller-manager
+
+# HAS on KCP needs to use default service account name right now
+- patch: |-
+    - op: replace
+      path: /spec/template/spec/serviceAccountName
+      value: default
+  target:
+    kind: Deployment
+    name: controller-manager

@@ -1,0 +1,56 @@
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: manager-role-build
+rules:
+- verbs:
+    - create
+    - delete
+    - deletecollection
+    - get
+    - list
+    - patch
+    - update
+    - watch
+  apiGroups:
+    - tekton.dev
+  resources:
+    - pipelineruns
+- apiGroups:
+    - triggers.tekton.dev
+  resources:
+    - eventlisteners
+    - triggers
+    - triggertemplates
+  verbs:
+    - create
+    - update
+    - patch
+    - delete
+    - watch
+    - list
+- verbs:
+    - get
+    - list
+    - create
+    - watch
+    - update
+  resources:
+    - persistentvolumeclaims
+    - persistentvolumeclaims/status
+    - secrets
+    - serviceaccounts
+  apiGroups:
+    - ""
+- verbs:
+    - get
+    - list
+    - create
+    - watch
+  resources:
+    - routes
+  apiGroups:
+    - route.openshift.io
+

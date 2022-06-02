@@ -1,0 +1,22 @@
+# permissions for end users to view componentdetectionqueries.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: componentdetectionquery-viewer-role
+  labels:
+      rbac.authorization.k8s.io/aggregate-to-view: 'true'
+rules:
+- apiGroups:
+  - appstudio.redhat.com
+  resources:
+  - componentdetectionqueries
+  verbs:
+  - get
+  - list
+  - watch
+- apiGroups:
+  - appstudio.redhat.com
+  resources:
+  - componentdetectionqueries/status
+  verbs:
+  - get

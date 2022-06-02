@@ -1,0 +1,20 @@
+kind: Route
+apiVersion: route.openshift.io/v1
+metadata:
+  name: webhook-route
+  annotations:
+    kubernetes.io/tls-acme: 'true'
+spec:
+  host: <REPLACE_HOST>
+  to:
+    kind: Service
+    name: webhook-service
+    weight: 100
+  port:
+    targetPort: 9443
+  tls:
+    termination: reencrypt
+    destinationCACertificate: |
+      <REPLACE_CERT>
+    insecureEdgeTerminationPolicy: None
+  wildcardPolicy: None
