@@ -1,0 +1,24 @@
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: manager-role-spi
+rules:
+- verbs:
+    - '*'
+  apiGroups:
+    - appstudio.redhat.com
+  resources:
+    - spiaccesstokenbindings
+    - spiaccesstokens
+- verbs:
+    - create # allows addition of credentials only.
+    - delete
+    - list
+    - get
+    - watch
+  apiGroups:
+    - ''
+  resources:
+    - secrets
