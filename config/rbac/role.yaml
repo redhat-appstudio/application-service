@@ -35,6 +35,32 @@ rules:
 - apiGroups:
   - appstudio.redhat.com
   resources:
+  - applicationsnapshotenvironmentbindings
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - appstudio.redhat.com
+  resources:
+  - applicationsnapshotenvironmentbindings/finalizers
+  verbs:
+  - update
+- apiGroups:
+  - appstudio.redhat.com
+  resources:
+  - applicationsnapshotenvironmentbindings/status
+  verbs:
+  - get
+  - patch
+  - update
+- apiGroups:
+  - appstudio.redhat.com
+  resources:
   - componentdetectionqueries
   verbs:
   - create

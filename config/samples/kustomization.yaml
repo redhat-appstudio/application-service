@@ -3,4 +3,5 @@ resources:
 - appstudio_v1alpha1_application.yaml
 - appstudio_v1alpha1_component.yaml
 - appstudio_v1alpha1_componentdetectionquery.yaml
+# - appstudio_v1alpha1_applicationsnapshotenvironmentbinding.yaml
 #+kubebuilder:scaffold:manifestskustomizesamples

@@ -524,6 +524,20 @@ func setGitopsStatus(component *appstudiov1alpha1.Component, devfileData data.De
 func (r *ComponentReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&appstudiov1alpha1.Component{}, builder.WithPredicates(predicate.GenerationChangedPredicate{})).
+		// For(&gitopsSharedv1alpha1.ApplicationSnapshotEnvironmentBinding{}, builder.WithPredicates(predicate.Funcs{
+		// 	CreateFunc: func(e event.CreateEvent) bool {
+		// 		return true
+		// 	},
+		// 	UpdateFunc: func(e event.UpdateEvent) bool {
+		// 		return true
+		// 	},
+		// 	DeleteFunc: func(e event.DeleteEvent) bool {
+		// 		return false
+		// 	},
+		// 	GenericFunc: func(e event.GenericEvent) bool {
+		// 		return false
+		// 	},
+		// })).
 		WithOptions(controller.Options{
 			RateLimiter: workqueue.NewItemExponentialFailureRateLimiter(time.Duration(500*time.Millisecond), time.Duration(60*time.Second)),
 		}).

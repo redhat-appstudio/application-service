@@ -1,9 +1,9 @@
 apiVersion: appstudio.redhat.com/v1alpha1
 kind: Component
 metadata:
-  name: component-sample
+  name: component-sample2
 spec:
-  componentName: backend
+  componentName: backend2
   application: application-sample
   replicas: 1
   targetPort: 1111
