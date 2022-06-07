@@ -48,16 +48,21 @@ type GitopsConfig struct {
 func PrepareGitopsConfig(ctx context.Context, cli client.Client, component appstudiov1alpha1.Component) GitopsConfig {
 	data := GitopsConfig{}
 
-	data.BuildBundle = resolveBuildBundle(ctx, cli, component)
 	data.AppStudioRegistrySecretPresent = resolveRegistrySecretPresence(ctx, cli, component)
+	resolvedBundle := ResolveBuildBundle(ctx, cli, component.Namespace)
+	if resolvedBundle == "" {
+		data.BuildBundle = FallbackBuildBundle
+	} else {
+		data.BuildBundle = resolvedBundle
+	}
 
 	return data
 }
 
 // Tries to load a custom build bundle path from a configmap.
-// The following priority is used: component's namespace -> default namespace -> fallback value.
-func resolveBuildBundle(ctx context.Context, cli client.Client, component appstudiov1alpha1.Component) string {
-	namespaces := [2]string{component.Namespace, BuildBundleDefaultNamespace}
+// The following priority is used: component's namespace -> default namespace -> empty string.
+func ResolveBuildBundle(ctx context.Context, cli client.Client, namespace string) string {
+	namespaces := [2]string{namespace, BuildBundleDefaultNamespace}
 
 	for _, namespace := range namespaces {
 		var configMap = corev1.ConfigMap{}
@@ -71,7 +76,7 @@ func resolveBuildBundle(ctx context.Context, cli client.Client, component appstu
 		}
 	}
 
-	return FallbackBuildBundle
+	return ""
 }
 
 // Determines whether the 'redhat-appstudio-registry-pull-secret' Secret exists, so that the Generate* functions
