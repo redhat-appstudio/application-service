@@ -155,7 +155,7 @@ var _ = Describe("Component Detection Query controller", func() {
 				Spec: appstudiov1alpha1.ComponentDetectionQuerySpec{
 					GitSource: appstudiov1alpha1.GitSource{
 						// URL:        SampleRepoLink,
-						URL:        "https://github.com/maysunfaisal/multi-components",
+						URL:        "https://github.com/maysunfaisal/multi-components-none",
 						DevfileURL: "https://raw.githubusercontent.com/devfile-samples/devfile-sample-java-springboot-basic/main/devfile.yaml",
 					},
 				},
@@ -197,7 +197,7 @@ var _ = Describe("Component Detection Query controller", func() {
 				},
 				Spec: appstudiov1alpha1.ComponentDetectionQuerySpec{
 					GitSource: appstudiov1alpha1.GitSource{
-						URL: "https://github.com/maysunfaisal/multi-components",
+						URL: "https://github.com/maysunfaisal/multi-components-none",
 					},
 				},
 			}
