@@ -1,0 +1,25 @@
+resources:
+# All RBAC will be applied under this service account in
+# the deployment namespace. You may comment out this resource
+# if your manager will use a service account that exists at
+# runtime. Be sure to update RoleBinding and ClusterRoleBinding
+# subjects if changing service account names.
+- role.yaml
+- role_binding.yaml
+- leader_election_role.yaml
+- leader_election_role_binding.yaml
+
+# Aggegating roles which are otherwise done by OLM
+- application_editor_role.yaml
+- application_viewer_role.yaml
+- component_editor_role.yaml
+- component_viewer_role.yaml
+- componentdetectionquery_editor_role.yaml
+- componentdetectionquery_viewer_role.yaml
+
+
+## Tekton Builds
+- role_build.yaml
+
+## SPI Roles
+- role_spi.yaml

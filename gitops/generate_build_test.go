@@ -81,11 +81,9 @@ func TestNormalizeOutputImageURL(t *testing.T) {
 		outputImage string
 	}
 	tests := []struct {
-		name        string
-		namespace   string
-		args        args
-		want        string
-		expectError bool
+		name string
+		args args
+		want string
 	}{
 		{
 			name: "not a fully qualified url",
@@ -108,13 +106,42 @@ func TestNormalizeOutputImageURL(t *testing.T) {
 			},
 			want: "quay.io/foo/bar:tag-$(tt.params.git-revision)",
 		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := normalizeOutputImageURL(tt.args.outputImage)
+			if got != tt.want {
+				t.Errorf("normalizeOutputImageURL() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestProtectDefaultImageRepo(t *testing.T) {
+	type args struct {
+		outputImage string
+	}
+	tests := []struct {
+		name        string
+		namespace   string
+		args        args
+		want        string
+		expectError bool
+	}{
 		{
-			name:      "fully qualified url to default repo, matching user",
+			name:      "fully qualified url to default repo, exact matching user",
 			namespace: "mytag",
 			args: args{
 				outputImage: DefaultImageRepo + ":mytag",
 			},
-			want: DefaultImageRepo + ":mytag-$(tt.params.git-revision)",
+			expectError: true,
+		},
+		{
+			name:      "fully qualified url to default repo, matching user with suffix",
+			namespace: "mytag",
+			args: args{
+				outputImage: DefaultImageRepo + ":mytag-test",
+			},
 		},
 		{
 			name:      "fully qualified url to default repo, mismatched users",
@@ -122,21 +149,33 @@ func TestNormalizeOutputImageURL(t *testing.T) {
 			args: args{
 				outputImage: DefaultImageRepo + ":mytag",
 			},
-			want:        "",
+			expectError: true,
+		},
+		{
+			name:      "fully qualified url to default repo, mismatched users with suffix",
+			namespace: "yourtag",
+			args: args{
+				outputImage: DefaultImageRepo + ":mytag-test",
+			},
+			expectError: true,
+		},
+		{
+			name:      "fully qualified url to default repo, pushing without tag",
+			namespace: "yourtag",
+			args: args{
+				outputImage: DefaultImageRepo,
+			},
 			expectError: true,
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := normalizeOutputImageURL(tt.args.outputImage, tt.namespace)
+			err := protectDefaultImageRepo(tt.args.outputImage, tt.namespace)
 			if err == nil && tt.expectError {
-				t.Errorf("normalizeOutputImageURL() expected error but got none")
+				t.Errorf("protectDefaultImageRepo() expected error but got none")
 			}
 			if err != nil && !tt.expectError {
-				t.Errorf("normalizeOutputImageURL() got unexpected error: %s", err.Error())
-			}
-			if got != tt.want {
-				t.Errorf("normalizeOutputImageURL() = %v, want %v", got, tt.want)
+				t.Errorf("protectDefaultImageRepo() got unexpected error: %s", err.Error())
 			}
 		})
 	}
@@ -169,9 +208,10 @@ func TestGenerateInitialBuildPipelineRun(t *testing.T) {
 		args                  args
 		registrySecretMissing bool
 		want                  tektonapi.PipelineRun
+		expectError           bool
 	}{
 		{
-			name: "generate initial build pipelien run",
+			name: "generate initial build pipeline run",
 			args: args{
 				component: component,
 			},
@@ -221,7 +261,7 @@ func TestGenerateInitialBuildPipelineRun(t *testing.T) {
 			},
 		},
 		{
-			name:                  "generate initial build pipelien run no registry secret",
+			name:                  "generate initial build pipeline run no registry secret",
 			registrySecretMissing: true,
 			args: args{
 				component: component,
@@ -265,11 +305,41 @@ func TestGenerateInitialBuildPipelineRun(t *testing.T) {
 				},
 			},
 		},
+		{
+			name:        "generate initial build pipeline run, protected default repo",
+			expectError: true,
+			args: args{
+				component: appstudiov1alpha1.Component{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "testcomponent",
+						Namespace: "kcpworkspacename",
+					},
+					Spec: appstudiov1alpha1.ComponentSpec{
+						Source: appstudiov1alpha1.ComponentSource{
+							ComponentSourceUnion: appstudiov1alpha1.ComponentSourceUnion{
+								GitSource: &appstudiov1alpha1.GitSource{
+									URL: "https://host/git-repo",
+								},
+							},
+						},
+						ContainerImage: DefaultImageRepo + ":mytag",
+					},
+				},
+			},
+			want: tektonapi.PipelineRun{},
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			gitopsConfig := prepare.GitopsConfig{BuildBundle: buildBundle, AppStudioRegistrySecretPresent: !tt.registrySecretMissing}
-			if got := GenerateInitialBuildPipelineRun(tt.args.component, gitopsConfig); !reflect.DeepEqual(got, tt.want) {
+			got, err := GenerateInitialBuildPipelineRun(tt.args.component, gitopsConfig)
+			if err == nil && tt.expectError {
+				t.Errorf("GenerateInitialBuildPipelineRun() expected error but got none")
+			}
+			if err != nil && !tt.expectError {
+				t.Errorf("GenerateInitialBuildPipelineRun() got unexpected error: %s", err.Error())
+			}
+			if err == nil && !reflect.DeepEqual(got, tt.want) {
 				t.Errorf("GenerateInitialBuildPipelineRun() = %v, want %v", got, tt.want)
 			}
 		})
@@ -740,6 +810,27 @@ func TestGetParamsForComponentBuild(t *testing.T) {
 					Value: tektonapi.ArrayOrString{
 						Type:      tektonapi.ParamTypeString,
 						StringVal: "build-context-path",
+					},
+				},
+			},
+		},
+		{
+			name:    "default image repo with tag, not matching namespace",
+			wantErr: true,
+			want:    []tektonapi.Param{},
+			component: appstudiov1alpha1.Component{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "testcomponent",
+					Namespace: "kcpworkspacename",
+				},
+				Spec: appstudiov1alpha1.ComponentSpec{
+					ContainerImage: DefaultImageRepo + ":mytag-test",
+					Source: appstudiov1alpha1.ComponentSource{
+						ComponentSourceUnion: appstudiov1alpha1.ComponentSourceUnion{
+							GitSource: &appstudiov1alpha1.GitSource{
+								URL: "https://a/b/c",
+							},
+						},
 					},
 				},
 			},
