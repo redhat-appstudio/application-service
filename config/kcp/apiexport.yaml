@@ -1,0 +1,9 @@
+apiVersion: apis.kcp.dev/v1alpha1
+kind: APIExport
+metadata:
+  name: has.appstudio.redhat.com
+spec:
+  latestResourceSchemas:
+    - has.components.appstudio.redhat.com
+    - has.applications.appstudio.redhat.com
+    - has.componentdetectionqueries.appstudio.redhat.com

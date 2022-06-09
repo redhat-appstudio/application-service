@@ -17,6 +17,12 @@ bases:
 - ../manager
 - ../rbac
 
+resources:
+  - apiexport.yaml
+  - application.apiresourceschema.yaml
+  - cdq.apiresourceschema.yaml
+  - component.apiresourceschema.yaml
+  
 patches:
 # Disable webhooks by default on KCP
 # Webhooks can be optionally enabled after deploy

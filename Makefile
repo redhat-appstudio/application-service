@@ -84,6 +84,9 @@ help: ## Display this help.
 
 manifests: controller-gen ## Generate WebhookConfiguration, ClusterRole and CustomResourceDefinition objects.
 	$(CONTROLLER_GEN) $(CRD_OPTIONS) rbac:roleName=manager-role webhook paths="./..." output:crd:artifacts:config=config/crd/bases
+	kubectl kcp crd snapshot --prefix has -f config/crd/bases/appstudio.redhat.com_applications.yaml > config/kcp/application.apiresourceschema.yaml
+	kubectl kcp crd snapshot --prefix has -f config/crd/bases/appstudio.redhat.com_components.yaml > config/kcp/component.apiresourceschema.yaml
+	kubectl kcp crd snapshot --prefix has -f config/crd/bases/appstudio.redhat.com_componentdetectionqueries.yaml > config/kcp/cdq.apiresourceschema.yaml
 
 generate: controller-gen ## Generate code containing DeepCopy, DeepCopyInto, and DeepCopyObject method implementations.
 	$(CONTROLLER_GEN) object:headerFile="hack/boilerplate.go.txt" paths="./..."
