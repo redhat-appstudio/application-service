@@ -146,8 +146,10 @@ func (r *ComponentDetectionQueryReconciler) Reconcile(ctx context.Context, req c
 			log.Info(fmt.Sprintf("Determined that this is a Dockerfile only component  %v", req.NamespacedName))
 			dockerfileContextMap["./"] = "./Dockerfile"
 		}
-		if (!isDevfilePresent && !isDockerfilePresent) || (isDevfilePresent && !isDockerfilePresent) {
-			log.Info(fmt.Sprintf("Unable to fine devfile or Dockerfile under root directory, run Alizer to detect components... %v", req.NamespacedName))
+
+		// Clone the repo if no dockerfile present
+		if !isDockerfilePresent {
+			log.Info(fmt.Sprintf("Unable to find devfile or Dockerfile under root directory, run Alizer to detect components... %v", req.NamespacedName))
 
 			clonePath, err = ioutils.CreateTempPath(componentDetectionQuery.Name, r.AppFS)
 			if err != nil {
@@ -170,10 +172,11 @@ func (r *ComponentDetectionQueryReconciler) Reconcile(ctx context.Context, req c
 				return ctrl.Result{}, nil
 			}
 			log.Info(fmt.Sprintf("components detected %v... %v", components, req.NamespacedName))
+			// If no devfile and no dockerfile present in the root
 			// case 1: no components been detected by Alizer, might still has subfolders contains dockerfile. Need to scan repo
 			// case 2: more than 1 components been detected by Alizer, is certain a multi-component project. Need to scan repo
 			// case 3: one or more than 1 compinents been detected by Alizer, and the first one in the list is under sub-folder. Need to scan repo.
-			if len(components) != 1 || (len(components) != 0 && path.Clean(components[0].Path) != path.Clean(clonePath)) {
+			if !isDevfilePresent && (len(components) != 1 || (len(components) != 0 && path.Clean(components[0].Path) != path.Clean(clonePath))) {
 				isMultiComponent = true
 			}
 		}
