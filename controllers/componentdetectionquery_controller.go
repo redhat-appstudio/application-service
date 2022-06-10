@@ -19,6 +19,7 @@ package controllers
 import (
 	"context"
 	"fmt"
+	"path"
 
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -144,7 +145,8 @@ func (r *ComponentDetectionQueryReconciler) Reconcile(ctx context.Context, req c
 		} else if isDockerfilePresent {
 			log.Info(fmt.Sprintf("Determined that this is a Dockerfile only component  %v", req.NamespacedName))
 			dockerfileContextMap["./"] = "./Dockerfile"
-		} else {
+		}
+		if (!isDevfilePresent && !isDockerfilePresent) || (isDevfilePresent && !isDockerfilePresent) {
 			log.Info(fmt.Sprintf("Unable to fine devfile or Dockerfile under root directory, run Alizer to detect components... %v", req.NamespacedName))
 
 			clonePath, err = ioutils.CreateTempPath(componentDetectionQuery.Name, r.AppFS)
@@ -167,8 +169,11 @@ func (r *ComponentDetectionQueryReconciler) Reconcile(ctx context.Context, req c
 				r.SetCompleteConditionAndUpdateCR(ctx, &componentDetectionQuery, err)
 				return ctrl.Result{}, nil
 			}
-			log.Info(fmt.Sprintf("components detected %v", components))
-			if len(components) > 1 {
+			log.Info(fmt.Sprintf("components detected %v... %v", components, req.NamespacedName))
+			// case 1: no components been detected by Alizer, might still has subfolders contains dockerfile. Need to scan repo
+			// case 2: more than 1 components been detected by Alizer, is certain a multi-component project. Need to scan repo
+			// case 3: one or more than 1 compinents been detected by Alizer, and the first one in the list is under sub-folder. Need to scan repo.
+			if len(components) != 1 || (len(components) != 0 && path.Clean(components[0].Path) != path.Clean(clonePath)) {
 				isMultiComponent = true
 			}
 		}
@@ -179,7 +184,7 @@ func (r *ComponentDetectionQueryReconciler) Reconcile(ctx context.Context, req c
 			if isMultiComponent {
 				log.Info(fmt.Sprintf("Since this is a multi-component, attempt will be made to read only level 1 dir for devfiles... %v", req.NamespacedName))
 
-				devfilesMap, devfilesURLMap, dockerfileContextMap, err = devfile.ScanRepo(log, r.AlizerClient, clonePath, maxDevfileDiscoveryDepth, r.DevfileRegistryURL)
+				devfilesMap, devfilesURLMap, dockerfileContextMap, err = devfile.ScanRepo(log, r.AlizerClient, clonePath, r.DevfileRegistryURL)
 				if err != nil {
 					if _, ok := err.(*devfile.NoDevfileFound); !ok {
 						log.Error(err, fmt.Sprintf("Unable to find devfile(s) in repo %s due to an error %s, exiting reconcile loop %v", source.URL, err.Error(), req.NamespacedName))
@@ -190,7 +195,7 @@ func (r *ComponentDetectionQueryReconciler) Reconcile(ctx context.Context, req c
 			} else {
 				log.Info(fmt.Sprintf("Since this is not a multi-component, attempt will be made to read devfile at the root dir... %v", req.NamespacedName))
 				if (!isDevfilePresent && !isDockerfilePresent) || (isDevfilePresent && !isDockerfilePresent) {
-					err := devfile.AnalyzePath(r.AlizerClient, log, clonePath, "./", r.DevfileRegistryURL, devfilesMap, devfilesURLMap, dockerfileContextMap, isDevfilePresent, isDockerfilePresent)
+					err := devfile.AnalyzePath(r.AlizerClient, clonePath, "./", r.DevfileRegistryURL, devfilesMap, devfilesURLMap, dockerfileContextMap, isDevfilePresent, isDockerfilePresent)
 					if err != nil {
 						log.Error(err, fmt.Sprintf("Unable to analyze path %s for a dockerfile/devfile %v", clonePath, req.NamespacedName))
 						r.SetCompleteConditionAndUpdateCR(ctx, &componentDetectionQuery, err)

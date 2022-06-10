@@ -384,7 +384,7 @@ var _ = Describe("Component Detection Query controller", func() {
 				},
 				Spec: appstudiov1alpha1.ComponentDetectionQuerySpec{
 					GitSource: appstudiov1alpha1.GitSource{
-						URL:        "https://github.com/octocat/Hello-World",
+						URL:        SampleRepoLink,
 						DevfileURL: "https://registry.devfile.io/devfiles/fake",
 					},
 				},

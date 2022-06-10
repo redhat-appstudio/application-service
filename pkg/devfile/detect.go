@@ -54,8 +54,6 @@ func search(log logr.Logger, a Alizer, localpath string, devfileRegistryURL stri
 		return nil, nil, nil, err
 	}
 
-	// context := getContext(localpath, currentLevel)
-
 	for _, f := range files {
 		if f.IsDir() {
 			isDevfilePresent := false
@@ -68,7 +66,6 @@ func search(log logr.Logger, a Alizer, localpath string, devfileRegistryURL stri
 			}
 			for _, f := range files {
 				if f.Name() == DevfileName || f.Name() == HiddenDevfileName {
-					log.Info(fmt.Sprintf("Under dir %v, found file %v ... ", context, f.Name()))
 					// Check for devfile.yaml or .devfile.yaml
 					devfileBytes, err := ioutil.ReadFile(path.Join(curPath, f.Name()))
 					if err != nil {
@@ -83,14 +80,12 @@ func search(log logr.Logger, a Alizer, localpath string, devfileRegistryURL stri
 					// consider devfile.yaml and .devfile/devfile.yaml as the same level, for example
 					hiddenDirPath := path.Join(curPath, HiddenDevfileDir)
 					hiddenfiles, err := ioutil.ReadDir(hiddenDirPath)
-					log.Info(fmt.Sprintf("Under dir %v ...", hiddenDirPath))
 					if err != nil {
 						return nil, nil, nil, err
 					}
 					for _, f := range hiddenfiles {
 						if f.Name() == DevfileName || f.Name() == HiddenDevfileName {
 							// Check for devfile.yaml or .devfile.yaml
-							log.Info(fmt.Sprintf("Under dir %v, found file %v ... ", hiddenDirPath, f.Name()))
 							devfileBytes, err := ioutil.ReadFile(path.Join(hiddenDirPath, f.Name()))
 							if err != nil {
 								return nil, nil, nil, err
@@ -107,7 +102,6 @@ func search(log logr.Logger, a Alizer, localpath string, devfileRegistryURL stri
 					// we will read the devfile to ensure a dockerfile has been referenced.
 					// However, if a Dockerfile is named differently and not referenced in the devfile
 					// it will go undetected
-					log.Info(fmt.Sprintf("Under dir %v, found file %v ... ", context, f.Name()))
 					dockerfileContextMapFromRepo[context] = path.Join(context, DockerfileName)
 					isDockerfilePresent = true
 				}
@@ -121,7 +115,7 @@ func search(log logr.Logger, a Alizer, localpath string, devfileRegistryURL stri
 			}
 
 			if (!isDevfilePresent && !isDockerfilePresent) || (isDevfilePresent && !isDockerfilePresent) {
-				err := AnalyzePath(a, log, curPath, context, devfileRegistryURL, devfileMapFromRepo, devfilesURLMapFromRepo, dockerfileContextMapFromRepo, isDevfilePresent, isDockerfilePresent)
+				err := AnalyzePath(a, curPath, context, devfileRegistryURL, devfileMapFromRepo, devfilesURLMapFromRepo, dockerfileContextMapFromRepo, isDevfilePresent, isDockerfilePresent)
 				if err != nil {
 					return nil, nil, nil, err
 				}
@@ -138,7 +132,7 @@ func search(log logr.Logger, a Alizer, localpath string, devfileRegistryURL stri
 }
 
 // AnalyzePath checks if a devfile or a dockerfile can be found in the localpath for the given context, this is a helper func used by the CDQ controller
-func AnalyzePath(a Alizer, log logr.Logger, localpath, context, devfileRegistryURL string, devfileMapFromRepo map[string][]byte, devfilesURLMapFromRepo, dockerfileContextMapFromRepo map[string]string, isDevfilePresent, isDockerfilePresent bool) error {
+func AnalyzePath(a Alizer, localpath, context, devfileRegistryURL string, devfileMapFromRepo map[string][]byte, devfilesURLMapFromRepo, dockerfileContextMapFromRepo map[string]string, isDevfilePresent, isDockerfilePresent bool) error {
 	if isDevfilePresent {
 		// If devfile is present, check to see if we can determine a Dockerfile from it
 		devfile := devfileMapFromRepo[context]
@@ -152,15 +146,12 @@ func AnalyzePath(a Alizer, log logr.Logger, localpath, context, devfileRegistryU
 
 	if !isDockerfilePresent {
 		// if we didnt find any devfile/dockerfile upto our desired depth, then use alizer
-		log.Info(fmt.Sprintf("Under AnalyzePath..."))
 		devfile, detectedDevfileEndpoint, detectedSampleName, err := AnalyzeAndDetectDevfile(a, localpath, devfileRegistryURL)
 		if err != nil {
 			if _, ok := err.(*NoDevfileFound); !ok {
 				return err
 			}
 		}
-
-		log.Info(fmt.Sprintf("Under AnalyzePath, detectedDevfileEndpoint is %v, detectedSampleName %v ... ", detectedDevfileEndpoint, detectedSampleName))
 
 		if !isDevfilePresent && len(devfile) > 0 {
 			// If a devfile is not present at this stage, just update devfileMapFromRepo and devfilesURLMapFromRepo

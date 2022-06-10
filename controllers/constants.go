@@ -45,7 +45,4 @@ const (
 
 	// containerENVKey is the key to reference container environment variables
 	containerENVKey = "deployment/containerENV"
-
-	// maxDevfileDiscoveryDepth is the depth of the directory to detect devfiles
-	maxDevfileDiscoveryDepth = 1
 )
