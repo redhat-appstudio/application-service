@@ -251,8 +251,7 @@ func AnalyzeAndDetectDevfile(a Alizer, path, devfileRegistryURL string) ([]byte,
 			// if we get one language analysis that can be a component
 			// we can then determine a devfile from the registry and return
 
-			// TODO maysunfaisal
-			// This is not right, check for the highest % in use rather than opting for the first & returning
+			// The highest rank is the most suggested component. priorty: configuration file > high %
 
 			detectedType, err := a.SelectDevFileFromTypes(path, alizerDevfileTypes)
 			if err != nil && err.Error() != fmt.Sprintf("No valid devfile found for project in %s", path) {
@@ -270,80 +269,6 @@ func AnalyzeAndDetectDevfile(a Alizer, path, devfileRegistryURL string) ([]byte,
 					return devfileBytes, detectedDevfileEndpoint, detectedType.Name, nil
 				}
 			}
-		}
-	}
-
-	return nil, "", "", &NoDevfileFound{Location: path}
-}
-
-// AnalyzeAndDetectDevfile analyzes and attempts to detect a devfile from the devfile registry for a given local path
-func AnalyzeAndDetectDevfileCopy(a Alizer, path, devfileRegistryURL string) ([]byte, string, string, error) {
-	var devfileBytes []byte
-	alizerDevfileTypes, err := getAlizerDevfileTypes(devfileRegistryURL)
-	if err != nil {
-		return nil, "", "", err
-	}
-
-	alizerComponents, err := a.DetectComponents(path)
-	if err != nil {
-		return nil, "", "", err
-	}
-
-	if len(alizerComponents) == 0 {
-		return nil, "", "", &NoDevfileFound{Location: path}
-	}
-
-	// for _, component := range alizerComponents {
-	// 	// Assuming it's a single component. as multi-component should be handled before
-	// 	context := component.Path
-	for _, language := range alizerComponents[0].Languages {
-		if language.CanBeComponent {
-			// if we get one language analysis that can be a component
-			// we can then determine a devfile from the registry and return
-
-			detectedType, err := a.SelectDevFileFromTypes(path, alizerDevfileTypes)
-			if err != nil && err.Error() != fmt.Sprintf("No valid devfile found for project in %s", path) {
-				// No need to check for err, if a path does not have a detected devfile, ignore err
-				// if a dir can be a component but we get an unrelated err, err out
-				return nil, "", "", err
-			} else if !reflect.DeepEqual(detectedType, recognizer.DevFileType{}) {
-				detectedDevfileEndpoint := devfileRegistryURL + "/devfiles/" + detectedType.Name
-				devfileBytes, err = util.CurlEndpoint(detectedDevfileEndpoint)
-				if err != nil {
-					return nil, "", "", err
-				}
-
-				// if len(devfileBytes) > 0 {
-				// 	if !isDevfilePresent && len(devfileBytes) > 0 {
-				// 		// If a devfile is not present at this stage, just update devfileMapFromRepo and devfilesURLMapFromRepo
-				// 		// Dockerfile is not needed because all the devfile registry samples will have a Dockerfile entry
-				// 		devfileMapFromRepo[context] = devfileBytes
-				// 		devfilesURLMapFromRepo[context] = detectedDevfileEndpoint
-				// 	} else if isDevfilePresent && len(devfileBytes) > 0 {
-				// 		// If a devfile is present but we could not determine a dockerfile, then update dockerfileContextMapFromRepo
-				// 		// by looking up the devfile from the detected alizer sample from the devfile registry
-				// 		sampleRepoURL, err := GetRepoFromRegistry(detectedType.Name, devfileRegistryURL)
-				// 		if err != nil {
-				// 			return err
-				// 		}
-
-				// 		dockerfileUri, err := SearchForDockerfile(devfileBytes)
-				// 		if err != nil {
-				// 			return err
-				// 		}
-
-				// 		link, err := UpdateDockerfileLink(sampleRepoURL, "", dockerfileUri)
-				// 		if err != nil {
-				// 			return err
-				// 		}
-
-				// 		dockerfileContextMapFromRepo[context] = link
-				// 		isDockerfilePresent = true
-				// 	}
-
-				return devfileBytes, detectedDevfileEndpoint, detectedType.Name, nil
-			}
-			// 		}
 		}
 	}
 
