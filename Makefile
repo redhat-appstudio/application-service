@@ -84,9 +84,10 @@ help: ## Display this help.
 
 manifests: controller-gen ## Generate WebhookConfiguration, ClusterRole and CustomResourceDefinition objects.
 	$(CONTROLLER_GEN) $(CRD_OPTIONS) rbac:roleName=manager-role webhook paths="./..." output:crd:artifacts:config=config/crd/bases
-	kubectl kcp crd snapshot --prefix has -f config/crd/bases/appstudio.redhat.com_applications.yaml > config/kcp/application.apiresourceschema.yaml
-	kubectl kcp crd snapshot --prefix has -f config/crd/bases/appstudio.redhat.com_components.yaml > config/kcp/component.apiresourceschema.yaml
-	kubectl kcp crd snapshot --prefix has -f config/crd/bases/appstudio.redhat.com_componentdetectionqueries.yaml > config/kcp/cdq.apiresourceschema.yaml
+	$(MAKE) manifests-kcp
+
+manifests-kcp:	## Generate KCP APIResourceSchema from CRDs
+	hack/generate-kcp-api.sh
 
 generate: controller-gen ## Generate code containing DeepCopy, DeepCopyInto, and DeepCopyObject method implementations.
 	$(CONTROLLER_GEN) object:headerFile="hack/boilerplate.go.txt" paths="./..."
@@ -172,7 +173,7 @@ deploy: manifests kustomize ## Deploy controller to the K8s cluster specified in
 undeploy: ## Undeploy controller from the K8s cluster specified in ~/.kube/config.
 	$(KUSTOMIZE) build config/default | kubectl delete -f -
 
-deploy-kcp: install ## Install CRDs and deploy HAS on KCP
+deploy-kcp: manifesets install ## Install CRDs and deploy HAS on KCP
 	cd config/manager && $(KUSTOMIZE) edit set image controller=${IMG}
 	GITHUB_ORG=${GITHUB_ORG} DEVFILE_REGISTRY_URL=${DEVFILE_REGISTRY_URL} $(KUSTOMIZE) build config/kcp | kubectl apply -f -
 
