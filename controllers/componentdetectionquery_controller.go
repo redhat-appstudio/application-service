@@ -36,7 +36,6 @@ import (
 	"github.com/redhat-appstudio/application-service/pkg/spi"
 	"github.com/redhat-appstudio/application-service/pkg/util"
 	"github.com/redhat-appstudio/application-service/pkg/util/ioutils"
-	"github.com/redhat-developer/alizer/go/pkg/apis/recognizer"
 	"github.com/spf13/afero"
 )
 
@@ -165,19 +164,21 @@ func (r *ComponentDetectionQueryReconciler) Reconcile(ctx context.Context, req c
 				return ctrl.Result{}, nil
 			}
 			log.Info(fmt.Sprintf("cloned from %s to path %s... %v", source.URL, clonePath, req.NamespacedName))
-			components, err := recognizer.DetectComponents(clonePath)
-			if err != nil {
-				log.Error(err, fmt.Sprintf("Unable to detect components using Alizer for repo %v, under path %v... %v ", source.URL, clonePath, req.NamespacedName))
-				r.SetCompleteConditionAndUpdateCR(ctx, &componentDetectionQuery, err)
-				return ctrl.Result{}, nil
-			}
-			log.Info(fmt.Sprintf("components detected %v... %v", components, req.NamespacedName))
-			// If no devfile and no dockerfile present in the root
-			// case 1: no components been detected by Alizer, might still has subfolders contains dockerfile. Need to scan repo
-			// case 2: more than 1 components been detected by Alizer, is certain a multi-component project. Need to scan repo
-			// case 3: one or more than 1 compinents been detected by Alizer, and the first one in the list is under sub-folder. Need to scan repo.
-			if !isDevfilePresent && (len(components) != 1 || (len(components) != 0 && path.Clean(components[0].Path) != path.Clean(clonePath))) {
-				isMultiComponent = true
+			if !isDevfilePresent {
+				components, err := r.AlizerClient.DetectComponents(clonePath)
+				if err != nil {
+					log.Error(err, fmt.Sprintf("Unable to detect components using Alizer for repo %v, under path %v... %v ", source.URL, clonePath, req.NamespacedName))
+					r.SetCompleteConditionAndUpdateCR(ctx, &componentDetectionQuery, err)
+					return ctrl.Result{}, nil
+				}
+				log.Info(fmt.Sprintf("components detected %v... %v", components, req.NamespacedName))
+				// If no devfile and no dockerfile present in the root
+				// case 1: no components been detected by Alizer, might still has subfolders contains dockerfile. Need to scan repo
+				// case 2: more than 1 components been detected by Alizer, is certain a multi-component project. Need to scan repo
+				// case 3: one or more than 1 compinents been detected by Alizer, and the first one in the list is under sub-folder. Need to scan repo.
+				if len(components) != 1 || (len(components) != 0 && path.Clean(components[0].Path) != path.Clean(clonePath)) {
+					isMultiComponent = true
+				}
 			}
 		}
 
@@ -197,7 +198,7 @@ func (r *ComponentDetectionQueryReconciler) Reconcile(ctx context.Context, req c
 				}
 			} else {
 				log.Info(fmt.Sprintf("Since this is not a multi-component, attempt will be made to read devfile at the root dir... %v", req.NamespacedName))
-				if (!isDevfilePresent && !isDockerfilePresent) || (isDevfilePresent && !isDockerfilePresent) {
+				if !isDockerfilePresent {
 					err := devfile.AnalyzePath(r.AlizerClient, clonePath, "./", r.DevfileRegistryURL, devfilesMap, devfilesURLMap, dockerfileContextMap, isDevfilePresent, isDockerfilePresent)
 					if err != nil {
 						log.Error(err, fmt.Sprintf("Unable to analyze path %s for a dockerfile/devfile %v", clonePath, req.NamespacedName))
