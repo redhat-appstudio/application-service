@@ -18,11 +18,11 @@ package gitops
 import (
 	"path/filepath"
 
+	appstudioshared "github.com/maysunfaisal/managed-gitops/appstudio-shared/apis/appstudio.redhat.com/v1alpha1"
 	routev1 "github.com/openshift/api/route/v1"
 	appstudiov1alpha1 "github.com/redhat-appstudio/application-service/api/v1alpha1"
 	"github.com/redhat-appstudio/application-service/gitops/prepare"
 	"github.com/redhat-appstudio/application-service/gitops/resources"
-	appstudioshared "github.com/redhat-appstudio/managed-gitops/appstudio-shared/apis/appstudio.redhat.com/v1alpha1"
 	"github.com/spf13/afero"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -269,6 +269,10 @@ func generateDeploymentPatch(component appstudioshared.BindingComponent, imageNa
 	if component.Configuration.Replicas > 0 {
 		replica := int32(component.Configuration.Replicas)
 		deployment.Spec.Replicas = &replica
+	}
+
+	if component.Configuration.Resources != nil {
+		deployment.Spec.Template.Spec.Containers[0].Resources = *component.Configuration.Resources
 	}
 
 	return &deployment

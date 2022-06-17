@@ -1,0 +1,33 @@
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: manager-role-appsnapshot
+rules:
+- verbs:
+    - create
+    - delete
+    - get
+    - list
+    # - patch
+    # - update
+    - watch
+  apiGroups:
+    - appstudio.redhat.com
+  resources:
+    - applicationsnapshots
+# - verbs:
+#     - update
+#   apiGroups:
+#     - appstudio.redhat.com
+#   resources:
+#     - applicationsnapshots/finalizers
+# - verbs:
+#     - get
+#     - patch
+#     - update
+#   apiGroups:
+#     - appstudio.redhat.com
+#   resources:
+#     - applicationsnapshots/status
