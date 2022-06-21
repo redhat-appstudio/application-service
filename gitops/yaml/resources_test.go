@@ -20,6 +20,7 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
+	"reflect"
 	"regexp"
 	"strings"
 	"testing"
@@ -105,43 +106,57 @@ func TestMarshalItemToFile(t *testing.T) {
 	regexpFs := afero.Afero{Fs: afero.NewRegexpFs(afero.NewMemMapFs(), regexp.MustCompile("hello"))}
 
 	tests := []struct {
-		name   string
-		fs     afero.Afero
-		path   string
-		item   interface{}
-		errMsg string
+		name            string
+		fs              afero.Afero
+		path            string
+		item            interface{}
+		marshalErrMsg   string
+		unmarshalErrMsg string
 	}{
 		{
-			name:   "Simple resource",
-			fs:     fs,
-			path:   filepath.Join(os.TempDir(), "test"),
-			item:   resources.Kustomization{},
-			errMsg: "",
+			name: "Simple resource",
+			fs:   fs,
+			path: filepath.Join(os.TempDir(), "test"),
+			item: resources.Kustomization{
+				Bases:     []string{"test/base"},
+				Resources: []string{"test-resource.yaml"},
+			},
+			marshalErrMsg:   "",
+			unmarshalErrMsg: "",
 		},
 		{
-			name:   "Read only filesystem error",
-			fs:     readOnlyFs,
-			path:   "/test/file",
-			item:   resources.Kustomization{},
-			errMsg: "failed to MkDirAll for /test/file: operation not permitted",
+			name:            "Read only filesystem error",
+			fs:              readOnlyFs,
+			path:            "/test/file",
+			item:            resources.Kustomization{},
+			marshalErrMsg:   "failed to MkDirAll for /test/file: operation not permitted",
+			unmarshalErrMsg: "failed to read from file /test/file: open /test/file: no such file or directory",
 		},
 		{
-			name:   "Unable to create file error",
-			fs:     regexpFs,
-			path:   "/testtwo/file-two",
-			item:   resources.Kustomization{},
-			errMsg: "failed to Create file /testtwo/file-two: no such file or directory",
+			name:            "Unable to create file error",
+			fs:              regexpFs,
+			path:            "/testtwo/file-two",
+			item:            resources.Kustomization{},
+			marshalErrMsg:   "failed to Create file /testtwo/file-two: no such file or directory",
+			unmarshalErrMsg: "failed to read from file /testtwo/file-two: open /testtwo/file-two: file does not exist",
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			err := MarshalItemToFile(tt.fs, tt.path, tt.item)
-			if !errorMatch(t, tt.errMsg, err) {
-				t.Fatalf("error mismatch: got %v, want %v", err, tt.errMsg)
+			if !errorMatch(t, tt.marshalErrMsg, err) {
+				t.Fatalf("error mismatch: got %v, want %v", err, tt.marshalErrMsg)
+			}
+			var encodedItem resources.Kustomization
+			err = UnMarshalItemFromFile(tt.fs, tt.path, &encodedItem)
+			if !errorMatch(t, tt.unmarshalErrMsg, err) {
+				t.Fatalf("error mismatch: got %v, want %v", err, tt.unmarshalErrMsg)
 			}
 			if err == nil {
-				assertResourceExists(t, tt.path, tt.item)
+				if !reflect.DeepEqual(tt.item, encodedItem) {
+					t.Fatalf("expected %v, got %v", tt.item, encodedItem)
+				}
 			}
 		})
 	}
