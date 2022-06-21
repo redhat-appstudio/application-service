@@ -48,6 +48,8 @@ func GenerateAndPush(outputPath string, remote string, component appstudiov1alph
 	}
 
 	repoPath := filepath.Join(outputPath, componentName)
+	gitopsFolder := filepath.Join(repoPath, context)
+	componentPath := filepath.Join(gitopsFolder, "components", componentName, "base")
 
 	// Checkout the specified branch
 	if _, err := e.Execute(repoPath, "git", "switch", branch); err != nil {
@@ -60,9 +62,14 @@ func GenerateAndPush(outputPath string, remote string, component appstudiov1alph
 		return fmt.Errorf("failed to delete %q folder in repository in %q %q: %s", filepath.Join("components", componentName), repoPath, string(out), err)
 	}
 
+	// Blow away deploy/service/route files generated before
+	if out, err := e.Execute(repoPath, "rm", "-rf", filepath.Join(componentPath, "deployment.yaml"),
+		filepath.Join(componentPath, "service.yaml"), filepath.Join(componentPath, "route.yaml")); err != nil {
+		return fmt.Errorf("failed to delete %s, %s, %s files in repository in %q %q: %s", filepath.Join(componentPath, "deployment.yaml"),
+			filepath.Join(componentPath, "service.yaml"), filepath.Join(componentPath, "route.yaml"), repoPath, string(out), err)
+	}
+
 	// Generate the gitops resources and update the parent kustomize yaml file
-	gitopsFolder := filepath.Join(repoPath, context)
-	componentPath := filepath.Join(gitopsFolder, "components", componentName, "base")
 	if err := Generate(appFs, gitopsFolder, componentPath, component, gitopsConfig); err != nil {
 		return fmt.Errorf("failed to generate the gitops resources in %q for component %q: %s", componentPath, componentName, err)
 	}

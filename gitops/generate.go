@@ -16,6 +16,7 @@
 package gitops
 
 import (
+	"fmt"
 	"path/filepath"
 
 	routev1 "github.com/openshift/api/route/v1"
@@ -41,6 +42,23 @@ const (
 // Generate takes in a given Component CR and
 // spits out a deployment, service, and route file to disk
 func Generate(fs afero.Afero, gitOpsFolder string, outputFolder string, component appstudiov1alpha1.Component, gitopsConfig prepare.GitopsConfig) error {
+
+	kustomizeFileExist, err := fs.Exists(filepath.Join(outputFolder, kustomizeFileName))
+	if err != nil {
+		return err
+	}
+	// if kustomizeFile already exist, read in the content
+	var originalKustomizeFileContent resources.Kustomization
+	if kustomizeFileExist {
+		err = yaml.UnMarshalItemFromFile(fs, filepath.Join(outputFolder, kustomizeFileName), &originalKustomizeFileContent)
+		if err != nil {
+			return fmt.Errorf("failed to unmarshal items from %q: %v", filepath.Join(outputFolder, kustomizeFileName), err)
+		}
+		err = fs.Remove(filepath.Join(outputFolder, kustomizeFileName))
+		if err != nil {
+			return fmt.Errorf("failed to delete %s file in folder %q: %s", kustomizeFileName, outputFolder, err)
+		}
+	}
 	deployment := generateDeployment(component)
 
 	k := resources.Kustomization{
@@ -74,9 +92,9 @@ func Generate(fs afero.Afero, gitOpsFolder string, outputFolder string, componen
 		commonStorage = GenerateCommonStorage(component, "appstudio")
 	}
 
-	resources["kustomization.yaml"] = k
+	resources[kustomizeFileName] = k
 
-	_, err := yaml.WriteResources(fs, outputFolder, resources)
+	_, err = yaml.WriteResources(fs, outputFolder, resources)
 	if err != nil {
 		return err
 	}
@@ -122,7 +140,7 @@ func GenerateParentKustomize(fs afero.Afero, gitOpsFolder string, commonStorageP
 		k.AddResources("common-storage-pvc.yaml")
 	}
 
-	resources["kustomization.yaml"] = k
+	resources[kustomizeFileName] = k
 
 	_, err = yaml.WriteResources(fs, gitOpsFolder, resources)
 	return err
