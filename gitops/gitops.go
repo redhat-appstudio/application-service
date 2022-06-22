@@ -58,15 +58,8 @@ func GenerateAndPush(outputPath string, remote string, component appstudiov1alph
 		}
 	}
 
-	if out, err := e.Execute(repoPath, "rm", "-rf", filepath.Join("components", componentName)); err != nil {
-		return fmt.Errorf("failed to delete %q folder in repository in %q %q: %s", filepath.Join("components", componentName), repoPath, string(out), err)
-	}
-
-	// Blow away deploy/service/route files generated before
-	if out, err := e.Execute(repoPath, "rm", "-rf", filepath.Join(componentPath, "deployment.yaml"),
-		filepath.Join(componentPath, "service.yaml"), filepath.Join(componentPath, "route.yaml")); err != nil {
-		return fmt.Errorf("failed to delete %s, %s, %s files in repository in %q %q: %s", filepath.Join(componentPath, "deployment.yaml"),
-			filepath.Join(componentPath, "service.yaml"), filepath.Join(componentPath, "route.yaml"), repoPath, string(out), err)
+	if out, err := e.Execute(repoPath, "rm", "-rf", filepath.Join(context, "components", componentName)); err != nil {
+		return fmt.Errorf("failed to delete %q folder in repository in %q %q: %s", filepath.Join(context, "components", componentName), repoPath, string(out), err)
 	}
 
 	// Generate the gitops resources and update the parent kustomize yaml file
@@ -120,8 +113,8 @@ func RemoveAndPush(outputPath string, remote string, component appstudiov1alpha1
 	// Generate the gitops resources and update the parent kustomize yaml file
 	gitopsFolder := filepath.Join(repoPath, context)
 	componentPath := filepath.Join(gitopsFolder, "components", componentName)
-	if out, err := e.Execute(repoPath, "rm", "-rf", componentPath); err != nil {
-		return fmt.Errorf("failed to delete %q folder in repository in %q %q: %s", componentPath, repoPath, string(out), err)
+	if out, err := e.Execute(repoPath, "rm", "-rf", filepath.Join(context, "components", componentName)); err != nil {
+		return fmt.Errorf("failed to delete %q folder in repository in %q %q: %s", filepath.Join(context, "components", componentName), repoPath, string(out), err)
 	}
 	if err := e.GenerateParentKustomize(appFs, gitopsFolder, nil); err != nil {
 		return fmt.Errorf("failed to re-generate the gitops resources in %q for component %q: %s", componentPath, componentName, err)

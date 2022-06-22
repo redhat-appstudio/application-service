@@ -97,7 +97,7 @@ func TestWriteResources(t *testing.T) {
 	}
 }
 
-func TestMarshalItemToFile(t *testing.T) {
+func TestMarshalItemToFileAndUnMarshalItemFromFile(t *testing.T) {
 	fs := ioutils.NewFilesystem()
 	readOnlyFs := ioutils.NewReadOnlyFs()
 
