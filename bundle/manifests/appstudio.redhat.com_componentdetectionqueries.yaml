@@ -65,10 +65,6 @@ spec:
                 required:
                 - url
                 type: object
-              isMultiComponent:
-                description: IsMultiComponent specifies if the component specified
-                  has multiple services
-                type: boolean
               secret:
                 description: Secret describes the name of a Kubernetes secret containing
                   a Personal Access Token to access the git repostiory

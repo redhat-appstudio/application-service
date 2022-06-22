@@ -138,7 +138,7 @@ var _ = Describe("Component Detection Query controller", func() {
 	})
 
 	Context("Create Component Detection Query with devfileURL and isMultiComponent set", func() {
-		It("Should err out", func() {
+		It("Should use the devfileURL without err", func() {
 			ctx := context.Background()
 
 			queryName := HASCompDetQuery + "3"
@@ -153,9 +153,8 @@ var _ = Describe("Component Detection Query controller", func() {
 					Namespace: HASNamespace,
 				},
 				Spec: appstudiov1alpha1.ComponentDetectionQuerySpec{
-					IsMultiComponent: true,
 					GitSource: appstudiov1alpha1.GitSource{
-						URL:        SampleRepoLink,
+						URL:        "https://github.com/maysunfaisal/multi-components-none",
 						DevfileURL: "https://raw.githubusercontent.com/devfile-samples/devfile-sample-java-springboot-basic/main/devfile.yaml",
 					},
 				},
@@ -172,8 +171,16 @@ var _ = Describe("Component Detection Query controller", func() {
 				return len(createdHasCompDetectionQuery.Status.Conditions) > 1
 			}, timeout, interval).Should(BeTrue())
 
-			// Make sure the right err is set
-			Expect(createdHasCompDetectionQuery.Status.Conditions[1].Message).Should(ContainSubstring("cannot set IsMultiComponent"))
+			// Make sure the status is successful
+			Expect(createdHasCompDetectionQuery.Status.Conditions[1].Message).Should(ContainSubstring("ComponentDetectionQuery has successfully finished"))
+
+			// Make sure the a devfile is detected
+			Expect(len(createdHasCompDetectionQuery.Status.ComponentDetected)).Should(Equal(1))
+
+			for devfileName, devfileDesc := range createdHasCompDetectionQuery.Status.ComponentDetected {
+				Expect(devfileName).Should(ContainSubstring("spring"))
+				Expect(devfileDesc.ComponentStub.Source.GitSource.Context).Should(ContainSubstring("./"))
+			}
 
 			// Delete the specified Detection Query resource
 			deleteCompDetQueryCR(hasCompDetQueryLookupKey)
@@ -196,9 +203,8 @@ var _ = Describe("Component Detection Query controller", func() {
 					Namespace: HASNamespace,
 				},
 				Spec: appstudiov1alpha1.ComponentDetectionQuerySpec{
-					IsMultiComponent: true,
 					GitSource: appstudiov1alpha1.GitSource{
-						URL: "https://github.com/maysunfaisal/multi-components",
+						URL: "https://github.com/maysunfaisal/multi-components-none",
 					},
 				},
 			}
@@ -243,7 +249,6 @@ var _ = Describe("Component Detection Query controller", func() {
 					Namespace: HASNamespace,
 				},
 				Spec: appstudiov1alpha1.ComponentDetectionQuerySpec{
-					IsMultiComponent: true,
 					GitSource: appstudiov1alpha1.GitSource{
 						URL: "https://github.com/octocat/Hello-World",
 					},
@@ -285,7 +290,6 @@ var _ = Describe("Component Detection Query controller", func() {
 					Namespace: HASNamespace,
 				},
 				Spec: appstudiov1alpha1.ComponentDetectionQuerySpec{
-					IsMultiComponent: true,
 					GitSource: appstudiov1alpha1.GitSource{
 						URL: "https://github.com/maysunfaisal/multi-components-none",
 					},
@@ -387,7 +391,7 @@ var _ = Describe("Component Detection Query controller", func() {
 				},
 				Spec: appstudiov1alpha1.ComponentDetectionQuerySpec{
 					GitSource: appstudiov1alpha1.GitSource{
-						URL:        "https://github.com/octocat/Hello-World",
+						URL:        SampleRepoLink,
 						DevfileURL: "https://registry.devfile.io/devfiles/fake",
 					},
 				},
@@ -469,7 +473,6 @@ var _ = Describe("Component Detection Query controller", func() {
 					Namespace: HASNamespace,
 				},
 				Spec: appstudiov1alpha1.ComponentDetectionQuerySpec{
-					IsMultiComponent: true,
 					GitSource: appstudiov1alpha1.GitSource{
 						URL: "https://github.com/johnmcollier/private-repo-test",
 					},
@@ -587,8 +590,7 @@ var _ = Describe("Component Detection Query controller", func() {
 					Namespace: HASNamespace,
 				},
 				Spec: appstudiov1alpha1.ComponentDetectionQuerySpec{
-					IsMultiComponent: true,
-					Secret:           queryName,
+					Secret: queryName,
 					GitSource: appstudiov1alpha1.GitSource{
 						URL: "https://github.com/maysunfaisal/multi-components",
 					},
@@ -921,7 +923,6 @@ var _ = Describe("Component Detection Query controller", func() {
 					Namespace: HASNamespace,
 				},
 				Spec: appstudiov1alpha1.ComponentDetectionQuerySpec{
-					IsMultiComponent: true,
 					GitSource: appstudiov1alpha1.GitSource{
 						URL: "https://github.com/maysunfaisal/multi-components-dockerfile",
 					},

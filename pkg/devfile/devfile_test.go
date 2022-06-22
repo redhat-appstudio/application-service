@@ -390,18 +390,6 @@ func TestScanRepo(t *testing.T) {
 			expectedDevfileURLContext: []string{"python-src-none"},
 			expectedDockerfileContext: []string{"python-src-docker", "devfile-sample-nodejs-basic"},
 		},
-		// TODO - maysunfaisal
-		// Commenting out this test case, we hard code our depth to 1 for CDQ
-		// But there seems to a gap in the logic if we extend past depth 1 and discovering devfile logic
-		// Revisit post M4
-
-		// {
-		// 	name:                   "Should return 2 devfiles as this is a multi comp devfile",
-		// 	clonePath:              "/tmp/testclone",
-		// 	depth:                  2,
-		// 	repo:                   "https://github.com/maysunfaisal/multi-components-deep",
-		// 	expectedDevfileContext: []string{"devfile-sample-java-springboot-basic", "python/devfile-sample-python-basic"},
-		// },
 	}
 
 	for _, tt := range tests {
@@ -410,7 +398,7 @@ func TestScanRepo(t *testing.T) {
 			if err != nil {
 				t.Errorf("got unexpected error %v", err)
 			} else {
-				devfileMap, devfileURLMap, dockerfileMap, err := ScanRepo(logger, alizerClient, tt.clonePath, tt.depth, DevfileStageRegistryEndpoint)
+				devfileMap, devfileURLMap, dockerfileMap, err := ScanRepo(logger, alizerClient, tt.clonePath, DevfileStageRegistryEndpoint)
 				if tt.wantErr && (err == nil) {
 					t.Error("wanted error but got nil")
 				} else if !tt.wantErr && err != nil {
