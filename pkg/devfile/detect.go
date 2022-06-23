@@ -30,8 +30,8 @@ import (
 )
 
 type Alizer interface {
-	Analyze(path string) ([]language.Language, error)
 	SelectDevFileFromTypes(path string, devFileTypes []recognizer.DevFileType) (recognizer.DevFileType, error)
+	DetectComponents(path string) ([]recognizer.Component, error)
 }
 
 type AlizerClient struct {
@@ -43,102 +43,89 @@ type AlizerClient struct {
 // Map 1 returns a context to the devfile bytes if present.
 // Map 2 returns a context to the matched devfileURL from the devfile registry if no devfile is present in the context.
 // Map 3 returns a context to the dockerfile uri or a matched dockerfileURL from the devfile registry if no dockerfile is present in the context
-func search(log logr.Logger, a Alizer, localpath string, currentLevel, depth int, devfileRegistryURL string) (map[string][]byte, map[string]string, map[string]string, error) {
-	// TODO - maysunfaisal
-	// There seems to a gap in the logic if we extend past depth 1 and discovering devfile logic
-	// Revisit post M4
+func search(log logr.Logger, a Alizer, localpath string, devfileRegistryURL string) (map[string][]byte, map[string]string, map[string]string, error) {
 
 	devfileMapFromRepo := make(map[string][]byte)
 	devfilesURLMapFromRepo := make(map[string]string)
 	dockerfileContextMapFromRepo := make(map[string]string)
-
-	isDevfilePresent := false
-	isDockerfilePresent := false
 
 	files, err := ioutil.ReadDir(localpath)
 	if err != nil {
 		return nil, nil, nil, err
 	}
 
-	context := getContext(localpath, currentLevel)
-
 	for _, f := range files {
-		if (f.Name() == DevfileName || f.Name() == HiddenDevfileName) && currentLevel != 0 {
-			// Check for devfile.yaml or .devfile.yaml
-			devfileBytes, err := ioutil.ReadFile(path.Join(localpath, f.Name()))
+		if f.IsDir() {
+			isDevfilePresent := false
+			isDockerfilePresent := false
+			curPath := path.Join(localpath, f.Name())
+			context := f.Name()
+			files, err := ioutil.ReadDir(curPath)
 			if err != nil {
 				return nil, nil, nil, err
 			}
-
-			devfileMapFromRepo[context] = devfileBytes
-			isDevfilePresent = true
-		} else if f.IsDir() && f.Name() == HiddenDevfileDir && currentLevel != 0 {
-			// Check for .devfile/devfile.yaml or .devfile/.devfile.yaml
-			// if the dir is .devfile, we dont increment currentLevel
-			// consider devfile.yaml and .devfile/devfile.yaml as the same level, for example
-			recursiveDevfileMap, recursiveDevfileURLMap, _, err := search(log, a, path.Join(localpath, f.Name()), currentLevel, depth, devfileRegistryURL)
-			if err != nil {
-				return nil, nil, nil, err
-			}
-
-			for recursiveContext := range recursiveDevfileMap {
-				if recursiveContext == HiddenDevfileDir {
-					devfileMapFromRepo[context] = recursiveDevfileMap[HiddenDevfileDir]
-					if _, ok := recursiveDevfileURLMap[HiddenDevfileDir]; ok {
-						devfilesURLMapFromRepo[context] = recursiveDevfileURLMap[HiddenDevfileDir]
-					}
-					isDevfilePresent = true
-				}
-			}
-		} else if f.Name() == DockerfileName && currentLevel != 0 {
-			// Check for Dockerfile
-			// NOTE: if a Dockerfile is named differently, for example, Dockerfile.jvm;
-			// thats ok. As we finish iterating through all the files in the localpath
-			// we will read the devfile to ensure a dockerfile has been referenced.
-			// However, if a Dockerfile is named differently and not referenced in the devfile
-			// it will go undetected
-			dockerfileContextMapFromRepo[context] = path.Join(context, DockerfileName)
-			isDockerfilePresent = true
-		} else if f.IsDir() {
-			if currentLevel+1 <= depth {
-				recursiveDevfileMap, recursiveDevfileURLMap, recursiveDockerfileContextMap, err := search(log, a, path.Join(localpath, f.Name()), currentLevel+1, depth, devfileRegistryURL)
-				if err != nil {
-					return nil, nil, nil, err
-				}
-
-				for context, devfile := range recursiveDevfileMap {
-					devfileMapFromRepo[context] = devfile
-
-					if _, ok := recursiveDevfileURLMap[context]; ok {
-						devfilesURLMapFromRepo[context] = recursiveDevfileURLMap[context]
+			for _, f := range files {
+				if f.Name() == DevfileName || f.Name() == HiddenDevfileName {
+					// Check for devfile.yaml or .devfile.yaml
+					devfileBytes, err := ioutil.ReadFile(path.Join(curPath, f.Name()))
+					if err != nil {
+						return nil, nil, nil, err
 					}
 
+					devfileMapFromRepo[context] = devfileBytes
 					isDevfilePresent = true
-				}
-				for context := range recursiveDockerfileContextMap {
-					dockerfileContextMapFromRepo[context] = recursiveDockerfileContextMap[context]
+				} else if f.IsDir() && f.Name() == HiddenDevfileDir {
+					// Check for .devfile/devfile.yaml or .devfile/.devfile.yaml
+					// if the dir is .devfile, we dont increment currentLevel
+					// consider devfile.yaml and .devfile/devfile.yaml as the same level, for example
+					hiddenDirPath := path.Join(curPath, HiddenDevfileDir)
+					hiddenfiles, err := ioutil.ReadDir(hiddenDirPath)
+					if err != nil {
+						return nil, nil, nil, err
+					}
+					for _, f := range hiddenfiles {
+						if f.Name() == DevfileName || f.Name() == HiddenDevfileName {
+							// Check for devfile.yaml or .devfile.yaml
+							devfileBytes, err := ioutil.ReadFile(path.Join(hiddenDirPath, f.Name()))
+							if err != nil {
+								return nil, nil, nil, err
+							}
+
+							devfileMapFromRepo[context] = devfileBytes
+							isDevfilePresent = true
+						}
+					}
+				} else if f.Name() == DockerfileName {
+					// Check for Dockerfile
+					// NOTE: if a Dockerfile is named differently, for example, Dockerfile.jvm;
+					// thats ok. As we finish iterating through all the files in the localpath
+					// we will read the devfile to ensure a dockerfile has been referenced.
+					// However, if a Dockerfile is named differently and not referenced in the devfile
+					// it will go undetected
+					dockerfileContextMapFromRepo[context] = path.Join(context, DockerfileName)
 					isDockerfilePresent = true
 				}
 			}
+			// unset the dockerfile context if we have both devfile and dockerfile
+			// at this stage, we need to ensure the dockerfile has been referenced
+			// in the devfile image component even if we detect both devfile and dockerfile
+			if isDevfilePresent && isDockerfilePresent {
+				delete(dockerfileContextMapFromRepo, context)
+				isDockerfilePresent = false
+			}
+
+			if (!isDevfilePresent && !isDockerfilePresent) || (isDevfilePresent && !isDockerfilePresent) {
+				err := AnalyzePath(a, curPath, context, devfileRegistryURL, devfileMapFromRepo, devfilesURLMapFromRepo, dockerfileContextMapFromRepo, isDevfilePresent, isDockerfilePresent)
+				if err != nil {
+					return nil, nil, nil, err
+				}
+			}
 		}
 	}
 
-	// unset the dockerfile context if we have both devfile and dockerfile
-	// at this stage, we need to ensure the dockerfile has been referenced
-	// in the devfile image component even if we detect both devfile and dockerfile
-	if isDevfilePresent && isDockerfilePresent && currentLevel == depth {
-		delete(dockerfileContextMapFromRepo, context)
-		isDockerfilePresent = false
-	}
-
-	if len(devfileMapFromRepo) == 0 && currentLevel == 0 {
+	if len(devfileMapFromRepo) == 0 {
 		// if we didnt find any devfile we should return an err
 		err = &NoDevfileFound{Location: localpath}
-	} else if ((!isDevfilePresent && !isDockerfilePresent) || (isDevfilePresent && !isDockerfilePresent)) && currentLevel == depth {
-		err := AnalyzePath(a, localpath, context, devfileRegistryURL, devfileMapFromRepo, devfilesURLMapFromRepo, dockerfileContextMapFromRepo, isDevfilePresent, isDockerfilePresent)
-		if err != nil {
-			return nil, nil, nil, err
-		}
 	}
 
 	return devfileMapFromRepo, devfilesURLMapFromRepo, dockerfileContextMapFromRepo, err
@@ -233,30 +220,38 @@ func (a AlizerClient) Analyze(path string) ([]language.Language, error) {
 
 // SelectDevFileFromTypes is a wrapper call to Alizer's SelectDevFileFromTypes()
 func (a AlizerClient) SelectDevFileFromTypes(path string, devFileTypes []recognizer.DevFileType) (recognizer.DevFileType, error) {
-	return recognizer.SelectDevFileFromTypes(path, devFileTypes)
+	index, err := recognizer.SelectDevFileFromTypes(path, devFileTypes)
+	return devFileTypes[index], err
+}
+
+func (a AlizerClient) DetectComponents(path string) ([]recognizer.Component, error) {
+	return recognizer.DetectComponents(path)
 }
 
 // AnalyzeAndDetectDevfile analyzes and attempts to detect a devfile from the devfile registry for a given local path
 func AnalyzeAndDetectDevfile(a Alizer, path, devfileRegistryURL string) ([]byte, string, string, error) {
 	var devfileBytes []byte
-
-	alizerLanguages, err := a.Analyze(path)
-	if err != nil {
-		return nil, "", "", err
-	}
-
 	alizerDevfileTypes, err := getAlizerDevfileTypes(devfileRegistryURL)
 	if err != nil {
 		return nil, "", "", err
 	}
 
-	for _, language := range alizerLanguages {
+	alizerComponents, err := a.DetectComponents(path)
+	if err != nil {
+		return nil, "", "", err
+	}
+
+	if len(alizerComponents) == 0 {
+		return nil, "", "", &NoDevfileFound{Location: path}
+	}
+
+	// Assuming it's a single component. as multi-component should be handled before
+	for _, language := range alizerComponents[0].Languages {
 		if language.CanBeComponent {
 			// if we get one language analysis that can be a component
 			// we can then determine a devfile from the registry and return
 
-			// TODO maysunfaisal
-			// This is not right, check for the highest % in use rather than opting for the first & returning
+			// The highest rank is the most suggested component. priorty: configuration file > high %
 
 			detectedType, err := a.SelectDevFileFromTypes(path, alizerDevfileTypes)
 			if err != nil && err.Error() != fmt.Sprintf("No valid devfile found for project in %s", path) {
