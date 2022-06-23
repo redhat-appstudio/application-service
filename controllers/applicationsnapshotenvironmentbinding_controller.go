@@ -61,7 +61,7 @@ type ApplicationSnapshotEnvironmentBindingReconciler struct {
 // For more details, check Reconcile and its Result here:
 // - https://pkg.go.dev/sigs.k8s.io/controller-runtime@v0.9.2/pkg/reconcile
 func (r *ApplicationSnapshotEnvironmentBindingReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
-	log := r.Log.WithValues("Component", req.NamespacedName)
+	log := r.Log.WithValues("ApplicationSnapshotEnvironmentBinding", req.NamespacedName)
 
 	// Fetch the ApplicationSnapshotEnvironmentBinding instance
 	var appSnapshotEnvBinding appstudioshared.ApplicationSnapshotEnvironmentBinding
@@ -77,7 +77,7 @@ func (r *ApplicationSnapshotEnvironmentBindingReconciler) Reconcile(ctx context.
 		return ctrl.Result{}, err
 	}
 
-	log.Info(fmt.Sprintf("Starting reconcile loop for %v - %v", appSnapshotEnvBinding.Name, req.NamespacedName))
+	log.Info(fmt.Sprintf("Starting reconcile loop for %v %v", appSnapshotEnvBinding.Name, req.NamespacedName))
 
 	applicationName := appSnapshotEnvBinding.Spec.Application
 	environmentName := appSnapshotEnvBinding.Spec.Environment
@@ -97,6 +97,7 @@ func (r *ApplicationSnapshotEnvironmentBindingReconciler) Reconcile(ctx context.
 	err = r.Get(ctx, types.NamespacedName{Name: snapshotName, Namespace: appSnapshotEnvBinding.Namespace}, &appSnapshot)
 	if err != nil {
 		log.Error(err, fmt.Sprintf("unable to get the Application Snapshot %s %v", snapshotName, req.NamespacedName))
+		r.SetCreateConditionAndUpdateCR(ctx, &appSnapshotEnvBinding, err)
 		return ctrl.Result{}, nil
 	}
 
@@ -106,40 +107,6 @@ func (r *ApplicationSnapshotEnvironmentBindingReconciler) Reconcile(ctx context.
 		r.SetCreateConditionAndUpdateCR(ctx, &appSnapshotEnvBinding, err)
 		return ctrl.Result{}, nil
 	}
-
-	// Get the Application CR
-	// hasApplication := appstudiov1alpha1.Application{}
-	// err = r.Get(ctx, types.NamespacedName{Name: applicationName, Namespace: appSnapshotEnvBinding.Namespace}, &hasApplication)
-	// if err != nil {
-	// 	log.Error(err, fmt.Sprintf("unable to get the Application %s %v", applicationName, req.NamespacedName))
-	// 	return ctrl.Result{}, nil
-	// }
-
-	// hasAppDevfileData, err := devfile.ParseDevfileModel(hasApplication.Status.Devfile)
-	// if err != nil {
-	// 	log.Error(err, fmt.Sprintf("Unable to parse the devfile from Application, exiting reconcile loop %v", req.NamespacedName))
-	// 	return ctrl.Result{}, err
-	// }
-
-	// applicationDevfileMetadata := hasAppDevfileData.GetMetadata()
-	// gitopsRepo := applicationDevfileMetadata.Attributes.GetString("gitOpsRepository.url", &err)
-	// if err != nil {
-	// 	log.Error(err, fmt.Sprintf("unable to get the gitops repo from Application %s %v", applicationName, req.NamespacedName))
-	// 	return ctrl.Result{}, nil
-	// }
-	// gitopsBranch := applicationDevfileMetadata.Attributes.GetString("gitOpsRepository.branch", &err)
-	// if err != nil {
-	// 	log.Error(err, fmt.Sprintf("unable to get the gitops branch from Application %s %v", applicationName, req.NamespacedName))
-	// }
-
-	// if gitopsBranch == "" {
-	// 	gitopsBranch = "main"
-	// }
-
-	// err = cloneAndCheckout(tempDir, gitopsRepo, gitopsBranch, applicationName, r.Executor)
-	// if err != nil {
-	// 	log.Error(err, "unable to clone and checkout gitops repo %s", "")
-	// }
 
 	var remoteURL, gitOpsURL, gitOpsBranch, gitOpsContext string
 

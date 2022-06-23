@@ -20,6 +20,7 @@ import (
 	"reflect"
 	"testing"
 
+	appstudioshared "github.com/maysunfaisal/managed-gitops/appstudio-shared/apis/appstudio.redhat.com/v1alpha1"
 	routev1 "github.com/openshift/api/route/v1"
 	appstudiov1alpha1 "github.com/redhat-appstudio/application-service/api/v1alpha1"
 	"github.com/redhat-appstudio/application-service/gitops/resources"
@@ -306,6 +307,88 @@ func TestGenerateDeployment(t *testing.T) {
 
 			if !reflect.DeepEqual(*generatedDeployment, tt.wantDeployment) {
 				t.Errorf("TestGenerateDeployment() error: expected %v got %v", tt.wantDeployment, generatedDeployment)
+			}
+		})
+	}
+}
+
+func TestGenerateDeploymentPatch(t *testing.T) {
+	componentName := "test-component"
+	namespace := "test-namespace"
+	replicas := int32(1)
+	image := "image"
+
+	tests := []struct {
+		name           string
+		component      appstudioshared.BindingComponent
+		imageName      string
+		namespace      string
+		wantDeployment appsv1.Deployment
+	}{
+		{
+			name: "Simple component, no optional fields set",
+			component: appstudioshared.BindingComponent{
+				Name: componentName,
+				Configuration: appstudioshared.BindingComponentConfiguration{
+					Replicas: int(replicas),
+					Env: []appstudioshared.EnvVarPair{
+						{
+							Name:  "FOO",
+							Value: "BAR",
+						},
+					},
+					Resources: &corev1.ResourceRequirements{
+						Limits: corev1.ResourceList{
+							corev1.ResourceCPU: resource.MustParse("1"),
+						},
+					},
+				},
+			},
+			namespace: namespace,
+			imageName: image,
+			wantDeployment: appsv1.Deployment{
+				TypeMeta: v1.TypeMeta{
+					Kind:       "Deployment",
+					APIVersion: "apps/v1",
+				},
+				ObjectMeta: v1.ObjectMeta{
+					Name:      componentName,
+					Namespace: namespace,
+				},
+				Spec: appsv1.DeploymentSpec{
+					Replicas: &replicas,
+					Template: corev1.PodTemplateSpec{
+						Spec: corev1.PodSpec{
+							Containers: []corev1.Container{
+								{
+									Name:  "container-image",
+									Image: image,
+									Env: []corev1.EnvVar{
+										{
+											Name:  "FOO",
+											Value: "BAR",
+										},
+									},
+									Resources: corev1.ResourceRequirements{
+										Limits: corev1.ResourceList{
+											corev1.ResourceCPU: resource.MustParse("1"),
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			generatedDeployment := generateDeploymentPatch(tt.component, tt.imageName, tt.namespace)
+
+			if !reflect.DeepEqual(*generatedDeployment, tt.wantDeployment) {
+				t.Errorf("TestGenerateDeploymentPatch() error: expected %v got %v", tt.wantDeployment, *generatedDeployment)
 			}
 		})
 	}

@@ -27,10 +27,6 @@ import (
 	corev1 "k8s.io/api/core/v1"
 )
 
-type OverlayPatch struct {
-	ComponentName string
-}
-
 type Executor interface {
 	Execute(baseDir, command string, args ...string) ([]byte, error)
 	GenerateParentKustomize(fs afero.Afero, gitOpsFolder string, commonStoragePVC *corev1.PersistentVolumeClaim) error
