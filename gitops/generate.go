@@ -36,6 +36,7 @@ const (
 	deploymentFileName = "deployment.yaml"
 	serviceFileName    = "service.yaml"
 	routeFileName      = "route.yaml"
+	repositoryFileName = "repository.yaml"
 )
 
 // Generate takes in a given Component CR and
