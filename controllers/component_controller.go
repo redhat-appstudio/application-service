@@ -339,7 +339,7 @@ func (r *ComponentReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 			if err := r.generateGitops(ctx, &component); err != nil {
 				errMsg := fmt.Sprintf("Unable to generate gitops resources for component %v", req.NamespacedName)
 				log.Error(err, errMsg)
-				r.SetCreateConditionAndUpdateCR(ctx, &component, fmt.Errorf(errMsg))
+				r.SetCreateConditionAndUpdateCR(ctx, &component, fmt.Errorf("%v: %v", errMsg, err))
 				return ctrl.Result{}, nil
 			}
 
