@@ -105,6 +105,9 @@ type ComponentSpec struct {
 
 	// The container image to build or create the component from
 	ContainerImage string `json:"containerImage,omitempty"`
+
+	// Whether or not to bypass the generation of GitOps resources for the Component. Defaults to false.
+	SkipGitOpsResourceGeneration bool `json:"skipGitOpsResourceGeneration,omitempty"`
 }
 
 // ComponentStatus defines the observed state of Component

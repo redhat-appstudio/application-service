@@ -7,6 +7,6 @@ metadata:
   name: has
 spec:
   latestResourceSchemas:
-    - v202206151654.applications.appstudio.redhat.com
-    - v202206151654.componentdetectionqueries.appstudio.redhat.com
-    - v202206151654.components.appstudio.redhat.com
+    - v202206271818.applications.appstudio.redhat.com
+    - v202206271818.componentdetectionqueries.appstudio.redhat.com
+    - v202206271818.components.appstudio.redhat.com

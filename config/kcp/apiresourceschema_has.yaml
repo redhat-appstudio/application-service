@@ -5,7 +5,7 @@ apiVersion: apis.kcp.dev/v1alpha1
 kind: APIResourceSchema
 metadata:
   creationTimestamp: null
-  name: v202206151654.applications.appstudio.redhat.com
+  name: v202206271818.applications.appstudio.redhat.com
 spec:
   group: appstudio.redhat.com
   names:
@@ -179,7 +179,7 @@ apiVersion: apis.kcp.dev/v1alpha1
 kind: APIResourceSchema
 metadata:
   creationTimestamp: null
-  name: v202206151654.componentdetectionqueries.appstudio.redhat.com
+  name: v202206271818.componentdetectionqueries.appstudio.redhat.com
 spec:
   group: appstudio.redhat.com
   names:
@@ -238,10 +238,6 @@ spec:
               required:
               - url
               type: object
-            isMultiComponent:
-              description: IsMultiComponent specifies if the component specified has
-                multiple services
-              type: boolean
             secret:
               description: Secret describes the name of a Kubernetes secret containing
                 a Personal Access Token to access the git repostiory
@@ -438,6 +434,10 @@ spec:
                           or 2. An Image Pull Secret to access the Component''s container
                           image (if using an Image-source component).'
                         type: string
+                      skipGitOpsResourceGeneration:
+                        description: Whether or not to bypass the generation of GitOps
+                          resources for the Component. Defaults to false.
+                        type: boolean
                       source:
                         description: Source describes the Component source
                         properties:
@@ -572,7 +572,7 @@ apiVersion: apis.kcp.dev/v1alpha1
 kind: APIResourceSchema
 metadata:
   creationTimestamp: null
-  name: v202206151654.components.appstudio.redhat.com
+  name: v202206271818.components.appstudio.redhat.com
 spec:
   group: appstudio.redhat.com
   names:
@@ -768,6 +768,10 @@ spec:
                 to access the Component''s container image (if using an Image-source
                 component).'
               type: string
+            skipGitOpsResourceGeneration:
+              description: Whether or not to bypass the generation of GitOps resources
+                for the Component. Defaults to false.
+              type: boolean
             source:
               description: Source describes the Component source
               properties:
