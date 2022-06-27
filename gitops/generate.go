@@ -65,17 +65,17 @@ func Generate(fs afero.Afero, gitOpsFolder string, outputFolder string, componen
 	}
 
 	var commonStorage *corev1.PersistentVolumeClaim
-	// if component.Spec.Source.GitSource != nil && component.Spec.Source.GitSource.URL != "" {
-	// 	tektonResourcesDirName := ".tekton"
-	// 	k.AddResources(tektonResourcesDirName + "/")
+	if component.Spec.Source.GitSource != nil && component.Spec.Source.GitSource.URL != "" {
+		tektonResourcesDirName := ".tekton"
+		k.AddResources(tektonResourcesDirName + "/")
 
-	// 	if err := GenerateBuild(fs, filepath.Join(outputFolder, tektonResourcesDirName), component, gitopsConfig); err != nil {
-	// 		return err
-	// 	}
+		if err := GenerateBuild(fs, filepath.Join(outputFolder, tektonResourcesDirName), component, gitopsConfig); err != nil {
+			return err
+		}
 
-	// 	// Generate the common pvc for git components, and place it at application-level in the repository
-	// 	commonStorage = GenerateCommonStorage(component, "appstudio")
-	// }
+		// Generate the common pvc for git components, and place it at application-level in the repository
+		commonStorage = GenerateCommonStorage(component, "appstudio")
+	}
 
 	resources[kustomizeFileName] = k
 
@@ -88,6 +88,7 @@ func Generate(fs afero.Afero, gitOpsFolder string, outputFolder string, componen
 	return GenerateParentKustomize(fs, gitOpsFolder, commonStorage)
 }
 
+// GenerateOverlays generates the overlays dir during the binding reconcile
 func GenerateOverlays(fs afero.Afero, gitOpsFolder string, outputFolder string, component appstudioshared.BindingComponent, imageName, namespace string, componentGeneratedResources map[string][]string) error {
 	k := resources.Kustomization{
 		APIVersion: "kustomize.config.k8s.io/v1beta1",
