@@ -21,11 +21,11 @@ import (
 	"path/filepath"
 	"testing"
 
-	appstudioshared "github.com/maysunfaisal/managed-gitops/appstudio-shared/apis/appstudio.redhat.com/v1alpha1"
 	appstudiov1alpha1 "github.com/redhat-appstudio/application-service/api/v1alpha1"
 	"github.com/redhat-appstudio/application-service/gitops/prepare"
 	"github.com/redhat-appstudio/application-service/gitops/testutils"
 	"github.com/redhat-appstudio/application-service/pkg/util/ioutils"
+	appstudioshared "github.com/redhat-appstudio/managed-gitops/appstudio-shared/apis/appstudio.redhat.com/v1alpha1"
 	"github.com/spf13/afero"
 	"github.com/stretchr/testify/assert"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -995,12 +995,21 @@ func TestGenerateOverlaysAndPush(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			e := testutils.NewMockExecutor(tt.outputs...)
 			e.Errors = tt.errors
-			err := GenerateOverlaysAndPush(outputPath, true, repo, tt.component, tt.applicationName, tt.environmentName, tt.imageName, tt.namespace, e, tt.fs, "main", "/")
+			generatedResources := make(map[string][]string)
+			err := GenerateOverlaysAndPush(outputPath, true, repo, tt.component, tt.applicationName, tt.environmentName, tt.imageName, tt.namespace, e, tt.fs, "main", "/", generatedResources)
 
 			if tt.wantErrString != "" {
 				testutils.AssertErrorMatch(t, tt.wantErrString, err)
 			} else {
 				testutils.AssertNoError(t, err)
+				assert.Equal(t, 1, len(generatedResources), "should be equal")
+				hasGitopsGeneratedResource := map[string]bool{
+					"deployment-patch.yaml": true,
+				}
+
+				for _, generatedRes := range generatedResources[componentName] {
+					assert.True(t, hasGitopsGeneratedResource[generatedRes], "should be equal")
+				}
 			}
 
 			assert.Equal(t, tt.want, e.Executed, "command executed should be equal")

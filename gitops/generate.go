@@ -18,11 +18,11 @@ package gitops
 import (
 	"path/filepath"
 
-	appstudioshared "github.com/maysunfaisal/managed-gitops/appstudio-shared/apis/appstudio.redhat.com/v1alpha1"
 	routev1 "github.com/openshift/api/route/v1"
 	appstudiov1alpha1 "github.com/redhat-appstudio/application-service/api/v1alpha1"
 	"github.com/redhat-appstudio/application-service/gitops/prepare"
 	"github.com/redhat-appstudio/application-service/gitops/resources"
+	appstudioshared "github.com/redhat-appstudio/managed-gitops/appstudio-shared/apis/appstudio.redhat.com/v1alpha1"
 	"github.com/spf13/afero"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -88,7 +88,7 @@ func Generate(fs afero.Afero, gitOpsFolder string, outputFolder string, componen
 	return GenerateParentKustomize(fs, gitOpsFolder, commonStorage)
 }
 
-func GenerateOverlays(fs afero.Afero, gitOpsFolder string, outputFolder string, component appstudioshared.BindingComponent, imageName, namespace string) error {
+func GenerateOverlays(fs afero.Afero, gitOpsFolder string, outputFolder string, component appstudioshared.BindingComponent, imageName, namespace string, componentGeneratedResources map[string][]string) error {
 	k := resources.Kustomization{
 		APIVersion: "kustomize.config.k8s.io/v1beta1",
 		Kind:       "Kustomization",
@@ -98,6 +98,10 @@ func GenerateOverlays(fs afero.Afero, gitOpsFolder string, outputFolder string, 
 
 	k.AddResources("../../base")
 	k.AddPatches(deploymentPatchFileName)
+	if componentGeneratedResources == nil {
+		componentGeneratedResources = make(map[string][]string)
+	}
+	componentGeneratedResources[component.Name] = append(componentGeneratedResources[component.Name], deploymentPatchFileName)
 
 	resources := map[string]interface{}{
 		deploymentPatchFileName: deploymentPatch,

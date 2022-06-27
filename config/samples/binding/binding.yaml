@@ -1,0 +1,40 @@
+# API type definition is in github.com/redhat-appstudio/managed-gitops
+apiVersion: appstudio.redhat.com/v1alpha1
+kind: ApplicationSnapshotEnvironmentBinding
+metadata:
+  name: applicationsnapshotenvironmentbinding-sample
+spec:
+  application: application-sample
+  environment: staging
+  snapshot: applicationsnapshot-sample
+  components:
+  - name: component-sample
+    configuration:
+      replicas: 3
+      env:
+      - name: FOO
+        value: BAR
+      resources:
+        limits:
+          memory: "500Mi"
+          cpu: "2"
+          storage: "400Mi"
+        requests:
+          memory: "400Mi"
+          cpu: "700m"
+          storage: "200Mi"
+  - name: component-sample2
+    configuration:
+      replicas: 2
+      env:
+      - name: FOO2
+        value: BAR2
+      resources:
+        limits:
+          memory: "500Mi"
+          cpu: "2"
+          storage: "400Mi"
+        requests:
+          memory: "400Mi"
+          cpu: "700m"
+          storage: "200Mi"

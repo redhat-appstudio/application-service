@@ -20,9 +20,9 @@ import (
 	"os/exec"
 	"path/filepath"
 
-	appstudioshared "github.com/maysunfaisal/managed-gitops/appstudio-shared/apis/appstudio.redhat.com/v1alpha1"
 	appstudiov1alpha1 "github.com/redhat-appstudio/application-service/api/v1alpha1"
 	"github.com/redhat-appstudio/application-service/gitops/prepare"
+	appstudioshared "github.com/redhat-appstudio/managed-gitops/appstudio-shared/apis/appstudio.redhat.com/v1alpha1"
 	"github.com/spf13/afero"
 	corev1 "k8s.io/api/core/v1"
 )
@@ -89,7 +89,7 @@ func GenerateAndPush(outputPath string, remote string, component appstudiov1alph
 }
 
 // GenerateOverlaysAndPush generates the overlays kustomize from App Env Snapshot Binding Spec
-func GenerateOverlaysAndPush(outputPath string, clone bool, remote string, component appstudioshared.BindingComponent, applicationName, environmentName, imageName, namespace string, e Executor, appFs afero.Afero, branch string, context string) error {
+func GenerateOverlaysAndPush(outputPath string, clone bool, remote string, component appstudioshared.BindingComponent, applicationName, environmentName, imageName, namespace string, e Executor, appFs afero.Afero, branch string, context string, componentGeneratedResources map[string][]string) error {
 	componentName := component.Name
 	repoPath := filepath.Join(outputPath, applicationName)
 
@@ -109,7 +109,7 @@ func GenerateOverlaysAndPush(outputPath string, clone bool, remote string, compo
 	// Generate the gitops resources and update the parent kustomize yaml file
 	gitopsFolder := filepath.Join(repoPath, context)
 	componentEnvOverlaysPath := filepath.Join(gitopsFolder, "components", componentName, "overlays", environmentName)
-	if err := GenerateOverlays(appFs, gitopsFolder, componentEnvOverlaysPath, component, imageName, namespace); err != nil {
+	if err := GenerateOverlays(appFs, gitopsFolder, componentEnvOverlaysPath, component, imageName, namespace, componentGeneratedResources); err != nil {
 		return fmt.Errorf("failed to generate the gitops resources in overlays dir %q for component %q: %s", componentEnvOverlaysPath, componentName, err)
 	}
 

@@ -20,10 +20,10 @@ import (
 	"context"
 	"fmt"
 
-	appstudioshared "github.com/maysunfaisal/managed-gitops/appstudio-shared/apis/appstudio.redhat.com/v1alpha1"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	appstudiov1alpha1 "github.com/redhat-appstudio/application-service/api/v1alpha1"
+	appstudioshared "github.com/redhat-appstudio/managed-gitops/appstudio-shared/apis/appstudio.redhat.com/v1alpha1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -55,6 +55,10 @@ var _ = Describe("ApplicationSnapshotEnvironmentBinding controller", func() {
 			snapshotName := HASSnapshotName + "1"
 			bindingName := HASBindingName + "1"
 			environmentName := "staging"
+
+			hasGitopsGeneratedResource := map[string]bool{
+				"deployment-patch.yaml": true,
+			}
 
 			replicas := int32(3)
 
@@ -173,6 +177,11 @@ var _ = Describe("ApplicationSnapshotEnvironmentBinding controller", func() {
 			Expect(createdBinding.Status.Components[0].Name).Should(Equal(componentName))
 			Expect(createdBinding.Status.Components[0].GitOpsRepository.Path).Should(Equal(fmt.Sprintf("components/%s/overlays/%s", componentName, environmentName)))
 			Expect(createdBinding.Status.Components[0].GitOpsRepository.URL).Should(Equal(createdHasComp.Status.GitOps.RepositoryURL))
+
+			// check the list of generated gitops resources to make sure we account for every one
+			for _, generatedResource := range createdBinding.Status.Components[0].GitOpsRepository.GeneratedResources {
+				Expect(hasGitopsGeneratedResource[generatedResource]).Should(BeTrue())
+			}
 
 			// Delete the specified HASComp resource
 			deleteHASCompCR(hasCompLookupKey)

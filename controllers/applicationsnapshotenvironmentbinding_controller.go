@@ -23,10 +23,10 @@ import (
 	"path/filepath"
 
 	"github.com/go-logr/logr"
-	appstudioshared "github.com/maysunfaisal/managed-gitops/appstudio-shared/apis/appstudio.redhat.com/v1alpha1"
 	appstudiov1alpha1 "github.com/redhat-appstudio/application-service/api/v1alpha1"
 	"github.com/redhat-appstudio/application-service/gitops"
 	"github.com/redhat-appstudio/application-service/pkg/util/ioutils"
+	appstudioshared "github.com/redhat-appstudio/managed-gitops/appstudio-shared/apis/appstudio.redhat.com/v1alpha1"
 	"github.com/spf13/afero"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -109,6 +109,7 @@ func (r *ApplicationSnapshotEnvironmentBindingReconciler) Reconcile(ctx context.
 	}
 
 	var remoteURL, gitOpsURL, gitOpsBranch, gitOpsContext string
+	componentGeneratedResources := make(map[string][]string)
 
 	for _, component := range components {
 		componentName := component.Name
@@ -186,24 +187,29 @@ func (r *ApplicationSnapshotEnvironmentBindingReconciler) Reconcile(ctx context.
 			}
 		}
 
-		if !isStatusUpdated {
-			appSnapshotEnvBinding.Status.Components = append(appSnapshotEnvBinding.Status.Components, appstudioshared.ComponentStatus{
-				Name: componentName,
-				GitOpsRepository: appstudioshared.BindingComponentGitOpsRepository{
-					URL:    gitOpsURL,
-					Branch: gitOpsBranch,
-					Path:   filepath.Join(gitOpsContext, "components", componentName, "overlays", environmentName),
-				},
-			})
-		}
-
-		err = gitops.GenerateOverlaysAndPush(tempDir, clone, remoteURL, component, applicationName, environmentName, imageName, appSnapshotEnvBinding.Namespace, r.Executor, r.AppFS, gitOpsBranch, gitOpsContext)
+		err = gitops.GenerateOverlaysAndPush(tempDir, clone, remoteURL, component, applicationName, environmentName, imageName, appSnapshotEnvBinding.Namespace, r.Executor, r.AppFS, gitOpsBranch, gitOpsContext, componentGeneratedResources)
 		if err != nil {
 			log.Error(err, fmt.Sprintf("unable to get generate gitops resources for %s %v", componentName, req.NamespacedName))
 			r.SetCreateConditionAndUpdateCR(ctx, &appSnapshotEnvBinding, err)
 			return ctrl.Result{}, nil
 		}
 
+		if !isStatusUpdated {
+			componentStatus := appstudioshared.ComponentStatus{
+				Name: componentName,
+				GitOpsRepository: appstudioshared.BindingComponentGitOpsRepository{
+					URL:    gitOpsURL,
+					Branch: gitOpsBranch,
+					Path:   filepath.Join(gitOpsContext, "components", componentName, "overlays", environmentName),
+				},
+			}
+
+			if _, ok := componentGeneratedResources[componentName]; ok {
+				componentStatus.GitOpsRepository.GeneratedResources = componentGeneratedResources[componentName]
+			}
+
+			appSnapshotEnvBinding.Status.Components = append(appSnapshotEnvBinding.Status.Components, componentStatus)
+		}
 	}
 
 	// Remove the cloned path
