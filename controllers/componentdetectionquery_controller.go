@@ -31,6 +31,8 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/predicate"
 
 	"github.com/go-logr/logr"
+	kcpclient "github.com/kcp-dev/apimachinery/pkg/client"
+	"github.com/kcp-dev/logicalcluster"
 	appstudiov1alpha1 "github.com/redhat-appstudio/application-service/api/v1alpha1"
 	devfile "github.com/redhat-appstudio/application-service/pkg/devfile"
 	"github.com/redhat-appstudio/application-service/pkg/spi"
@@ -64,7 +66,8 @@ type ComponentDetectionQueryReconciler struct {
 // For more details, check Reconcile and its Result here:
 // - https://pkg.go.dev/sigs.k8s.io/controller-runtime@v0.9.2/pkg/reconcile
 func (r *ComponentDetectionQueryReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
-	log := r.Log.WithValues("ComponentDetectionQuery", req.NamespacedName)
+	log := r.Log.WithValues("Application", req.NamespacedName).WithValues("clusterName", req.ClusterName)
+	ctx = kcpclient.WithCluster(ctx, logicalcluster.New(req.ClusterName))
 
 	// Fetch the ComponentDetectionQuery instance
 	var componentDetectionQuery appstudiov1alpha1.ComponentDetectionQuery
