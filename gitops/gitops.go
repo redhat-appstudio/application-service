@@ -122,7 +122,9 @@ func GenerateOverlaysAndPush(outputPath string, clone bool, remote string, compo
 		return fmt.Errorf("failed to check git diff in repository %q %q: %s", repoPath, string(out), err)
 	} else if string(out) != "" {
 		// Commit the changes and push
-		if out, err := e.Execute(repoPath, "git", "commit", "-m", fmt.Sprintf("Generate GitOps overlays resources for component %s and environment %s", componentName, environmentName)); err != nil {
+		if out, err := e.Execute(repoPath, "git", "commit", "-m", fmt.Sprintf("Generate %s environment overlays for component %s", environmentName, componentName)); err != nil {
+```""
+
 			return fmt.Errorf("failed to commit files to repository in %q %q: %s", repoPath, string(out), err)
 		}
 		if out, err := e.Execute(repoPath, "git", "push", "origin", branch); err != nil {
