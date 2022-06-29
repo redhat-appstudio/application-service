@@ -340,8 +340,11 @@ func (r *ComponentReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 				if err := r.generateGitops(ctx, &component); err != nil {
 					errMsg := fmt.Sprintf("Unable to generate gitops resources for component %v", req.NamespacedName)
 					log.Error(err, errMsg)
+					r.SetGitOpsGeneratedConditionAndUpdateCR(ctx, &component, fmt.Errorf("%v: %v", errMsg, err))
 					r.SetCreateConditionAndUpdateCR(ctx, &component, fmt.Errorf("%v: %v", errMsg, err))
 					return ctrl.Result{}, nil
+				} else {
+					r.SetGitOpsGeneratedConditionAndUpdateCR(ctx, &component, nil)
 				}
 			}
 
@@ -387,13 +390,18 @@ func (r *ComponentReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 				return ctrl.Result{}, nil
 			}
 
-			// Generate and push the gitops resources
+			// Generate and push the gitops resources, if necessary.
 			component.Status.ContainerImage = component.Spec.ContainerImage
-			if err := r.generateGitops(ctx, &component); err != nil {
-				errMsg := fmt.Sprintf("Unable to generate gitops resources for component %v", req.NamespacedName)
-				log.Error(err, errMsg)
-				r.SetUpdateConditionAndUpdateCR(ctx, &component, fmt.Errorf("%v: %v", errMsg, err))
-				return ctrl.Result{}, nil
+			if !component.Spec.SkipGitOpsResourceGeneration {
+				if err := r.generateGitops(ctx, &component); err != nil {
+					errMsg := fmt.Sprintf("Unable to generate gitops resources for component %v", req.NamespacedName)
+					log.Error(err, errMsg)
+					r.SetGitOpsGeneratedConditionAndUpdateCR(ctx, &component, fmt.Errorf("%v: %v", errMsg, err))
+					r.SetUpdateConditionAndUpdateCR(ctx, &component, fmt.Errorf("%v: %v", errMsg, err))
+					return ctrl.Result{}, nil
+				} else {
+					r.SetGitOpsGeneratedConditionAndUpdateCR(ctx, &component, nil)
+				}
 			}
 
 			component.Status.Devfile = string(yamlHASCompData)

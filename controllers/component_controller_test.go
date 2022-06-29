@@ -86,13 +86,19 @@ var _ = Describe("Component controller", func() {
 			Expect(k8sClient.Create(ctx, hasComp)).Should(Succeed())
 
 			// Look up the has app resource that was created.
-			// num(conditions) may still be < 1 on the first try, so retry until at least _some_ condition is set
+			// num(conditions) may still be < 2 (GeneratedGitOps, Created) on the first try, so retry until at least _some_ condition is set
 			hasCompLookupKey := types.NamespacedName{Name: componentName, Namespace: HASAppNamespace}
 			createdHasComp := &appstudiov1alpha1.Component{}
 			Eventually(func() bool {
 				k8sClient.Get(context.Background(), hasCompLookupKey, createdHasComp)
-				return len(createdHasComp.Status.Conditions) > 0 && createdHasComp.Status.GitOps.RepositoryURL != ""
+				return len(createdHasComp.Status.Conditions) > 1 && createdHasComp.Status.GitOps.RepositoryURL != ""
 			}, timeout, interval).Should(BeTrue())
+
+			// Verify that the GitOpsGenerated status condition was also set
+			// ToDo: Add helper func for accessing the status conditions in a better way
+			gitopsCondition := createdHasComp.Status.Conditions[len(createdHasComp.Status.Conditions)-2]
+			Expect(gitopsCondition.Type).To(Equal("GitOpsResourcesGenerated"))
+			Expect(gitopsCondition.Status).To(Equal(metav1.ConditionTrue))
 
 			// Make sure the devfile model was properly set in Component
 			Expect(createdHasComp.Status.Devfile).Should(Not(Equal("")))
@@ -183,12 +189,12 @@ var _ = Describe("Component controller", func() {
 			Expect(k8sClient.Create(ctx, hasComp)).Should(Succeed())
 
 			// Look up the has app resource that was created.
-			// num(conditions) may still be < 1 on the first try, so retry until at least _some_ condition is set
+			// num(conditions) may still be < 2 (GeneratedGitOps, Created) on the first try, so retry until at least _some_ condition is set
 			hasCompLookupKey := types.NamespacedName{Name: componentName, Namespace: HASAppNamespace}
 			createdHasComp := &appstudiov1alpha1.Component{}
 			Eventually(func() bool {
 				k8sClient.Get(context.Background(), hasCompLookupKey, createdHasComp)
-				return len(createdHasComp.Status.Conditions) > 0
+				return len(createdHasComp.Status.Conditions) > 1
 			}, timeout, interval).Should(BeTrue())
 
 			// Make sure the devfile model was properly set in Component
@@ -468,12 +474,12 @@ var _ = Describe("Component controller", func() {
 			}
 			Expect(k8sClient.Create(ctx, hasComp)).Should(Succeed())
 
-			// Look up the has app resource that was created.
+			// Look up the component resource that was created.
 			hasCompLookupKey := types.NamespacedName{Name: componentName, Namespace: HASAppNamespace}
 			createdHasComp := &appstudiov1alpha1.Component{}
 			Eventually(func() bool {
 				k8sClient.Get(context.Background(), hasCompLookupKey, createdHasComp)
-				return len(createdHasComp.Status.Conditions) > 0
+				return len(createdHasComp.Status.Conditions) > 1
 			}, timeout40s, interval).Should(BeTrue())
 
 			// Validate that the built container image was set in the status
@@ -610,12 +616,12 @@ var _ = Describe("Component controller", func() {
 			Expect(k8sClient.Create(ctx, hasComp)).Should(Succeed())
 
 			// Look up the has app resource that was created.
-			// num(conditions) may still be < 1 on the first try, so retry until at least _some_ condition is set
+			// num(conditions) may still be < 2 (GitOpsGenerated, Created) on the first try, so retry until at least _some_ condition is set
 			hasCompLookupKey := types.NamespacedName{Name: componentName, Namespace: HASAppNamespace}
 			createdHasComp := &appstudiov1alpha1.Component{}
 			Eventually(func() bool {
 				k8sClient.Get(context.Background(), hasCompLookupKey, createdHasComp)
-				return len(createdHasComp.Status.Conditions) > 0 && createdHasComp.Status.ContainerImage != ""
+				return len(createdHasComp.Status.Conditions) > 1 && createdHasComp.Status.ContainerImage != ""
 			}, timeout, interval).Should(BeTrue())
 
 			// Make sure the devfile model was properly set in Component
@@ -783,12 +789,18 @@ var _ = Describe("Component controller", func() {
 			createdHasComp := &appstudiov1alpha1.Component{}
 			Eventually(func() bool {
 				k8sClient.Get(context.Background(), hasCompLookupKey, createdHasComp)
-				return len(createdHasComp.Status.Conditions) > 0 && createdHasComp.Status.Conditions[len(createdHasComp.Status.Conditions)-1].Status == metav1.ConditionFalse
+				return len(createdHasComp.Status.Conditions) > 1 && createdHasComp.Status.Conditions[len(createdHasComp.Status.Conditions)-1].Status == metav1.ConditionFalse
 			}, timeout, interval).Should(BeTrue())
 
 			errCondition := createdHasComp.Status.Conditions[len(createdHasComp.Status.Conditions)-1]
 			Expect(errCondition.Status).Should(Equal(metav1.ConditionFalse))
 			Expect(errCondition.Message).Should(ContainSubstring("Unable to generate gitops resources"))
+
+			// ToDo: Add helper func for accessing the status conditions in a better way
+			gitopsCondition := createdHasComp.Status.Conditions[len(createdHasComp.Status.Conditions)-2]
+			Expect(gitopsCondition.Type).To(Equal("GitOpsResourcesGenerated"))
+			Expect(gitopsCondition.Status).To(Equal(metav1.ConditionFalse))
+
 			// Delete the specified HASComp resource
 			deleteHASCompCR(hasCompLookupKey)
 
@@ -1164,15 +1176,15 @@ var _ = Describe("Component controller", func() {
 			Expect(k8sClient.Create(ctx, hasComp)).Should(Succeed())
 
 			// Look up the has app resource that was created.
-			// num(conditions) may still be < 1 on the first try, so retry until at least _some_ condition is set
+			// num(conditions) may still be < 2 on the first try, so retry until at least _some_ condition is set
 			hasCompLookupKey := types.NamespacedName{Name: componentName, Namespace: HASAppNamespace}
 			createdHasComp := &appstudiov1alpha1.Component{}
 			Eventually(func() bool {
 				k8sClient.Get(context.Background(), hasCompLookupKey, createdHasComp)
-				return len(createdHasComp.Status.Conditions) > 0
+				return len(createdHasComp.Status.Conditions) > 1
 			}, timeout, interval).Should(BeTrue())
 
-			// Make sure the err was set
+			// Make sure no err was set
 			Expect(createdHasComp.Status.Devfile).Should(Not(Equal("")))
 			Expect(createdHasComp.Status.Conditions[len(createdHasComp.Status.Conditions)-1].Status).Should(Equal(metav1.ConditionTrue))
 
@@ -1316,7 +1328,7 @@ var _ = Describe("Component controller", func() {
 	})
 
 	Context("Create Component with basic field set", func() {
-		It("Should complete with an image source even if it is not implemented yet", func() {
+		It("Should complete successfully", func() {
 			ctx := context.Background()
 
 			applicationName := HASAppName + "17"
@@ -1342,12 +1354,12 @@ var _ = Describe("Component controller", func() {
 			Expect(k8sClient.Create(ctx, hasComp)).Should(Succeed())
 
 			// Look up the has app resource that was created.
-			// num(conditions) may still be < 1 on the first try, so retry until at least _some_ condition is set
+			// num(conditions) may still be < 2 (GitOpsGenerated, Created) on the first try, so retry until at least _some_ condition is set
 			hasCompLookupKey := types.NamespacedName{Name: componentName, Namespace: HASAppNamespace}
 			createdHasComp := &appstudiov1alpha1.Component{}
 			Eventually(func() bool {
 				k8sClient.Get(context.Background(), hasCompLookupKey, createdHasComp)
-				return len(createdHasComp.Status.Conditions) > 0
+				return len(createdHasComp.Status.Conditions) > 1
 			}, timeout, interval).Should(BeTrue())
 
 			// Make sure the devfile model was properly set in Component
@@ -1410,13 +1422,13 @@ var _ = Describe("Component controller", func() {
 			}
 			Expect(k8sClient.Create(ctx, hasComp)).Should(Succeed())
 
-			// Look up the has app resource that was created.
-			// num(conditions) may still be < 1 on the first try, so retry until at least _some_ condition is set
+			// Look up the component resource that was created.
+			// num(conditions) may still be < 2 (GitOpsGenerated, Created) on the first try, so retry until at least _some_ condition is set
 			hasCompLookupKey := types.NamespacedName{Name: componentName, Namespace: HASAppNamespace}
 			createdHasComp := &appstudiov1alpha1.Component{}
 			Eventually(func() bool {
 				k8sClient.Get(context.Background(), hasCompLookupKey, createdHasComp)
-				return len(createdHasComp.Status.Conditions) > 0 && createdHasComp.Status.GitOps.RepositoryURL != ""
+				return len(createdHasComp.Status.Conditions) > 1 && createdHasComp.Status.GitOps.RepositoryURL != ""
 			}, timeout, interval).Should(BeTrue())
 
 			// Make sure the devfile model was properly set in Component
