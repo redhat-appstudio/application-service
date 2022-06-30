@@ -32,8 +32,8 @@ import (
 var _ = Describe("Application controller finalizer counter tests", func() {
 
 	const (
-		AppName        = "test-application"
-		CompName       = "test-component"
+		AppName        = "test-application-finalizer"
+		CompName       = "test-component-finalizer"
 		AppNamespace   = "default"
 		DisplayName    = "petclinic"
 		Description    = "Simple petclinic app"
