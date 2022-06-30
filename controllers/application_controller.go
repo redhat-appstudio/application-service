@@ -129,7 +129,7 @@ func (r *ApplicationReconciler) Reconcile(ctx context.Context, req ctrl.Request)
 			if err != nil {
 				log.Error(err, fmt.Sprintf("Unable to create repository %v", repoUrl))
 				r.SetCreateConditionAndUpdateCR(ctx, &application, err)
-				return reconcile.Result{}, nil
+				return reconcile.Result{}, err
 			}
 
 			gitOpsRepo = repoUrl
@@ -144,13 +144,13 @@ func (r *ApplicationReconciler) Reconcile(ctx context.Context, req ctrl.Request)
 		if err != nil {
 			log.Error(err, fmt.Sprintf("Unable to convert Application CR to devfile, exiting reconcile loop %v", req.NamespacedName))
 			r.SetCreateConditionAndUpdateCR(ctx, &application, err)
-			return reconcile.Result{}, nil
+			return reconcile.Result{}, err
 		}
 		yamlData, err := yaml.Marshal(devfileData)
 		if err != nil {
 			log.Error(err, fmt.Sprintf("Unable to marshall Application devfile, exiting reconcile loop %v", req.NamespacedName))
 			r.SetCreateConditionAndUpdateCR(ctx, &application, err)
-			return reconcile.Result{}, nil
+			return reconcile.Result{}, err
 		}
 
 		application.Status.Devfile = string(yamlData)
@@ -165,7 +165,7 @@ func (r *ApplicationReconciler) Reconcile(ctx context.Context, req ctrl.Request)
 		if err != nil {
 			r.SetUpdateConditionAndUpdateCR(ctx, &application, err)
 			log.Error(err, fmt.Sprintf("Unable to parse devfile model, exiting reconcile loop %v", req.NamespacedName))
-			return ctrl.Result{}, nil
+			return ctrl.Result{}, err
 		}
 
 		// Update any specific fields that changed
@@ -189,7 +189,7 @@ func (r *ApplicationReconciler) Reconcile(ctx context.Context, req ctrl.Request)
 			if err != nil {
 				log.Error(err, fmt.Sprintf("Unable to marshall Application devfile, exiting reconcile loop %v", req.NamespacedName))
 				r.SetUpdateConditionAndUpdateCR(ctx, &application, err)
-				return reconcile.Result{}, nil
+				return reconcile.Result{}, err
 			}
 
 			application.Status.Devfile = string(yamlData)
