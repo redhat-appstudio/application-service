@@ -5,7 +5,7 @@ apiVersion: apis.kcp.dev/v1alpha1
 kind: APIResourceSchema
 metadata:
   creationTimestamp: null
-  name: v202206271818.applications.appstudio.redhat.com
+  name: v202206302101.applications.appstudio.redhat.com
 spec:
   group: appstudio.redhat.com
   names:
@@ -179,7 +179,7 @@ apiVersion: apis.kcp.dev/v1alpha1
 kind: APIResourceSchema
 metadata:
   creationTimestamp: null
-  name: v202206271818.componentdetectionqueries.appstudio.redhat.com
+  name: v202206302101.componentdetectionqueries.appstudio.redhat.com
 spec:
   group: appstudio.redhat.com
   names:
@@ -572,7 +572,7 @@ apiVersion: apis.kcp.dev/v1alpha1
 kind: APIResourceSchema
 metadata:
   creationTimestamp: null
-  name: v202206271818.components.appstudio.redhat.com
+  name: v202206302101.components.appstudio.redhat.com
 spec:
   group: appstudio.redhat.com
   names:
