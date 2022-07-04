@@ -1086,8 +1086,6 @@ var _ = Describe("ApplicationSnapshotEnvironmentBinding controller", func() {
 				return len(createdBinding.Status.GitOpsRepoConditions) == 1 && len(createdBinding.Status.Components) == 1
 			}, timeout, interval).Should(BeTrue())
 
-			fmt.Printf("\n>>>>> MJF MJF MJF conditions 1 are %v\n\n\n", createdBinding.Status.GitOpsRepoConditions)
-
 			createdBinding.Spec.Components[0].Configuration.Replicas = int(newReplicas)
 
 			Expect(k8sClient.Update(ctx, createdBinding)).Should(Succeed())
@@ -1104,6 +1102,159 @@ var _ = Describe("ApplicationSnapshotEnvironmentBinding controller", func() {
 
 			// Delete the specified HASApp resource
 			hasAppLookupKey := types.NamespacedName{Name: applicationName, Namespace: HASAppNamespace}
+			deleteHASAppCR(hasAppLookupKey)
+
+			// Delete the specified binding
+			deleteBinding(bindingLookupKey)
+
+			// Delete the specified snapshot
+			deleteSnapshot(appSnapshotLookupKey)
+
+		})
+	})
+
+	Context("Create ApplicationSnapshotEnvironmentBinding with bad Component GitOps URL", func() {
+		It("Should err out", func() {
+			ctx := context.Background()
+
+			applicationName := HASAppName + "8"
+			componentName := HASCompName + "8"
+			snapshotName := HASSnapshotName + "8"
+			bindingName := HASBindingName + "8"
+			environmentName := "staging"
+
+			replicas := int32(3)
+
+			hasApp := &appstudiov1alpha1.Application{
+				TypeMeta: metav1.TypeMeta{
+					APIVersion: "appstudio.redhat.com/v1alpha1",
+					Kind:       "Application",
+				},
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      applicationName,
+					Namespace: HASAppNamespace,
+				},
+				Spec: appstudiov1alpha1.ApplicationSpec{
+					DisplayName: DisplayName,
+					Description: Description,
+					GitOpsRepository: appstudiov1alpha1.ApplicationGitRepository{
+						URL: "http://foo.com/?foo\nbar",
+					},
+				},
+			}
+
+			Expect(k8sClient.Create(ctx, hasApp)).Should(Succeed())
+
+			// Look up the has app resource that was created.
+			// num(conditions) may still be < 1 on the first try, so retry until at least _some_ condition is set
+			hasAppLookupKey := types.NamespacedName{Name: applicationName, Namespace: HASAppNamespace}
+			fetchedHasApp := &appstudiov1alpha1.Application{}
+			Eventually(func() bool {
+				k8sClient.Get(context.Background(), hasAppLookupKey, fetchedHasApp)
+				return len(fetchedHasApp.Status.Conditions) > 0
+			}, timeout, interval).Should(BeTrue())
+
+			hasComp := &appstudiov1alpha1.Component{
+				TypeMeta: metav1.TypeMeta{
+					APIVersion: "appstudio.redhat.com/v1alpha1",
+					Kind:       "Component",
+				},
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      componentName,
+					Namespace: HASAppNamespace,
+				},
+				Spec: appstudiov1alpha1.ComponentSpec{
+					ComponentName: ComponentName,
+					Application:   applicationName,
+					Source: appstudiov1alpha1.ComponentSource{
+						ComponentSourceUnion: appstudiov1alpha1.ComponentSourceUnion{
+							GitSource: &appstudiov1alpha1.GitSource{
+								URL: SampleRepoLink,
+							},
+						},
+					},
+				},
+			}
+			Expect(k8sClient.Create(ctx, hasComp)).Should(Succeed())
+
+			// Look up the has app resource that was created.
+			// num(conditions) may still be < 1 on the first try, so retry until at least _some_ condition is set
+			hasCompLookupKey := types.NamespacedName{Name: componentName, Namespace: HASAppNamespace}
+			createdHasComp := &appstudiov1alpha1.Component{}
+			Eventually(func() bool {
+				k8sClient.Get(context.Background(), hasCompLookupKey, createdHasComp)
+				return len(createdHasComp.Status.Conditions) > 0
+			}, timeout, interval).Should(BeTrue())
+
+			appSnapshot := &appstudioshared.ApplicationSnapshot{
+				TypeMeta: metav1.TypeMeta{
+					APIVersion: "appstudio.redhat.com/v1alpha1",
+					Kind:       "ApplicationSnapshot",
+				},
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      snapshotName,
+					Namespace: HASAppNamespace,
+				},
+				Spec: appstudioshared.ApplicationSnapshotSpec{
+					Application:        applicationName,
+					DisplayName:        "My Snapshot",
+					DisplayDescription: "My Snapshot",
+					Components: []appstudioshared.ApplicationSnapshotComponent{
+						{
+							Name:           componentName,
+							ContainerImage: "image1",
+						},
+					},
+				},
+			}
+			Expect(k8sClient.Create(ctx, appSnapshot)).Should(Succeed())
+
+			appSnapshotLookupKey := types.NamespacedName{Name: snapshotName, Namespace: HASAppNamespace}
+			createdAppSnapshot := &appstudioshared.ApplicationSnapshot{}
+			Eventually(func() bool {
+				k8sClient.Get(context.Background(), appSnapshotLookupKey, createdAppSnapshot)
+				return len(createdAppSnapshot.Spec.Components) > 0
+			}, timeout, interval).Should(BeTrue())
+
+			appBinding := &appstudioshared.ApplicationSnapshotEnvironmentBinding{
+				TypeMeta: metav1.TypeMeta{
+					APIVersion: "appstudio.redhat.com/v1alpha1",
+					Kind:       "ApplicationSnapshotEnvironmentBinding",
+				},
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      bindingName,
+					Namespace: HASAppNamespace,
+				},
+				Spec: appstudioshared.ApplicationSnapshotEnvironmentBindingSpec{
+					Application: applicationName,
+					Environment: environmentName,
+					Snapshot:    snapshotName,
+					Components: []appstudioshared.BindingComponent{
+						{
+							Name: componentName,
+							Configuration: appstudioshared.BindingComponentConfiguration{
+								Replicas: int(replicas),
+							},
+						},
+					},
+				},
+			}
+
+			Expect(k8sClient.Create(ctx, appBinding)).Should(Succeed())
+
+			bindingLookupKey := types.NamespacedName{Name: bindingName, Namespace: HASAppNamespace}
+			createdBinding := &appstudioshared.ApplicationSnapshotEnvironmentBinding{}
+			Eventually(func() bool {
+				k8sClient.Get(context.Background(), bindingLookupKey, createdBinding)
+				return len(createdBinding.Status.GitOpsRepoConditions) > 0
+			}, timeout, interval).Should(BeTrue())
+
+			Expect(createdBinding.Status.GitOpsRepoConditions[len(createdBinding.Status.GitOpsRepoConditions)-1].Message).Should(ContainSubstring("invalid control character in URL"))
+
+			// Delete the specified HASComp resource
+			deleteHASCompCR(hasCompLookupKey)
+
+			// Delete the specified HASApp resource
 			deleteHASAppCR(hasAppLookupKey)
 
 			// Delete the specified binding
