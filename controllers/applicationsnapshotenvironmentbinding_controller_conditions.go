@@ -24,19 +24,19 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-func (r *ApplicationSnapshotEnvironmentBindingReconciler) SetCreateConditionAndUpdateCR(ctx context.Context, appSnapshotEnvBinding *appstudioshared.ApplicationSnapshotEnvironmentBinding, createError error) {
+func (r *ApplicationSnapshotEnvironmentBindingReconciler) SetConditionAndUpdateCR(ctx context.Context, appSnapshotEnvBinding *appstudioshared.ApplicationSnapshotEnvironmentBinding, createError error) {
 	log := r.Log.WithValues("ApplicationSnapshotEnvironmentBinding", appSnapshotEnvBinding.Name)
 
 	if createError == nil {
 		meta.SetStatusCondition(&appSnapshotEnvBinding.Status.GitOpsRepoConditions, metav1.Condition{
-			Type:    "Sync",
+			Type:    "GitOpsResourcesGenerated",
 			Status:  metav1.ConditionTrue,
 			Reason:  "OK",
 			Message: "GitOps repository sync successful",
 		})
 	} else {
 		meta.SetStatusCondition(&appSnapshotEnvBinding.Status.GitOpsRepoConditions, metav1.Condition{
-			Type:    "Sync",
+			Type:    "GitOpsResourcesGenerated",
 			Status:  metav1.ConditionFalse,
 			Reason:  "Error",
 			Message: fmt.Sprintf("GitOps repository sync failed: %v", createError),

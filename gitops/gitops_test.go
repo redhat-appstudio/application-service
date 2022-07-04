@@ -630,7 +630,7 @@ func TestGenerateOverlaysAndPush(t *testing.T) {
 				{
 					BaseDir: repoPath,
 					Command: "git",
-					Args:    []string{"commit", "-m", fmt.Sprintf("Generate GitOps overlays resources for component %s and environment %s", componentName, environmentName)},
+					Args:    []string{"commit", "-m", fmt.Sprintf("Generate %s environment overlays for component %s", environmentName, componentName)},
 				},
 				{
 					BaseDir: repoPath,
@@ -758,7 +758,7 @@ func TestGenerateOverlaysAndPush(t *testing.T) {
 				{
 					BaseDir: repoPath,
 					Command: "git",
-					Args:    []string{"commit", "-m", fmt.Sprintf("Generate GitOps overlays resources for component %s and environment %s", componentName, environmentName)},
+					Args:    []string{"commit", "-m", fmt.Sprintf("Generate %s environment overlays for component %s", environmentName, componentName)},
 				},
 				{
 					BaseDir: repoPath,
@@ -901,7 +901,7 @@ func TestGenerateOverlaysAndPush(t *testing.T) {
 				{
 					BaseDir: repoPath,
 					Command: "git",
-					Args:    []string{"commit", "-m", fmt.Sprintf("Generate GitOps overlays resources for component %s and environment %s", componentName, environmentName)},
+					Args:    []string{"commit", "-m", fmt.Sprintf("Generate %s environment overlays for component %s", environmentName, componentName)},
 				},
 			},
 			wantErrString: "failed to commit files to repository in \"/fake/path/test-application\" \"test output1\": Fatal error",
@@ -956,7 +956,7 @@ func TestGenerateOverlaysAndPush(t *testing.T) {
 				{
 					BaseDir: repoPath,
 					Command: "git",
-					Args:    []string{"commit", "-m", fmt.Sprintf("Generate GitOps overlays resources for component %s and environment %s", componentName, environmentName)},
+					Args:    []string{"commit", "-m", fmt.Sprintf("Generate %s environment overlays for component %s", environmentName, componentName)},
 				},
 				{
 					BaseDir: repoPath,

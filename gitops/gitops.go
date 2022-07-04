@@ -123,8 +123,6 @@ func GenerateOverlaysAndPush(outputPath string, clone bool, remote string, compo
 	} else if string(out) != "" {
 		// Commit the changes and push
 		if out, err := e.Execute(repoPath, "git", "commit", "-m", fmt.Sprintf("Generate %s environment overlays for component %s", environmentName, componentName)); err != nil {
-```""
-
 			return fmt.Errorf("failed to commit files to repository in %q %q: %s", repoPath, string(out), err)
 		}
 		if out, err := e.Execute(repoPath, "git", "push", "origin", branch); err != nil {

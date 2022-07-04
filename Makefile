@@ -275,7 +275,8 @@ apply-crds:
 	kubectl apply \
 	-f $(APPLICATIONS_CRD) \
 	-f $(COMPONENT_DETECTION_QUERIES_CRD) \
-	-f $(COMPONENT_CRD)
+	-f $(COMPONENT_CRD) \
+	-f https://raw.githubusercontent.com/redhat-appstudio/managed-gitops/main/appstudio-shared/manifests/appstudio-shared-customresourcedefinitions.yaml
 
 .PHONY: debug
 debug: dlv generate manifests kustomize apply-crds

@@ -19,12 +19,12 @@ package controllers
 import (
 	"context"
 	"fmt"
-	"net/url"
 	"path/filepath"
 
 	"github.com/go-logr/logr"
 	appstudiov1alpha1 "github.com/redhat-appstudio/application-service/api/v1alpha1"
 	"github.com/redhat-appstudio/application-service/gitops"
+	"github.com/redhat-appstudio/application-service/pkg/util"
 	"github.com/redhat-appstudio/application-service/pkg/util/ioutils"
 	appstudioshared "github.com/redhat-appstudio/managed-gitops/appstudio-shared/apis/appstudio.redhat.com/v1alpha1"
 	"github.com/spf13/afero"
@@ -84,32 +84,25 @@ func (r *ApplicationSnapshotEnvironmentBindingReconciler) Reconcile(ctx context.
 	snapshotName := appSnapshotEnvBinding.Spec.Snapshot
 	components := appSnapshotEnvBinding.Spec.Components
 
-	// Create a temp folder to create the gitops resources in
-	tempDir, err := ioutils.CreateTempPath(appSnapshotEnvBinding.Name, r.AppFS)
-	if err != nil {
-		log.Error(err, "unable to create temp directory for gitops resources due to error")
-		r.SetCreateConditionAndUpdateCR(ctx, &appSnapshotEnvBinding, err)
-		return ctrl.Result{}, fmt.Errorf("unable to create temp directory for gitops resources due to error: %v", err)
-	}
-
 	// Get the Snapshot CR
 	appSnapshot := appstudioshared.ApplicationSnapshot{}
 	err = r.Get(ctx, types.NamespacedName{Name: snapshotName, Namespace: appSnapshotEnvBinding.Namespace}, &appSnapshot)
 	if err != nil {
 		log.Error(err, fmt.Sprintf("unable to get the Application Snapshot %s %v", snapshotName, req.NamespacedName))
-		r.SetCreateConditionAndUpdateCR(ctx, &appSnapshotEnvBinding, err)
-		return ctrl.Result{}, nil
+		r.SetConditionAndUpdateCR(ctx, &appSnapshotEnvBinding, err)
+		return ctrl.Result{}, err
 	}
 
 	if appSnapshot.Spec.Application != applicationName {
 		err := fmt.Errorf("application snapshot %s does not belong to the application %s", snapshotName, applicationName)
 		log.Error(err, "")
-		r.SetCreateConditionAndUpdateCR(ctx, &appSnapshotEnvBinding, err)
-		return ctrl.Result{}, nil
+		r.SetConditionAndUpdateCR(ctx, &appSnapshotEnvBinding, err)
+		return ctrl.Result{}, err
 	}
 
-	var remoteURL, gitOpsURL, gitOpsBranch, gitOpsContext string
 	componentGeneratedResources := make(map[string][]string)
+	var tempDir string
+	clone := true
 
 	for _, component := range components {
 		componentName := component.Name
@@ -119,86 +112,71 @@ func (r *ApplicationSnapshotEnvironmentBindingReconciler) Reconcile(ctx context.
 		err = r.Get(ctx, types.NamespacedName{Name: componentName, Namespace: appSnapshotEnvBinding.Namespace}, &hasComponent)
 		if err != nil {
 			log.Error(err, fmt.Sprintf("unable to get the Component %s %v", componentName, req.NamespacedName))
-			r.SetCreateConditionAndUpdateCR(ctx, &appSnapshotEnvBinding, err)
-			return ctrl.Result{}, nil
+			r.SetConditionAndUpdateCR(ctx, &appSnapshotEnvBinding, err)
+			return ctrl.Result{}, err
 		}
 
 		// Sanity check to make sure the binding component has referenced the correct application
 		if hasComponent.Spec.Application != applicationName {
 			err := fmt.Errorf("component %s does not belong to the application %s", componentName, applicationName)
 			log.Error(err, "")
-			r.SetCreateConditionAndUpdateCR(ctx, &appSnapshotEnvBinding, err)
-			return ctrl.Result{}, nil
+			r.SetConditionAndUpdateCR(ctx, &appSnapshotEnvBinding, err)
+			return ctrl.Result{}, err
 		}
 
-		var clone bool
 		var imageName string
 
 		for _, snapshotComponent := range appSnapshot.Spec.Components {
 			if snapshotComponent.Name == componentName {
 				imageName = snapshotComponent.ContainerImage
+				break
 			}
 		}
 
 		if imageName == "" {
 			err := fmt.Errorf("application snapshot %s did not reference component %s", snapshotName, componentName)
 			log.Error(err, "")
-			r.SetCreateConditionAndUpdateCR(ctx, &appSnapshotEnvBinding, err)
-			return ctrl.Result{}, nil
+			r.SetConditionAndUpdateCR(ctx, &appSnapshotEnvBinding, err)
+			return ctrl.Result{}, err
 		}
 
-		gitopsStatus := hasComponent.Status.GitOps
-		// Get the information about the gitops repository from the Component resource
-		gitOpsURL = gitopsStatus.RepositoryURL
-		if gitOpsURL == "" {
-			err := fmt.Errorf("unable to create gitops resource, GitOps Repository not set on component status")
-			log.Error(err, "")
-			r.SetCreateConditionAndUpdateCR(ctx, &appSnapshotEnvBinding, err)
-			return ctrl.Result{}, nil
-		}
-		if gitopsStatus.Branch != "" {
-			gitOpsBranch = gitopsStatus.Branch
-		} else {
-			gitOpsBranch = "main"
-		}
-		if gitopsStatus.Context != "" {
-			gitOpsContext = gitopsStatus.Context
-		} else {
-			gitOpsContext = "/"
-		}
-
-		if remoteURL == "" {
-			// Construct the remote URL for the gitops repository
-			parsedURL, err := url.Parse(gitOpsURL)
-			if err != nil {
-				log.Error(err, "unable to parse gitops URL due to error")
-				r.SetCreateConditionAndUpdateCR(ctx, &appSnapshotEnvBinding, err)
-				return ctrl.Result{}, nil
-			}
-			parsedURL.User = url.User(r.GitToken)
-			remoteURL = parsedURL.String()
-			clone = true
+		gitOpsRemoteURL, gitOpsBranch, gitOpsContext, err := util.ProcessGitOpsStatus(hasComponent.Status.GitOps, r.GitToken)
+		if err != nil {
+			r.SetConditionAndUpdateCR(ctx, &appSnapshotEnvBinding, err)
+			return ctrl.Result{}, err
 		}
 
 		isStatusUpdated := false
 		for _, bindingStatusComponent := range appSnapshotEnvBinding.Status.Components {
 			if bindingStatusComponent.Name == componentName {
 				isStatusUpdated = true
+				break
 			}
 		}
 
-		err = gitops.GenerateOverlaysAndPush(tempDir, clone, remoteURL, component, applicationName, environmentName, imageName, appSnapshotEnvBinding.Namespace, r.Executor, r.AppFS, gitOpsBranch, gitOpsContext, componentGeneratedResources)
+		if clone {
+			// Create a temp folder to create the gitops resources in
+			tempDir, err = ioutils.CreateTempPath(appSnapshotEnvBinding.Name, r.AppFS)
+			if err != nil {
+				log.Error(err, "unable to create temp directory for gitops resources due to error")
+				r.SetConditionAndUpdateCR(ctx, &appSnapshotEnvBinding, err)
+				return ctrl.Result{}, fmt.Errorf("unable to create temp directory for gitops resources due to error: %v", err)
+			}
+		}
+
+		err = gitops.GenerateOverlaysAndPush(tempDir, clone, gitOpsRemoteURL, component, applicationName, environmentName, imageName, appSnapshotEnvBinding.Namespace, r.Executor, r.AppFS, gitOpsBranch, gitOpsContext, componentGeneratedResources)
 		if err != nil {
 			log.Error(err, fmt.Sprintf("unable to get generate gitops resources for %s %v", componentName, req.NamespacedName))
-			r.SetCreateConditionAndUpdateCR(ctx, &appSnapshotEnvBinding, err)
-			return ctrl.Result{}, nil
+			r.AppFS.RemoveAll(tempDir) // not worried with an err, its a best case attempt to delete the temp clone dir
+			r.SetConditionAndUpdateCR(ctx, &appSnapshotEnvBinding, err)
+			return ctrl.Result{}, err
 		}
 
 		if !isStatusUpdated {
 			componentStatus := appstudioshared.ComponentStatus{
 				Name: componentName,
 				GitOpsRepository: appstudioshared.BindingComponentGitOpsRepository{
-					URL:    gitOpsURL,
+					URL:    hasComponent.Status.GitOps.RepositoryURL,
 					Branch: gitOpsBranch,
 					Path:   filepath.Join(gitOpsContext, "components", componentName, "overlays", environmentName),
 				},
@@ -210,6 +188,9 @@ func (r *ApplicationSnapshotEnvironmentBindingReconciler) Reconcile(ctx context.
 
 			appSnapshotEnvBinding.Status.Components = append(appSnapshotEnvBinding.Status.Components, componentStatus)
 		}
+
+		// Set the clone to false, since we dont want to clone the repo again for the other components
+		clone = false
 	}
 
 	// Remove the cloned path
@@ -222,11 +203,11 @@ func (r *ApplicationSnapshotEnvironmentBindingReconciler) Reconcile(ctx context.
 	err = r.Client.Status().Update(ctx, &appSnapshotEnvBinding)
 	if err != nil {
 		log.Error(err, "Unable to update App Snapshot Env Binding")
-		r.SetCreateConditionAndUpdateCR(ctx, &appSnapshotEnvBinding, err)
+		r.SetConditionAndUpdateCR(ctx, &appSnapshotEnvBinding, err)
 		return ctrl.Result{}, err
 	}
 
-	r.SetCreateConditionAndUpdateCR(ctx, &appSnapshotEnvBinding, nil)
+	r.SetConditionAndUpdateCR(ctx, &appSnapshotEnvBinding, nil)
 
 	log.Info(fmt.Sprintf("Finished reconcile loop for %v", req.NamespacedName))
 	return ctrl.Result{}, nil
@@ -235,7 +216,6 @@ func (r *ApplicationSnapshotEnvironmentBindingReconciler) Reconcile(ctx context.
 // SetupWithManager sets up the controller with the Manager.
 func (r *ApplicationSnapshotEnvironmentBindingReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
-		// Uncomment the following line adding a pointer to an instance of the controlled resource as an argument
 		For(&appstudioshared.ApplicationSnapshotEnvironmentBinding{}, builder.WithPredicates(predicate.GenerationChangedPredicate{})).
 		Complete(r)
 }

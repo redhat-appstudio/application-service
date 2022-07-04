@@ -19,7 +19,6 @@ package controllers
 import (
 	"context"
 	"fmt"
-	"net/url"
 
 	appstudiov1alpha1 "github.com/redhat-appstudio/application-service/api/v1alpha1"
 	"github.com/redhat-appstudio/application-service/gitops"
@@ -70,33 +69,10 @@ func (r *ComponentReconciler) Finalize(ctx context.Context, component *appstudio
 
 	application.Status.Devfile = string(yamldevfileObj)
 
-	gitopsStatus := component.Status.GitOps
-
-	// Get the information about the gitops repository from the Component resource
-	var gitOpsURL, gitOpsBranch, gitOpsContext string
-	gitOpsURL = gitopsStatus.RepositoryURL
-	if gitOpsURL == "" {
-		err := fmt.Errorf("did not find any gitOps URL for the component during clean up")
-		return err
-	}
-	if gitopsStatus.Branch != "" {
-		gitOpsBranch = gitopsStatus.Branch
-	} else {
-		gitOpsBranch = "main"
-	}
-	if gitopsStatus.Context != "" {
-		gitOpsContext = gitopsStatus.Context
-	} else {
-		gitOpsContext = "/"
-	}
-
-	// Construct the remote URL for the gitops repository
-	parsedURL, err := url.Parse(gitOpsURL)
+	gitOpsURL, gitOpsBranch, gitOpsContext, err := util.ProcessGitOpsStatus(component.Status.GitOps, r.GitToken)
 	if err != nil {
 		return err
 	}
-	parsedURL.User = url.User(r.GitToken)
-	remoteURL := parsedURL.String()
 
 	// Create a temp folder to create the gitops resources in
 	tempDir, err := ioutils.CreateTempPath(component.Name, r.AppFS)
@@ -104,7 +80,7 @@ func (r *ComponentReconciler) Finalize(ctx context.Context, component *appstudio
 		return fmt.Errorf("unable to create temp directory for gitops resources due to error: %v", err)
 	}
 
-	err = gitops.RemoveAndPush(tempDir, remoteURL, *component, r.Executor, r.AppFS, gitOpsBranch, gitOpsContext)
+	err = gitops.RemoveAndPush(tempDir, gitOpsURL, *component, r.Executor, r.AppFS, gitOpsBranch, gitOpsContext)
 	if err != nil {
 		gitOpsErr := util.SanitizeErrorMessage(err)
 		return gitOpsErr
