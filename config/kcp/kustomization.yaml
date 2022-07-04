@@ -17,6 +17,10 @@ bases:
 - ../manager
 - ../rbac
 
+resources:
+- apiexport_has.yaml
+- apiresourceschema_has.yaml
+
 patches:
 # Disable webhooks by default on KCP
 # Webhooks can be optionally enabled after deploy

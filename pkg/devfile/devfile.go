@@ -237,11 +237,12 @@ func DownloadDevfileAndDockerfile(url string) ([]byte, []byte) {
 }
 
 // ScanRepo attempts to read and return devfiles and dockerfiles from the local path upto the specified depth
-// If no devfile(s) or dockerfile(s) are found, then the Alizer tool is used to detect and match a devfile/dockerfile from the devfile registry
+// Iterate through each sub-folder under first level, and scan for component. (devfile, dockerfile, then Alizer)
+// If no devfile(s) or dockerfile(s) are found in sub-folders of the root directory, then the Alizer tool is used to detect and match a devfile/dockerfile from the devfile registry
 // ScanRepo returns 3 maps and an error:
 // Map 1 returns a context to the devfile bytes if present.
 // Map 2 returns a context to the matched devfileURL from the devfile registry if no devfile is present in the context.
 // Map 3 returns a context to the dockerfile uri or a matched dockerfileURL from the devfile registry if no dockerfile is present in the context
-func ScanRepo(log logr.Logger, a Alizer, localpath string, depth int, devfileRegistryURL string) (map[string][]byte, map[string]string, map[string]string, error) {
-	return search(log, a, localpath, 0, depth, devfileRegistryURL)
+func ScanRepo(log logr.Logger, a Alizer, localpath string, devfileRegistryURL string) (map[string][]byte, map[string]string, map[string]string, error) {
+	return search(log, a, localpath, devfileRegistryURL)
 }

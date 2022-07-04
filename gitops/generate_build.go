@@ -334,7 +334,7 @@ func GenerateCommonStorage(component appstudiov1alpha1.Component, name string) *
 			},
 			Resources: corev1.ResourceRequirements{
 				Requests: corev1.ResourceList{
-					"storage": resource.MustParse("10Mi"),
+					"storage": resource.MustParse("1Gi"),
 				},
 			},
 			VolumeMode: &fsMode,
