@@ -1499,6 +1499,78 @@ var _ = Describe("Component controller", func() {
 			deleteHASAppCR(hasAppLookupKey)
 		})
 	})
+
+	Context("Create Component with setGitOpsGeneration to true", func() {
+		It("Should create successfully and not create the GitOps resources, and generate the resources once set.", func() {
+			ctx := context.Background()
+
+			applicationName := HASAppName + "19"
+			componentName := HASCompName + "19"
+
+			createAndFetchSimpleApp(applicationName, HASAppNamespace, DisplayName, Description)
+
+			comp := &appstudiov1alpha1.Component{
+				TypeMeta: metav1.TypeMeta{
+					APIVersion: "appstudio.redhat.com/v1alpha1",
+					Kind:       "Component",
+				},
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      componentName,
+					Namespace: HASAppNamespace,
+				},
+				Spec: appstudiov1alpha1.ComponentSpec{
+					ComponentName: ComponentName,
+					Application:   applicationName,
+					Source: appstudiov1alpha1.ComponentSource{
+						ComponentSourceUnion: appstudiov1alpha1.ComponentSourceUnion{
+							GitSource: &appstudiov1alpha1.GitSource{
+								URL: SampleRepoLink,
+							},
+						},
+					},
+					SkipGitOpsResourceGeneration: true,
+				},
+			}
+			Expect(k8sClient.Create(ctx, comp)).Should(Succeed())
+
+			// Look up the component resource that was created.
+			// num(conditions) should be 1, and should only contain the "Created" condition.
+			compLookupKey := types.NamespacedName{Name: componentName, Namespace: HASAppNamespace}
+			createdComp := &appstudiov1alpha1.Component{}
+			Eventually(func() bool {
+				k8sClient.Get(context.Background(), compLookupKey, createdComp)
+				return len(createdComp.Status.Conditions) == 1 && createdComp.Status.Conditions[0].Type == "Created" && createdComp.Status.GitOps.RepositoryURL != ""
+			}, timeout, interval).Should(BeTrue())
+
+			Expect(createdComp.Spec.SkipGitOpsResourceGeneration).To(Equal(createdComp.Status.GitOps.ResourceGenerationSkipped))
+
+			// Make sure the devfile model was properly set in Component
+			Expect(createdComp.Status.Devfile).Should(Not(Equal("")))
+
+			// Now change skipGitOpsResourceGeneration to true and validate that the GitOps Resources are generated successfully (by validating the GitOpsResourcesGenerated status condition)
+			createdComp.Spec.SkipGitOpsResourceGeneration = false
+			Expect(k8sClient.Update(ctx, createdComp)).Should(Succeed())
+
+			// Refetch the component and validate that the GitOps resources were created successfully
+			updatedComp := &appstudiov1alpha1.Component{}
+			Eventually(func() bool {
+				k8sClient.Get(context.Background(), compLookupKey, updatedComp)
+				return len(updatedComp.Status.Conditions) > 2 && updatedComp.Status.Conditions[2].Type == "Updated" && updatedComp.Status.GitOps.RepositoryURL != ""
+			}, timeout, interval).Should(BeTrue())
+
+			Expect(updatedComp.Spec.SkipGitOpsResourceGeneration).To(Equal(updatedComp.Status.GitOps.ResourceGenerationSkipped))
+			gitOpsCondition := updatedComp.Status.Conditions[1]
+			Expect(gitOpsCondition.Type).To(Equal("GitOpsResourcesGenerated"))
+			Expect(gitOpsCondition.Status).To(Equal(metav1.ConditionTrue))
+
+			// Delete the specified HASComp resource
+			deleteHASCompCR(compLookupKey)
+
+			// Delete the specified HASApp resource
+			appLookupKey := types.NamespacedName{Name: applicationName, Namespace: HASAppNamespace}
+			deleteHASAppCR(appLookupKey)
+		})
+	})
 })
 
 type updateChecklist struct {
