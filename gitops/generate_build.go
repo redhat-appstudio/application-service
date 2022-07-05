@@ -50,7 +50,7 @@ const (
 	buildRepositoryFileName       = "pac-repository.yaml"
 
 	DefaultImageRepo = "quay.io/redhat-appstudio/user-workload"
-	PacAnnotation    = "pipelinesascode"
+	PaCAnnotation    = "pipelinesascode"
 )
 
 var (
@@ -69,7 +69,7 @@ func GenerateBuild(fs afero.Fs, outputFolder string, component appstudiov1alpha1
 	//commonStoragePVC := GenerateCommonStorage(component, "appstudio")
 	var buildResources map[string]interface{}
 	var err error
-	val, ok := component.Annotations[PacAnnotation]
+	val, ok := component.Annotations[PaCAnnotation]
 	if ok && val == "1" {
 		repository := GeneratePACRepository(component)
 		buildResources = map[string]interface{}{

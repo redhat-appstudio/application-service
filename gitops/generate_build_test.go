@@ -17,6 +17,7 @@ package gitops
 
 import (
 	"encoding/json"
+	"path/filepath"
 	"reflect"
 	"strings"
 	"testing"
@@ -24,8 +25,13 @@ import (
 	"github.com/devfile/api/v2/pkg/apis/workspaces/v1alpha2"
 	"github.com/devfile/api/v2/pkg/devfile"
 	data "github.com/devfile/library/pkg/devfile/parser/data"
+	"github.com/mitchellh/go-homedir"
 	appstudiov1alpha1 "github.com/redhat-appstudio/application-service/api/v1alpha1"
 	"github.com/redhat-appstudio/application-service/gitops/prepare"
+	"github.com/redhat-appstudio/application-service/gitops/testutils"
+	"github.com/redhat-appstudio/application-service/pkg/util/ioutils"
+	"github.com/spf13/afero"
+	"github.com/stretchr/testify/assert"
 	tektonapi "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -73,6 +79,88 @@ func getSampleDevfileComponents() []v1alpha2.Component {
 				},
 			},
 		},
+	}
+}
+
+func TestGenerateBuild(t *testing.T) {
+	outoutFolder := "output"
+	gitopsConfig := prepare.GitopsConfig{}
+
+	tests := []struct {
+		name      string
+		fs        afero.Afero
+		component appstudiov1alpha1.Component
+		want      []string
+	}{
+		{
+			name: "Check trigger based resources",
+			fs:   ioutils.NewMemoryFilesystem(),
+			component: appstudiov1alpha1.Component{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "testcomponent",
+					Namespace: "workspace-name",
+				},
+				Spec: appstudiov1alpha1.ComponentSpec{
+					Source: appstudiov1alpha1.ComponentSource{
+						ComponentSourceUnion: appstudiov1alpha1.ComponentSourceUnion{
+							GitSource: &appstudiov1alpha1.GitSource{
+								URL: "https://host/git-repo.git",
+							},
+						},
+					},
+				},
+			},
+			want: []string{
+				kustomizeFileName,
+				buildTriggerTemplateFileName,
+				buildEventListenerFileName,
+				buildWebhookRouteFileName,
+			},
+		},
+		{
+			name: "Check pipeline as code resources",
+			fs:   ioutils.NewMemoryFilesystem(),
+			component: appstudiov1alpha1.Component{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "testcomponent",
+					Namespace: "workspace-name",
+					Annotations: map[string]string{
+						PaCAnnotation: "1",
+					},
+				},
+				Spec: appstudiov1alpha1.ComponentSpec{
+					Source: appstudiov1alpha1.ComponentSource{
+						ComponentSourceUnion: appstudiov1alpha1.ComponentSourceUnion{
+							GitSource: &appstudiov1alpha1.GitSource{
+								URL: "https://host/git-repo.git",
+							},
+						},
+					},
+				},
+			},
+			want: []string{
+				kustomizeFileName,
+				buildRepositoryFileName,
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if err := GenerateBuild(tt.fs, outoutFolder, tt.component, gitopsConfig); err != nil {
+				t.Errorf("Failed to generate builf gitops resources. Cause: %v", err)
+			}
+
+			// Ensure that needed resources generated
+			path, err := homedir.Expand(outoutFolder)
+			testutils.AssertNoError(t, err)
+
+			for _, item := range tt.want {
+				exist, err := tt.fs.Exists(filepath.Join(path, item))
+				testutils.AssertNoError(t, err)
+				assert.True(t, exist, "Expected file %s missing in gitops", item)
+			}
+		})
 	}
 }
 
@@ -851,4 +939,30 @@ func TestGetParamsForComponentBuild(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestGeneratePACRepository(t *testing.T) {
+	repoUrl := "https://host/git-repo.git"
+	component := appstudiov1alpha1.Component{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "testcomponent",
+			Namespace: "workspace-name",
+		},
+		Spec: appstudiov1alpha1.ComponentSpec{
+			Source: appstudiov1alpha1.ComponentSource{
+				ComponentSourceUnion: appstudiov1alpha1.ComponentSourceUnion{
+					GitSource: &appstudiov1alpha1.GitSource{
+						URL: repoUrl,
+					},
+				},
+			},
+		},
+	}
+
+	t.Run("Check repository URL", func(t *testing.T) {
+		pacRepo := GeneratePACRepository(component)
+		if pacRepo.Spec.URL != repoUrl {
+			t.Errorf("Wrong repo URL %s, want %s", pacRepo.Spec.URL, repoUrl)
+		}
+	})
 }
