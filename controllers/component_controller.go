@@ -380,9 +380,11 @@ func (r *ComponentReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 		}
 
 		containerImage := component.Spec.ContainerImage
-		isUpdated := !reflect.DeepEqual(oldCompDevfileData, hasCompDevfileData) || containerImage != component.Status.ContainerImage
+		skipGitOpsGeneration := component.Spec.SkipGitOpsResourceGeneration
+		isUpdated := !reflect.DeepEqual(oldCompDevfileData, hasCompDevfileData) || containerImage != component.Status.ContainerImage || skipGitOpsGeneration != component.Status.GitOps.ResourceGenerationSkipped
 		if isUpdated {
 			log.Info(fmt.Sprintf("The Component was updated %v", req.NamespacedName))
+			component.Status.GitOps.ResourceGenerationSkipped = skipGitOpsGeneration
 			yamlHASCompData, err := yaml.Marshal(hasCompDevfileData)
 			if err != nil {
 				log.Error(err, fmt.Sprintf("Unable to marshall the Component devfile, exiting reconcile loop %v", req.NamespacedName))
@@ -526,6 +528,8 @@ func setGitopsStatus(component *appstudiov1alpha1.Component, devfileData data.De
 	if gitOpsContext != "" {
 		component.Status.GitOps.Context = gitOpsContext
 	}
+
+	component.Status.GitOps.ResourceGenerationSkipped = component.Spec.SkipGitOpsResourceGeneration
 	return nil
 }
 

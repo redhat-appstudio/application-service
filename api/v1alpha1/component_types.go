@@ -141,6 +141,8 @@ type GitOpsStatus struct {
 
 	// Context is the path within the gitops repository used for the gitops resources
 	Context string `json:"context,omitempty"`
+
+	ResourceGenerationSkipped bool `json:"resourceGenerationSkipped,omitEmpty"`
 }
 
 //+kubebuilder:object:root=true
