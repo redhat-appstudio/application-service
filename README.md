@@ -93,14 +93,6 @@ make install
 make deploy
 ```
 
-### Using the Application Snapshot Environment Binding Controller
-
-To use the Application Snapshot Environment Binding Controller, please install the CRs using:
-
-```bash
-kubectl apply -f https://raw.githubusercontent.com/redhat-appstudio/managed-gitops/main/appstudio-shared/manifests/appstudio-shared-customresourcedefinitions.yaml
-```
-
 ### Specifying Alternate GitHub org
 
 By default, HAS will use the `redhat-appstudio-appdata` org for the creation of GitOps repositories. If you wish to use your own account, or a different GitHub org, setting `GITHUB_ORG=<org>` before deploying will ensure that an alternate location is used.
