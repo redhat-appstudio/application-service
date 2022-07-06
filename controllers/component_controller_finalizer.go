@@ -24,6 +24,7 @@ import (
 	appstudiov1alpha1 "github.com/redhat-appstudio/application-service/api/v1alpha1"
 	"github.com/redhat-appstudio/application-service/gitops"
 	devfile "github.com/redhat-appstudio/application-service/pkg/devfile"
+	"github.com/redhat-appstudio/application-service/pkg/util"
 	"github.com/redhat-appstudio/application-service/pkg/util/ioutils"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	"sigs.k8s.io/yaml"
@@ -105,7 +106,8 @@ func (r *ComponentReconciler) Finalize(ctx context.Context, component *appstudio
 
 	err = gitops.RemoveAndPush(tempDir, remoteURL, *component, r.Executor, r.AppFS, gitOpsBranch, gitOpsContext)
 	if err != nil {
-		return err
+		gitOpsErr := util.SanitizeErrorMessage(err)
+		return gitOpsErr
 	}
 
 	err = r.AppFS.RemoveAll(tempDir)

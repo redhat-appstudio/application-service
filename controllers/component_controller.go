@@ -475,8 +475,9 @@ func (r *ComponentReconciler) generateGitops(ctx context.Context, component *app
 
 	err = gitops.GenerateAndPush(tempDir, remoteURL, *component, r.Executor, r.AppFS, gitOpsBranch, gitOpsContext, gitopsConfig)
 	if err != nil {
-		log.Error(err, "unable to generate gitops resources due to error")
-		return err
+		gitOpsErr := util.SanitizeErrorMessage(err)
+		log.Error(gitOpsErr, "unable to generate gitops resources due to error")
+		return gitOpsErr
 	}
 
 	// Remove the temp folder that was created

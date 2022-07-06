@@ -16,6 +16,7 @@
 package util
 
 import (
+	"fmt"
 	"os"
 	"testing"
 
@@ -305,6 +306,44 @@ func TestCheckWithRegex(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			gotMatch := CheckWithRegex(tt.pattern, tt.test)
 			assert.Equal(t, tt.wantMatch, gotMatch, "the values should match")
+		})
+	}
+}
+
+func TestSanitizeErrorMessage(t *testing.T) {
+	tests := []struct {
+		name string
+		err  error
+		want error
+	}{
+		{
+			name: "Error message with nothing to be sanitized",
+			err:  fmt.Errorf("Unable to create component, some error occurred"),
+			want: fmt.Errorf("Unable to create component, some error occurred"),
+		},
+		{
+			name: "Error message with token that needs to be sanitized",
+			err:  fmt.Errorf("failed clone repository \"https://ghp_fj3492danj924@github.com/fake/repo\""),
+			want: fmt.Errorf("failed clone repository \"https://<TOKEN>@github.com/fake/repo\""),
+		},
+		{
+			name: "Error rror message #2 with token that needs to be sanitized",
+			err:  fmt.Errorf("random error message with ghp_faketokensdffjfjfn"),
+			want: fmt.Errorf("random error message with <TOKEN>"),
+		},
+		{
+			name: "Error message #3 with token that needs to be sanitized",
+			err:  fmt.Errorf("ghp_faketoken"),
+			want: fmt.Errorf("<TOKEN>"),
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			sanitizedError := SanitizeErrorMessage(tt.err)
+			if sanitizedError.Error() != tt.want.Error() {
+				t.Errorf("SanitizeName() error: expected %v got %v", tt.want, sanitizedError)
+			}
 		})
 	}
 }
