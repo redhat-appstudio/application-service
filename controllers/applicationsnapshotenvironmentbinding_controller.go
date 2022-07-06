@@ -166,10 +166,11 @@ func (r *ApplicationSnapshotEnvironmentBindingReconciler) Reconcile(ctx context.
 
 		err = gitops.GenerateOverlaysAndPush(tempDir, clone, gitOpsRemoteURL, component, applicationName, environmentName, imageName, appSnapshotEnvBinding.Namespace, r.Executor, r.AppFS, gitOpsBranch, gitOpsContext, componentGeneratedResources)
 		if err != nil {
-			log.Error(err, fmt.Sprintf("unable to get generate gitops resources for %s %v", componentName, req.NamespacedName))
+			gitOpsErr := util.SanitizeErrorMessage(err)
+			log.Error(gitOpsErr, fmt.Sprintf("unable to get generate gitops resources for %s %v", componentName, req.NamespacedName))
 			r.AppFS.RemoveAll(tempDir) // not worried with an err, its a best case attempt to delete the temp clone dir
-			r.SetConditionAndUpdateCR(ctx, &appSnapshotEnvBinding, err)
-			return ctrl.Result{}, err
+			r.SetConditionAndUpdateCR(ctx, &appSnapshotEnvBinding, gitOpsErr)
+			return ctrl.Result{}, gitOpsErr
 		}
 
 		if !isStatusUpdated {

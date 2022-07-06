@@ -88,7 +88,7 @@ func Generate(fs afero.Afero, gitOpsFolder string, outputFolder string, componen
 	return GenerateParentKustomize(fs, gitOpsFolder, commonStorage)
 }
 
-// GenerateOverlays generates the overlays dir from a given BindingComponen
+// GenerateOverlays generates the overlays dir from a given BindingComponent
 func GenerateOverlays(fs afero.Afero, gitOpsFolder string, outputFolder string, component appstudioshared.BindingComponent, imageName, namespace string, componentGeneratedResources map[string][]string) error {
 	k := resources.Kustomization{
 		APIVersion: "kustomize.config.k8s.io/v1beta1",
