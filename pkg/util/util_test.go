@@ -20,6 +20,7 @@ import (
 	"os"
 	"testing"
 
+	appstudiov1alpha1 "github.com/redhat-appstudio/application-service/api/v1alpha1"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -57,6 +58,70 @@ func TestSanitizeDisplayName(t *testing.T) {
 			// Unexpected error
 			if sanitizedName != tt.want {
 				t.Errorf("SanitizeName() error: expected %v got %v", tt.want, sanitizedName)
+			}
+		})
+	}
+}
+
+func TestProcessGitOpsStatus(t *testing.T) {
+	tests := []struct {
+		name         string
+		gitopsStatus appstudiov1alpha1.GitOpsStatus
+		gitToken     string
+		wantURL      string
+		wantBranch   string
+		wantContext  string
+		wantErr      bool
+	}{
+		{
+			name: "gitops status processed as expected",
+			gitopsStatus: appstudiov1alpha1.GitOpsStatus{
+				RepositoryURL: "https://github.com/myrepo",
+				Branch:        "notmain",
+				Context:       "context",
+			},
+			gitToken:    "token",
+			wantURL:     "https://token@github.com/myrepo",
+			wantBranch:  "notmain",
+			wantContext: "context",
+		},
+		{
+			name: "gitops url is empty",
+			gitopsStatus: appstudiov1alpha1.GitOpsStatus{
+				RepositoryURL: "",
+			},
+			wantErr: true,
+		},
+		{
+			name: "gitops branch and context not set",
+			gitopsStatus: appstudiov1alpha1.GitOpsStatus{
+				RepositoryURL: "https://github.com/myrepo",
+			},
+			gitToken:    "token",
+			wantURL:     "https://token@github.com/myrepo",
+			wantBranch:  "main",
+			wantContext: "/",
+		},
+		{
+			name: "gitops url parse err",
+			gitopsStatus: appstudiov1alpha1.GitOpsStatus{
+				RepositoryURL: "http://foo.com/?foo\nbar",
+			},
+			wantErr: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			gitopsURL, gitopsBranch, gitopsContext, err := ProcessGitOpsStatus(tt.gitopsStatus, tt.gitToken)
+			if tt.wantErr && (err == nil) {
+				t.Error("wanted error but got nil")
+			} else if !tt.wantErr && err != nil {
+				t.Errorf("got unexpected error %v", err)
+			} else {
+				assert.Equal(t, tt.wantURL, gitopsURL, "should be equal")
+				assert.Equal(t, tt.wantBranch, gitopsBranch, "should be equal")
+				assert.Equal(t, tt.wantContext, gitopsContext, "should be equal")
 			}
 		})
 	}

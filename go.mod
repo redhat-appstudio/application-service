@@ -18,6 +18,7 @@ require (
 	github.com/onsi/gomega v1.19.0
 	github.com/openshift-pipelines/pipelines-as-code v0.0.0-20220622161720-2a6007e17200
 	github.com/openshift/api v0.0.0-20200930075302-db52bc4ef99f
+	github.com/redhat-appstudio/managed-gitops/appstudio-shared v0.0.0-20220623041404-010a781bb3fb // Update mod version in suite_test.go for tests
 	github.com/redhat-appstudio/service-provider-integration-scm-file-retriever v0.4.3
 	github.com/redhat-developer/alizer/go v0.0.0-20220704150640-ef50ead0b279
 	github.com/spf13/afero v1.8.0
