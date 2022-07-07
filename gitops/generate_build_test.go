@@ -703,6 +703,51 @@ func TestGetParamsForComponentBuild(t *testing.T) {
 		},
 
 		{
+			name:           "Use Image as is, ensure revision is set",
+			IsInitialBuild: true,
+			component: appstudiov1alpha1.Component{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "testcomponent",
+					Namespace: "kcpworkspacename",
+				},
+				Spec: appstudiov1alpha1.ComponentSpec{
+					ContainerImage: "whatever-is-set",
+					Source: appstudiov1alpha1.ComponentSource{
+						ComponentSourceUnion: appstudiov1alpha1.ComponentSourceUnion{
+							GitSource: &appstudiov1alpha1.GitSource{
+								URL:      "https://a/b/c",
+								Revision: "master",
+							},
+						},
+					},
+				},
+			},
+			want: []tektonapi.Param{
+				{
+					Name: "git-url",
+					Value: tektonapi.ArrayOrString{
+						Type:      tektonapi.ParamTypeString,
+						StringVal: "https://a/b/c",
+					},
+				},
+				{
+					Name: "output-image",
+					Value: tektonapi.ArrayOrString{
+						Type:      tektonapi.ParamTypeString,
+						StringVal: "whatever-is-set",
+					},
+				},
+				{
+					Name: "revision",
+					Value: tektonapi.ArrayOrString{
+						Type:      tektonapi.ParamTypeString,
+						StringVal: "master",
+					},
+				},
+			},
+		},
+
+		{
 			name:    "default repo mismatched user error on non initial build",
 			wantErr: true,
 			want:    []tektonapi.Param{},

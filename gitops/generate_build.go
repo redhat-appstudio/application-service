@@ -234,7 +234,7 @@ func normalizeOutputImageURL(outputImage string) string {
 // is that the git revision appended to the output image tag in case of webhook build.
 func getParamsForComponentBuild(component appstudiov1alpha1.Component, isInitialBuild bool) ([]tektonapi.Param, error) {
 	sourceCode := component.Spec.Source.GitSource.URL
-	revision := component.Spec.Source.GitSource.Revision 
+	revision := component.Spec.Source.GitSource.Revision
 	outputImage := component.Spec.ContainerImage
 	var err error
 
@@ -265,14 +265,14 @@ func getParamsForComponentBuild(component appstudiov1alpha1.Component, isInitial
 	}
 	// if revision is specified in the component
 	// use it in the parms to the Pipeline Run
-	if revision != "" { 
+	if revision != "" {
 		params = append(params, tektonapi.Param{
 			Name: "revision",
 			Value: tektonapi.ArrayOrString{
 				Type:      tektonapi.ParamTypeString,
 				StringVal: revision,
 			},
-		}) 
+		})
 	}
 	// Analyze component model for additional parameters
 	if componentDevfileData, err := devfile.ParseDevfileModel(component.Status.Devfile); err == nil {
