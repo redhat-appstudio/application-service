@@ -1,0 +1,14 @@
+# API type definition is in github.com/redhat-appstudio/managed-gitops
+apiVersion: appstudio.redhat.com/v1alpha1
+kind: ApplicationSnapshot
+metadata:
+  name: applicationsnapshot-sample
+spec:
+  application: application-sample
+  displayName: my-snapshot
+  displayDescription: my first snapshot
+  components:
+  - name: component-sample
+    containerImage: quay.io/redhat-appstudio/user-workload:application-service-system-component-sample
+  - name: component-sample2
+    containerImage: quay.io/redhat-appstudio/user-workload:application-service-system-component-sample2

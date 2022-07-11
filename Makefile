@@ -44,6 +44,8 @@ GITHUB_ORG ?= redhat-appstudio-appdata
 DEVFILE_REGISTRY_URL ?= https://registry.devfile.io
 ENABLE_WEBHOOKS ?= true
 
+GITOPS_SHARED_CRD = https://raw.githubusercontent.com/redhat-appstudio/managed-gitops/main/appstudio-shared/manifests/appstudio-shared-customresourcedefinitions.yaml
+
 # Produce CRDs that work back to Kubernetes 1.11 (no version conversion)
 CRD_OPTIONS ?= "crd:trivialVersions=true,preserveUnknownFields=false"
 # ENVTEST_K8S_VERSION refers to the version of kubebuilder assets to be downloaded by envtest binary.
@@ -162,6 +164,7 @@ install-kcp: manifests kustomize
 
 install: manifests kustomize #install-cert ## Install CRDs into the K8s cluster specified in ~/.kube/config.
 	$(KUSTOMIZE) build config/crd | kubectl apply -f -
+	kubectl apply -f $(GITOPS_SHARED_CRD)
 
 uninstall: manifests kustomize #uninstall-cert ## Uninstall CRDs from the K8s cluster specified in ~/.kube/config.
 	$(KUSTOMIZE) build config/crd | kubectl delete -f -
@@ -275,8 +278,8 @@ apply-crds:
 	kubectl apply \
 	-f $(APPLICATIONS_CRD) \
 	-f $(COMPONENT_DETECTION_QUERIES_CRD) \
-	-f $(COMPONENT_CRD)
-
+	-f $(COMPONENT_CRD) \
+	-f $(GITOPS_SHARED_CRD)
 .PHONY: debug
 debug: dlv generate manifests kustomize apply-crds
 	$(MAKE) debug-stop; \

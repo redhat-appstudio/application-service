@@ -22,6 +22,7 @@ import (
 	appstudiov1alpha1 "github.com/redhat-appstudio/application-service/api/v1alpha1"
 	"github.com/redhat-appstudio/application-service/gitops/prepare"
 	"github.com/redhat-appstudio/application-service/gitops/resources"
+	appstudioshared "github.com/redhat-appstudio/managed-gitops/appstudio-shared/apis/appstudio.redhat.com/v1alpha1"
 	"github.com/spf13/afero"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -32,10 +33,12 @@ import (
 )
 
 const (
-	kustomizeFileName  = "kustomization.yaml"
-	deploymentFileName = "deployment.yaml"
-	serviceFileName    = "service.yaml"
-	routeFileName      = "route.yaml"
+	kustomizeFileName       = "kustomization.yaml"
+	deploymentFileName      = "deployment.yaml"
+	deploymentPatchFileName = "deployment-patch.yaml"
+	serviceFileName         = "service.yaml"
+	routeFileName           = "route.yaml"
+	repositoryFileName      = "repository.yaml"
 )
 
 // Generate takes in a given Component CR and
@@ -74,7 +77,7 @@ func Generate(fs afero.Afero, gitOpsFolder string, outputFolder string, componen
 		commonStorage = GenerateCommonStorage(component, "appstudio")
 	}
 
-	resources["kustomization.yaml"] = k
+	resources[kustomizeFileName] = k
 
 	_, err := yaml.WriteResources(fs, outputFolder, resources)
 	if err != nil {
@@ -83,6 +86,31 @@ func Generate(fs afero.Afero, gitOpsFolder string, outputFolder string, componen
 
 	// Re-generate the parent kustomize file and return
 	return GenerateParentKustomize(fs, gitOpsFolder, commonStorage)
+}
+
+// GenerateOverlays generates the overlays dir from a given BindingComponent
+func GenerateOverlays(fs afero.Afero, gitOpsFolder string, outputFolder string, component appstudioshared.BindingComponent, imageName, namespace string, componentGeneratedResources map[string][]string) error {
+	k := resources.Kustomization{
+		APIVersion: "kustomize.config.k8s.io/v1beta1",
+		Kind:       "Kustomization",
+	}
+
+	deploymentPatch := generateDeploymentPatch(component, imageName, namespace)
+
+	k.AddResources("../../base")
+	k.AddPatches(deploymentPatchFileName)
+	if componentGeneratedResources == nil {
+		componentGeneratedResources = make(map[string][]string)
+	}
+	componentGeneratedResources[component.Name] = append(componentGeneratedResources[component.Name], deploymentPatchFileName)
+
+	resources := map[string]interface{}{
+		deploymentPatchFileName: deploymentPatch,
+		kustomizeFileName:       k,
+	}
+
+	_, err := yaml.WriteResources(fs, outputFolder, resources)
+	return err
 }
 
 // GenerateParentKustomize takes in a folder of components, and outputs a kustomize file to the outputFolder dir
@@ -122,7 +150,7 @@ func GenerateParentKustomize(fs afero.Afero, gitOpsFolder string, commonStorageP
 		k.AddResources("common-storage-pvc.yaml")
 	}
 
-	resources["kustomization.yaml"] = k
+	resources[kustomizeFileName] = k
 
 	_, err = yaml.WriteResources(fs, gitOpsFolder, resources)
 	return err
@@ -206,6 +234,50 @@ func generateDeployment(component appstudiov1alpha1.Component) *appsv1.Deploymen
 				},
 			},
 		}
+	}
+
+	return &deployment
+}
+
+func generateDeploymentPatch(component appstudioshared.BindingComponent, imageName, namespace string) *appsv1.Deployment {
+
+	deployment := appsv1.Deployment{
+		TypeMeta: v1.TypeMeta{
+			Kind:       "Deployment",
+			APIVersion: "apps/v1",
+		},
+		ObjectMeta: v1.ObjectMeta{
+			Name:      component.Name,
+			Namespace: namespace,
+		},
+		Spec: appsv1.DeploymentSpec{
+			Template: corev1.PodTemplateSpec{
+				Spec: corev1.PodSpec{
+					Containers: []corev1.Container{
+						{
+							Name:  "container-image",
+							Image: imageName,
+						},
+					},
+				},
+			},
+		},
+	}
+
+	for _, env := range component.Configuration.Env {
+		deployment.Spec.Template.Spec.Containers[0].Env = append(deployment.Spec.Template.Spec.Containers[0].Env, corev1.EnvVar{
+			Name:  env.Name,
+			Value: env.Value,
+		})
+	}
+
+	if component.Configuration.Replicas > 0 {
+		replica := int32(component.Configuration.Replicas)
+		deployment.Spec.Replicas = &replica
+	}
+
+	if component.Configuration.Resources != nil {
+		deployment.Spec.Template.Spec.Containers[0].Resources = *component.Configuration.Resources
 	}
 
 	return &deployment
