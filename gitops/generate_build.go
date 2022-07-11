@@ -25,6 +25,7 @@ import (
 
 	devfilev1alpha2 "github.com/devfile/api/v2/pkg/apis/workspaces/v1alpha2"
 	devfilecommon "github.com/devfile/library/pkg/devfile/parser/data/v2/common"
+	pacv1aplha1 "github.com/openshift-pipelines/pipelines-as-code/pkg/apis/pipelinesascode/v1alpha1"
 	routev1 "github.com/openshift/api/route/v1"
 	appstudiov1alpha1 "github.com/redhat-appstudio/application-service/api/v1alpha1"
 	"github.com/redhat-appstudio/application-service/gitops/prepare"
@@ -46,8 +47,10 @@ const (
 	buildTriggerTemplateFileName  = "trigger-template.yaml"
 	buildEventListenerFileName    = "event-listener.yaml"
 	buildWebhookRouteFileName     = "build-webhook-route.yaml"
+	buildRepositoryFileName       = "pac-repository.yaml"
 
 	DefaultImageRepo = "quay.io/redhat-appstudio/user-workload"
+	PaCAnnotation    = "pipelinesascode"
 )
 
 var (
@@ -64,18 +67,28 @@ func SetDefaultImageRepo(repo string) {
 
 func GenerateBuild(fs afero.Fs, outputFolder string, component appstudiov1alpha1.Component, gitopsConfig prepare.GitopsConfig) error {
 	//commonStoragePVC := GenerateCommonStorage(component, "appstudio")
-	triggerTemplate, err := GenerateTriggerTemplate(component, gitopsConfig)
-	if err != nil {
-		return err
-	}
-	eventListener := GenerateEventListener(component, *triggerTemplate)
-	webhookRoute := GenerateBuildWebhookRoute(component)
+	var buildResources map[string]interface{}
+	var err error
+	val, ok := component.Annotations[PaCAnnotation]
+	if ok && val == "1" {
+		repository := GeneratePACRepository(component)
+		buildResources = map[string]interface{}{
+			buildRepositoryFileName: repository,
+		}
+	} else {
+		triggerTemplate, err := GenerateTriggerTemplate(component, gitopsConfig)
+		if err != nil {
+			return err
+		}
+		eventListener := GenerateEventListener(component, *triggerTemplate)
+		webhookRoute := GenerateBuildWebhookRoute(component)
 
-	buildResources := map[string]interface{}{
-		//buildCommonStoragePVCFileName: commonStoragePVC,
-		buildTriggerTemplateFileName: triggerTemplate,
-		buildEventListenerFileName:   eventListener,
-		buildWebhookRouteFileName:    webhookRoute,
+		buildResources = map[string]interface{}{
+			//buildCommonStoragePVCFileName: commonStoragePVC,
+			buildTriggerTemplateFileName: triggerTemplate,
+			buildEventListenerFileName:   eventListener,
+			buildWebhookRouteFileName:    webhookRoute,
+		}
 	}
 
 	kustomize := resources.Kustomization{}
@@ -234,6 +247,7 @@ func normalizeOutputImageURL(outputImage string) string {
 // is that the git revision appended to the output image tag in case of webhook build.
 func getParamsForComponentBuild(component appstudiov1alpha1.Component, isInitialBuild bool) ([]tektonapi.Param, error) {
 	sourceCode := component.Spec.Source.GitSource.URL
+	revision := component.Spec.Source.GitSource.Revision
 	outputImage := component.Spec.ContainerImage
 	var err error
 
@@ -262,7 +276,17 @@ func getParamsForComponentBuild(component appstudiov1alpha1.Component, isInitial
 			},
 		},
 	}
-
+	// if revision is specified in the component
+	// use it in the parms to the Pipeline Run
+	if revision != "" {
+		params = append(params, tektonapi.Param{
+			Name: "revision",
+			Value: tektonapi.ArrayOrString{
+				Type:      tektonapi.ParamTypeString,
+				StringVal: revision,
+			},
+		})
+	}
 	// Analyze component model for additional parameters
 	if componentDevfileData, err := devfile.ParseDevfileModel(component.Status.Devfile); err == nil {
 
@@ -456,4 +480,23 @@ func GenerateEventListener(component appstudiov1alpha1.Component, triggerTemplat
 		},
 	}
 	return eventListener
+}
+
+// The GeneratePACRepository generates Repository for Pipelines-as-Code
+func GeneratePACRepository(component appstudiov1alpha1.Component) pacv1aplha1.Repository {
+	repository := pacv1aplha1.Repository{
+		TypeMeta: metav1.TypeMeta{
+			Kind:       "Repository",
+			APIVersion: "pipelinesascode.tekton.dev/v1alpha1",
+		},
+		ObjectMeta: metav1.ObjectMeta{
+			Name:        component.Name,
+			Namespace:   component.Namespace,
+			Annotations: getBuildCommonLabelsForComponent(&component),
+		},
+		Spec: pacv1aplha1.RepositorySpec{
+			URL: component.Spec.Source.GitSource.URL,
+		},
+	}
+	return repository
 }

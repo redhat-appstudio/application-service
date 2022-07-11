@@ -26,6 +26,7 @@ import (
 
 	"github.com/go-git/go-git/v5"
 	transportHttp "github.com/go-git/go-git/v5/plumbing/transport/http"
+	appstudiov1alpha1 "github.com/redhat-appstudio/application-service/api/v1alpha1"
 )
 
 func SanitizeName(name string) string {
@@ -47,6 +48,36 @@ func IsExist(path string) (bool, error) {
 		return false, nil
 	}
 	return false, err
+}
+
+// ProcessGitOpsStatus processes the GitOps status and returns the remote url, branch, context and the error
+func ProcessGitOpsStatus(gitopsStatus appstudiov1alpha1.GitOpsStatus, gitToken string) (string, string, string, error) {
+	var gitOpsURL, gitOpsBranch, gitOpsContext string
+	gitOpsURL = gitopsStatus.RepositoryURL
+	if gitOpsURL == "" {
+		err := fmt.Errorf("unable to process GitOps status, GitOps Repository URL cannot be empty")
+		return "", "", "", err
+	}
+	if gitopsStatus.Branch != "" {
+		gitOpsBranch = gitopsStatus.Branch
+	} else {
+		gitOpsBranch = "main"
+	}
+	if gitopsStatus.Context != "" {
+		gitOpsContext = gitopsStatus.Context
+	} else {
+		gitOpsContext = "/"
+	}
+
+	// Construct the remote URL for the gitops repository
+	parsedURL, err := url.Parse(gitOpsURL)
+	if err != nil {
+		return "", "", "", err
+	}
+	parsedURL.User = url.User(gitToken)
+	remoteURL := parsedURL.String()
+
+	return remoteURL, gitOpsBranch, gitOpsContext, nil
 }
 
 // ConvertGitHubURL converts a git url to its raw format
@@ -129,6 +160,13 @@ func CloneRepo(clonePath, repoURL string, token string) error {
 	}
 
 	return nil
+}
+
+// SanitizeErrorMessage takes in a given error message and returns a new, santized error with things like tokens, removed
+func SanitizeErrorMessage(err error) error {
+	reg := regexp.MustCompile(`ghp_[a-z0-9]*`)
+	newErrMsg := reg.ReplaceAllString(err.Error(), "<TOKEN>")
+	return fmt.Errorf(newErrMsg)
 }
 
 // CheckWithRegex checks if a name matches the pattern.

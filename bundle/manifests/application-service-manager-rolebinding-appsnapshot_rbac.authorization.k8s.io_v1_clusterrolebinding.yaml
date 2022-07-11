@@ -1,0 +1,13 @@
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  creationTimestamp: null
+  name: application-service-manager-rolebinding-appsnapshot
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: manager-role-appsnapshot
+subjects:
+- kind: ServiceAccount
+  name: application-service-controller-manager
+  namespace: application-service-system

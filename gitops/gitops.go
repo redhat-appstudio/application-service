@@ -22,6 +22,7 @@ import (
 
 	appstudiov1alpha1 "github.com/redhat-appstudio/application-service/api/v1alpha1"
 	"github.com/redhat-appstudio/application-service/gitops/prepare"
+	appstudioshared "github.com/redhat-appstudio/managed-gitops/appstudio-shared/apis/appstudio.redhat.com/v1alpha1"
 	"github.com/spf13/afero"
 	corev1 "k8s.io/api/core/v1"
 )
@@ -76,7 +77,52 @@ func GenerateAndPush(outputPath string, remote string, component appstudiov1alph
 		return fmt.Errorf("failed to check git diff in repository %q %q: %s", repoPath, string(out), err)
 	} else if string(out) != "" {
 		// Commit the changes and push
-		if out, err := e.Execute(repoPath, "git", "commit", "-m", "Generate GitOps resources"); err != nil {
+		if out, err := e.Execute(repoPath, "git", "commit", "-m", fmt.Sprintf("Generate GitOps base resources for component %s", componentName)); err != nil {
+			return fmt.Errorf("failed to commit files to repository in %q %q: %s", repoPath, string(out), err)
+		}
+		if out, err := e.Execute(repoPath, "git", "push", "origin", branch); err != nil {
+			return fmt.Errorf("failed push remote to repository %q %q: %s", remote, string(out), err)
+		}
+	}
+
+	return nil
+}
+
+// GenerateOverlaysAndPush generates the overlays kustomize from App Env Snapshot Binding Spec
+func GenerateOverlaysAndPush(outputPath string, clone bool, remote string, component appstudioshared.BindingComponent, applicationName, environmentName, imageName, namespace string, e Executor, appFs afero.Afero, branch string, context string, componentGeneratedResources map[string][]string) error {
+	componentName := component.Name
+	repoPath := filepath.Join(outputPath, applicationName)
+
+	if clone {
+		if out, err := e.Execute(outputPath, "git", "clone", remote, applicationName); err != nil {
+			return fmt.Errorf("failed to clone git repository in %q %q: %s", outputPath, string(out), err)
+		}
+
+		// Checkout the specified branch
+		if _, err := e.Execute(repoPath, "git", "switch", branch); err != nil {
+			if out, err := e.Execute(repoPath, "git", "checkout", "-b", branch); err != nil {
+				return fmt.Errorf("failed to checkout branch %q in %q %q: %s", branch, repoPath, string(out), err)
+			}
+		}
+	}
+
+	// Generate the gitops resources and update the parent kustomize yaml file
+	gitopsFolder := filepath.Join(repoPath, context)
+	componentEnvOverlaysPath := filepath.Join(gitopsFolder, "components", componentName, "overlays", environmentName)
+	if err := GenerateOverlays(appFs, gitopsFolder, componentEnvOverlaysPath, component, imageName, namespace, componentGeneratedResources); err != nil {
+		return fmt.Errorf("failed to generate the gitops resources in overlays dir %q for component %q: %s", componentEnvOverlaysPath, componentName, err)
+	}
+
+	if out, err := e.Execute(repoPath, "git", "add", "."); err != nil {
+		return fmt.Errorf("failed to add files for component %q to repository in %q %q: %s", componentName, repoPath, string(out), err)
+	}
+
+	// See if any files changed, and if so, commit and push them up to the repository
+	if out, err := e.Execute(repoPath, "git", "--no-pager", "diff", "--cached"); err != nil {
+		return fmt.Errorf("failed to check git diff in repository %q %q: %s", repoPath, string(out), err)
+	} else if string(out) != "" {
+		// Commit the changes and push
+		if out, err := e.Execute(repoPath, "git", "commit", "-m", fmt.Sprintf("Generate %s environment overlays for component %s", environmentName, componentName)); err != nil {
 			return fmt.Errorf("failed to commit files to repository in %q %q: %s", repoPath, string(out), err)
 		}
 		if out, err := e.Execute(repoPath, "git", "push", "origin", branch); err != nil {
