@@ -1266,6 +1266,157 @@ var _ = Describe("ApplicationSnapshotEnvironmentBinding controller", func() {
 		})
 	})
 
+	Context("Create ApplicationSnapshotEnvironmentBinding with some component configurations", func() {
+		It("Should generate gitops overlays successfully", func() {
+			ctx := context.Background()
+
+			applicationName := HASAppName + "9"
+			componentName := HASCompName + "9"
+			secondComponentName := HASCompName + "9-2"
+			snapshotName := HASSnapshotName + "9"
+			bindingName := HASBindingName + "9"
+			environmentName := "staging"
+
+			hasGitopsGeneratedResource := map[string]bool{
+				"deployment-patch.yaml": true,
+			}
+
+			replicas := int32(3)
+
+			createAndFetchSimpleApp(applicationName, HASAppNamespace, DisplayName, Description)
+			hasComp := createAndFetchSimpleComponent(componentName, HASAppNamespace, ComponentName, applicationName, SampleRepoLink, true)
+			secondComp := createAndFetchSimpleComponent(secondComponentName, HASAppNamespace, secondComponentName, applicationName, SampleRepoLink, false)
+
+			// Make sure the devfile model was properly set in Component
+			Expect(hasComp.Status.Devfile).Should(Not(Equal("")))
+
+			appSnapshot := &appstudioshared.ApplicationSnapshot{
+				TypeMeta: metav1.TypeMeta{
+					APIVersion: "appstudio.redhat.com/v1alpha1",
+					Kind:       "ApplicationSnapshot",
+				},
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      snapshotName,
+					Namespace: HASAppNamespace,
+				},
+				Spec: appstudioshared.ApplicationSnapshotSpec{
+					Application:        applicationName,
+					DisplayName:        "My Snapshot",
+					DisplayDescription: "My Snapshot",
+					Components: []appstudioshared.ApplicationSnapshotComponent{
+						{
+							Name:           componentName,
+							ContainerImage: "image1",
+						},
+						{
+							Name:           secondComponentName,
+							ContainerImage: "image2",
+						},
+					},
+				},
+			}
+			Expect(k8sClient.Create(ctx, appSnapshot)).Should(Succeed())
+
+			appSnapshotLookupKey := types.NamespacedName{Name: snapshotName, Namespace: HASAppNamespace}
+			createdAppSnapshot := &appstudioshared.ApplicationSnapshot{}
+			Eventually(func() bool {
+				k8sClient.Get(context.Background(), appSnapshotLookupKey, createdAppSnapshot)
+				return len(createdAppSnapshot.Spec.Components) > 0
+			}, timeout, interval).Should(BeTrue())
+
+			appBinding := &appstudioshared.ApplicationSnapshotEnvironmentBinding{
+				TypeMeta: metav1.TypeMeta{
+					APIVersion: "appstudio.redhat.com/v1alpha1",
+					Kind:       "ApplicationSnapshotEnvironmentBinding",
+				},
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      bindingName,
+					Namespace: HASAppNamespace,
+				},
+				Spec: appstudioshared.ApplicationSnapshotEnvironmentBindingSpec{
+					Application: applicationName,
+					Environment: environmentName,
+					Snapshot:    snapshotName,
+					Components: []appstudioshared.BindingComponent{
+						{
+							Name: componentName,
+							Configuration: appstudioshared.BindingComponentConfiguration{
+								Replicas: int(replicas),
+								Env: []appstudioshared.EnvVarPair{
+									{
+										Name:  "FOO",
+										Value: "BAR",
+									},
+								},
+								Resources: &corev1.ResourceRequirements{
+									Limits: corev1.ResourceList{
+										corev1.ResourceCPU: resource.MustParse("1"),
+									},
+								},
+							},
+						},
+						{
+							Name: secondComponentName,
+							Configuration: appstudioshared.BindingComponentConfiguration{
+								Replicas: int(replicas),
+								Env: []appstudioshared.EnvVarPair{
+									{
+										Name:  "FOO",
+										Value: "BAR",
+									},
+								},
+								Resources: &corev1.ResourceRequirements{
+									Limits: corev1.ResourceList{
+										corev1.ResourceCPU: resource.MustParse("1"),
+									},
+								},
+							},
+						},
+					},
+				},
+			}
+
+			Expect(k8sClient.Create(ctx, appBinding)).Should(Succeed())
+
+			bindingLookupKey := types.NamespacedName{Name: bindingName, Namespace: HASAppNamespace}
+			createdBinding := &appstudioshared.ApplicationSnapshotEnvironmentBinding{}
+			Eventually(func() bool {
+				k8sClient.Get(context.Background(), bindingLookupKey, createdBinding)
+				return len(createdBinding.Status.GitOpsRepoConditions) > 0 && len(createdBinding.Status.Components) == 1
+			}, timeout, interval).Should(BeTrue())
+
+			// Validate that the GitOps resources for the bound component(s) were generated, but not for any that explicitly had skipGitOpsResourceGeneration set
+			Expect(createdBinding.Status.GitOpsRepoConditions[0].Message).Should(Equal("GitOps repository sync successful"))
+			Expect(len(createdBinding.Status.Components)).Should(Equal(1))
+			Expect(createdBinding.Status.Components[0].Name).Should(Equal(secondComponentName))
+			Expect(createdBinding.Status.Components[0].GitOpsRepository.Path).Should(Equal(fmt.Sprintf("components/%s/overlays/%s", secondComponentName, environmentName)))
+			Expect(createdBinding.Status.Components[0].GitOpsRepository.URL).Should(Equal(secondComp.Status.GitOps.RepositoryURL))
+
+			// check the list of generated gitops resources to make sure we account for every one
+			for _, generatedResource := range createdBinding.Status.Components[0].GitOpsRepository.GeneratedResources {
+				Expect(hasGitopsGeneratedResource[generatedResource]).Should(BeTrue())
+			}
+
+			// Delete the specified Component resources
+			hasCompLookupKey := types.NamespacedName{Name: componentName, Namespace: HASAppNamespace}
+			deleteHASCompCR(hasCompLookupKey)
+
+			hasCompLookupKey = types.NamespacedName{Name: secondComponentName, Namespace: HASAppNamespace}
+			deleteHASCompCR(hasCompLookupKey)
+
+			// Delete the specified App resource
+			hasAppLookupKey := types.NamespacedName{Name: applicationName, Namespace: HASAppNamespace}
+			deleteHASAppCR(hasAppLookupKey)
+
+			// Delete the specified binding
+			deleteBinding(bindingLookupKey)
+
+			// Delete the specified snapshot
+			deleteSnapshot(appSnapshotLookupKey)
+
+		})
+	})
+
 })
 
 // deleteBinding deletes the specified binding resource and verifies it was properly deleted
@@ -1298,4 +1449,43 @@ func deleteSnapshot(snapshotLookupKey types.NamespacedName) {
 		f := &appstudioshared.ApplicationSnapshot{}
 		return k8sClient.Get(context.Background(), snapshotLookupKey, f)
 	}, timeout, interval).ShouldNot(Succeed())
+}
+
+func createAndFetchSimpleComponent(name, namespace, componentName, application, gitRepo string, skipGitOps bool) appstudiov1alpha1.Component {
+	comp := &appstudiov1alpha1.Component{
+		TypeMeta: metav1.TypeMeta{
+			APIVersion: "appstudio.redhat.com/v1alpha1",
+			Kind:       "Component",
+		},
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      name,
+			Namespace: namespace,
+		},
+		Spec: appstudiov1alpha1.ComponentSpec{
+			ComponentName: componentName,
+			Application:   application,
+			Source: appstudiov1alpha1.ComponentSource{
+				ComponentSourceUnion: appstudiov1alpha1.ComponentSourceUnion{
+					GitSource: &appstudiov1alpha1.GitSource{
+						URL: gitRepo,
+					},
+				},
+			},
+			SkipGitOpsResourceGeneration: skipGitOps,
+		},
+	}
+	Expect(k8sClient.Create(ctx, comp)).Should(Succeed())
+
+	// Look up the has app resource that was created.
+	// num(conditions) may still be < 1 on the first try, so retry until at least _some_ condition is set
+	hasCompLookupKey := types.NamespacedName{Name: name, Namespace: namespace}
+	createdComp := &appstudiov1alpha1.Component{}
+	Eventually(func() bool {
+		k8sClient.Get(context.Background(), hasCompLookupKey, createdComp)
+		return len(createdComp.Status.Conditions) > 0 && createdComp.Status.GitOps.RepositoryURL != ""
+	}, timeout, interval).Should(BeTrue())
+
+	Expect(createdComp.Status.Devfile).To(Not(Equal("")))
+
+	return *createdComp
 }
