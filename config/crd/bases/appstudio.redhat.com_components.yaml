@@ -340,6 +340,8 @@ spec:
                       component
                     type: string
                   resourceGenerationSkipped:
+                    description: ResourceGenerationSkipped is whether or not GitOps
+                      resource generation was skipped for the component
                     type: boolean
                 type: object
               webhook:

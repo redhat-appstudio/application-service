@@ -5,7 +5,7 @@ apiVersion: apis.kcp.dev/v1alpha1
 kind: APIResourceSchema
 metadata:
   creationTimestamp: null
-  name: v202207052026.applications.appstudio.redhat.com
+  name: v202207121506.applications.appstudio.redhat.com
 spec:
   group: appstudio.redhat.com
   names:
@@ -179,7 +179,7 @@ apiVersion: apis.kcp.dev/v1alpha1
 kind: APIResourceSchema
 metadata:
   creationTimestamp: null
-  name: v202207052026.componentdetectionqueries.appstudio.redhat.com
+  name: v202207121506.componentdetectionqueries.appstudio.redhat.com
 spec:
   group: appstudio.redhat.com
   names:
@@ -572,7 +572,7 @@ apiVersion: apis.kcp.dev/v1alpha1
 kind: APIResourceSchema
 metadata:
   creationTimestamp: null
-  name: v202207052026.components.appstudio.redhat.com
+  name: v202207121506.components.appstudio.redhat.com
 spec:
   group: appstudio.redhat.com
   names:
@@ -904,6 +904,8 @@ spec:
                     component
                   type: string
                 resourceGenerationSkipped:
+                  description: ResourceGenerationSkipped is whether or not GitOps
+                    resource generation was skipped for the component
                   type: boolean
               type: object
             webhook:

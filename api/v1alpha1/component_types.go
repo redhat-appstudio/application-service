@@ -142,6 +142,7 @@ type GitOpsStatus struct {
 	// Context is the path within the gitops repository used for the gitops resources
 	Context string `json:"context,omitempty"`
 
+	// ResourceGenerationSkipped is whether or not GitOps resource generation was skipped for the component
 	ResourceGenerationSkipped bool `json:"resourceGenerationSkipped,omitempty"`
 }
 

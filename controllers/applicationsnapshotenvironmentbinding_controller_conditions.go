@@ -38,7 +38,7 @@ func (r *ApplicationSnapshotEnvironmentBindingReconciler) SetConditionAndUpdateC
 		meta.SetStatusCondition(&appSnapshotEnvBinding.Status.GitOpsRepoConditions, metav1.Condition{
 			Type:    "GitOpsResourcesGenerated",
 			Status:  metav1.ConditionFalse,
-			Reason:  "Error",
+			Reason:  "GenerateError",
 			Message: fmt.Sprintf("GitOps repository sync failed: %v", createError),
 		})
 	}

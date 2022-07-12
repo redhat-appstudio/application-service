@@ -1266,8 +1266,8 @@ var _ = Describe("ApplicationSnapshotEnvironmentBinding controller", func() {
 		})
 	})
 
-	Context("Create ApplicationSnapshotEnvironmentBinding with some component configurations", func() {
-		It("Should generate gitops overlays successfully", func() {
+	Context("Create ApplicationSnapshotEnvironmentBinding with multiple component configurations", func() {
+		It("Should not generate gitops overlays successfully for Components that skip gitops", func() {
 			ctx := context.Background()
 
 			applicationName := HASAppName + "9"
