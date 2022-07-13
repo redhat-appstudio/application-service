@@ -73,7 +73,6 @@ func TestGenerateAndPush(t *testing.T) {
 				[]byte("test output4"),
 				[]byte("test output5"),
 				[]byte("test output6"),
-				[]byte("test output7"),
 			},
 			want: []testutils.Execution{
 				{
@@ -86,11 +85,6 @@ func TestGenerateAndPush(t *testing.T) {
 					Command: "git",
 					Args:    []string{"switch", "main"},
 				},
-				// {
-				// 	BaseDir: repoPath,
-				// 	Command: "rm",
-				// 	Args:    []string{"-rf", filepath.Join("components", componentName)},
-				// },
 				{
 					BaseDir: repoPath,
 					Command: "git",
@@ -190,7 +184,6 @@ func TestGenerateAndPush(t *testing.T) {
 				[]byte("test output5"),
 				[]byte("test output6"),
 				[]byte("test output7"),
-				[]byte("test output8"),
 			},
 			want: []testutils.Execution{
 				{
@@ -208,11 +201,6 @@ func TestGenerateAndPush(t *testing.T) {
 					Command: "git",
 					Args:    []string{"checkout", "-b", "main"},
 				},
-				// {
-				// 	BaseDir: repoPath,
-				// 	Command: "rm",
-				// 	Args:    []string{"-rf", filepath.Join("components", componentName)},
-				// },
 				{
 					BaseDir: repoPath,
 					Command: "git",
@@ -243,7 +231,6 @@ func TestGenerateAndPush(t *testing.T) {
 			errors: &testutils.ErrorStack{
 				Errors: []error{
 					errors.New("Fatal error"),
-					nil,
 					nil,
 					nil,
 				},
@@ -279,7 +266,6 @@ func TestGenerateAndPush(t *testing.T) {
 			errors: &testutils.ErrorStack{
 				Errors: []error{
 					errors.New("Permission Denied"),
-					nil,
 					nil,
 					nil,
 					nil,
@@ -322,7 +308,6 @@ func TestGenerateAndPush(t *testing.T) {
 			errors: &testutils.ErrorStack{
 				Errors: []error{
 					errors.New("Fatal error"),
-					nil,
 					nil,
 					nil,
 					nil,
@@ -372,7 +357,6 @@ func TestGenerateAndPush(t *testing.T) {
 			errors: &testutils.ErrorStack{
 				Errors: []error{
 					errors.New("Fatal error"),
-					nil,
 					nil,
 					nil,
 					nil,
