@@ -25,6 +25,7 @@ type Kustomization struct {
 	Kind         string            `json:"kind,omitempty"`
 	Resources    []string          `json:"resources,omitempty"`
 	Bases        []string          `json:"bases,omitempty"`
+	Patches      []string          `json:"patches,omitempty"`
 	CommonLabels map[string]string `json:"commonLabels,omitempty"`
 }
 
@@ -34,6 +35,10 @@ func (k *Kustomization) AddResources(s ...string) {
 
 func (k *Kustomization) AddBases(s ...string) {
 	k.Bases = removeDuplicatesAndSort(append(k.Bases, s...))
+}
+
+func (k *Kustomization) AddPatches(s ...string) {
+	k.Patches = removeDuplicatesAndSort(append(k.Patches, s...))
 }
 
 func removeDuplicatesAndSort(s []string) []string {

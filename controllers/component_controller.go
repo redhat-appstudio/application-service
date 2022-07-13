@@ -19,7 +19,6 @@ package controllers
 import (
 	"context"
 	"fmt"
-	"net/url"
 	"reflect"
 	"time"
 
@@ -268,7 +267,7 @@ func (r *ComponentReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 			// Generate a stub devfile for the component
 			compDevfileData, err = devfile.ConvertImageComponentToDevfile(component)
 			if err != nil {
-				log.Error(err, fmt.Sprintf("Unable to parse the devfile from Component, exiting reconcile loop %v", req.NamespacedName))
+				log.Error(err, fmt.Sprintf("Unable to convert the Image Component to a devfile %v", req.NamespacedName))
 				r.SetCreateConditionAndUpdateCR(ctx, &component, err)
 				return ctrl.Result{}, err
 			}
@@ -336,11 +335,16 @@ func (r *ComponentReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 			}
 
 			// Generate and push the gitops resources
-			if err := r.generateGitops(ctx, &component); err != nil {
-				errMsg := fmt.Sprintf("Unable to generate gitops resources for component %v", req.NamespacedName)
-				log.Error(err, errMsg)
-				r.SetCreateConditionAndUpdateCR(ctx, &component, fmt.Errorf("%v: %v", errMsg, err))
-				return ctrl.Result{}, err
+			if !component.Spec.SkipGitOpsResourceGeneration {
+				if err := r.generateGitops(ctx, &component); err != nil {
+					errMsg := fmt.Sprintf("Unable to generate gitops resources for component %v", req.NamespacedName)
+					log.Error(err, errMsg)
+					r.SetGitOpsGeneratedConditionAndUpdateCR(ctx, &component, fmt.Errorf("%v: %v", errMsg, err))
+					r.SetCreateConditionAndUpdateCR(ctx, &component, fmt.Errorf("%v: %v", errMsg, err))
+					return ctrl.Result{}, err
+				} else {
+					r.SetGitOpsGeneratedConditionAndUpdateCR(ctx, &component, nil)
+				}
 			}
 
 			r.SetCreateConditionAndUpdateCR(ctx, &component, nil)
@@ -354,7 +358,7 @@ func (r *ComponentReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 		// Parse the Component Devfile
 		hasCompDevfileData, err := devfile.ParseDevfileModel(component.Status.Devfile)
 		if err != nil {
-			log.Error(err, fmt.Sprintf("Unable to parse the devfile from Component, exiting reconcile loop %v", req.NamespacedName))
+			log.Error(err, fmt.Sprintf("Unable to parse the devfile from Component status, exiting reconcile loop %v", req.NamespacedName))
 			r.SetUpdateConditionAndUpdateCR(ctx, &component, err)
 			return ctrl.Result{}, err
 		}
@@ -369,15 +373,17 @@ func (r *ComponentReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 		// Read the devfile again to compare it with any updates
 		oldCompDevfileData, err := devfile.ParseDevfileModel(component.Status.Devfile)
 		if err != nil {
-			log.Error(err, fmt.Sprintf("Unable to parse the devfile from Component, exiting reconcile loop %v", req.NamespacedName))
+			log.Error(err, fmt.Sprintf("Unable to parse the devfile from Component status, exiting reconcile loop %v", req.NamespacedName))
 			r.SetUpdateConditionAndUpdateCR(ctx, &component, err)
 			return ctrl.Result{}, err
 		}
 
 		containerImage := component.Spec.ContainerImage
-		isUpdated := !reflect.DeepEqual(oldCompDevfileData, hasCompDevfileData) || containerImage != component.Status.ContainerImage
+		skipGitOpsGeneration := component.Spec.SkipGitOpsResourceGeneration
+		isUpdated := !reflect.DeepEqual(oldCompDevfileData, hasCompDevfileData) || containerImage != component.Status.ContainerImage || skipGitOpsGeneration != component.Status.GitOps.ResourceGenerationSkipped
 		if isUpdated {
 			log.Info(fmt.Sprintf("The Component was updated %v", req.NamespacedName))
+			component.Status.GitOps.ResourceGenerationSkipped = skipGitOpsGeneration
 			yamlHASCompData, err := yaml.Marshal(hasCompDevfileData)
 			if err != nil {
 				log.Error(err, fmt.Sprintf("Unable to marshall the Component devfile, exiting reconcile loop %v", req.NamespacedName))
@@ -385,13 +391,18 @@ func (r *ComponentReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 				return ctrl.Result{}, err
 			}
 
-			// Generate and push the gitops resources
+			// Generate and push the gitops resources, if necessary.
 			component.Status.ContainerImage = component.Spec.ContainerImage
-			if err := r.generateGitops(ctx, &component); err != nil {
-				errMsg := fmt.Sprintf("Unable to generate gitops resources for component %v", req.NamespacedName)
-				log.Error(err, errMsg)
-				r.SetUpdateConditionAndUpdateCR(ctx, &component, fmt.Errorf("%v: %v", errMsg, err))
-				return ctrl.Result{}, err
+      if !component.Spec.SkipGitOpsResourceGeneration {
+				if err := r.generateGitops(ctx, &component); err != nil {
+					errMsg := fmt.Sprintf("Unable to generate gitops resources for component %v", req.NamespacedName)
+					log.Error(err, errMsg)
+					r.SetGitOpsGeneratedConditionAndUpdateCR(ctx, &component, fmt.Errorf("%v: %v", errMsg, err))
+					r.SetUpdateConditionAndUpdateCR(ctx, &component, fmt.Errorf("%v: %v", errMsg, err))
+					return ctrl.Result{}, err
+				} else {
+					r.SetGitOpsGeneratedConditionAndUpdateCR(ctx, &component, nil)
+				}
 			}
 
 			component.Status.Devfile = string(yamlHASCompData)
@@ -404,8 +415,9 @@ func (r *ComponentReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 
 	// Get the Webhook from the event listener route and update it
 	// Only attempt to get it if the build generation succeeded, otherwise the route won't exist
-	if component.Status.Conditions[len(component.Status.Conditions)-1].Status == metav1.ConditionTrue &&
-		component.Spec.Source.GitSource != nil && component.Spec.Source.GitSource.URL != "" {
+	if len(component.Status.Conditions) > 0 && component.Status.Conditions[len(component.Status.Conditions)-1].Status == metav1.ConditionTrue &&
+		component.Spec.Source.GitSource != nil && component.Spec.Source.GitSource.URL != "" &&
+		(component.ObjectMeta.Annotations == nil || component.ObjectMeta.Annotations[gitops.PaCAnnotation] != "1") {
 		createdWebhook := &routev1.Route{}
 		err = r.Client.Get(ctx, types.NamespacedName{Name: "el" + component.Name, Namespace: component.Namespace}, createdWebhook)
 		if err != nil {
@@ -433,35 +445,10 @@ func (r *ComponentReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 func (r *ComponentReconciler) generateGitops(ctx context.Context, component *appstudiov1alpha1.Component) error {
 	log := r.Log.WithValues("Component", component.Name)
 
-	gitopsStatus := component.Status.GitOps
-
-	// Get the information about the gitops repository from the Component resource
-	var gitOpsURL, gitOpsBranch, gitOpsContext string
-	gitOpsURL = gitopsStatus.RepositoryURL
-	if gitOpsURL == "" {
-		err := fmt.Errorf("unable to create gitops resource, GitOps Repository not set on component status")
-		log.Error(err, "")
-		return err
-	}
-	if gitopsStatus.Branch != "" {
-		gitOpsBranch = gitopsStatus.Branch
-	} else {
-		gitOpsBranch = "main"
-	}
-	if gitopsStatus.Context != "" {
-		gitOpsContext = gitopsStatus.Context
-	} else {
-		gitOpsContext = "/"
-	}
-
-	// Construct the remote URL for the gitops repository
-	parsedURL, err := url.Parse(gitOpsURL)
+	gitOpsURL, gitOpsBranch, gitOpsContext, err := util.ProcessGitOpsStatus(component.Status.GitOps, r.GitToken)
 	if err != nil {
-		log.Error(err, "unable to parse gitops URL due to error")
 		return err
 	}
-	parsedURL.User = url.User(r.GitToken)
-	remoteURL := parsedURL.String()
 
 	// Create a temp folder to create the gitops resources in
 	tempDir, err := ioutils.CreateTempPath(component.Name, r.AppFS)
@@ -473,10 +460,11 @@ func (r *ComponentReconciler) generateGitops(ctx context.Context, component *app
 	// Generate and push the gitops resources
 	gitopsConfig := prepare.PrepareGitopsConfig(ctx, r.Client, *component)
 
-	err = gitops.GenerateAndPush(tempDir, remoteURL, *component, r.Executor, r.AppFS, gitOpsBranch, gitOpsContext, gitopsConfig)
+	err = gitops.GenerateAndPush(tempDir, gitOpsURL, *component, r.Executor, r.AppFS, gitOpsBranch, gitOpsContext, gitopsConfig)
 	if err != nil {
-		log.Error(err, "unable to generate gitops resources due to error")
-		return err
+		gitOpsErr := util.SanitizeErrorMessage(err)
+		log.Error(gitOpsErr, "unable to generate gitops resources due to error")
+		return gitOpsErr
 	}
 
 	// Remove the temp folder that was created
@@ -516,6 +504,8 @@ func setGitopsStatus(component *appstudiov1alpha1.Component, devfileData data.De
 	if gitOpsContext != "" {
 		component.Status.GitOps.Context = gitOpsContext
 	}
+
+	component.Status.GitOps.ResourceGenerationSkipped = component.Spec.SkipGitOpsResourceGeneration
 	return nil
 }
 
