@@ -26,6 +26,7 @@ import (
 	// Import all Kubernetes client auth plugins (e.g. Azure, GCP, OIDC, etc.)
 	// to ensure that exec-entrypoint and run can make use of them.
 	"golang.org/x/oauth2"
+	"k8s.io/client-go/discovery"
 	_ "k8s.io/client-go/plugin/pkg/client/auth"
 	"k8s.io/client-go/rest"
 
@@ -73,6 +74,8 @@ func main() {
 	var metricsAddr string
 	var enableLeaderElection bool
 	var probeAddr string
+	var apiExportName string
+	flag.StringVar(&apiExportName, "api-export-name", "", "The name of the APIExport.")
 	flag.StringVar(&metricsAddr, "metrics-bind-address", ":8080", "The address the metric endpoint binds to.")
 	flag.StringVar(&probeAddr, "health-probe-bind-address", ":8081", "The address the probe endpoint binds to.")
 	flag.BoolVar(&enableLeaderElection, "leader-elect", false,
@@ -84,32 +87,46 @@ func main() {
 	opts.BindFlags(flag.CommandLine)
 	flag.Parse()
 
+	ctrl.SetLogger(zap.New(zap.UseFlagOptions(&opts)))
+
 	ctx := ctrl.SetupSignalHandler()
 
 	restConfig := ctrl.GetConfigOrDie()
-	apiExportName := os.Args[1]
-	setupLog = setupLog.WithValues("api-export", apiExportName)
+	setupLog = setupLog.WithValues("api-export-name", apiExportName)
 
-	setupLog.Info("Looking up virtual workspace URL")
-	cfg, err := restConfigForAPIExport(ctx, restConfig, os.Args[1])
-	if err != nil {
-		setupLog.Error(err, "error looking up virtual workspace URL")
-	}
-
-	setupLog.Info("Using virtual workspace URL", "url", cfg.Host)
-
-	ctrl.SetLogger(zap.New(zap.UseFlagOptions(&opts)))
-	mgr, err := kcp.NewClusterAwareManager(cfg, ctrl.Options{
+	var mgr ctrl.Manager
+	var err error
+	options := ctrl.Options{
 		Scheme:                 scheme,
 		MetricsBindAddress:     metricsAddr,
 		Port:                   9443,
 		HealthProbeBindAddress: probeAddr,
 		LeaderElection:         enableLeaderElection,
-		LeaderElectionID:       "68a0532d.my.domain",
-	})
-	if err != nil {
-		setupLog.Error(err, "unable to start manager")
-		os.Exit(1)
+		LeaderElectionID:       "f50829e1.redhat.com",
+		LeaderElectionConfig:   restConfig,
+	}
+	if kcpAPIsGroupPresent(restConfig) {
+		setupLog.Info("Looking up virtual workspace URL")
+		cfg, err := restConfigForAPIExport(ctx, restConfig, apiExportName)
+		if err != nil {
+			setupLog.Error(err, "error looking up virtual workspace URL")
+		}
+
+		setupLog.Info("Using virtual workspace URL", "url", cfg.Host)
+
+		options.LeaderElectionConfig = restConfig
+		mgr, err = kcp.NewClusterAwareManager(cfg, options)
+		if err != nil {
+			setupLog.Error(err, "unable to start cluster aware manager")
+			os.Exit(1)
+		}
+	} else {
+		setupLog.Info("The apis.kcp.dev group is not present - creating standard manager")
+		mgr, err = ctrl.NewManager(restConfig, options)
+		if err != nil {
+			setupLog.Error(err, "unable to start manager")
+			os.Exit(1)
+		}
 	}
 
 	if err := routev1.AddToScheme(mgr.GetScheme()); err != nil {
@@ -250,4 +267,28 @@ func restConfigForAPIExport(ctx context.Context, cfg *rest.Config, apiExportName
 	cfg.Host = apiExport.Status.VirtualWorkspaces[0].URL
 
 	return cfg, nil
+}
+
+func kcpAPIsGroupPresent(restConfig *rest.Config) bool {
+	discoveryClient, err := discovery.NewDiscoveryClientForConfig(restConfig)
+	if err != nil {
+		setupLog.Error(err, "failed to create discovery client")
+		os.Exit(1)
+	}
+	apiGroupList, err := discoveryClient.ServerGroups()
+	if err != nil {
+		setupLog.Error(err, "failed to get server groups")
+		os.Exit(1)
+	}
+
+	for _, group := range apiGroupList.Groups {
+		if group.Name == apisv1alpha1.SchemeGroupVersion.Group {
+			for _, version := range group.Versions {
+				if version.Version == apisv1alpha1.SchemeGroupVersion.Version {
+					return true
+				}
+			}
+		}
+	}
+	return false
 }

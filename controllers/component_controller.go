@@ -83,7 +83,7 @@ type ComponentReconciler struct {
 // For more details, check Reconcile and its Result here:
 // - https://pkg.go.dev/sigs.k8s.io/controller-runtime@v0.9.2/pkg/reconcile
 func (r *ComponentReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
-	log := r.Log.WithValues("Application", req.NamespacedName).WithValues("clusterName", req.ClusterName)
+	log := r.Log.WithValues("Component", req.NamespacedName).WithValues("clusterName", req.ClusterName)
 	ctx = kcpclient.WithCluster(ctx, logicalcluster.New(req.ClusterName))
 
 	// Fetch the Component instance
