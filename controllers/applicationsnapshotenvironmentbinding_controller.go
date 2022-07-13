@@ -116,6 +116,10 @@ func (r *ApplicationSnapshotEnvironmentBindingReconciler) Reconcile(ctx context.
 			return ctrl.Result{}, err
 		}
 
+		if hasComponent.Spec.SkipGitOpsResourceGeneration {
+			continue
+		}
+
 		// Sanity check to make sure the binding component has referenced the correct application
 		if hasComponent.Spec.Application != applicationName {
 			err := fmt.Errorf("component %s does not belong to the application %s", componentName, applicationName)
