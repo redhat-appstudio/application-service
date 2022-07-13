@@ -18,7 +18,6 @@ package gitops
 import (
 	"errors"
 	"fmt"
-	"path/filepath"
 	"testing"
 
 	appstudiov1alpha1 "github.com/redhat-appstudio/application-service/api/v1alpha1"
@@ -87,11 +86,11 @@ func TestGenerateAndPush(t *testing.T) {
 					Command: "git",
 					Args:    []string{"switch", "main"},
 				},
-				{
-					BaseDir: repoPath,
-					Command: "rm",
-					Args:    []string{"-rf", filepath.Join("components", componentName)},
-				},
+				// {
+				// 	BaseDir: repoPath,
+				// 	Command: "rm",
+				// 	Args:    []string{"-rf", filepath.Join("components", componentName)},
+				// },
 				{
 					BaseDir: repoPath,
 					Command: "git",
@@ -209,11 +208,11 @@ func TestGenerateAndPush(t *testing.T) {
 					Command: "git",
 					Args:    []string{"checkout", "-b", "main"},
 				},
-				{
-					BaseDir: repoPath,
-					Command: "rm",
-					Args:    []string{"-rf", filepath.Join("components", componentName)},
-				},
+				// {
+				// 	BaseDir: repoPath,
+				// 	Command: "rm",
+				// 	Args:    []string{"-rf", filepath.Join("components", componentName)},
+				// },
 				{
 					BaseDir: repoPath,
 					Command: "git",
@@ -238,41 +237,6 @@ func TestGenerateAndPush(t *testing.T) {
 			wantErrString: "",
 		},
 		{
-			name:      "rm -rf failure",
-			fs:        fs,
-			component: component,
-			errors: &testutils.ErrorStack{
-				Errors: []error{
-					errors.New("Permission Denied"),
-					nil,
-					nil,
-				},
-			},
-			outputs: [][]byte{
-				[]byte("test output1"),
-				[]byte("test output2"),
-				[]byte("test output3"),
-			},
-			want: []testutils.Execution{
-				{
-					BaseDir: outputPath,
-					Command: "git",
-					Args:    []string{"clone", repo, component.Name},
-				},
-				{
-					BaseDir: repoPath,
-					Command: "git",
-					Args:    []string{"switch", "main"},
-				},
-				{
-					BaseDir: repoPath,
-					Command: "rm",
-					Args:    []string{"-rf", "components/test-component"},
-				},
-			},
-			wantErrString: "failed to delete \"components/test-component\" folder in repository in \"/fake/path/test-component\" \"test output1\": Permission Denied",
-		},
-		{
 			name:      "git add failure",
 			fs:        fs,
 			component: component,
@@ -288,7 +252,6 @@ func TestGenerateAndPush(t *testing.T) {
 				[]byte("test output1"),
 				[]byte("test output2"),
 				[]byte("test output3"),
-				[]byte("test output4"),
 			},
 			want: []testutils.Execution{
 				{
@@ -300,11 +263,6 @@ func TestGenerateAndPush(t *testing.T) {
 					BaseDir: repoPath,
 					Command: "git",
 					Args:    []string{"switch", "main"},
-				},
-				{
-					BaseDir: repoPath,
-					Command: "rm",
-					Args:    []string{"-rf", "components/test-component"},
 				},
 				{
 					BaseDir: repoPath,
@@ -332,7 +290,6 @@ func TestGenerateAndPush(t *testing.T) {
 				[]byte("test output2"),
 				[]byte("test output3"),
 				[]byte("test output4"),
-				[]byte("test output5"),
 			},
 			want: []testutils.Execution{
 				{
@@ -344,11 +301,6 @@ func TestGenerateAndPush(t *testing.T) {
 					BaseDir: repoPath,
 					Command: "git",
 					Args:    []string{"switch", "main"},
-				},
-				{
-					BaseDir: repoPath,
-					Command: "rm",
-					Args:    []string{"-rf", "components/test-component"},
 				},
 				{
 					BaseDir: repoPath,
@@ -383,7 +335,6 @@ func TestGenerateAndPush(t *testing.T) {
 				[]byte("test output3"),
 				[]byte("test output4"),
 				[]byte("test output5"),
-				[]byte("test output6"),
 			},
 			want: []testutils.Execution{
 				{
@@ -395,11 +346,6 @@ func TestGenerateAndPush(t *testing.T) {
 					BaseDir: repoPath,
 					Command: "git",
 					Args:    []string{"switch", "main"},
-				},
-				{
-					BaseDir: repoPath,
-					Command: "rm",
-					Args:    []string{"-rf", "components/test-component"},
 				},
 				{
 					BaseDir: repoPath,
@@ -441,7 +387,6 @@ func TestGenerateAndPush(t *testing.T) {
 				[]byte("test output4"),
 				[]byte("test output5"),
 				[]byte("test output6"),
-				[]byte("test output7"),
 			},
 			want: []testutils.Execution{
 				{
@@ -453,11 +398,6 @@ func TestGenerateAndPush(t *testing.T) {
 					BaseDir: repoPath,
 					Command: "git",
 					Args:    []string{"switch", "main"},
-				},
-				{
-					BaseDir: repoPath,
-					Command: "rm",
-					Args:    []string{"-rf", "components/test-component"},
 				},
 				{
 					BaseDir: repoPath,
@@ -498,11 +438,6 @@ func TestGenerateAndPush(t *testing.T) {
 					Command: "git",
 					Args:    []string{"switch", "main"},
 				},
-				{
-					BaseDir: repoPath,
-					Command: "rm",
-					Args:    []string{"-rf", "components/test-component"},
-				},
 			},
 			wantErrString: "failed to generate the gitops resources in \"/fake/path/test-component/components/test-component/base\" for component \"test-component\"",
 		},
@@ -529,11 +464,6 @@ func TestGenerateAndPush(t *testing.T) {
 					BaseDir: repoPath,
 					Command: "git",
 					Args:    []string{"switch", "main"},
-				},
-				{
-					BaseDir: repoPath,
-					Command: "rm",
-					Args:    []string{"-rf", "components/test-component"},
 				},
 			},
 			wantErrString: "failed to generate the gitops resources in \"/fake/path/test-component/components/test-component/base\" for component \"test-component\": failed to MkDirAll",

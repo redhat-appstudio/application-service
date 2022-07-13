@@ -155,7 +155,7 @@ func RemoveAndPush(outputPath string, remote string, component appstudiov1alpha1
 	// Generate the gitops resources and update the parent kustomize yaml file
 	gitopsFolder := filepath.Join(repoPath, context)
 	componentPath := filepath.Join(gitopsFolder, "components", componentName)
-	if out, err := e.Execute(repoPath, "rm", "-rf", filepath.Join(context, "components", componentName)); err != nil {
+	if out, err := e.Execute(repoPath, "rm", "-rf", componentPath); err != nil {
 		return fmt.Errorf("failed to delete %q folder in repository in %q %q: %s", filepath.Join(context, "components", componentName), repoPath, string(out), err)
 	}
 	if err := e.GenerateParentKustomize(appFs, gitopsFolder, nil); err != nil {
