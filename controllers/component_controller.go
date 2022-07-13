@@ -335,11 +335,16 @@ func (r *ComponentReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 			}
 
 			// Generate and push the gitops resources
-			if err := r.generateGitops(ctx, &component); err != nil {
-				errMsg := fmt.Sprintf("Unable to generate gitops resources for component %v", req.NamespacedName)
-				log.Error(err, errMsg)
-				r.SetCreateConditionAndUpdateCR(ctx, &component, fmt.Errorf("%v: %v", errMsg, err))
-				return ctrl.Result{}, nil
+			if !component.Spec.SkipGitOpsResourceGeneration {
+				if err := r.generateGitops(ctx, &component); err != nil {
+					errMsg := fmt.Sprintf("Unable to generate gitops resources for component %v", req.NamespacedName)
+					log.Error(err, errMsg)
+					r.SetGitOpsGeneratedConditionAndUpdateCR(ctx, &component, fmt.Errorf("%v: %v", errMsg, err))
+					r.SetCreateConditionAndUpdateCR(ctx, &component, fmt.Errorf("%v: %v", errMsg, err))
+					return ctrl.Result{}, nil
+				} else {
+					r.SetGitOpsGeneratedConditionAndUpdateCR(ctx, &component, nil)
+				}
 			}
 
 			r.SetCreateConditionAndUpdateCR(ctx, &component, nil)
@@ -374,9 +379,11 @@ func (r *ComponentReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 		}
 
 		containerImage := component.Spec.ContainerImage
-		isUpdated := !reflect.DeepEqual(oldCompDevfileData, hasCompDevfileData) || containerImage != component.Status.ContainerImage
+		skipGitOpsGeneration := component.Spec.SkipGitOpsResourceGeneration
+		isUpdated := !reflect.DeepEqual(oldCompDevfileData, hasCompDevfileData) || containerImage != component.Status.ContainerImage || skipGitOpsGeneration != component.Status.GitOps.ResourceGenerationSkipped
 		if isUpdated {
 			log.Info(fmt.Sprintf("The Component was updated %v", req.NamespacedName))
+			component.Status.GitOps.ResourceGenerationSkipped = skipGitOpsGeneration
 			yamlHASCompData, err := yaml.Marshal(hasCompDevfileData)
 			if err != nil {
 				log.Error(err, fmt.Sprintf("Unable to marshall the Component devfile, exiting reconcile loop %v", req.NamespacedName))
@@ -384,13 +391,18 @@ func (r *ComponentReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 				return ctrl.Result{}, nil
 			}
 
-			// Generate and push the gitops resources
+			// Generate and push the gitops resources, if necessary.
 			component.Status.ContainerImage = component.Spec.ContainerImage
-			if err := r.generateGitops(ctx, &component); err != nil {
-				errMsg := fmt.Sprintf("Unable to generate gitops resources for component %v", req.NamespacedName)
-				log.Error(err, errMsg)
-				r.SetUpdateConditionAndUpdateCR(ctx, &component, fmt.Errorf("%v: %v", errMsg, err))
-				return ctrl.Result{}, nil
+			if !component.Spec.SkipGitOpsResourceGeneration {
+				if err := r.generateGitops(ctx, &component); err != nil {
+					errMsg := fmt.Sprintf("Unable to generate gitops resources for component %v", req.NamespacedName)
+					log.Error(err, errMsg)
+					r.SetGitOpsGeneratedConditionAndUpdateCR(ctx, &component, fmt.Errorf("%v: %v", errMsg, err))
+					r.SetUpdateConditionAndUpdateCR(ctx, &component, fmt.Errorf("%v: %v", errMsg, err))
+					return ctrl.Result{}, nil
+				} else {
+					r.SetGitOpsGeneratedConditionAndUpdateCR(ctx, &component, nil)
+				}
 			}
 
 			component.Status.Devfile = string(yamlHASCompData)
@@ -492,6 +504,8 @@ func setGitopsStatus(component *appstudiov1alpha1.Component, devfileData data.De
 	if gitOpsContext != "" {
 		component.Status.GitOps.Context = gitOpsContext
 	}
+
+	component.Status.GitOps.ResourceGenerationSkipped = component.Spec.SkipGitOpsResourceGeneration
 	return nil
 }
 
