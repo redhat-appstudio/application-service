@@ -42,15 +42,16 @@ import (
 	routev1 "github.com/openshift/api/route/v1"
 
 	"github.com/google/go-github/v41/github"
+
 	appstudiov1alpha1 "github.com/redhat-appstudio/application-service/api/v1alpha1"
 	"github.com/redhat-appstudio/application-service/controllers"
 	"github.com/redhat-appstudio/application-service/gitops"
 	"github.com/redhat-appstudio/application-service/pkg/devfile"
 	"github.com/redhat-appstudio/application-service/pkg/spi"
 	"github.com/redhat-appstudio/application-service/pkg/util/ioutils"
+	appstudioshared "github.com/redhat-appstudio/managed-gitops/appstudio-shared/apis/appstudio.redhat.com/v1alpha1"
 
 	//+kubebuilder:scaffold:imports
-
 	apisv1alpha1 "github.com/kcp-dev/kcp/pkg/apis/apis/v1alpha1"
 )
 
@@ -63,6 +64,8 @@ func init() {
 	utilruntime.Must(clientgoscheme.AddToScheme(scheme))
 
 	utilruntime.Must(appstudiov1alpha1.AddToScheme(scheme))
+
+	utilruntime.Must(appstudioshared.AddToScheme(scheme))
 	//+kubebuilder:scaffold:scheme
 }
 
@@ -190,6 +193,17 @@ func main() {
 		}
 	}
 
+	if err = (&controllers.ApplicationSnapshotEnvironmentBindingReconciler{
+		Client:   mgr.GetClient(),
+		Scheme:   mgr.GetScheme(),
+		Log:      ctrl.Log.WithName("controllers").WithName("ApplicationSnapshotEnvironmentBinding"),
+		Executor: gitops.NewCmdExecutor(),
+		AppFS:    ioutils.NewFilesystem(),
+		GitToken: ghToken,
+	}).SetupWithManager(mgr); err != nil {
+		setupLog.Error(err, "unable to create controller", "controller", "ApplicationSnapshotEnvironmentBinding")
+		os.Exit(1)
+	}
 	//+kubebuilder:scaffold:builder
 
 	if err := mgr.AddHealthzCheck("healthz", healthz.Ping); err != nil {
