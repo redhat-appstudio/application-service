@@ -34,3 +34,6 @@ resources:
 
 ## Application Snapshot Roles
 - role_appsnapshot.yaml
+
+## Application Environment Roles
+- role_environment.yaml

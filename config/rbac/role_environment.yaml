@@ -1,0 +1,14 @@
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: manager-role-environment
+rules:
+- verbs:
+    - get
+    - list
+    - watch
+  apiGroups:
+    - appstudio.redhat.com
+  resources:
+    - environments

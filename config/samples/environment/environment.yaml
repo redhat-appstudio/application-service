@@ -1,0 +1,13 @@
+# API type definition is in github.com/redhat-appstudio/managed-gitops
+apiVersion: appstudio.redhat.com/v1alpha1
+kind: Environment
+metadata:
+  name: staging
+spec:
+  type: POC
+  displayName: "Staging Environment"
+  deploymentStrategy: "AppStudioAutomated"
+  configuration:
+    env:
+    - name: FOO
+      value: Env_BAR

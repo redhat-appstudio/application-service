@@ -255,6 +255,14 @@ spec:
         - apiGroups:
           - appstudio.redhat.com
           resources:
+          - environments
+          verbs:
+          - get
+          - list
+          - watch
+        - apiGroups:
+          - appstudio.redhat.com
+          resources:
           - spiaccesstokenbindings
           - spiaccesstokens
           verbs:

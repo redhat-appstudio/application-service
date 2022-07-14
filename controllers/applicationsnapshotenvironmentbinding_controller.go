@@ -1,5 +1,5 @@
 /*
-Copyright 2021-2022 Red Hat, Inc.
+Copyright 2022 Red Hat, Inc.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -34,7 +34,10 @@ import (
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/builder"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/event"
+	"sigs.k8s.io/controller-runtime/pkg/handler"
 	"sigs.k8s.io/controller-runtime/pkg/predicate"
+	"sigs.k8s.io/controller-runtime/pkg/source"
 )
 
 // ApplicationSnapshotEnvironmentBindingReconciler reconciles a ApplicationSnapshotEnvironmentBinding object
@@ -83,6 +86,15 @@ func (r *ApplicationSnapshotEnvironmentBindingReconciler) Reconcile(ctx context.
 	environmentName := appSnapshotEnvBinding.Spec.Environment
 	snapshotName := appSnapshotEnvBinding.Spec.Snapshot
 	components := appSnapshotEnvBinding.Spec.Components
+
+	// Get the Environment CR
+	environment := appstudioshared.Environment{}
+	err = r.Get(ctx, types.NamespacedName{Name: environmentName, Namespace: appSnapshotEnvBinding.Namespace}, &environment)
+	if err != nil {
+		log.Error(err, fmt.Sprintf("unable to get the Environment %s %v", environmentName, req.NamespacedName))
+		r.SetConditionAndUpdateCR(ctx, &appSnapshotEnvBinding, err)
+		return ctrl.Result{}, err
+	}
 
 	// Get the Snapshot CR
 	appSnapshot := appstudioshared.ApplicationSnapshot{}
@@ -168,7 +180,7 @@ func (r *ApplicationSnapshotEnvironmentBindingReconciler) Reconcile(ctx context.
 			}
 		}
 
-		err = gitops.GenerateOverlaysAndPush(tempDir, clone, gitOpsRemoteURL, component, applicationName, environmentName, imageName, appSnapshotEnvBinding.Namespace, r.Executor, r.AppFS, gitOpsBranch, gitOpsContext, componentGeneratedResources)
+		err = gitops.GenerateOverlaysAndPush(tempDir, clone, gitOpsRemoteURL, component, environment, applicationName, environmentName, imageName, appSnapshotEnvBinding.Namespace, r.Executor, r.AppFS, gitOpsBranch, gitOpsContext, componentGeneratedResources)
 		if err != nil {
 			gitOpsErr := util.SanitizeErrorMessage(err)
 			log.Error(gitOpsErr, fmt.Sprintf("unable to get generate gitops resources for %s %v", componentName, req.NamespacedName))
@@ -222,5 +234,21 @@ func (r *ApplicationSnapshotEnvironmentBindingReconciler) Reconcile(ctx context.
 func (r *ApplicationSnapshotEnvironmentBindingReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&appstudioshared.ApplicationSnapshotEnvironmentBinding{}, builder.WithPredicates(predicate.GenerationChangedPredicate{})).
+		// Watch for Environment CR updates and reconcile all the Bindings that reference the Environment
+		Watches(&source.Kind{Type: &appstudioshared.Environment{}},
+			handler.EnqueueRequestsFromMapFunc(MapToBindingByBoundObjectName(r.Client, "Environment", "appstudio.environment")), builder.WithPredicates(predicate.Funcs{
+				CreateFunc: func(e event.CreateEvent) bool {
+					return false
+				},
+				UpdateFunc: func(e event.UpdateEvent) bool {
+					return true
+				},
+				DeleteFunc: func(e event.DeleteEvent) bool {
+					return false
+				},
+				GenericFunc: func(e event.GenericEvent) bool {
+					return false
+				},
+			})).
 		Complete(r)
 }
