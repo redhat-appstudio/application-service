@@ -64,40 +64,9 @@ var _ = Describe("ApplicationSnapshotEnvironmentBinding controller", func() {
 
 			createAndFetchSimpleApp(applicationName, HASAppNamespace, DisplayName, Description)
 
-			hasComp := &appstudiov1alpha1.Component{
-				TypeMeta: metav1.TypeMeta{
-					APIVersion: "appstudio.redhat.com/v1alpha1",
-					Kind:       "Component",
-				},
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      componentName,
-					Namespace: HASAppNamespace,
-				},
-				Spec: appstudiov1alpha1.ComponentSpec{
-					ComponentName: ComponentName,
-					Application:   applicationName,
-					Source: appstudiov1alpha1.ComponentSource{
-						ComponentSourceUnion: appstudiov1alpha1.ComponentSourceUnion{
-							GitSource: &appstudiov1alpha1.GitSource{
-								URL: SampleRepoLink,
-							},
-						},
-					},
-				},
-			}
-			Expect(k8sClient.Create(ctx, hasComp)).Should(Succeed())
-
-			// Look up the has app resource that was created.
-			// num(conditions) may still be < 1 on the first try, so retry until at least _some_ condition is set
-			hasCompLookupKey := types.NamespacedName{Name: componentName, Namespace: HASAppNamespace}
-			createdHasComp := &appstudiov1alpha1.Component{}
-			Eventually(func() bool {
-				k8sClient.Get(context.Background(), hasCompLookupKey, createdHasComp)
-				return len(createdHasComp.Status.Conditions) > 0 && createdHasComp.Status.GitOps.RepositoryURL != ""
-			}, timeout, interval).Should(BeTrue())
-
+			hasComp := createAndFetchSimpleComponent(componentName, HASAppNamespace, ComponentName, applicationName, SampleRepoLink, false)
 			// Make sure the devfile model was properly set in Component
-			Expect(createdHasComp.Status.Devfile).Should(Not(Equal("")))
+			Expect(hasComp.Status.Devfile).Should(Not(Equal("")))
 
 			appSnapshot := &appstudioshared.ApplicationSnapshot{
 				TypeMeta: metav1.TypeMeta{
@@ -201,7 +170,7 @@ var _ = Describe("ApplicationSnapshotEnvironmentBinding controller", func() {
 			Expect(createdBinding.Status.GitOpsRepoConditions[0].Message).Should(Equal("GitOps repository sync successful"))
 			Expect(createdBinding.Status.Components[0].Name).Should(Equal(componentName))
 			Expect(createdBinding.Status.Components[0].GitOpsRepository.Path).Should(Equal(fmt.Sprintf("components/%s/overlays/%s", componentName, environmentName)))
-			Expect(createdBinding.Status.Components[0].GitOpsRepository.URL).Should(Equal(createdHasComp.Status.GitOps.RepositoryURL))
+			Expect(createdBinding.Status.Components[0].GitOpsRepository.URL).Should(Equal(hasComp.Status.GitOps.RepositoryURL))
 
 			// check the list of generated gitops resources to make sure we account for every one
 			for _, generatedResource := range createdBinding.Status.Components[0].GitOpsRepository.GeneratedResources {
@@ -209,6 +178,7 @@ var _ = Describe("ApplicationSnapshotEnvironmentBinding controller", func() {
 			}
 
 			// Delete the specified HASComp resource
+			hasCompLookupKey := types.NamespacedName{Name: componentName, Namespace: HASAppNamespace}
 			deleteHASCompCR(hasCompLookupKey)
 
 			// Delete the specified HASApp resource
@@ -242,40 +212,9 @@ var _ = Describe("ApplicationSnapshotEnvironmentBinding controller", func() {
 
 			createAndFetchSimpleApp(applicationName, HASAppNamespace, DisplayName, Description)
 
-			hasComp := &appstudiov1alpha1.Component{
-				TypeMeta: metav1.TypeMeta{
-					APIVersion: "appstudio.redhat.com/v1alpha1",
-					Kind:       "Component",
-				},
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      componentName,
-					Namespace: HASAppNamespace,
-				},
-				Spec: appstudiov1alpha1.ComponentSpec{
-					ComponentName: ComponentName,
-					Application:   applicationName,
-					Source: appstudiov1alpha1.ComponentSource{
-						ComponentSourceUnion: appstudiov1alpha1.ComponentSourceUnion{
-							GitSource: &appstudiov1alpha1.GitSource{
-								URL: SampleRepoLink,
-							},
-						},
-					},
-				},
-			}
-			Expect(k8sClient.Create(ctx, hasComp)).Should(Succeed())
-
-			// Look up the has app resource that was created.
-			// num(conditions) may still be < 1 on the first try, so retry until at least _some_ condition is set
-			hasCompLookupKey := types.NamespacedName{Name: componentName, Namespace: HASAppNamespace}
-			createdHasComp := &appstudiov1alpha1.Component{}
-			Eventually(func() bool {
-				k8sClient.Get(context.Background(), hasCompLookupKey, createdHasComp)
-				return len(createdHasComp.Status.Conditions) > 0 && createdHasComp.Status.GitOps.RepositoryURL != ""
-			}, timeout, interval).Should(BeTrue())
-
+			hasComp := createAndFetchSimpleComponent(componentName, HASAppNamespace, ComponentName, applicationName, SampleRepoLink, false)
 			// Make sure the devfile model was properly set in Component
-			Expect(createdHasComp.Status.Devfile).Should(Not(Equal("")))
+			Expect(hasComp.Status.Devfile).Should(Not(Equal("")))
 
 			appSnapshot := &appstudioshared.ApplicationSnapshot{
 				TypeMeta: metav1.TypeMeta{
@@ -385,6 +324,7 @@ var _ = Describe("ApplicationSnapshotEnvironmentBinding controller", func() {
 			Expect(createdBinding.Status.GitOpsRepoConditions[len(createdBinding.Status.GitOpsRepoConditions)-1].Message).Should(ContainSubstring(fmt.Sprintf("%q not found", componentName2)))
 
 			// Delete the specified HASComp resource
+			hasCompLookupKey := types.NamespacedName{Name: componentName, Namespace: HASAppNamespace}
 			deleteHASCompCR(hasCompLookupKey)
 
 			// Delete the specified HASApp resource
@@ -417,40 +357,9 @@ var _ = Describe("ApplicationSnapshotEnvironmentBinding controller", func() {
 
 			createAndFetchSimpleApp(applicationName, HASAppNamespace, DisplayName, Description)
 
-			hasComp := &appstudiov1alpha1.Component{
-				TypeMeta: metav1.TypeMeta{
-					APIVersion: "appstudio.redhat.com/v1alpha1",
-					Kind:       "Component",
-				},
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      componentName,
-					Namespace: HASAppNamespace,
-				},
-				Spec: appstudiov1alpha1.ComponentSpec{
-					ComponentName: ComponentName,
-					Application:   applicationName,
-					Source: appstudiov1alpha1.ComponentSource{
-						ComponentSourceUnion: appstudiov1alpha1.ComponentSourceUnion{
-							GitSource: &appstudiov1alpha1.GitSource{
-								URL: SampleRepoLink,
-							},
-						},
-					},
-				},
-			}
-			Expect(k8sClient.Create(ctx, hasComp)).Should(Succeed())
-
-			// Look up the has app resource that was created.
-			// num(conditions) may still be < 1 on the first try, so retry until at least _some_ condition is set
-			hasCompLookupKey := types.NamespacedName{Name: componentName, Namespace: HASAppNamespace}
-			createdHasComp := &appstudiov1alpha1.Component{}
-			Eventually(func() bool {
-				k8sClient.Get(context.Background(), hasCompLookupKey, createdHasComp)
-				return len(createdHasComp.Status.Conditions) > 0 && createdHasComp.Status.GitOps.RepositoryURL != ""
-			}, timeout, interval).Should(BeTrue())
-
+			hasComp := createAndFetchSimpleComponent(componentName, HASAppNamespace, ComponentName, applicationName, SampleRepoLink, false)
 			// Make sure the devfile model was properly set in Component
-			Expect(createdHasComp.Status.Devfile).Should(Not(Equal("")))
+			Expect(hasComp.Status.Devfile).Should(Not(Equal("")))
 
 			stagingEnv := &appstudioshared.Environment{
 				TypeMeta: metav1.TypeMeta{
@@ -524,6 +433,7 @@ var _ = Describe("ApplicationSnapshotEnvironmentBinding controller", func() {
 			Expect(createdBinding.Status.GitOpsRepoConditions[len(createdBinding.Status.GitOpsRepoConditions)-1].Message).Should(ContainSubstring(fmt.Sprintf("%q not found", snapshotName)))
 
 			// Delete the specified HASComp resource
+			hasCompLookupKey := types.NamespacedName{Name: componentName, Namespace: HASAppNamespace}
 			deleteHASCompCR(hasCompLookupKey)
 
 			// Delete the specified HASApp resource
@@ -554,40 +464,9 @@ var _ = Describe("ApplicationSnapshotEnvironmentBinding controller", func() {
 
 			createAndFetchSimpleApp(applicationName, HASAppNamespace, DisplayName, Description)
 
-			hasComp := &appstudiov1alpha1.Component{
-				TypeMeta: metav1.TypeMeta{
-					APIVersion: "appstudio.redhat.com/v1alpha1",
-					Kind:       "Component",
-				},
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      componentName,
-					Namespace: HASAppNamespace,
-				},
-				Spec: appstudiov1alpha1.ComponentSpec{
-					ComponentName: ComponentName,
-					Application:   applicationName,
-					Source: appstudiov1alpha1.ComponentSource{
-						ComponentSourceUnion: appstudiov1alpha1.ComponentSourceUnion{
-							GitSource: &appstudiov1alpha1.GitSource{
-								URL: SampleRepoLink,
-							},
-						},
-					},
-				},
-			}
-			Expect(k8sClient.Create(ctx, hasComp)).Should(Succeed())
-
-			// Look up the has app resource that was created.
-			// num(conditions) may still be < 1 on the first try, so retry until at least _some_ condition is set
-			hasCompLookupKey := types.NamespacedName{Name: componentName, Namespace: HASAppNamespace}
-			createdHasComp := &appstudiov1alpha1.Component{}
-			Eventually(func() bool {
-				k8sClient.Get(context.Background(), hasCompLookupKey, createdHasComp)
-				return len(createdHasComp.Status.Conditions) > 0 && createdHasComp.Status.GitOps.RepositoryURL != ""
-			}, timeout, interval).Should(BeTrue())
-
+			hasComp := createAndFetchSimpleComponent(componentName, HASAppNamespace, ComponentName, applicationName, SampleRepoLink, false)
 			// Make sure the devfile model was properly set in Component
-			Expect(createdHasComp.Status.Devfile).Should(Not(Equal("")))
+			Expect(hasComp.Status.Devfile).Should(Not(Equal("")))
 
 			appSnapshot := &appstudioshared.ApplicationSnapshot{
 				TypeMeta: metav1.TypeMeta{
@@ -691,6 +570,7 @@ var _ = Describe("ApplicationSnapshotEnvironmentBinding controller", func() {
 			Expect(createdBinding.Status.GitOpsRepoConditions[len(createdBinding.Status.GitOpsRepoConditions)-1].Message).Should(ContainSubstring(fmt.Sprintf("application snapshot %s does not belong to the application %s", snapshotName, applicationName)))
 
 			// Delete the specified HASComp resource
+			hasCompLookupKey := types.NamespacedName{Name: componentName, Namespace: HASAppNamespace}
 			deleteHASCompCR(hasCompLookupKey)
 
 			// Delete the specified HASApp resource
@@ -726,75 +606,13 @@ var _ = Describe("ApplicationSnapshotEnvironmentBinding controller", func() {
 			createAndFetchSimpleApp(applicationName, HASAppNamespace, DisplayName, Description)
 			createAndFetchSimpleApp(applicationName2, HASAppNamespace, DisplayName, Description)
 
-			hasComp := &appstudiov1alpha1.Component{
-				TypeMeta: metav1.TypeMeta{
-					APIVersion: "appstudio.redhat.com/v1alpha1",
-					Kind:       "Component",
-				},
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      componentName,
-					Namespace: HASAppNamespace,
-				},
-				Spec: appstudiov1alpha1.ComponentSpec{
-					ComponentName: ComponentName,
-					Application:   applicationName,
-					Source: appstudiov1alpha1.ComponentSource{
-						ComponentSourceUnion: appstudiov1alpha1.ComponentSourceUnion{
-							GitSource: &appstudiov1alpha1.GitSource{
-								URL: SampleRepoLink,
-							},
-						},
-					},
-				},
-			}
-			Expect(k8sClient.Create(ctx, hasComp)).Should(Succeed())
-
-			// Look up the has app resource that was created.
-			// num(conditions) may still be < 1 on the first try, so retry until at least _some_ condition is set
-			hasCompLookupKey := types.NamespacedName{Name: componentName, Namespace: HASAppNamespace}
-			createdHasComp := &appstudiov1alpha1.Component{}
-			Eventually(func() bool {
-				k8sClient.Get(context.Background(), hasCompLookupKey, createdHasComp)
-				return len(createdHasComp.Status.Conditions) > 0 && createdHasComp.Status.GitOps.RepositoryURL != ""
-			}, timeout, interval).Should(BeTrue())
-
+			hasComp := createAndFetchSimpleComponent(componentName, HASAppNamespace, ComponentName, applicationName, SampleRepoLink, false)
 			// Make sure the devfile model was properly set in Component
-			Expect(createdHasComp.Status.Devfile).Should(Not(Equal("")))
+			Expect(hasComp.Status.Devfile).Should(Not(Equal("")))
 
-			hasComp2 := &appstudiov1alpha1.Component{
-				TypeMeta: metav1.TypeMeta{
-					APIVersion: "appstudio.redhat.com/v1alpha1",
-					Kind:       "Component",
-				},
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      componentName2,
-					Namespace: HASAppNamespace,
-				},
-				Spec: appstudiov1alpha1.ComponentSpec{
-					ComponentName: ComponentName + "2",
-					Application:   applicationName2,
-					Source: appstudiov1alpha1.ComponentSource{
-						ComponentSourceUnion: appstudiov1alpha1.ComponentSourceUnion{
-							GitSource: &appstudiov1alpha1.GitSource{
-								URL: SampleRepoLink,
-							},
-						},
-					},
-				},
-			}
-			Expect(k8sClient.Create(ctx, hasComp2)).Should(Succeed())
-
-			// Look up the has app resource that was created.
-			// num(conditions) may still be < 1 on the first try, so retry until at least _some_ condition is set
-			hasCompLookupKey2 := types.NamespacedName{Name: componentName2, Namespace: HASAppNamespace}
-			createdHasComp2 := &appstudiov1alpha1.Component{}
-			Eventually(func() bool {
-				k8sClient.Get(context.Background(), hasCompLookupKey2, createdHasComp2)
-				return len(createdHasComp2.Status.Conditions) > 0 && createdHasComp2.Status.GitOps.RepositoryURL != ""
-			}, timeout, interval).Should(BeTrue())
-
+			hasComp2 := createAndFetchSimpleComponent(componentName2, HASAppNamespace, ComponentName+"2", applicationName2, SampleRepoLink, false)
 			// Make sure the devfile model was properly set in Component
-			Expect(createdHasComp2.Status.Devfile).Should(Not(Equal("")))
+			Expect(hasComp2.Status.Devfile).Should(Not(Equal("")))
 
 			appSnapshot := &appstudioshared.ApplicationSnapshot{
 				TypeMeta: metav1.TypeMeta{
@@ -904,6 +722,8 @@ var _ = Describe("ApplicationSnapshotEnvironmentBinding controller", func() {
 			Expect(createdBinding.Status.GitOpsRepoConditions[len(createdBinding.Status.GitOpsRepoConditions)-1].Message).Should(ContainSubstring(fmt.Sprintf("component %s does not belong to the application %s", componentName2, applicationName)))
 
 			// Delete the specified HASComp resource
+			hasCompLookupKey := types.NamespacedName{Name: componentName, Namespace: HASAppNamespace}
+			hasCompLookupKey2 := types.NamespacedName{Name: componentName2, Namespace: HASAppNamespace}
 			deleteHASCompCR(hasCompLookupKey)
 			deleteHASCompCR(hasCompLookupKey2)
 
@@ -940,75 +760,13 @@ var _ = Describe("ApplicationSnapshotEnvironmentBinding controller", func() {
 
 			createAndFetchSimpleApp(applicationName, HASAppNamespace, DisplayName, Description)
 
-			hasComp := &appstudiov1alpha1.Component{
-				TypeMeta: metav1.TypeMeta{
-					APIVersion: "appstudio.redhat.com/v1alpha1",
-					Kind:       "Component",
-				},
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      componentName,
-					Namespace: HASAppNamespace,
-				},
-				Spec: appstudiov1alpha1.ComponentSpec{
-					ComponentName: ComponentName,
-					Application:   applicationName,
-					Source: appstudiov1alpha1.ComponentSource{
-						ComponentSourceUnion: appstudiov1alpha1.ComponentSourceUnion{
-							GitSource: &appstudiov1alpha1.GitSource{
-								URL: SampleRepoLink,
-							},
-						},
-					},
-				},
-			}
-			Expect(k8sClient.Create(ctx, hasComp)).Should(Succeed())
-
-			// Look up the has app resource that was created.
-			// num(conditions) may still be < 1 on the first try, so retry until at least _some_ condition is set
-			hasCompLookupKey := types.NamespacedName{Name: componentName, Namespace: HASAppNamespace}
-			createdHasComp := &appstudiov1alpha1.Component{}
-			Eventually(func() bool {
-				k8sClient.Get(context.Background(), hasCompLookupKey, createdHasComp)
-				return len(createdHasComp.Status.Conditions) > 0 && createdHasComp.Status.GitOps.RepositoryURL != ""
-			}, timeout, interval).Should(BeTrue())
-
+			hasComp := createAndFetchSimpleComponent(componentName, HASAppNamespace, ComponentName, applicationName, SampleRepoLink, false)
 			// Make sure the devfile model was properly set in Component
-			Expect(createdHasComp.Status.Devfile).Should(Not(Equal("")))
+			Expect(hasComp.Status.Devfile).Should(Not(Equal("")))
 
-			hasComp2 := &appstudiov1alpha1.Component{
-				TypeMeta: metav1.TypeMeta{
-					APIVersion: "appstudio.redhat.com/v1alpha1",
-					Kind:       "Component",
-				},
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      componentName2,
-					Namespace: HASAppNamespace,
-				},
-				Spec: appstudiov1alpha1.ComponentSpec{
-					ComponentName: ComponentName + "2",
-					Application:   applicationName,
-					Source: appstudiov1alpha1.ComponentSource{
-						ComponentSourceUnion: appstudiov1alpha1.ComponentSourceUnion{
-							GitSource: &appstudiov1alpha1.GitSource{
-								URL: SampleRepoLink,
-							},
-						},
-					},
-				},
-			}
-			Expect(k8sClient.Create(ctx, hasComp2)).Should(Succeed())
-
-			// Look up the has app resource that was created.
-			// num(conditions) may still be < 1 on the first try, so retry until at least _some_ condition is set
-			hasCompLookupKey2 := types.NamespacedName{Name: componentName2, Namespace: HASAppNamespace}
-			createdHasComp2 := &appstudiov1alpha1.Component{}
-			Eventually(func() bool {
-				k8sClient.Get(context.Background(), hasCompLookupKey2, createdHasComp2)
-				return len(createdHasComp2.Status.Conditions) > 0 && createdHasComp2.Status.GitOps.RepositoryURL != ""
-			}, timeout, interval).Should(BeTrue())
-
+			hasComp2 := createAndFetchSimpleComponent(componentName2, HASAppNamespace, ComponentName+"2", applicationName, SampleRepoLink, false)
 			// Make sure the devfile model was properly set in Component
-			Expect(createdHasComp2.Status.Devfile).Should(Not(Equal("")))
+			Expect(hasComp2.Status.Devfile).Should(Not(Equal("")))
 
 			appSnapshot := &appstudioshared.ApplicationSnapshot{
 				TypeMeta: metav1.TypeMeta{
@@ -1118,6 +876,8 @@ var _ = Describe("ApplicationSnapshotEnvironmentBinding controller", func() {
 			Expect(createdBinding.Status.GitOpsRepoConditions[len(createdBinding.Status.GitOpsRepoConditions)-1].Message).Should(ContainSubstring(fmt.Sprintf("application snapshot %s did not reference component %s", snapshotName, componentName2)))
 
 			// Delete the specified HASComp resource
+			hasCompLookupKey := types.NamespacedName{Name: componentName, Namespace: HASAppNamespace}
+			hasCompLookupKey2 := types.NamespacedName{Name: componentName2, Namespace: HASAppNamespace}
 			deleteHASCompCR(hasCompLookupKey)
 			deleteHASCompCR(hasCompLookupKey2)
 
@@ -1152,40 +912,9 @@ var _ = Describe("ApplicationSnapshotEnvironmentBinding controller", func() {
 
 			createAndFetchSimpleApp(applicationName, HASAppNamespace, DisplayName, Description)
 
-			hasComp := &appstudiov1alpha1.Component{
-				TypeMeta: metav1.TypeMeta{
-					APIVersion: "appstudio.redhat.com/v1alpha1",
-					Kind:       "Component",
-				},
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      componentName,
-					Namespace: HASAppNamespace,
-				},
-				Spec: appstudiov1alpha1.ComponentSpec{
-					ComponentName: ComponentName,
-					Application:   applicationName,
-					Source: appstudiov1alpha1.ComponentSource{
-						ComponentSourceUnion: appstudiov1alpha1.ComponentSourceUnion{
-							GitSource: &appstudiov1alpha1.GitSource{
-								URL: SampleRepoLink,
-							},
-						},
-					},
-				},
-			}
-			Expect(k8sClient.Create(ctx, hasComp)).Should(Succeed())
-
-			// Look up the has app resource that was created.
-			// num(conditions) may still be < 1 on the first try, so retry until at least _some_ condition is set
-			hasCompLookupKey := types.NamespacedName{Name: componentName, Namespace: HASAppNamespace}
-			createdHasComp := &appstudiov1alpha1.Component{}
-			Eventually(func() bool {
-				k8sClient.Get(context.Background(), hasCompLookupKey, createdHasComp)
-				return len(createdHasComp.Status.Conditions) > 0 && createdHasComp.Status.GitOps.RepositoryURL != ""
-			}, timeout, interval).Should(BeTrue())
-
+			hasComp := createAndFetchSimpleComponent(componentName, HASAppNamespace, ComponentName, applicationName, SampleRepoLink, false)
 			// Make sure the devfile model was properly set in Component
-			Expect(createdHasComp.Status.Devfile).Should(Not(Equal("")))
+			Expect(hasComp.Status.Devfile).Should(Not(Equal("")))
 
 			appSnapshot := &appstudioshared.ApplicationSnapshot{
 				TypeMeta: metav1.TypeMeta{
@@ -1298,6 +1027,7 @@ var _ = Describe("ApplicationSnapshotEnvironmentBinding controller", func() {
 			}, timeout, interval).Should(BeTrue())
 
 			// Delete the specified HASComp resource
+			hasCompLookupKey := types.NamespacedName{Name: componentName, Namespace: HASAppNamespace}
 			deleteHASCompCR(hasCompLookupKey)
 
 			// Delete the specified HASApp resource
@@ -1357,37 +1087,9 @@ var _ = Describe("ApplicationSnapshotEnvironmentBinding controller", func() {
 				return len(fetchedHasApp.Status.Conditions) > 0
 			}, timeout, interval).Should(BeTrue())
 
-			hasComp := &appstudiov1alpha1.Component{
-				TypeMeta: metav1.TypeMeta{
-					APIVersion: "appstudio.redhat.com/v1alpha1",
-					Kind:       "Component",
-				},
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      componentName,
-					Namespace: HASAppNamespace,
-				},
-				Spec: appstudiov1alpha1.ComponentSpec{
-					ComponentName: ComponentName,
-					Application:   applicationName,
-					Source: appstudiov1alpha1.ComponentSource{
-						ComponentSourceUnion: appstudiov1alpha1.ComponentSourceUnion{
-							GitSource: &appstudiov1alpha1.GitSource{
-								URL: SampleRepoLink,
-							},
-						},
-					},
-				},
-			}
-			Expect(k8sClient.Create(ctx, hasComp)).Should(Succeed())
-
-			// Look up the has app resource that was created.
-			// num(conditions) may still be < 1 on the first try, so retry until at least _some_ condition is set
-			hasCompLookupKey := types.NamespacedName{Name: componentName, Namespace: HASAppNamespace}
-			createdHasComp := &appstudiov1alpha1.Component{}
-			Eventually(func() bool {
-				k8sClient.Get(context.Background(), hasCompLookupKey, createdHasComp)
-				return len(createdHasComp.Status.Conditions) > 0
-			}, timeout, interval).Should(BeTrue())
+			hasComp := createAndFetchSimpleComponent(componentName, HASAppNamespace, ComponentName, applicationName, SampleRepoLink, false)
+			// Make sure the devfile model was properly set in Component
+			Expect(hasComp.Status.Devfile).Should(Not(Equal("")))
 
 			appSnapshot := &appstudioshared.ApplicationSnapshot{
 				TypeMeta: metav1.TypeMeta{
@@ -1480,6 +1182,7 @@ var _ = Describe("ApplicationSnapshotEnvironmentBinding controller", func() {
 			Expect(createdBinding.Status.GitOpsRepoConditions[len(createdBinding.Status.GitOpsRepoConditions)-1].Message).Should(ContainSubstring("invalid control character in URL"))
 
 			// Delete the specified HASComp resource
+			hasCompLookupKey := types.NamespacedName{Name: componentName, Namespace: HASAppNamespace}
 			deleteHASCompCR(hasCompLookupKey)
 
 			// Delete the specified HASApp resource
@@ -1511,40 +1214,9 @@ var _ = Describe("ApplicationSnapshotEnvironmentBinding controller", func() {
 
 			createAndFetchSimpleApp(applicationName, HASAppNamespace, DisplayName, Description)
 
-			hasComp := &appstudiov1alpha1.Component{
-				TypeMeta: metav1.TypeMeta{
-					APIVersion: "appstudio.redhat.com/v1alpha1",
-					Kind:       "Component",
-				},
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      componentName,
-					Namespace: HASAppNamespace,
-				},
-				Spec: appstudiov1alpha1.ComponentSpec{
-					ComponentName: ComponentName,
-					Application:   applicationName,
-					Source: appstudiov1alpha1.ComponentSource{
-						ComponentSourceUnion: appstudiov1alpha1.ComponentSourceUnion{
-							GitSource: &appstudiov1alpha1.GitSource{
-								URL: SampleRepoLink,
-							},
-						},
-					},
-				},
-			}
-			Expect(k8sClient.Create(ctx, hasComp)).Should(Succeed())
-
-			// Look up the has app resource that was created.
-			// num(conditions) may still be < 1 on the first try, so retry until at least _some_ condition is set
-			hasCompLookupKey := types.NamespacedName{Name: componentName, Namespace: HASAppNamespace}
-			createdHasComp := &appstudiov1alpha1.Component{}
-			Eventually(func() bool {
-				k8sClient.Get(context.Background(), hasCompLookupKey, createdHasComp)
-				return len(createdHasComp.Status.Conditions) > 0 && createdHasComp.Status.GitOps.RepositoryURL != ""
-			}, timeout, interval).Should(BeTrue())
-
+			hasComp := createAndFetchSimpleComponent(componentName, HASAppNamespace, ComponentName, applicationName, SampleRepoLink, false)
 			// Make sure the devfile model was properly set in Component
-			Expect(createdHasComp.Status.Devfile).Should(Not(Equal("")))
+			Expect(hasComp.Status.Devfile).Should(Not(Equal("")))
 
 			appSnapshot := &appstudioshared.ApplicationSnapshot{
 				TypeMeta: metav1.TypeMeta{
@@ -1623,6 +1295,7 @@ var _ = Describe("ApplicationSnapshotEnvironmentBinding controller", func() {
 			Expect(createdBinding.Status.GitOpsRepoConditions[len(createdBinding.Status.GitOpsRepoConditions)-1].Message).Should(ContainSubstring(fmt.Sprintf("Environment.appstudio.redhat.com %q not found", environmentName)))
 
 			// Delete the specified HASComp resource
+			hasCompLookupKey := types.NamespacedName{Name: componentName, Namespace: HASAppNamespace}
 			deleteHASCompCR(hasCompLookupKey)
 
 			// Delete the specified HASApp resource
@@ -1657,75 +1330,13 @@ var _ = Describe("ApplicationSnapshotEnvironmentBinding controller", func() {
 			createAndFetchSimpleApp(applicationName, HASAppNamespace, DisplayName, Description)
 			createAndFetchSimpleApp(applicationName2, HASAppNamespace, DisplayName, Description)
 
-			hasComp := &appstudiov1alpha1.Component{
-				TypeMeta: metav1.TypeMeta{
-					APIVersion: "appstudio.redhat.com/v1alpha1",
-					Kind:       "Component",
-				},
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      componentName,
-					Namespace: HASAppNamespace,
-				},
-				Spec: appstudiov1alpha1.ComponentSpec{
-					ComponentName: ComponentName,
-					Application:   applicationName,
-					Source: appstudiov1alpha1.ComponentSource{
-						ComponentSourceUnion: appstudiov1alpha1.ComponentSourceUnion{
-							GitSource: &appstudiov1alpha1.GitSource{
-								URL: SampleRepoLink,
-							},
-						},
-					},
-				},
-			}
-			Expect(k8sClient.Create(ctx, hasComp)).Should(Succeed())
-
-			// Look up the has app resource that was created.
-			// num(conditions) may still be < 1 on the first try, so retry until at least _some_ condition is set
-			hasCompLookupKey := types.NamespacedName{Name: componentName, Namespace: HASAppNamespace}
-			createdHasComp := &appstudiov1alpha1.Component{}
-			Eventually(func() bool {
-				k8sClient.Get(context.Background(), hasCompLookupKey, createdHasComp)
-				return len(createdHasComp.Status.Conditions) > 0 && createdHasComp.Status.GitOps.RepositoryURL != ""
-			}, timeout, interval).Should(BeTrue())
-
+			hasComp := createAndFetchSimpleComponent(componentName, HASAppNamespace, ComponentName, applicationName, SampleRepoLink, false)
 			// Make sure the devfile model was properly set in Component
-			Expect(createdHasComp.Status.Devfile).Should(Not(Equal("")))
+			Expect(hasComp.Status.Devfile).Should(Not(Equal("")))
 
-			hasComp2 := &appstudiov1alpha1.Component{
-				TypeMeta: metav1.TypeMeta{
-					APIVersion: "appstudio.redhat.com/v1alpha1",
-					Kind:       "Component",
-				},
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      componentName2,
-					Namespace: HASAppNamespace,
-				},
-				Spec: appstudiov1alpha1.ComponentSpec{
-					ComponentName: ComponentName,
-					Application:   applicationName2,
-					Source: appstudiov1alpha1.ComponentSource{
-						ComponentSourceUnion: appstudiov1alpha1.ComponentSourceUnion{
-							GitSource: &appstudiov1alpha1.GitSource{
-								URL: SampleRepoLink,
-							},
-						},
-					},
-				},
-			}
-			Expect(k8sClient.Create(ctx, hasComp2)).Should(Succeed())
-
-			// Look up the has app resource that was created.
-			// num(conditions) may still be < 1 on the first try, so retry until at least _some_ condition is set
-			hasCompLookupKey2 := types.NamespacedName{Name: componentName2, Namespace: HASAppNamespace}
-			createdHasComp2 := &appstudiov1alpha1.Component{}
-			Eventually(func() bool {
-				k8sClient.Get(context.Background(), hasCompLookupKey2, createdHasComp2)
-				return len(createdHasComp2.Status.Conditions) > 0 && createdHasComp2.Status.GitOps.RepositoryURL != ""
-			}, timeout, interval).Should(BeTrue())
-
+			hasComp2 := createAndFetchSimpleComponent(componentName2, HASAppNamespace, ComponentName, applicationName2, SampleRepoLink, false)
 			// Make sure the devfile model was properly set in Component
-			Expect(createdHasComp2.Status.Devfile).Should(Not(Equal("")))
+			Expect(hasComp2.Status.Devfile).Should(Not(Equal("")))
 
 			appSnapshot := &appstudioshared.ApplicationSnapshot{
 				TypeMeta: metav1.TypeMeta{
@@ -1938,6 +1549,8 @@ var _ = Describe("ApplicationSnapshotEnvironmentBinding controller", func() {
 			}, timeout, interval).Should(BeTrue())
 
 			// Delete the specified HASComp resource
+			hasCompLookupKey := types.NamespacedName{Name: componentName, Namespace: HASAppNamespace}
+			hasCompLookupKey2 := types.NamespacedName{Name: componentName2, Namespace: HASAppNamespace}
 			deleteHASCompCR(hasCompLookupKey)
 			deleteHASCompCR(hasCompLookupKey2)
 
@@ -1966,11 +1579,11 @@ var _ = Describe("ApplicationSnapshotEnvironmentBinding controller", func() {
 		It("Should not generate gitops overlays successfully for Components that skip gitops", func() {
 			ctx := context.Background()
 
-			applicationName := HASAppName + "9"
-			componentName := HASCompName + "9"
-			secondComponentName := HASCompName + "9-2"
-			snapshotName := HASSnapshotName + "9"
-			bindingName := HASBindingName + "9"
+			applicationName := HASAppName + "11"
+			componentName := HASCompName + "11"
+			secondComponentName := HASCompName + "11-2"
+			snapshotName := HASSnapshotName + "11"
+			bindingName := HASBindingName + "11"
 			environmentName := "staging"
 
 			hasGitopsGeneratedResource := map[string]bool{
@@ -1982,9 +1595,9 @@ var _ = Describe("ApplicationSnapshotEnvironmentBinding controller", func() {
 			createAndFetchSimpleApp(applicationName, HASAppNamespace, DisplayName, Description)
 			hasComp := createAndFetchSimpleComponent(componentName, HASAppNamespace, ComponentName, applicationName, SampleRepoLink, true)
 			secondComp := createAndFetchSimpleComponent(secondComponentName, HASAppNamespace, secondComponentName, applicationName, SampleRepoLink, false)
-
 			// Make sure the devfile model was properly set in Component
 			Expect(hasComp.Status.Devfile).Should(Not(Equal("")))
+			Expect(secondComp.Status.Devfile).Should(Not(Equal("")))
 
 			appSnapshot := &appstudioshared.ApplicationSnapshot{
 				TypeMeta: metav1.TypeMeta{
@@ -2019,6 +1632,31 @@ var _ = Describe("ApplicationSnapshotEnvironmentBinding controller", func() {
 				k8sClient.Get(context.Background(), appSnapshotLookupKey, createdAppSnapshot)
 				return len(createdAppSnapshot.Spec.Components) > 0
 			}, timeout, interval).Should(BeTrue())
+
+			stagingEnv := &appstudioshared.Environment{
+				TypeMeta: metav1.TypeMeta{
+					APIVersion: "appstudio.redhat.com/v1alpha1",
+					Kind:       "Environment",
+				},
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      environmentName,
+					Namespace: HASAppNamespace,
+				},
+				Spec: appstudioshared.EnvironmentSpec{
+					Type:               "POC",
+					DisplayName:        DisplayName,
+					DeploymentStrategy: appstudioshared.DeploymentStrategy_AppStudioAutomated,
+					Configuration: appstudioshared.EnvironmentConfiguration{
+						Env: []appstudioshared.EnvVarPair{
+							{
+								Name:  "FOO",
+								Value: "BAR",
+							},
+						},
+					},
+				},
+			}
+			Expect(k8sClient.Create(ctx, stagingEnv)).Should(Succeed())
 
 			appBinding := &appstudioshared.ApplicationSnapshotEnvironmentBinding{
 				TypeMeta: metav1.TypeMeta{
@@ -2109,6 +1747,10 @@ var _ = Describe("ApplicationSnapshotEnvironmentBinding controller", func() {
 
 			// Delete the specified snapshot
 			deleteSnapshot(appSnapshotLookupKey)
+
+			// Delete the specified environment
+			stagingEnvLookupKey := types.NamespacedName{Name: environmentName, Namespace: HASAppNamespace}
+			deleteEnvironment(stagingEnvLookupKey)
 
 		})
 	})
