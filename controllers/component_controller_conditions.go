@@ -75,3 +75,28 @@ func (r *ComponentReconciler) SetUpdateConditionAndUpdateCR(ctx context.Context,
 		log.Error(err, "Unable to update Component")
 	}
 }
+
+func (r *ComponentReconciler) SetGitOpsGeneratedConditionAndUpdateCR(ctx context.Context, component *appstudiov1alpha1.Component, generateError error) {
+	log := r.Log.WithValues("Component", component.Name)
+
+	if generateError == nil {
+		meta.SetStatusCondition(&component.Status.Conditions, metav1.Condition{
+			Type:    "GitOpsResourcesGenerated",
+			Status:  metav1.ConditionTrue,
+			Reason:  "OK",
+			Message: "GitOps resource generated successfully",
+		})
+	} else {
+		meta.SetStatusCondition(&component.Status.Conditions, metav1.Condition{
+			Type:    "GitOpsResourcesGenerated",
+			Status:  metav1.ConditionFalse,
+			Reason:  "GenerateError",
+			Message: fmt.Sprintf("GitOps resources failed to generate: %v", generateError),
+		})
+	}
+
+	err := r.Client.Status().Update(ctx, component)
+	if err != nil {
+		log.Error(err, "Unable to update Component")
+	}
+}
