@@ -24,12 +24,11 @@ import (
 	"github.com/redhat-appstudio/application-service/gitops/prepare"
 	appstudioshared "github.com/redhat-appstudio/managed-gitops/appstudio-shared/apis/appstudio.redhat.com/v1alpha1"
 	"github.com/spf13/afero"
-	corev1 "k8s.io/api/core/v1"
 )
 
 type Executor interface {
 	Execute(baseDir, command string, args ...string) ([]byte, error)
-	GenerateParentKustomize(fs afero.Afero, gitOpsFolder string, commonStoragePVC *corev1.PersistentVolumeClaim) error
+	GenerateParentKustomize(fs afero.Afero, gitOpsFolder string) error
 }
 
 // GenerateAndPush takes in the following args and generates the gitops resources for a given component
@@ -162,7 +161,7 @@ func RemoveAndPush(outputPath string, remote string, component appstudiov1alpha1
 	if out, err := e.Execute(repoPath, "rm", "-rf", componentPath); err != nil {
 		return fmt.Errorf("failed to delete %q folder in repository in %q %q: %s", componentPath, repoPath, string(out), err)
 	}
-	if err := e.GenerateParentKustomize(appFs, gitopsFolder, nil); err != nil {
+	if err := e.GenerateParentKustomize(appFs, gitopsFolder); err != nil {
 		return fmt.Errorf("failed to re-generate the gitops resources in %q for component %q: %s", componentPath, componentName, err)
 	}
 
@@ -202,6 +201,6 @@ func (e CmdExecutor) Execute(baseDir, command string, args ...string) ([]byte, e
 	return output, err
 }
 
-func (e CmdExecutor) GenerateParentKustomize(fs afero.Afero, gitOpsFolder string, commonStoragePVC *corev1.PersistentVolumeClaim) error {
-	return GenerateParentKustomize(fs, gitOpsFolder, commonStoragePVC)
+func (e CmdExecutor) GenerateParentKustomize(fs afero.Afero, gitOpsFolder string) error {
+	return GenerateParentKustomize(fs, gitOpsFolder)
 }
