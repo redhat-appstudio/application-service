@@ -342,6 +342,9 @@ func getBuildCommonLabelsForComponent(component *appstudiov1alpha1.Component) ma
 func GenerateCommonStorage(component appstudiov1alpha1.Component, name string) *corev1.PersistentVolumeClaim {
 	fsMode := corev1.PersistentVolumeFilesystem
 
+	annotations := getBuildCommonLabelsForComponent(&component)
+	annotations["argocd.argoproj.io/sync-options: Prune"] = "false"
+
 	workspaceStorage := &corev1.PersistentVolumeClaim{
 		TypeMeta: metav1.TypeMeta{
 			Kind:       "PersistentVolumeClaim",
@@ -350,7 +353,7 @@ func GenerateCommonStorage(component appstudiov1alpha1.Component, name string) *
 		ObjectMeta: metav1.ObjectMeta{
 			Name:        name,
 			Namespace:   component.Namespace,
-			Annotations: getBuildCommonLabelsForComponent(&component),
+			Annotations: annotations,
 		},
 		Spec: corev1.PersistentVolumeClaimSpec{
 			AccessModes: []corev1.PersistentVolumeAccessMode{
