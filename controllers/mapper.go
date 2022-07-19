@@ -38,16 +38,15 @@ func MapToBindingByBoundObjectName(cl client.Client, objectType, label string) f
 			client.InNamespace(obj.GetNamespace()),
 			client.MatchingLabels{label: obj.GetName()})
 		if err != nil {
-			log.Error(err, fmt.Sprintf("unable to get ApplicationSnapshotEnvironmentBindingList for a %s object %s", objectType, obj.GetName()))
+			log.Error(err, fmt.Sprintf("unable to list ApplicationSnapshotEnvironmentBinding for a %s object %s", objectType, obj.GetName()))
 			return []reconcile.Request{}
 		}
 		if len(bindingList.Items) == 0 {
-			log.Info(fmt.Sprintf("no ApplicationSnapshotEnvironmentBindingList found for a %s object %s", objectType, obj.GetName()))
+			log.Info(fmt.Sprintf("no ApplicationSnapshotEnvironmentBinding found for a %s object %s", objectType, obj.GetName()))
 			return []reconcile.Request{}
 		}
 
-		log.Info(fmt.Sprintf("Found %d ApplicationSnapshotEnvironmentBindingList for a %s object %s", len(bindingList.Items), objectType, obj.GetName()))
-		log.Info("The corresponding ApplicationSnapshotEnvironmentBinding will be reconciled")
+		log.Info(fmt.Sprintf("Found %d ApplicationSnapshotEnvironmentBindings for a %s object %s", len(bindingList.Items), objectType, obj.GetName()))
 
 		req := make([]reconcile.Request, len(bindingList.Items))
 		for i, item := range bindingList.Items {
@@ -57,6 +56,7 @@ func MapToBindingByBoundObjectName(cl client.Client, objectType, label string) f
 					Name:      item.Name,
 				},
 			}
+			log.Info(fmt.Sprintf("The corresponding ApplicationSnapshotEnvironmentBinding %s will be reconciled", item.Name))
 		}
 		return req
 	}

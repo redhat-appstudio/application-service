@@ -53,6 +53,8 @@ type ApplicationSnapshotEnvironmentBindingReconciler struct {
 //+kubebuilder:rbac:groups=appstudio.redhat.com,resources=applicationsnapshotenvironmentbindings,verbs=get;list;watch;create;update;patch;delete
 //+kubebuilder:rbac:groups=appstudio.redhat.com,resources=applicationsnapshotenvironmentbindings/status,verbs=get;update;patch
 //+kubebuilder:rbac:groups=appstudio.redhat.com,resources=applicationsnapshotenvironmentbindings/finalizers,verbs=update
+//+kubebuilder:rbac:groups=appstudio.redhat.com,resources=applicationsnapshots,verbs=get;list;watch
+//+kubebuilder:rbac:groups=appstudio.redhat.com,resources=environments,verbs=get;list;watch
 
 // Reconcile is part of the main kubernetes reconciliation loop which aims to
 // move the current state of the cluster closer to the desired state.
@@ -86,6 +88,19 @@ func (r *ApplicationSnapshotEnvironmentBindingReconciler) Reconcile(ctx context.
 	environmentName := appSnapshotEnvBinding.Spec.Environment
 	snapshotName := appSnapshotEnvBinding.Spec.Snapshot
 	components := appSnapshotEnvBinding.Spec.Components
+
+	// Check if the labels have been applied to the binding
+	bindingLabels := appSnapshotEnvBinding.GetLabels()
+	if bindingLabels["appstudio.application"] == "" || bindingLabels["appstudio.environment"] == "" {
+		appSnapshotEnvBinding.SetLabels(map[string]string{
+			"appstudio.application": applicationName,
+			"appstudio.environment": environmentName,
+		})
+
+		if err := r.Client.Update(ctx, &appSnapshotEnvBinding); err != nil {
+			return ctrl.Result{}, err
+		}
+	}
 
 	// Get the Environment CR
 	environment := appstudioshared.Environment{}
