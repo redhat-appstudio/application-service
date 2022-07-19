@@ -65,7 +65,6 @@ func Generate(fs afero.Afero, gitOpsFolder string, outputFolder string, componen
 		resources[routeFileName] = route
 	}
 
-	var commonStorage *corev1.PersistentVolumeClaim
 	if component.Spec.Source.GitSource != nil && component.Spec.Source.GitSource.URL != "" {
 		tektonResourcesDirName := ".tekton"
 		k.AddResources(tektonResourcesDirName + "/")
@@ -73,9 +72,6 @@ func Generate(fs afero.Afero, gitOpsFolder string, outputFolder string, componen
 		if err := GenerateBuild(fs, filepath.Join(outputFolder, tektonResourcesDirName), component, gitopsConfig); err != nil {
 			return err
 		}
-
-		// Generate the common pvc for git components, and place it at application-level in the repository
-		commonStorage = GenerateCommonStorage(component, "appstudio")
 	}
 
 	resources[kustomizeFileName] = k
@@ -86,7 +82,7 @@ func Generate(fs afero.Afero, gitOpsFolder string, outputFolder string, componen
 	}
 
 	// Re-generate the parent kustomize file and return
-	return GenerateParentKustomize(fs, gitOpsFolder, commonStorage)
+	return GenerateParentKustomize(fs, gitOpsFolder)
 }
 
 // GenerateOverlays generates the overlays dir from a given BindingComponent
@@ -136,8 +132,7 @@ func GenerateOverlays(fs afero.Afero, gitOpsFolder string, outputFolder string, 
 
 // GenerateParentKustomize takes in a folder of components, and outputs a kustomize file to the outputFolder dir
 // containing entries for each Component.
-// If commonStoragePVC is non-nil, it will also add the common storage pvc yaml file to the parent kustomize. If it's nil, it will not be added
-func GenerateParentKustomize(fs afero.Afero, gitOpsFolder string, commonStoragePVC *corev1.PersistentVolumeClaim) error {
+func GenerateParentKustomize(fs afero.Afero, gitOpsFolder string) error {
 	componentsFolder := filepath.Join(gitOpsFolder, "components")
 	k := resources.Kustomization{
 		Kind:       "Kustomization",
@@ -154,21 +149,6 @@ func GenerateParentKustomize(fs afero.Afero, gitOpsFolder string, commonStorageP
 		if file.IsDir() {
 			k.AddBases(filepath.Join("components", file.Name(), "base"))
 		}
-	}
-
-	// if the common storage PVC yaml file was passed in, write to disk and add it to the parent kustomize file
-	if commonStoragePVC != nil {
-		resources["common-storage-pvc.yaml"] = commonStoragePVC
-		k.AddResources("common-storage-pvc.yaml")
-	}
-
-	// if the common storage PVC already exist, make sure too add it to the parent kustomize file
-	commonStorageExist, err := fs.Exists(filepath.Join(gitOpsFolder, "common-storage-pvc.yaml"))
-	if err != nil {
-		return err
-	}
-	if commonStorageExist {
-		k.AddResources("common-storage-pvc.yaml")
 	}
 
 	resources[kustomizeFileName] = k

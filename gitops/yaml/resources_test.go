@@ -27,6 +27,7 @@ import (
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/redhat-appstudio/application-service/gitops/resources"
+	"github.com/redhat-appstudio/application-service/gitops/testutils"
 	"github.com/redhat-appstudio/application-service/pkg/util/ioutils"
 	"github.com/spf13/afero"
 	appsv1 "k8s.io/api/apps/v1"
@@ -84,7 +85,7 @@ func TestWriteResources(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			_, err := WriteResources(tt.fs, tt.path, r)
-			if !errorMatch(t, tt.errMsg, err) {
+			if !testutils.ErrorMatch(t, tt.errMsg, err) {
 				t.Fatalf("error mismatch: got %v, want %v", err, tt.errMsg)
 			}
 			if tt.path[0] == '~' {
@@ -175,7 +176,7 @@ func TestMarshalItemToFileAndUnMarshalItemFromFile(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			err := MarshalItemToFile(tt.fs, tt.path, tt.item)
-			if !errorMatch(t, tt.marshalErrMsg, err) {
+			if !testutils.ErrorMatch(t, tt.marshalErrMsg, err) {
 				t.Fatalf("error mismatch: got %v, want %v", err, tt.marshalErrMsg)
 			}
 			if tt.marshalFailCase {
@@ -183,7 +184,7 @@ func TestMarshalItemToFileAndUnMarshalItemFromFile(t *testing.T) {
 			}
 			var encodedItem resources.Kustomization
 			err = UnMarshalItemFromFile(tt.fs, tt.path, &encodedItem)
-			if !errorMatch(t, tt.unmarshalErrMsg, err) {
+			if !testutils.ErrorMatch(t, tt.unmarshalErrMsg, err) {
 				t.Fatalf("error mismatch: got %v, want %v", err, tt.unmarshalErrMsg)
 			}
 			if err == nil {
@@ -230,7 +231,7 @@ func TestMarshallOutput(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			err := MarshalOutput(tt.f, tt.item)
-			if !errorMatch(t, tt.errMsg, err) {
+			if !testutils.ErrorMatch(t, tt.errMsg, err) {
 				t.Fatalf("TestMarshallOutput(): error mismatch: got %v, want %v", err, tt.errMsg)
 			}
 		})
@@ -256,28 +257,6 @@ func assertResourceExists(t *testing.T, path string, resource interface{}) {
 	if diff := cmp.Diff(want, got); diff != "" {
 		t.Fatalf("files not written to correct location: %s", diff)
 	}
-}
-
-// ErrorMatch returns true if an error matches the required string.
-//
-// e.g. ErrorMatch(t, "failed to open", err) would return true if the
-// err passed in had a string that matched.
-//
-// The message can be a regular expression, and if this fails to compile, then
-// the test will fail.
-func errorMatch(t *testing.T, msg string, testErr error) bool {
-	t.Helper()
-	if msg == "" && testErr == nil {
-		return true
-	}
-	if msg != "" && testErr == nil {
-		return false
-	}
-	match, err := regexp.MatchString(msg, testErr.Error())
-	if err != nil {
-		t.Fatal(err)
-	}
-	return match
 }
 
 // AssertNoError fails if there's an error
