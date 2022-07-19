@@ -112,6 +112,7 @@ func TestMarshalItemToFileAndUnMarshalItemFromFile(t *testing.T) {
 		item            interface{}
 		marshalErrMsg   string
 		unmarshalErrMsg string
+		marshalFailCase bool
 	}{
 		{
 			name: "Simple resource",
@@ -140,6 +141,35 @@ func TestMarshalItemToFileAndUnMarshalItemFromFile(t *testing.T) {
 			marshalErrMsg:   "failed to Create file /testtwo/file-two: no such file or directory",
 			unmarshalErrMsg: "failed to read from file /testtwo/file-two: open /testtwo/file-two: file does not exist",
 		},
+		{
+			name: "Unable to marshal data error",
+			fs:   fs,
+			path: filepath.Join(os.TempDir(), "test"),
+			item: map[string]interface{}{
+				"fake_error": make(chan int),
+			},
+			marshalErrMsg:   "failed to marshal data: error marshaling into JSON: json: unsupported type: chan int",
+			marshalFailCase: true,
+		},
+		{
+			name: "Unable to marshal data error",
+			fs:   fs,
+			path: filepath.Join(os.TempDir(), "test"),
+			item: map[string]interface{}{
+				"fake_error": make(chan int),
+			},
+			marshalErrMsg:   "failed to marshal data: error marshaling into JSON: json: unsupported type: chan int",
+			marshalFailCase: true,
+		},
+		{
+			name: "Unable to unmarshal data error",
+			fs:   fs,
+			path: filepath.Join(os.TempDir(), "test"),
+			item: map[string]interface{}{
+				"Resources": 8,
+			},
+			unmarshalErrMsg: "failed to unmarshal data: error unmarshaling JSON: while decoding JSON: json: cannot unmarshal number into Go struct field Kustomization.resources",
+		},
 	}
 
 	for _, tt := range tests {
@@ -147,6 +177,9 @@ func TestMarshalItemToFileAndUnMarshalItemFromFile(t *testing.T) {
 			err := MarshalItemToFile(tt.fs, tt.path, tt.item)
 			if !errorMatch(t, tt.marshalErrMsg, err) {
 				t.Fatalf("error mismatch: got %v, want %v", err, tt.marshalErrMsg)
+			}
+			if tt.marshalFailCase {
+				t.Skip()
 			}
 			var encodedItem resources.Kustomization
 			err = UnMarshalItemFromFile(tt.fs, tt.path, &encodedItem)

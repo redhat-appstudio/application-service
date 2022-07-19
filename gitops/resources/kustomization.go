@@ -56,7 +56,7 @@ func removeDuplicatesAndSort(s []string) []string {
 	return out
 }
 
-func (k *Kustomization) CompareDifferenceAndAddCustomizedPatches(original []string, generated []string) {
+func (k *Kustomization) CompareDifferenceAndAddCustomPatches(original []string, generated []string) {
 	generatedPatches := make(map[string]bool)
 	for _, genratedElement := range generated {
 		generatedPatches[genratedElement] = true

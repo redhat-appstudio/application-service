@@ -122,8 +122,8 @@ func GenerateOverlays(fs afero.Afero, gitOpsFolder string, outputFolder string, 
 	}
 	componentGeneratedResources[component.Name] = append(componentGeneratedResources[component.Name], deploymentPatchFileName)
 
-	// add back customize patches
-	k.CompareDifferenceAndAddCustomizedPatches(originalKustomizeFileContent.Patches, componentGeneratedResources[component.Name])
+	// add back custom kustomization patches
+	k.CompareDifferenceAndAddCustomPatches(originalKustomizeFileContent.Patches, componentGeneratedResources[component.Name])
 
 	resources := map[string]interface{}{
 		deploymentPatchFileName: deploymentPatch,
