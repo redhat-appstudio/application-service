@@ -88,7 +88,7 @@ func GenerateAndPush(outputPath string, remote string, component appstudiov1alph
 }
 
 // GenerateOverlaysAndPush generates the overlays kustomize from App Env Snapshot Binding Spec
-func GenerateOverlaysAndPush(outputPath string, clone bool, remote string, component appstudioshared.BindingComponent, applicationName, environmentName, imageName, namespace string, e Executor, appFs afero.Afero, branch string, context string, componentGeneratedResources map[string][]string) error {
+func GenerateOverlaysAndPush(outputPath string, clone bool, remote string, component appstudioshared.BindingComponent, environment appstudioshared.Environment, applicationName, environmentName, imageName, namespace string, e Executor, appFs afero.Afero, branch string, context string, componentGeneratedResources map[string][]string) error {
 	componentName := component.Name
 	repoPath := filepath.Join(outputPath, applicationName)
 
@@ -108,7 +108,7 @@ func GenerateOverlaysAndPush(outputPath string, clone bool, remote string, compo
 	// Generate the gitops resources and update the parent kustomize yaml file
 	gitopsFolder := filepath.Join(repoPath, context)
 	componentEnvOverlaysPath := filepath.Join(gitopsFolder, "components", componentName, "overlays", environmentName)
-	if err := GenerateOverlays(appFs, gitopsFolder, componentEnvOverlaysPath, component, imageName, namespace, componentGeneratedResources); err != nil {
+	if err := GenerateOverlays(appFs, gitopsFolder, componentEnvOverlaysPath, component, environment, imageName, namespace, componentGeneratedResources); err != nil {
 		return fmt.Errorf("failed to generate the gitops resources in overlays dir %q for component %q: %s", componentEnvOverlaysPath, componentName, err)
 	}
 

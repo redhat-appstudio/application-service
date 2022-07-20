@@ -131,6 +131,14 @@ spec:
         - apiGroups:
           - appstudio.redhat.com
           resources:
+          - applicationsnapshots
+          verbs:
+          - get
+          - list
+          - watch
+        - apiGroups:
+          - appstudio.redhat.com
+          resources:
           - componentdetectionqueries
           verbs:
           - create
@@ -181,6 +189,14 @@ spec:
           - patch
           - update
         - apiGroups:
+          - appstudio.redhat.com
+          resources:
+          - environments
+          verbs:
+          - get
+          - list
+          - watch
+        - apiGroups:
           - ""
           resources:
           - configmaps
@@ -192,14 +208,6 @@ spec:
           - ""
           resources:
           - secrets
-          verbs:
-          - get
-          - list
-          - watch
-        - apiGroups:
-          - appstudio.redhat.com
-          resources:
-          - applicationsnapshots
           verbs:
           - get
           - list

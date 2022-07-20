@@ -321,6 +321,7 @@ func TestGenerateDeploymentPatch(t *testing.T) {
 	tests := []struct {
 		name           string
 		component      appstudioshared.BindingComponent
+		environment    appstudioshared.Environment
 		imageName      string
 		namespace      string
 		wantDeployment appsv1.Deployment
@@ -340,6 +341,22 @@ func TestGenerateDeploymentPatch(t *testing.T) {
 					Resources: &corev1.ResourceRequirements{
 						Limits: corev1.ResourceList{
 							corev1.ResourceCPU: resource.MustParse("1"),
+						},
+					},
+				},
+			},
+			environment: appstudioshared.Environment{
+				Spec: appstudioshared.EnvironmentSpec{
+					Configuration: appstudioshared.EnvironmentConfiguration{
+						Env: []appstudioshared.EnvVarPair{
+							{
+								Name:  "FOO",
+								Value: "BAR_ENV",
+							},
+							{
+								Name:  "FOO2",
+								Value: "BAR2_ENV",
+							},
 						},
 					},
 				},
@@ -368,6 +385,10 @@ func TestGenerateDeploymentPatch(t *testing.T) {
 											Name:  "FOO",
 											Value: "BAR",
 										},
+										{
+											Name:  "FOO2",
+											Value: "BAR2_ENV",
+										},
 									},
 									Resources: corev1.ResourceRequirements{
 										Limits: corev1.ResourceList{
@@ -385,7 +406,7 @@ func TestGenerateDeploymentPatch(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			generatedDeployment := generateDeploymentPatch(tt.component, tt.imageName, tt.namespace)
+			generatedDeployment := generateDeploymentPatch(tt.component, tt.environment, tt.imageName, tt.namespace)
 
 			if !reflect.DeepEqual(*generatedDeployment, tt.wantDeployment) {
 				t.Errorf("TestGenerateDeploymentPatch() error: expected %v got %v", tt.wantDeployment, *generatedDeployment)
