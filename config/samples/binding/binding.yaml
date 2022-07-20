@@ -3,6 +3,11 @@ apiVersion: appstudio.redhat.com/v1alpha1
 kind: ApplicationSnapshotEnvironmentBinding
 metadata:
   name: applicationsnapshotenvironmentbinding-sample
+  labels: 
+    # These labels are recommended, so that we can use label selectors to easily find all apps/envs, without needing to do a full namespace list.
+    # Pls check v3 draft https://docs.google.com/document/d/1-_rWLgALd5pdSlqNNcQ5FSrD00fZb0l_exU-_FiL68o/edit?pli=1#heading=h.ljlaq1jezwn for more info. 
+    appstudio.application: application-sample # Should always match application value below
+    appstudio.environment: staging # Should always match env value below
 spec:
   application: application-sample
   environment: staging

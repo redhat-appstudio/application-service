@@ -322,6 +322,7 @@ func TestGenerateDeploymentPatch(t *testing.T) {
 	tests := []struct {
 		name           string
 		component      appstudioshared.BindingComponent
+		environment    appstudioshared.Environment
 		imageName      string
 		namespace      string
 		wantDeployment appsv1.Deployment
@@ -341,6 +342,22 @@ func TestGenerateDeploymentPatch(t *testing.T) {
 					Resources: &corev1.ResourceRequirements{
 						Limits: corev1.ResourceList{
 							corev1.ResourceCPU: resource.MustParse("1"),
+						},
+					},
+				},
+			},
+			environment: appstudioshared.Environment{
+				Spec: appstudioshared.EnvironmentSpec{
+					Configuration: appstudioshared.EnvironmentConfiguration{
+						Env: []appstudioshared.EnvVarPair{
+							{
+								Name:  "FOO",
+								Value: "BAR_ENV",
+							},
+							{
+								Name:  "FOO2",
+								Value: "BAR2_ENV",
+							},
 						},
 					},
 				},
@@ -369,6 +386,10 @@ func TestGenerateDeploymentPatch(t *testing.T) {
 											Name:  "FOO",
 											Value: "BAR",
 										},
+										{
+											Name:  "FOO2",
+											Value: "BAR2_ENV",
+										},
 									},
 									Resources: corev1.ResourceRequirements{
 										Limits: corev1.ResourceList{
@@ -386,7 +407,7 @@ func TestGenerateDeploymentPatch(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			generatedDeployment := generateDeploymentPatch(tt.component, tt.imageName, tt.namespace)
+			generatedDeployment := generateDeploymentPatch(tt.component, tt.environment, tt.imageName, tt.namespace)
 
 			if !reflect.DeepEqual(*generatedDeployment, tt.wantDeployment) {
 				t.Errorf("TestGenerateDeploymentPatch() error: expected %v got %v", tt.wantDeployment, *generatedDeployment)
@@ -656,12 +677,26 @@ func TestGenerateOverlays(t *testing.T) {
 	k := resources.Kustomization{
 		Patches: []string{"patch1.yaml", "custom-patch1.yaml"},
 	}
-
 	bytes, err := yaml.Marshal(k)
 	if err != nil {
 		t.Errorf("unexpected error when marshal the kustomization yaml %v", err)
 	}
 	err = fs.WriteFile(preExistKustomizationFilepath, bytes, 0755)
+	if err != nil {
+		t.Errorf("unexpected error when writing to kustomizatipn file: %v", err)
+	}
+
+	invalidKustomizationFileFolder := filepath.Join(gitOpsFolder, "overlays-error")
+	fs.MkdirAll(invalidKustomizationFileFolder, 0755)
+	invalidKustomizationFilepath := filepath.Join(invalidKustomizationFileFolder, "kustomization.yaml")
+	invalidKustomization := map[string]interface{}{
+		"Resources": 8,
+	}
+	bytes, err = yaml.Marshal(invalidKustomization)
+	if err != nil {
+		t.Errorf("unexpected error when marshal the kustomization yaml %v", err)
+	}
+	err = fs.WriteFile(invalidKustomizationFilepath, bytes, 0755)
 	if err != nil {
 		t.Errorf("unexpected error when writing to kustomizatipn file: %v", err)
 	}
@@ -672,6 +707,7 @@ func TestGenerateOverlays(t *testing.T) {
 	}
 	imageName := "test-image"
 	namespace := "test-namespace"
+	environment := appstudioshared.Environment{}
 
 	tests := []struct {
 		name                        string
@@ -702,6 +738,12 @@ func TestGenerateOverlays(t *testing.T) {
 			wantErr:      "failed to MkDirAll",
 		},
 		{
+			name:         "unmarshall error",
+			fs:           fs,
+			outputFolder: invalidKustomizationFileFolder,
+			wantErr:      " failed to unmarshal data: error unmarshaling JSON: while decoding JSON: json: cannot unmarshal number into Go struct field Kustomization.resources",
+		},
+		{
 			name:         "genereated an additional patch",
 			fs:           fs,
 			outputFolder: outputFolderWithKustomizationFile,
@@ -717,7 +759,7 @@ func TestGenerateOverlays(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			err := GenerateOverlays(tt.fs, gitOpsFolder, tt.outputFolder, component, imageName, namespace, tt.componentGeneratedResources)
+			err := GenerateOverlays(tt.fs, gitOpsFolder, tt.outputFolder, component, environment, imageName, namespace, tt.componentGeneratedResources)
 
 			if !testutils.ErrorMatch(t, tt.wantErr, err) {
 				t.Errorf("unexpected error return value. Got %v", err)

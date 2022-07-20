@@ -494,6 +494,7 @@ func TestGenerateOverlaysAndPush(t *testing.T) {
 		name            string
 		fs              afero.Afero
 		component       appstudioshared.BindingComponent
+		environment     appstudioshared.Environment
 		errors          *testutils.ErrorStack
 		outputs         [][]byte
 		applicationName string
@@ -910,7 +911,7 @@ func TestGenerateOverlaysAndPush(t *testing.T) {
 			e := testutils.NewMockExecutor(tt.outputs...)
 			e.Errors = tt.errors
 			generatedResources := make(map[string][]string)
-			err := GenerateOverlaysAndPush(outputPath, true, repo, tt.component, tt.applicationName, tt.environmentName, tt.imageName, tt.namespace, e, tt.fs, "main", "/", generatedResources)
+			err := GenerateOverlaysAndPush(outputPath, true, repo, tt.component, tt.environment, tt.applicationName, tt.environmentName, tt.imageName, tt.namespace, e, tt.fs, "main", "/", generatedResources)
 
 			if tt.wantErrString != "" {
 				testutils.AssertErrorMatch(t, tt.wantErrString, err)

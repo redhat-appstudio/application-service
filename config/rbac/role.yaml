@@ -61,6 +61,14 @@ rules:
 - apiGroups:
   - appstudio.redhat.com
   resources:
+  - applicationsnapshots
+  verbs:
+  - get
+  - list
+  - watch
+- apiGroups:
+  - appstudio.redhat.com
+  resources:
   - componentdetectionqueries
   verbs:
   - create
@@ -110,6 +118,14 @@ rules:
   - get
   - patch
   - update
+- apiGroups:
+  - appstudio.redhat.com
+  resources:
+  - environments
+  verbs:
+  - get
+  - list
+  - watch
 - apiGroups:
   - ""
   resources:

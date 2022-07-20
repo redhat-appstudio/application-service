@@ -86,7 +86,7 @@ func Generate(fs afero.Afero, gitOpsFolder string, outputFolder string, componen
 }
 
 // GenerateOverlays generates the overlays dir from a given BindingComponent
-func GenerateOverlays(fs afero.Afero, gitOpsFolder string, outputFolder string, component appstudioshared.BindingComponent, imageName, namespace string, componentGeneratedResources map[string][]string) error {
+func GenerateOverlays(fs afero.Afero, gitOpsFolder string, outputFolder string, component appstudioshared.BindingComponent, environment appstudioshared.Environment, imageName, namespace string, componentGeneratedResources map[string][]string) error {
 	kustomizeFileExist, err := fs.Exists(filepath.Join(outputFolder, kustomizeFileName))
 	if err != nil {
 		return err
@@ -109,7 +109,7 @@ func GenerateOverlays(fs afero.Afero, gitOpsFolder string, outputFolder string, 
 		Kind:       "Kustomization",
 	}
 
-	deploymentPatch := generateDeploymentPatch(component, imageName, namespace)
+	deploymentPatch := generateDeploymentPatch(component, environment, imageName, namespace)
 
 	k.AddResources("../../base")
 	k.AddPatches(deploymentPatchFileName)
@@ -240,7 +240,7 @@ func generateDeployment(component appstudiov1alpha1.Component) *appsv1.Deploymen
 	return &deployment
 }
 
-func generateDeploymentPatch(component appstudioshared.BindingComponent, imageName, namespace string) *appsv1.Deployment {
+func generateDeploymentPatch(component appstudioshared.BindingComponent, environment appstudioshared.Environment, imageName, namespace string) *appsv1.Deployment {
 
 	deployment := appsv1.Deployment{
 		TypeMeta: v1.TypeMeta{
@@ -270,6 +270,24 @@ func generateDeploymentPatch(component appstudioshared.BindingComponent, imageNa
 			Name:  env.Name,
 			Value: env.Value,
 		})
+	}
+
+	// only add the environment env configurations, if a deployment/binding env is not present with the same env name
+	for _, env := range environment.Spec.Configuration.Env {
+		isPresent := false
+		for _, deploymentEnv := range deployment.Spec.Template.Spec.Containers[0].Env {
+			if deploymentEnv.Name == env.Name {
+				isPresent = true
+				break
+			}
+		}
+
+		if !isPresent {
+			deployment.Spec.Template.Spec.Containers[0].Env = append(deployment.Spec.Template.Spec.Containers[0].Env, corev1.EnvVar{
+				Name:  env.Name,
+				Value: env.Value,
+			})
+		}
 	}
 
 	if component.Configuration.Replicas > 0 {
