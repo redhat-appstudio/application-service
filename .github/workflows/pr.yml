@@ -106,6 +106,10 @@ jobs:
       - name: Run Go Tests
         run: |
           make test
+      - name: Check if Manager Kustomize has the right image
+        run: |
+          ./check-manager-kustomize.sh
+          exit $?
       - name: Upload coverage to Codecov
         uses: codecov/codecov-action@v2.1.0
   docker:
