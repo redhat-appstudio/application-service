@@ -20,12 +20,14 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
+	"reflect"
 	"regexp"
 	"strings"
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/redhat-appstudio/application-service/gitops/resources"
+	"github.com/redhat-appstudio/application-service/gitops/testutils"
 	"github.com/redhat-appstudio/application-service/pkg/util/ioutils"
 	"github.com/spf13/afero"
 	appsv1 "k8s.io/api/apps/v1"
@@ -83,7 +85,7 @@ func TestWriteResources(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			_, err := WriteResources(tt.fs, tt.path, r)
-			if !errorMatch(t, tt.errMsg, err) {
+			if !testutils.ErrorMatch(t, tt.errMsg, err) {
 				t.Fatalf("error mismatch: got %v, want %v", err, tt.errMsg)
 			}
 			if tt.path[0] == '~' {
@@ -96,7 +98,7 @@ func TestWriteResources(t *testing.T) {
 	}
 }
 
-func TestMarshalItemToFile(t *testing.T) {
+func TestMarshalItemToFileAndUnMarshalItemFromFile(t *testing.T) {
 	fs := ioutils.NewFilesystem()
 	readOnlyFs := ioutils.NewReadOnlyFs()
 
@@ -105,43 +107,90 @@ func TestMarshalItemToFile(t *testing.T) {
 	regexpFs := afero.Afero{Fs: afero.NewRegexpFs(afero.NewMemMapFs(), regexp.MustCompile("hello"))}
 
 	tests := []struct {
-		name   string
-		fs     afero.Afero
-		path   string
-		item   interface{}
-		errMsg string
+		name            string
+		fs              afero.Afero
+		path            string
+		item            interface{}
+		marshalErrMsg   string
+		unmarshalErrMsg string
+		marshalFailCase bool
 	}{
 		{
-			name:   "Simple resource",
-			fs:     fs,
-			path:   filepath.Join(os.TempDir(), "test"),
-			item:   resources.Kustomization{},
-			errMsg: "",
+			name: "Simple resource",
+			fs:   fs,
+			path: filepath.Join(os.TempDir(), "test"),
+			item: resources.Kustomization{
+				Bases:     []string{"test/base"},
+				Resources: []string{"test-resource.yaml"},
+			},
+			marshalErrMsg:   "",
+			unmarshalErrMsg: "",
 		},
 		{
-			name:   "Read only filesystem error",
-			fs:     readOnlyFs,
-			path:   "/test/file",
-			item:   resources.Kustomization{},
-			errMsg: "failed to MkDirAll for /test/file: operation not permitted",
+			name:            "Read only filesystem error",
+			fs:              readOnlyFs,
+			path:            "/test/file",
+			item:            resources.Kustomization{},
+			marshalErrMsg:   "failed to MkDirAll for /test/file: operation not permitted",
+			unmarshalErrMsg: "failed to read from file /test/file: open /test/file: no such file or directory",
 		},
 		{
-			name:   "Unable to create file error",
-			fs:     regexpFs,
-			path:   "/testtwo/file-two",
-			item:   resources.Kustomization{},
-			errMsg: "failed to Create file /testtwo/file-two: no such file or directory",
+			name:            "Unable to create file error",
+			fs:              regexpFs,
+			path:            "/testtwo/file-two",
+			item:            resources.Kustomization{},
+			marshalErrMsg:   "failed to Create file /testtwo/file-two: no such file or directory",
+			unmarshalErrMsg: "failed to read from file /testtwo/file-two: open /testtwo/file-two: file does not exist",
+		},
+		{
+			name: "Unable to marshal data error",
+			fs:   fs,
+			path: filepath.Join(os.TempDir(), "test"),
+			item: map[string]interface{}{
+				"fake_error": make(chan int),
+			},
+			marshalErrMsg:   "failed to marshal data: error marshaling into JSON: json: unsupported type: chan int",
+			marshalFailCase: true,
+		},
+		{
+			name: "Unable to marshal data error",
+			fs:   fs,
+			path: filepath.Join(os.TempDir(), "test"),
+			item: map[string]interface{}{
+				"fake_error": make(chan int),
+			},
+			marshalErrMsg:   "failed to marshal data: error marshaling into JSON: json: unsupported type: chan int",
+			marshalFailCase: true,
+		},
+		{
+			name: "Unable to unmarshal data error",
+			fs:   fs,
+			path: filepath.Join(os.TempDir(), "test"),
+			item: map[string]interface{}{
+				"Resources": 8,
+			},
+			unmarshalErrMsg: "failed to unmarshal data: error unmarshaling JSON: while decoding JSON: json: cannot unmarshal number into Go struct field Kustomization.resources",
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			err := MarshalItemToFile(tt.fs, tt.path, tt.item)
-			if !errorMatch(t, tt.errMsg, err) {
-				t.Fatalf("error mismatch: got %v, want %v", err, tt.errMsg)
+			if !testutils.ErrorMatch(t, tt.marshalErrMsg, err) {
+				t.Fatalf("error mismatch: got %v, want %v", err, tt.marshalErrMsg)
+			}
+			if tt.marshalFailCase {
+				t.Skip()
+			}
+			var encodedItem resources.Kustomization
+			err = UnMarshalItemFromFile(tt.fs, tt.path, &encodedItem)
+			if !testutils.ErrorMatch(t, tt.unmarshalErrMsg, err) {
+				t.Fatalf("error mismatch: got %v, want %v", err, tt.unmarshalErrMsg)
 			}
 			if err == nil {
-				assertResourceExists(t, tt.path, tt.item)
+				if !reflect.DeepEqual(tt.item, encodedItem) {
+					t.Fatalf("expected %v, got %v", tt.item, encodedItem)
+				}
 			}
 		})
 	}
@@ -182,7 +231,7 @@ func TestMarshallOutput(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			err := MarshalOutput(tt.f, tt.item)
-			if !errorMatch(t, tt.errMsg, err) {
+			if !testutils.ErrorMatch(t, tt.errMsg, err) {
 				t.Fatalf("TestMarshallOutput(): error mismatch: got %v, want %v", err, tt.errMsg)
 			}
 		})
@@ -208,28 +257,6 @@ func assertResourceExists(t *testing.T, path string, resource interface{}) {
 	if diff := cmp.Diff(want, got); diff != "" {
 		t.Fatalf("files not written to correct location: %s", diff)
 	}
-}
-
-// ErrorMatch returns true if an error matches the required string.
-//
-// e.g. ErrorMatch(t, "failed to open", err) would return true if the
-// err passed in had a string that matched.
-//
-// The message can be a regular expression, and if this fails to compile, then
-// the test will fail.
-func errorMatch(t *testing.T, msg string, testErr error) bool {
-	t.Helper()
-	if msg == "" && testErr == nil {
-		return true
-	}
-	if msg != "" && testErr == nil {
-		return false
-	}
-	match, err := regexp.MatchString(msg, testErr.Error())
-	if err != nil {
-		t.Fatal(err)
-	}
-	return match
 }
 
 // AssertNoError fails if there's an error

@@ -16,6 +16,7 @@
 package gitops
 
 import (
+	"fmt"
 	"path/filepath"
 
 	routev1 "github.com/openshift/api/route/v1"
@@ -86,6 +87,23 @@ func Generate(fs afero.Afero, gitOpsFolder string, outputFolder string, componen
 
 // GenerateOverlays generates the overlays dir from a given BindingComponent
 func GenerateOverlays(fs afero.Afero, gitOpsFolder string, outputFolder string, component appstudioshared.BindingComponent, environment appstudioshared.Environment, imageName, namespace string, componentGeneratedResources map[string][]string) error {
+	kustomizeFileExist, err := fs.Exists(filepath.Join(outputFolder, kustomizeFileName))
+	if err != nil {
+		return err
+	}
+	// if kustomizeFile already exist, read in the content
+	var originalKustomizeFileContent resources.Kustomization
+	if kustomizeFileExist {
+		err = yaml.UnMarshalItemFromFile(fs, filepath.Join(outputFolder, kustomizeFileName), &originalKustomizeFileContent)
+		if err != nil {
+			return fmt.Errorf("failed to unmarshal items from %q: %v", filepath.Join(outputFolder, kustomizeFileName), err)
+		}
+		err = fs.Remove(filepath.Join(outputFolder, kustomizeFileName))
+		if err != nil {
+			return fmt.Errorf("failed to delete %s file in folder %q: %s", kustomizeFileName, outputFolder, err)
+		}
+	}
+
 	k := resources.Kustomization{
 		APIVersion: "kustomize.config.k8s.io/v1beta1",
 		Kind:       "Kustomization",
@@ -100,12 +118,15 @@ func GenerateOverlays(fs afero.Afero, gitOpsFolder string, outputFolder string, 
 	}
 	componentGeneratedResources[component.Name] = append(componentGeneratedResources[component.Name], deploymentPatchFileName)
 
+	// add back custom kustomization patches
+	k.CompareDifferenceAndAddCustomPatches(originalKustomizeFileContent.Patches, componentGeneratedResources[component.Name])
+
 	resources := map[string]interface{}{
 		deploymentPatchFileName: deploymentPatch,
 		kustomizeFileName:       k,
 	}
 
-	_, err := yaml.WriteResources(fs, outputFolder, resources)
+	_, err = yaml.WriteResources(fs, outputFolder, resources)
 	return err
 }
 

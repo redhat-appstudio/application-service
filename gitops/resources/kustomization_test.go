@@ -67,3 +67,13 @@ func Test_AddResource_sorts_elements(t *testing.T) {
 		t.Fatalf("failed to sort resources:\n%s", diff)
 	}
 }
+
+func Test_CompareDifferenceAndAddCustomizedPatches(t *testing.T) {
+	k := Kustomization{}
+	original := []string{"testing.yaml", "testing2.yaml", "custom.yaml", "custom2.yaml"}
+	generated := []string{"testing.yaml", "testing2.yaml"}
+	k.CompareDifferenceAndAddCustomPatches(original, generated)
+	if diff := cmp.Diff([]string{"custom.yaml", "custom2.yaml"}, k.Patches); diff != "" {
+		t.Fatalf("failed to add customized patches:\n%s", diff)
+	}
+}

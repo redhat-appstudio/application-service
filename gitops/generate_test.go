@@ -23,6 +23,7 @@ import (
 	routev1 "github.com/openshift/api/route/v1"
 	appstudiov1alpha1 "github.com/redhat-appstudio/application-service/api/v1alpha1"
 	"github.com/redhat-appstudio/application-service/gitops/resources"
+	"github.com/redhat-appstudio/application-service/gitops/testutils"
 	"github.com/redhat-appstudio/application-service/pkg/util/ioutils"
 	appstudioshared "github.com/redhat-appstudio/managed-gitops/appstudio-shared/apis/appstudio.redhat.com/v1alpha1"
 	"github.com/spf13/afero"
@@ -646,6 +647,146 @@ func TestGenerateParentKustomize(t *testing.T) {
 				// There should be 3 entries in the kustomization file
 				if len(k.Bases) != 3 {
 					t.Errorf("expected %v kustomization bases, got %v", 3, len(k.Bases))
+				}
+
+				// Validate that the APIVersion and Kind are set properly
+				if k.Kind != "Kustomization" {
+					t.Errorf("expected kustomize kind %v, got %v", "Kustomization", k.Kind)
+				}
+				if k.APIVersion != "kustomize.config.k8s.io/v1beta1" {
+					t.Errorf("expected kustomize apiversion %v, got %v", "kustomize.config.k8s.io/v1beta1", k.APIVersion)
+				}
+
+			}
+		})
+	}
+}
+
+func TestGenerateOverlays(t *testing.T) {
+	fs := ioutils.NewMemoryFilesystem()
+	readOnlyFs := ioutils.NewReadOnlyFs()
+
+	// Prepopulate the fs with components
+	gitOpsFolder := "/tmp/gitops"
+	outputFolder := filepath.Join(gitOpsFolder, "overlays")
+	fs.MkdirAll(outputFolder, 0755)
+
+	outputFolderWithKustomizationFile := filepath.Join(gitOpsFolder, "overlays-2")
+	fs.MkdirAll(outputFolderWithKustomizationFile, 0755)
+	preExistKustomizationFilepath := filepath.Join(outputFolderWithKustomizationFile, "kustomization.yaml")
+	k := resources.Kustomization{
+		Patches: []string{"patch1.yaml", "custom-patch1.yaml"},
+	}
+	bytes, err := yaml.Marshal(k)
+	if err != nil {
+		t.Errorf("unexpected error when marshal the kustomization yaml %v", err)
+	}
+	err = fs.WriteFile(preExistKustomizationFilepath, bytes, 0755)
+	if err != nil {
+		t.Errorf("unexpected error when writing to kustomizatipn file: %v", err)
+	}
+
+	invalidKustomizationFileFolder := filepath.Join(gitOpsFolder, "overlays-error")
+	fs.MkdirAll(invalidKustomizationFileFolder, 0755)
+	invalidKustomizationFilepath := filepath.Join(invalidKustomizationFileFolder, "kustomization.yaml")
+	invalidKustomization := map[string]interface{}{
+		"Resources": 8,
+	}
+	bytes, err = yaml.Marshal(invalidKustomization)
+	if err != nil {
+		t.Errorf("unexpected error when marshal the kustomization yaml %v", err)
+	}
+	err = fs.WriteFile(invalidKustomizationFilepath, bytes, 0755)
+	if err != nil {
+		t.Errorf("unexpected error when writing to kustomizatipn file: %v", err)
+	}
+
+	component := appstudioshared.BindingComponent{
+		Name:          "test-component",
+		Configuration: appstudioshared.BindingComponentConfiguration{},
+	}
+	imageName := "test-image"
+	namespace := "test-namespace"
+	environment := appstudioshared.Environment{}
+
+	tests := []struct {
+		name                        string
+		fs                          afero.Afero
+		outputFolder                string
+		expectPatchEntries          int
+		componentGeneratedResources map[string][]string
+		wantErr                     string
+	}{
+		{
+			name:               "simple success case",
+			fs:                 fs,
+			outputFolder:       outputFolder,
+			expectPatchEntries: 1,
+			wantErr:            "",
+		},
+		{
+			name:               "existing kustomization file with custom patches",
+			fs:                 fs,
+			outputFolder:       outputFolderWithKustomizationFile,
+			expectPatchEntries: 3,
+			wantErr:            "",
+		},
+		{
+			name:         "read only fs",
+			fs:           readOnlyFs,
+			outputFolder: outputFolderWithKustomizationFile,
+			wantErr:      "failed to MkDirAll",
+		},
+		{
+			name:         "unmarshall error",
+			fs:           fs,
+			outputFolder: invalidKustomizationFileFolder,
+			wantErr:      " failed to unmarshal data: error unmarshaling JSON: while decoding JSON: json: cannot unmarshal number into Go struct field Kustomization.resources",
+		},
+		{
+			name:         "genereated an additional patch",
+			fs:           fs,
+			outputFolder: outputFolderWithKustomizationFile,
+			componentGeneratedResources: map[string][]string{
+				"test-component": {
+					"patch1.yaml",
+				},
+			},
+			expectPatchEntries: 2,
+			wantErr:            "",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			err := GenerateOverlays(tt.fs, gitOpsFolder, tt.outputFolder, component, environment, imageName, namespace, tt.componentGeneratedResources)
+
+			if !testutils.ErrorMatch(t, tt.wantErr, err) {
+				t.Errorf("unexpected error return value. Got %v", err)
+			}
+
+			if tt.wantErr == "" {
+				// Validate that the kustomization.yaml got created successfully and contains the proper entries
+				kustomizationFilepath := filepath.Join(tt.outputFolder, "kustomization.yaml")
+				exists, err := tt.fs.Exists(kustomizationFilepath)
+				if err != nil {
+					t.Errorf("unexpected error checking if kustomize file exists %v", err)
+				}
+				if !exists {
+					t.Errorf("kustomize file does not exist at path %v", kustomizationFilepath)
+				}
+
+				// Read the kustomization.yaml and validate its entries
+				k := resources.Kustomization{}
+				kustomizationBytes, err := tt.fs.ReadFile(kustomizationFilepath)
+				if err != nil {
+					t.Errorf("unexpected error reading parent kustomize file")
+				}
+				yaml.Unmarshal(kustomizationBytes, &k)
+
+				// There match patch entries in the kustomization file
+				if len(k.Patches) != tt.expectPatchEntries {
+					t.Errorf("expected %v kustomization bases, got %v", 3, len(k.Patches))
 				}
 
 				// Validate that the APIVersion and Kind are set properly

@@ -75,3 +75,20 @@ func MarshalOutput(out io.Writer, output interface{}) error {
 	}
 	return nil
 }
+
+// The following is implemented by redhat-appstudio/application-service
+
+// UnMarshalItemFromFile unmarshals item from file
+func UnMarshalItemFromFile(fs afero.Fs, filename string, item interface{}) error {
+	content, err := afero.ReadFile(fs, filename)
+	if err != nil {
+		return fmt.Errorf("failed to read from file %s: %v", filename, err)
+	}
+
+	err = yaml.Unmarshal(content, item)
+	if err != nil {
+		return fmt.Errorf("failed to unmarshal data: %v", err)
+	}
+
+	return nil
+}
