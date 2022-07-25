@@ -24,12 +24,11 @@ import (
 	"github.com/redhat-appstudio/application-service/gitops/prepare"
 	appstudioshared "github.com/redhat-appstudio/managed-gitops/appstudio-shared/apis/appstudio.redhat.com/v1alpha1"
 	"github.com/spf13/afero"
-	corev1 "k8s.io/api/core/v1"
 )
 
 type Executor interface {
 	Execute(baseDir, command string, args ...string) ([]byte, error)
-	GenerateParentKustomize(fs afero.Afero, gitOpsFolder string, commonStoragePVC *corev1.PersistentVolumeClaim) error
+	GenerateParentKustomize(fs afero.Afero, gitOpsFolder string) error
 }
 
 // GenerateAndPush takes in the following args and generates the gitops resources for a given component
@@ -49,6 +48,8 @@ func GenerateAndPush(outputPath string, remote string, component appstudiov1alph
 	}
 
 	repoPath := filepath.Join(outputPath, componentName)
+	gitopsFolder := filepath.Join(repoPath, context)
+	componentPath := filepath.Join(gitopsFolder, "components", componentName, "base")
 
 	// Checkout the specified branch
 	if _, err := e.Execute(repoPath, "git", "switch", branch); err != nil {
@@ -57,13 +58,7 @@ func GenerateAndPush(outputPath string, remote string, component appstudiov1alph
 		}
 	}
 
-	if out, err := e.Execute(repoPath, "rm", "-rf", filepath.Join("components", componentName)); err != nil {
-		return fmt.Errorf("failed to delete %q folder in repository in %q %q: %s", filepath.Join("components", componentName), repoPath, string(out), err)
-	}
-
 	// Generate the gitops resources and update the parent kustomize yaml file
-	gitopsFolder := filepath.Join(repoPath, context)
-	componentPath := filepath.Join(gitopsFolder, "components", componentName, "base")
 	if err := Generate(appFs, gitopsFolder, componentPath, component, gitopsConfig); err != nil {
 		return fmt.Errorf("failed to generate the gitops resources in %q for component %q: %s", componentPath, componentName, err)
 	}
@@ -89,7 +84,7 @@ func GenerateAndPush(outputPath string, remote string, component appstudiov1alph
 }
 
 // GenerateOverlaysAndPush generates the overlays kustomize from App Env Snapshot Binding Spec
-func GenerateOverlaysAndPush(outputPath string, clone bool, remote string, component appstudioshared.BindingComponent, applicationName, environmentName, imageName, namespace string, e Executor, appFs afero.Afero, branch string, context string, componentGeneratedResources map[string][]string) error {
+func GenerateOverlaysAndPush(outputPath string, clone bool, remote string, component appstudioshared.BindingComponent, environment appstudioshared.Environment, applicationName, environmentName, imageName, namespace string, e Executor, appFs afero.Afero, branch string, context string, componentGeneratedResources map[string][]string) error {
 	componentName := component.Name
 	repoPath := filepath.Join(outputPath, applicationName)
 
@@ -109,7 +104,7 @@ func GenerateOverlaysAndPush(outputPath string, clone bool, remote string, compo
 	// Generate the gitops resources and update the parent kustomize yaml file
 	gitopsFolder := filepath.Join(repoPath, context)
 	componentEnvOverlaysPath := filepath.Join(gitopsFolder, "components", componentName, "overlays", environmentName)
-	if err := GenerateOverlays(appFs, gitopsFolder, componentEnvOverlaysPath, component, imageName, namespace, componentGeneratedResources); err != nil {
+	if err := GenerateOverlays(appFs, gitopsFolder, componentEnvOverlaysPath, component, environment, imageName, namespace, componentGeneratedResources); err != nil {
 		return fmt.Errorf("failed to generate the gitops resources in overlays dir %q for component %q: %s", componentEnvOverlaysPath, componentName, err)
 	}
 
@@ -162,7 +157,7 @@ func RemoveAndPush(outputPath string, remote string, component appstudiov1alpha1
 	if out, err := e.Execute(repoPath, "rm", "-rf", componentPath); err != nil {
 		return fmt.Errorf("failed to delete %q folder in repository in %q %q: %s", componentPath, repoPath, string(out), err)
 	}
-	if err := e.GenerateParentKustomize(appFs, gitopsFolder, nil); err != nil {
+	if err := e.GenerateParentKustomize(appFs, gitopsFolder); err != nil {
 		return fmt.Errorf("failed to re-generate the gitops resources in %q for component %q: %s", componentPath, componentName, err)
 	}
 
@@ -202,6 +197,6 @@ func (e CmdExecutor) Execute(baseDir, command string, args ...string) ([]byte, e
 	return output, err
 }
 
-func (e CmdExecutor) GenerateParentKustomize(fs afero.Afero, gitOpsFolder string, commonStoragePVC *corev1.PersistentVolumeClaim) error {
-	return GenerateParentKustomize(fs, gitOpsFolder, commonStoragePVC)
+func (e CmdExecutor) GenerateParentKustomize(fs afero.Afero, gitOpsFolder string) error {
+	return GenerateParentKustomize(fs, gitOpsFolder)
 }

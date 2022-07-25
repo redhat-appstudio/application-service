@@ -17,7 +17,9 @@
 
 package resources
 
-import "sort"
+import (
+	"sort"
+)
 
 // Kustomization is a structural representation of the Kustomize file format.
 type Kustomization struct {
@@ -52,4 +54,18 @@ func removeDuplicatesAndSort(s []string) []string {
 	}
 	sort.Strings(out)
 	return out
+}
+
+func (k *Kustomization) CompareDifferenceAndAddCustomPatches(original []string, generated []string) {
+	generatedPatches := make(map[string]bool)
+	for _, genratedElement := range generated {
+		generatedPatches[genratedElement] = true
+	}
+
+	for _, originalElement := range original {
+		// if the patch is not generated
+		if _, ok := generatedPatches[originalElement]; !ok {
+			k.AddPatches(originalElement)
+		}
+	}
 }

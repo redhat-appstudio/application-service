@@ -16,6 +16,7 @@
 package gitops
 
 import (
+	"fmt"
 	"path/filepath"
 
 	routev1 "github.com/openshift/api/route/v1"
@@ -64,7 +65,6 @@ func Generate(fs afero.Afero, gitOpsFolder string, outputFolder string, componen
 		resources[routeFileName] = route
 	}
 
-	var commonStorage *corev1.PersistentVolumeClaim
 	if component.Spec.Source.GitSource != nil && component.Spec.Source.GitSource.URL != "" {
 		tektonResourcesDirName := ".tekton"
 		k.AddResources(tektonResourcesDirName + "/")
@@ -72,9 +72,6 @@ func Generate(fs afero.Afero, gitOpsFolder string, outputFolder string, componen
 		if err := GenerateBuild(fs, filepath.Join(outputFolder, tektonResourcesDirName), component, gitopsConfig); err != nil {
 			return err
 		}
-
-		// Generate the common pvc for git components, and place it at application-level in the repository
-		commonStorage = GenerateCommonStorage(component, "appstudio")
 	}
 
 	resources[kustomizeFileName] = k
@@ -85,17 +82,34 @@ func Generate(fs afero.Afero, gitOpsFolder string, outputFolder string, componen
 	}
 
 	// Re-generate the parent kustomize file and return
-	return GenerateParentKustomize(fs, gitOpsFolder, commonStorage)
+	return GenerateParentKustomize(fs, gitOpsFolder)
 }
 
 // GenerateOverlays generates the overlays dir from a given BindingComponent
-func GenerateOverlays(fs afero.Afero, gitOpsFolder string, outputFolder string, component appstudioshared.BindingComponent, imageName, namespace string, componentGeneratedResources map[string][]string) error {
+func GenerateOverlays(fs afero.Afero, gitOpsFolder string, outputFolder string, component appstudioshared.BindingComponent, environment appstudioshared.Environment, imageName, namespace string, componentGeneratedResources map[string][]string) error {
+	kustomizeFileExist, err := fs.Exists(filepath.Join(outputFolder, kustomizeFileName))
+	if err != nil {
+		return err
+	}
+	// if kustomizeFile already exist, read in the content
+	var originalKustomizeFileContent resources.Kustomization
+	if kustomizeFileExist {
+		err = yaml.UnMarshalItemFromFile(fs, filepath.Join(outputFolder, kustomizeFileName), &originalKustomizeFileContent)
+		if err != nil {
+			return fmt.Errorf("failed to unmarshal items from %q: %v", filepath.Join(outputFolder, kustomizeFileName), err)
+		}
+		err = fs.Remove(filepath.Join(outputFolder, kustomizeFileName))
+		if err != nil {
+			return fmt.Errorf("failed to delete %s file in folder %q: %s", kustomizeFileName, outputFolder, err)
+		}
+	}
+
 	k := resources.Kustomization{
 		APIVersion: "kustomize.config.k8s.io/v1beta1",
 		Kind:       "Kustomization",
 	}
 
-	deploymentPatch := generateDeploymentPatch(component, imageName, namespace)
+	deploymentPatch := generateDeploymentPatch(component, environment, imageName, namespace)
 
 	k.AddResources("../../base")
 	k.AddPatches(deploymentPatchFileName)
@@ -104,19 +118,21 @@ func GenerateOverlays(fs afero.Afero, gitOpsFolder string, outputFolder string, 
 	}
 	componentGeneratedResources[component.Name] = append(componentGeneratedResources[component.Name], deploymentPatchFileName)
 
+	// add back custom kustomization patches
+	k.CompareDifferenceAndAddCustomPatches(originalKustomizeFileContent.Patches, componentGeneratedResources[component.Name])
+
 	resources := map[string]interface{}{
 		deploymentPatchFileName: deploymentPatch,
 		kustomizeFileName:       k,
 	}
 
-	_, err := yaml.WriteResources(fs, outputFolder, resources)
+	_, err = yaml.WriteResources(fs, outputFolder, resources)
 	return err
 }
 
 // GenerateParentKustomize takes in a folder of components, and outputs a kustomize file to the outputFolder dir
 // containing entries for each Component.
-// If commonStoragePVC is non-nil, it will also add the common storage pvc yaml file to the parent kustomize. If it's nil, it will not be added
-func GenerateParentKustomize(fs afero.Afero, gitOpsFolder string, commonStoragePVC *corev1.PersistentVolumeClaim) error {
+func GenerateParentKustomize(fs afero.Afero, gitOpsFolder string) error {
 	componentsFolder := filepath.Join(gitOpsFolder, "components")
 	k := resources.Kustomization{
 		Kind:       "Kustomization",
@@ -133,21 +149,6 @@ func GenerateParentKustomize(fs afero.Afero, gitOpsFolder string, commonStorageP
 		if file.IsDir() {
 			k.AddBases(filepath.Join("components", file.Name(), "base"))
 		}
-	}
-
-	// if the common storage PVC yaml file was passed in, write to disk and add it to the parent kustomize file
-	if commonStoragePVC != nil {
-		resources["common-storage-pvc.yaml"] = commonStoragePVC
-		k.AddResources("common-storage-pvc.yaml")
-	}
-
-	// if the common storage PVC already exist, make sure too add it to the parent kustomize file
-	commonStorageExist, err := fs.Exists(filepath.Join(gitOpsFolder, "common-storage-pvc.yaml"))
-	if err != nil {
-		return err
-	}
-	if commonStorageExist {
-		k.AddResources("common-storage-pvc.yaml")
 	}
 
 	resources[kustomizeFileName] = k
@@ -239,7 +240,7 @@ func generateDeployment(component appstudiov1alpha1.Component) *appsv1.Deploymen
 	return &deployment
 }
 
-func generateDeploymentPatch(component appstudioshared.BindingComponent, imageName, namespace string) *appsv1.Deployment {
+func generateDeploymentPatch(component appstudioshared.BindingComponent, environment appstudioshared.Environment, imageName, namespace string) *appsv1.Deployment {
 
 	deployment := appsv1.Deployment{
 		TypeMeta: v1.TypeMeta{
@@ -269,6 +270,24 @@ func generateDeploymentPatch(component appstudioshared.BindingComponent, imageNa
 			Name:  env.Name,
 			Value: env.Value,
 		})
+	}
+
+	// only add the environment env configurations, if a deployment/binding env is not present with the same env name
+	for _, env := range environment.Spec.Configuration.Env {
+		isPresent := false
+		for _, deploymentEnv := range deployment.Spec.Template.Spec.Containers[0].Env {
+			if deploymentEnv.Name == env.Name {
+				isPresent = true
+				break
+			}
+		}
+
+		if !isPresent {
+			deployment.Spec.Template.Spec.Containers[0].Env = append(deployment.Spec.Template.Spec.Containers[0].Env, corev1.EnvVar{
+				Name:  env.Name,
+				Value: env.Value,
+			})
+		}
 	}
 
 	if component.Configuration.Replicas > 0 {

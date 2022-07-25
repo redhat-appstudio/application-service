@@ -36,7 +36,6 @@ import (
 	tektonapi "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	triggersapi "github.com/tektoncd/triggers/pkg/apis/triggers/v1alpha1"
 	corev1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/util/intstr"
@@ -66,9 +65,7 @@ func SetDefaultImageRepo(repo string) {
 }
 
 func GenerateBuild(fs afero.Fs, outputFolder string, component appstudiov1alpha1.Component, gitopsConfig prepare.GitopsConfig) error {
-	//commonStoragePVC := GenerateCommonStorage(component, "appstudio")
 	var buildResources map[string]interface{}
-	var err error
 	val, ok := component.Annotations[PaCAnnotation]
 	if ok && val == "1" {
 		repository := GeneratePACRepository(component)
@@ -98,7 +95,7 @@ func GenerateBuild(fs afero.Fs, outputFolder string, component appstudiov1alpha1
 
 	buildResources[kustomizeFileName] = kustomize
 
-	if _, err = yaml.WriteResources(fs, outputFolder, buildResources); err != nil {
+	if _, err := yaml.WriteResources(fs, outputFolder, buildResources); err != nil {
 		return err
 	}
 
@@ -335,36 +332,6 @@ func getBuildCommonLabelsForComponent(component *appstudiov1alpha1.Component) ma
 		"build.appstudio.openshift.io/application": component.Spec.Application,
 	}
 	return labels
-}
-
-// GenerateCommonStorage returns the PVC that would be created per namespace for
-// user-triggered and webhook-triggered Tekton workspaces.
-func GenerateCommonStorage(component appstudiov1alpha1.Component, name string) *corev1.PersistentVolumeClaim {
-	fsMode := corev1.PersistentVolumeFilesystem
-
-	workspaceStorage := &corev1.PersistentVolumeClaim{
-		TypeMeta: metav1.TypeMeta{
-			Kind:       "PersistentVolumeClaim",
-			APIVersion: "v1",
-		},
-		ObjectMeta: metav1.ObjectMeta{
-			Name:        name,
-			Namespace:   component.Namespace,
-			Annotations: getBuildCommonLabelsForComponent(&component),
-		},
-		Spec: corev1.PersistentVolumeClaimSpec{
-			AccessModes: []corev1.PersistentVolumeAccessMode{
-				"ReadWriteOnce",
-			},
-			Resources: corev1.ResourceRequirements{
-				Requests: corev1.ResourceList{
-					"storage": resource.MustParse("1Gi"),
-				},
-			},
-			VolumeMode: &fsMode,
-		},
-	}
-	return workspaceStorage
 }
 
 // GenerateBuildWebhookRoute returns the Route resource that would enable

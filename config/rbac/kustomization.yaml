@@ -31,6 +31,3 @@ resources:
 
 ## SPI Roles
 - role_spi.yaml
-
-## Application Snapshot Roles
-- role_appsnapshot.yaml
