@@ -22,12 +22,13 @@ import (
 
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	ctrl "sigs.k8s.io/controller-runtime"
 
 	appstudiov1alpha1 "github.com/redhat-appstudio/application-service/api/v1alpha1"
 )
 
-func (r *ComponentReconciler) SetCreateConditionAndUpdateCR(ctx context.Context, component *appstudiov1alpha1.Component, createError error) {
-	log := r.Log.WithValues("Component", component.Name)
+func (r *ComponentReconciler) SetCreateConditionAndUpdateCR(ctx context.Context, req ctrl.Request, component *appstudiov1alpha1.Component, createError error) {
+	log := r.Log.WithValues("Component", req.NamespacedName).WithValues("clusterName", req.ClusterName)
 
 	if createError == nil {
 		meta.SetStatusCondition(&component.Status.Conditions, metav1.Condition{
@@ -51,8 +52,8 @@ func (r *ComponentReconciler) SetCreateConditionAndUpdateCR(ctx context.Context,
 	}
 }
 
-func (r *ComponentReconciler) SetUpdateConditionAndUpdateCR(ctx context.Context, component *appstudiov1alpha1.Component, updateError error) {
-	log := r.Log.WithValues("Component", component.Name)
+func (r *ComponentReconciler) SetUpdateConditionAndUpdateCR(ctx context.Context, req ctrl.Request, component *appstudiov1alpha1.Component, updateError error) {
+	log := r.Log.WithValues("Component", req.NamespacedName).WithValues("clusterName", req.ClusterName)
 
 	if updateError == nil {
 		meta.SetStatusCondition(&component.Status.Conditions, metav1.Condition{

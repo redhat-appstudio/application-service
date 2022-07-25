@@ -132,7 +132,7 @@ func (r *ApplicationReconciler) Reconcile(ctx context.Context, req ctrl.Request)
 			repoUrl, err := github.GenerateNewRepository(r.GitHubClient, ctx, r.GitHubOrg, repoName, "GitOps Repository")
 			if err != nil {
 				log.Error(err, fmt.Sprintf("Unable to create repository %v", repoUrl))
-				r.SetCreateConditionAndUpdateCR(ctx, &application, err)
+				r.SetCreateConditionAndUpdateCR(ctx, req, &application, err)
 				return reconcile.Result{}, nil
 			}
 
@@ -147,13 +147,13 @@ func (r *ApplicationReconciler) Reconcile(ctx context.Context, req ctrl.Request)
 		devfileData, err := devfile.ConvertApplicationToDevfile(application, gitOpsRepo, appModelRepo)
 		if err != nil {
 			log.Error(err, fmt.Sprintf("Unable to convert Application CR to devfile, exiting reconcile loop %v", req.NamespacedName))
-			r.SetCreateConditionAndUpdateCR(ctx, &application, err)
+			r.SetCreateConditionAndUpdateCR(ctx, req, &application, err)
 			return reconcile.Result{}, nil
 		}
 		yamlData, err := yaml.Marshal(devfileData)
 		if err != nil {
 			log.Error(err, fmt.Sprintf("Unable to marshall Application devfile, exiting reconcile loop %v", req.NamespacedName))
-			r.SetCreateConditionAndUpdateCR(ctx, &application, err)
+			r.SetCreateConditionAndUpdateCR(ctx, req, &application, err)
 			return reconcile.Result{}, nil
 		}
 
@@ -161,13 +161,13 @@ func (r *ApplicationReconciler) Reconcile(ctx context.Context, req ctrl.Request)
 
 		// Create GitOps repository
 		// Update the status of the CR
-		r.SetCreateConditionAndUpdateCR(ctx, &application, nil)
+		r.SetCreateConditionAndUpdateCR(ctx, req, &application, nil)
 	} else {
 		// If the model already exists, see if either the displayname or description need updating
 		// Get the devfile of the hasApp CR
 		devfileData, err := devfile.ParseDevfileModel(application.Status.Devfile)
 		if err != nil {
-			r.SetUpdateConditionAndUpdateCR(ctx, &application, err)
+			r.SetUpdateConditionAndUpdateCR(ctx, req, &application, err)
 			log.Error(err, fmt.Sprintf("Unable to parse devfile model, exiting reconcile loop %v", req.NamespacedName))
 			return ctrl.Result{}, nil
 		}
@@ -192,12 +192,12 @@ func (r *ApplicationReconciler) Reconcile(ctx context.Context, req ctrl.Request)
 			yamlData, err := yaml.Marshal(devfileData)
 			if err != nil {
 				log.Error(err, fmt.Sprintf("Unable to marshall Application devfile, exiting reconcile loop %v", req.NamespacedName))
-				r.SetUpdateConditionAndUpdateCR(ctx, &application, err)
+				r.SetUpdateConditionAndUpdateCR(ctx, req, &application, err)
 				return reconcile.Result{}, nil
 			}
 
 			application.Status.Devfile = string(yamlData)
-			r.SetUpdateConditionAndUpdateCR(ctx, &application, nil)
+			r.SetUpdateConditionAndUpdateCR(ctx, req, &application, nil)
 		}
 	}
 

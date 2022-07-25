@@ -92,14 +92,14 @@ func (r *ApplicationSnapshotEnvironmentBindingReconciler) Reconcile(ctx context.
 	err = r.Get(ctx, types.NamespacedName{Name: snapshotName, Namespace: appSnapshotEnvBinding.Namespace}, &appSnapshot)
 	if err != nil {
 		log.Error(err, fmt.Sprintf("unable to get the Application Snapshot %s %v", snapshotName, req.NamespacedName))
-		r.SetConditionAndUpdateCR(ctx, &appSnapshotEnvBinding, err)
+		r.SetConditionAndUpdateCR(ctx, req, &appSnapshotEnvBinding, err)
 		return ctrl.Result{}, err
 	}
 
 	if appSnapshot.Spec.Application != applicationName {
 		err := fmt.Errorf("application snapshot %s does not belong to the application %s", snapshotName, applicationName)
 		log.Error(err, "")
-		r.SetConditionAndUpdateCR(ctx, &appSnapshotEnvBinding, err)
+		r.SetConditionAndUpdateCR(ctx, req, &appSnapshotEnvBinding, err)
 		return ctrl.Result{}, err
 	}
 
@@ -115,7 +115,7 @@ func (r *ApplicationSnapshotEnvironmentBindingReconciler) Reconcile(ctx context.
 		err = r.Get(ctx, types.NamespacedName{Name: componentName, Namespace: appSnapshotEnvBinding.Namespace}, &hasComponent)
 		if err != nil {
 			log.Error(err, fmt.Sprintf("unable to get the Component %s %v", componentName, req.NamespacedName))
-			r.SetConditionAndUpdateCR(ctx, &appSnapshotEnvBinding, err)
+			r.SetConditionAndUpdateCR(ctx, req, &appSnapshotEnvBinding, err)
 			return ctrl.Result{}, err
 		}
 
@@ -123,7 +123,7 @@ func (r *ApplicationSnapshotEnvironmentBindingReconciler) Reconcile(ctx context.
 		if hasComponent.Spec.Application != applicationName {
 			err := fmt.Errorf("component %s does not belong to the application %s", componentName, applicationName)
 			log.Error(err, "")
-			r.SetConditionAndUpdateCR(ctx, &appSnapshotEnvBinding, err)
+			r.SetConditionAndUpdateCR(ctx, req, &appSnapshotEnvBinding, err)
 			return ctrl.Result{}, err
 		}
 
@@ -139,13 +139,13 @@ func (r *ApplicationSnapshotEnvironmentBindingReconciler) Reconcile(ctx context.
 		if imageName == "" {
 			err := fmt.Errorf("application snapshot %s did not reference component %s", snapshotName, componentName)
 			log.Error(err, "")
-			r.SetConditionAndUpdateCR(ctx, &appSnapshotEnvBinding, err)
+			r.SetConditionAndUpdateCR(ctx, req, &appSnapshotEnvBinding, err)
 			return ctrl.Result{}, err
 		}
 
 		gitOpsRemoteURL, gitOpsBranch, gitOpsContext, err := util.ProcessGitOpsStatus(hasComponent.Status.GitOps, r.GitToken)
 		if err != nil {
-			r.SetConditionAndUpdateCR(ctx, &appSnapshotEnvBinding, err)
+			r.SetConditionAndUpdateCR(ctx, req, &appSnapshotEnvBinding, err)
 			return ctrl.Result{}, err
 		}
 
@@ -162,7 +162,7 @@ func (r *ApplicationSnapshotEnvironmentBindingReconciler) Reconcile(ctx context.
 			tempDir, err = ioutils.CreateTempPath(appSnapshotEnvBinding.Name, r.AppFS)
 			if err != nil {
 				log.Error(err, "unable to create temp directory for gitops resources due to error")
-				r.SetConditionAndUpdateCR(ctx, &appSnapshotEnvBinding, err)
+				r.SetConditionAndUpdateCR(ctx, req, &appSnapshotEnvBinding, err)
 				return ctrl.Result{}, fmt.Errorf("unable to create temp directory for gitops resources due to error: %v", err)
 			}
 		}
@@ -172,7 +172,7 @@ func (r *ApplicationSnapshotEnvironmentBindingReconciler) Reconcile(ctx context.
 			gitOpsErr := util.SanitizeErrorMessage(err)
 			log.Error(gitOpsErr, fmt.Sprintf("unable to get generate gitops resources for %s %v", componentName, req.NamespacedName))
 			r.AppFS.RemoveAll(tempDir) // not worried with an err, its a best case attempt to delete the temp clone dir
-			r.SetConditionAndUpdateCR(ctx, &appSnapshotEnvBinding, gitOpsErr)
+			r.SetConditionAndUpdateCR(ctx, req, &appSnapshotEnvBinding, gitOpsErr)
 			return ctrl.Result{}, gitOpsErr
 		}
 
@@ -207,11 +207,11 @@ func (r *ApplicationSnapshotEnvironmentBindingReconciler) Reconcile(ctx context.
 	err = r.Client.Status().Update(ctx, &appSnapshotEnvBinding)
 	if err != nil {
 		log.Error(err, "Unable to update App Snapshot Env Binding")
-		r.SetConditionAndUpdateCR(ctx, &appSnapshotEnvBinding, err)
+		r.SetConditionAndUpdateCR(ctx, req, &appSnapshotEnvBinding, err)
 		return ctrl.Result{}, err
 	}
 
-	r.SetConditionAndUpdateCR(ctx, &appSnapshotEnvBinding, nil)
+	r.SetConditionAndUpdateCR(ctx, req, &appSnapshotEnvBinding, nil)
 
 	log.Info(fmt.Sprintf("Finished reconcile loop for %v", req.NamespacedName))
 	return ctrl.Result{}, nil
