@@ -110,7 +110,7 @@ func (r *ApplicationSnapshotEnvironmentBindingReconciler) Reconcile(ctx context.
 	err = r.Get(ctx, types.NamespacedName{Name: environmentName, Namespace: appSnapshotEnvBinding.Namespace}, &environment)
 	if err != nil {
 		log.Error(err, fmt.Sprintf("unable to get the Environment %s %v", environmentName, req.NamespacedName))
-		r.SetConditionAndUpdateCR(ctx, &appSnapshotEnvBinding, err)
+		r.SetConditionAndUpdateCR(ctx, req, &appSnapshotEnvBinding, err)
 		return ctrl.Result{}, err
 	}
 
