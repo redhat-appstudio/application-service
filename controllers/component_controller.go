@@ -189,7 +189,7 @@ func (r *ComponentReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 				if err != nil {
 					log.Error(err, fmt.Sprintf("Unable to retrieve Git secret %v, exiting reconcile loop %v", component.Spec.Secret, req.NamespacedName))
 					r.SetCreateConditionAndUpdateCR(ctx, &component, err)
-					return ctrl.Result{}, nil
+					return ctrl.Result{}, err
 				}
 
 				gitToken = string(gitSecret.Data["password"])
@@ -203,7 +203,7 @@ func (r *ComponentReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 					if err != nil {
 						log.Error(err, fmt.Sprintf("Unable to convert Github URL to raw format, exiting reconcile loop %v", req.NamespacedName))
 						r.SetCreateConditionAndUpdateCR(ctx, &component, err)
-						return ctrl.Result{}, nil
+						return ctrl.Result{}, err
 					}
 
 					// append context to the path if present
@@ -219,7 +219,7 @@ func (r *ComponentReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 					if err != nil {
 						log.Error(err, fmt.Sprintf("Unable to read the devfile from dir %s %v", devfileDir, req.NamespacedName))
 						r.SetCreateConditionAndUpdateCR(ctx, &component, err)
-						return ctrl.Result{}, nil
+						return ctrl.Result{}, err
 					}
 				} else {
 					// Use SPI to retrieve the devfile from the private repository
@@ -227,7 +227,7 @@ func (r *ComponentReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 					if err != nil {
 						log.Error(err, fmt.Sprintf("Unable to download from any known devfile locations from %s %v", source.GitSource.URL, req.NamespacedName))
 						r.SetCreateConditionAndUpdateCR(ctx, &component, err)
-						return ctrl.Result{}, nil
+						return ctrl.Result{}, err
 					}
 				}
 
@@ -236,7 +236,7 @@ func (r *ComponentReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 				if err != nil {
 					log.Error(err, fmt.Sprintf("Unable to create devfile for dockerfile build %v", req.NamespacedName))
 					r.SetCreateConditionAndUpdateCR(ctx, &component, err)
-					return ctrl.Result{}, nil
+					return ctrl.Result{}, err
 				}
 
 				devfileBytes, err = yaml.Marshal(devfileData)
@@ -251,7 +251,7 @@ func (r *ComponentReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 					log.Error(err, fmt.Sprintf("Unable to GET %s, exiting reconcile loop %v", source.GitSource.DevfileURL, req.NamespacedName))
 					err := fmt.Errorf("unable to GET from %s", source.GitSource.DevfileURL)
 					r.SetCreateConditionAndUpdateCR(ctx, &component, err)
-					return ctrl.Result{}, nil
+					return ctrl.Result{}, err
 				}
 			}
 
@@ -260,7 +260,7 @@ func (r *ComponentReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 			if err != nil {
 				log.Error(err, fmt.Sprintf("Unable to parse the devfile from Component, exiting reconcile loop %v", req.NamespacedName))
 				r.SetCreateConditionAndUpdateCR(ctx, &component, err)
-				return ctrl.Result{}, nil
+				return ctrl.Result{}, err
 			}
 		} else {
 			// An image component was specified
@@ -269,7 +269,7 @@ func (r *ComponentReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 			if err != nil {
 				log.Error(err, fmt.Sprintf("Unable to convert the Image Component to a devfile %v", req.NamespacedName))
 				r.SetCreateConditionAndUpdateCR(ctx, &component, err)
-				return ctrl.Result{}, nil
+				return ctrl.Result{}, err
 			}
 			component.Status.ContainerImage = component.Spec.ContainerImage
 		}
@@ -278,7 +278,7 @@ func (r *ComponentReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 		if err != nil {
 			log.Error(err, fmt.Sprintf("Unable to update the Component Devfile model %v", req.NamespacedName))
 			r.SetCreateConditionAndUpdateCR(ctx, &component, err)
-			return ctrl.Result{}, nil
+			return ctrl.Result{}, err
 		}
 
 		if hasApplication.Status.Devfile != "" {
@@ -294,14 +294,14 @@ func (r *ComponentReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 			if err != nil {
 				log.Error(err, fmt.Sprintf("Unable to update the HAS Application Devfile model %v", req.NamespacedName))
 				r.SetCreateConditionAndUpdateCR(ctx, &component, err)
-				return ctrl.Result{}, nil
+				return ctrl.Result{}, err
 			}
 
 			yamlHASCompData, err := yaml.Marshal(compDevfileData)
 			if err != nil {
 				log.Error(err, fmt.Sprintf("Unable to marshall the Component devfile, exiting reconcile loop %v", req.NamespacedName))
 				r.SetCreateConditionAndUpdateCR(ctx, &component, err)
-				return ctrl.Result{}, nil
+				return ctrl.Result{}, err
 			}
 
 			component.Status.Devfile = string(yamlHASCompData)
@@ -311,7 +311,7 @@ func (r *ComponentReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 			if err != nil {
 				log.Error(err, fmt.Sprintf("Unable to marshall the Application devfile, exiting reconcile loop %v", req.NamespacedName))
 				r.SetCreateConditionAndUpdateCR(ctx, &component, err)
-				return ctrl.Result{}, nil
+				return ctrl.Result{}, err
 			}
 			hasApplication.Status.Devfile = string(yamlHASAppData)
 			err = r.Status().Update(ctx, &hasApplication)
@@ -341,7 +341,7 @@ func (r *ComponentReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 					log.Error(err, errMsg)
 					r.SetGitOpsGeneratedConditionAndUpdateCR(ctx, &component, fmt.Errorf("%v: %v", errMsg, err))
 					r.SetCreateConditionAndUpdateCR(ctx, &component, fmt.Errorf("%v: %v", errMsg, err))
-					return ctrl.Result{}, nil
+					return ctrl.Result{}, err
 				} else {
 					r.SetGitOpsGeneratedConditionAndUpdateCR(ctx, &component, nil)
 				}
@@ -360,14 +360,14 @@ func (r *ComponentReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 		if err != nil {
 			log.Error(err, fmt.Sprintf("Unable to parse the devfile from Component status, exiting reconcile loop %v", req.NamespacedName))
 			r.SetUpdateConditionAndUpdateCR(ctx, &component, err)
-			return ctrl.Result{}, nil
+			return ctrl.Result{}, err
 		}
 
 		err = r.updateComponentDevfileModel(hasCompDevfileData, component)
 		if err != nil {
 			log.Error(err, fmt.Sprintf("Unable to update the Component Devfile model %v", req.NamespacedName))
 			r.SetUpdateConditionAndUpdateCR(ctx, &component, err)
-			return ctrl.Result{}, nil
+			return ctrl.Result{}, err
 		}
 
 		// Read the devfile again to compare it with any updates
@@ -375,7 +375,7 @@ func (r *ComponentReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 		if err != nil {
 			log.Error(err, fmt.Sprintf("Unable to parse the devfile from Component status, exiting reconcile loop %v", req.NamespacedName))
 			r.SetUpdateConditionAndUpdateCR(ctx, &component, err)
-			return ctrl.Result{}, nil
+			return ctrl.Result{}, err
 		}
 
 		containerImage := component.Spec.ContainerImage
@@ -388,18 +388,18 @@ func (r *ComponentReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 			if err != nil {
 				log.Error(err, fmt.Sprintf("Unable to marshall the Component devfile, exiting reconcile loop %v", req.NamespacedName))
 				r.SetUpdateConditionAndUpdateCR(ctx, &component, err)
-				return ctrl.Result{}, nil
+				return ctrl.Result{}, err
 			}
 
 			// Generate and push the gitops resources, if necessary.
 			component.Status.ContainerImage = component.Spec.ContainerImage
-			if !component.Spec.SkipGitOpsResourceGeneration {
+      if !component.Spec.SkipGitOpsResourceGeneration {
 				if err := r.generateGitops(ctx, &component); err != nil {
 					errMsg := fmt.Sprintf("Unable to generate gitops resources for component %v", req.NamespacedName)
 					log.Error(err, errMsg)
 					r.SetGitOpsGeneratedConditionAndUpdateCR(ctx, &component, fmt.Errorf("%v: %v", errMsg, err))
 					r.SetUpdateConditionAndUpdateCR(ctx, &component, fmt.Errorf("%v: %v", errMsg, err))
-					return ctrl.Result{}, nil
+					return ctrl.Result{}, err
 				} else {
 					r.SetGitOpsGeneratedConditionAndUpdateCR(ctx, &component, nil)
 				}
