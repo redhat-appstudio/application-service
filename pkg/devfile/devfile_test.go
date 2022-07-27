@@ -380,6 +380,7 @@ func TestScanRepo(t *testing.T) {
 			repo:                      "https://github.com/maysunfaisal/multi-components-deep",
 			expectedDevfileContext:    []string{"devfile-sample-java-springboot-basic", "python"},
 			expectedDevfileURLContext: []string{"python"},
+			expectedDockerfileContext: []string{"devfile-sample-java-springboot-basic", "python"},
 		},
 		{
 			name:                      "Should return 4 devfiles, 1 devfile url and 2 dockerfile uri as this is a multi comp devfile",
@@ -388,7 +389,7 @@ func TestScanRepo(t *testing.T) {
 			repo:                      "https://github.com/maysunfaisal/multi-components-dockerfile",
 			expectedDevfileContext:    []string{"devfile-sample-java-springboot-basic", "devfile-sample-nodejs-basic", "devfile-sample-python-basic", "python-src-none"},
 			expectedDevfileURLContext: []string{"python-src-none"},
-			expectedDockerfileContext: []string{"python-src-docker", "devfile-sample-nodejs-basic"},
+			expectedDockerfileContext: []string{"python-src-docker", "devfile-sample-nodejs-basic", "devfile-sample-java-springboot-basic", "python-src-none", "devfile-sample-python-basic"},
 		},
 	}
 

@@ -140,33 +140,37 @@ func AnalyzePath(a Alizer, localpath, context, devfileRegistryURL string, devfil
 		if dockerfileUri, err := SearchForDockerfile(devfile); err != nil {
 			return err
 		} else if len(dockerfileUri) > 0 {
+			dockerfileContextMapFromRepo[context] = path.Join(context, dockerfileUri)
 			isDockerfilePresent = true
 		}
 	}
 
 	if !isDockerfilePresent {
 		// if we didnt find any devfile/dockerfile upto our desired depth, then use alizer
-		devfile, detectedDevfileEndpoint, detectedSampleName, err := AnalyzeAndDetectDevfile(a, localpath, devfileRegistryURL)
+		detectedDevfile, detectedDevfileEndpoint, detectedSampleName, err := AnalyzeAndDetectDevfile(a, localpath, devfileRegistryURL)
 		if err != nil {
 			if _, ok := err.(*NoDevfileFound); !ok {
 				return err
 			}
 		}
 
-		if !isDevfilePresent && len(devfile) > 0 {
-			// If a devfile is not present at this stage, just update devfileMapFromRepo and devfilesURLMapFromRepo
-			// Dockerfile is not needed because all the devfile registry samples will have a Dockerfile entry
-			devfileMapFromRepo[context] = devfile
-			devfilesURLMapFromRepo[context] = detectedDevfileEndpoint
-		} else if isDevfilePresent && len(devfile) > 0 {
-			// If a devfile is present but we could not determine a dockerfile, then update dockerfileContextMapFromRepo
+		if len(detectedDevfile) > 0 {
+			if !isDevfilePresent {
+				// If a devfile is not present at this stage, just update devfileMapFromRepo and devfilesURLMapFromRepo
+				// Dockerfile is not needed because all the devfile registry samples will have a Dockerfile entry
+				devfileMapFromRepo[context] = detectedDevfile
+				devfilesURLMapFromRepo[context] = detectedDevfileEndpoint
+			}
+			// 1. If a devfile is present but we could not determine a dockerfile or,
+			// 2. If a devfile is not present and we matched from the registry with Alizer
+			// update dockerfileContextMapFromRepo with the dockerfile full uri
 			// by looking up the devfile from the detected alizer sample from the devfile registry
 			sampleRepoURL, err := GetRepoFromRegistry(detectedSampleName, devfileRegistryURL)
 			if err != nil {
 				return err
 			}
 
-			dockerfileUri, err := SearchForDockerfile(devfile)
+			dockerfileUri, err := SearchForDockerfile(detectedDevfile)
 			if err != nil {
 				return err
 			}
