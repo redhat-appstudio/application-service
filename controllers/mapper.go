@@ -19,6 +19,8 @@ import (
 	"context"
 	"fmt"
 
+	kcpclient "github.com/kcp-dev/apimachinery/pkg/client"
+	"github.com/kcp-dev/logicalcluster"
 	appstudioshared "github.com/redhat-appstudio/managed-gitops/appstudio-shared/apis/appstudio.redhat.com/v1alpha1"
 	"k8s.io/apimachinery/pkg/types"
 	ctrl "sigs.k8s.io/controller-runtime"
@@ -31,10 +33,15 @@ import (
 // Adapted from https://github.com/codeready-toolchain/host-operator/blob/master/controllers/spacebindingcleanup/mapper.go#L17
 func MapToBindingByBoundObjectName(cl client.Client, objectType, label string) func(object client.Object) []reconcile.Request {
 	return func(obj client.Object) []reconcile.Request {
+		// Retrieve the cluster name (if applicable)
+		clusterName := logicalcluster.From(obj).String()
+
 		mapperLog := ctrl.Log.WithName("MapToBindingByBoundObjectName")
-		log := mapperLog.WithValues("object-name", obj.GetName(), "object-kind", obj.GetObjectKind())
+		log := mapperLog.WithValues("object-name", obj.GetName(), "object-kind", obj.GetObjectKind()).WithValues("clusterName", clusterName)
+		ctx := kcpclient.WithCluster(context.TODO(), logicalcluster.New(clusterName))
+
 		bindingList := &appstudioshared.ApplicationSnapshotEnvironmentBindingList{}
-		err := cl.List(context.TODO(), bindingList,
+		err := cl.List(ctx, bindingList,
 			client.InNamespace(obj.GetNamespace()),
 			client.MatchingLabels{label: obj.GetName()})
 		if err != nil {
