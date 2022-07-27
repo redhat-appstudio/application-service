@@ -62,6 +62,7 @@ func MapToBindingByBoundObjectName(cl client.Client, objectType, label string) f
 					Namespace: item.Namespace,
 					Name:      item.Name,
 				},
+				ClusterName: clusterName,
 			}
 			log.Info(fmt.Sprintf("The corresponding ApplicationSnapshotEnvironmentBinding %s will be reconciled", item.Name))
 		}
