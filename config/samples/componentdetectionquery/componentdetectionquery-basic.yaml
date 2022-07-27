@@ -4,4 +4,4 @@ metadata:
   name: componentdetectionquery-sample
 spec:
   git:
-    url: https://github.com/maysunfaisal/multi-components-dockerfile
+    url: https://github.com/devfile-samples/devfile-sample-java-springboot-basic
