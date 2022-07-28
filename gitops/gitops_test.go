@@ -18,6 +18,7 @@ package gitops
 import (
 	"errors"
 	"fmt"
+	"path/filepath"
 	"testing"
 
 	appstudiov1alpha1 "github.com/redhat-appstudio/application-service/api/v1alpha1"
@@ -73,6 +74,7 @@ func TestGenerateAndPush(t *testing.T) {
 				[]byte("test output4"),
 				[]byte("test output5"),
 				[]byte("test output6"),
+				[]byte("test output7"),
 			},
 			want: []testutils.Execution{
 				{
@@ -84,6 +86,11 @@ func TestGenerateAndPush(t *testing.T) {
 					BaseDir: repoPath,
 					Command: "git",
 					Args:    []string{"switch", "main"},
+				},
+				{
+					BaseDir: repoPath,
+					Command: "rm",
+					Args:    []string{"-rf", filepath.Join("components", componentName, "base")},
 				},
 				{
 					BaseDir: repoPath,
@@ -184,6 +191,7 @@ func TestGenerateAndPush(t *testing.T) {
 				[]byte("test output5"),
 				[]byte("test output6"),
 				[]byte("test output7"),
+				[]byte("test output8"),
 			},
 			want: []testutils.Execution{
 				{
@@ -200,6 +208,11 @@ func TestGenerateAndPush(t *testing.T) {
 					BaseDir: repoPath,
 					Command: "git",
 					Args:    []string{"checkout", "-b", "main"},
+				},
+				{
+					BaseDir: repoPath,
+					Command: "rm",
+					Args:    []string{"-rf", filepath.Join("components", componentName, "base")},
 				},
 				{
 					BaseDir: repoPath,
@@ -225,12 +238,12 @@ func TestGenerateAndPush(t *testing.T) {
 			wantErrString: "",
 		},
 		{
-			name:      "git add failure",
+			name:      "rm -rf failure",
 			fs:        fs,
 			component: component,
 			errors: &testutils.ErrorStack{
 				Errors: []error{
-					errors.New("Fatal error"),
+					errors.New("Permission Denied"),
 					nil,
 					nil,
 				},
@@ -253,19 +266,19 @@ func TestGenerateAndPush(t *testing.T) {
 				},
 				{
 					BaseDir: repoPath,
-					Command: "git",
-					Args:    []string{"add", "."},
+					Command: "rm",
+					Args:    []string{"-rf", "components/test-component/base"},
 				},
 			},
-			wantErrString: "failed to add files for component \"test-component\" to repository in \"/fake/path/test-component\" \"test output1\": Fatal error",
+			wantErrString: "failed to delete \"components/test-component/base\" folder in repository in \"/fake/path/test-component\" \"test output1\": Permission Denied",
 		},
 		{
-			name:      "git diff failure",
+			name:      "git add failure",
 			fs:        fs,
 			component: component,
 			errors: &testutils.ErrorStack{
 				Errors: []error{
-					errors.New("Permission Denied"),
+					errors.New("Fatal error"),
 					nil,
 					nil,
 					nil,
@@ -287,6 +300,55 @@ func TestGenerateAndPush(t *testing.T) {
 					BaseDir: repoPath,
 					Command: "git",
 					Args:    []string{"switch", "main"},
+				},
+				{
+					BaseDir: repoPath,
+					Command: "rm",
+					Args:    []string{"-rf", "components/test-component/base"},
+				},
+				{
+					BaseDir: repoPath,
+					Command: "git",
+					Args:    []string{"add", "."},
+				},
+			},
+			wantErrString: "failed to add files for component \"test-component\" to repository in \"/fake/path/test-component\" \"test output1\": Fatal error",
+		},
+		{
+			name:      "git diff failure",
+			fs:        fs,
+			component: component,
+			errors: &testutils.ErrorStack{
+				Errors: []error{
+					errors.New("Permission Denied"),
+					nil,
+					nil,
+					nil,
+					nil,
+				},
+			},
+			outputs: [][]byte{
+				[]byte("test output1"),
+				[]byte("test output2"),
+				[]byte("test output3"),
+				[]byte("test output4"),
+				[]byte("test output5"),
+			},
+			want: []testutils.Execution{
+				{
+					BaseDir: outputPath,
+					Command: "git",
+					Args:    []string{"clone", repo, component.Name},
+				},
+				{
+					BaseDir: repoPath,
+					Command: "git",
+					Args:    []string{"switch", "main"},
+				},
+				{
+					BaseDir: repoPath,
+					Command: "rm",
+					Args:    []string{"-rf", "components/test-component/base"},
 				},
 				{
 					BaseDir: repoPath,
@@ -312,6 +374,7 @@ func TestGenerateAndPush(t *testing.T) {
 					nil,
 					nil,
 					nil,
+					nil,
 				},
 			},
 			outputs: [][]byte{
@@ -320,6 +383,7 @@ func TestGenerateAndPush(t *testing.T) {
 				[]byte("test output3"),
 				[]byte("test output4"),
 				[]byte("test output5"),
+				[]byte("test output6"),
 			},
 			want: []testutils.Execution{
 				{
@@ -331,6 +395,11 @@ func TestGenerateAndPush(t *testing.T) {
 					BaseDir: repoPath,
 					Command: "git",
 					Args:    []string{"switch", "main"},
+				},
+				{
+					BaseDir: repoPath,
+					Command: "rm",
+					Args:    []string{"-rf", "components/test-component/base"},
 				},
 				{
 					BaseDir: repoPath,
@@ -362,6 +431,7 @@ func TestGenerateAndPush(t *testing.T) {
 					nil,
 					nil,
 					nil,
+					nil,
 				},
 			},
 			outputs: [][]byte{
@@ -371,6 +441,7 @@ func TestGenerateAndPush(t *testing.T) {
 				[]byte("test output4"),
 				[]byte("test output5"),
 				[]byte("test output6"),
+				[]byte("test output7"),
 			},
 			want: []testutils.Execution{
 				{
@@ -382,6 +453,11 @@ func TestGenerateAndPush(t *testing.T) {
 					BaseDir: repoPath,
 					Command: "git",
 					Args:    []string{"switch", "main"},
+				},
+				{
+					BaseDir: repoPath,
+					Command: "rm",
+					Args:    []string{"-rf", "components/test-component/base"},
 				},
 				{
 					BaseDir: repoPath,
@@ -422,6 +498,11 @@ func TestGenerateAndPush(t *testing.T) {
 					Command: "git",
 					Args:    []string{"switch", "main"},
 				},
+				{
+					BaseDir: repoPath,
+					Command: "rm",
+					Args:    []string{"-rf", "components/test-component/base"},
+				},
 			},
 			wantErrString: "failed to generate the gitops resources in \"/fake/path/test-component/components/test-component/base\" for component \"test-component\"",
 		},
@@ -448,6 +529,11 @@ func TestGenerateAndPush(t *testing.T) {
 					BaseDir: repoPath,
 					Command: "git",
 					Args:    []string{"switch", "main"},
+				},
+				{
+					BaseDir: repoPath,
+					Command: "rm",
+					Args:    []string{"-rf", "components/test-component/base"},
 				},
 			},
 			wantErrString: "failed to generate the gitops resources in \"/fake/path/test-component/components/test-component/base\" for component \"test-component\": failed to MkDirAll",
