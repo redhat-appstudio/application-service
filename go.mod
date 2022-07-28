@@ -25,6 +25,7 @@ require (
 	github.com/stretchr/testify v1.7.3
 	github.com/tektoncd/pipeline v0.33.0
 	github.com/tektoncd/triggers v0.19.1
+	go.uber.org/zap v1.21.0
 	golang.org/x/oauth2 v0.0.0-20211104180415-d3ed0bb246c8
 	k8s.io/api v0.24.2
 	k8s.io/apimachinery v0.24.2
