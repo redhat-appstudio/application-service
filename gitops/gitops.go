@@ -58,6 +58,10 @@ func GenerateAndPush(outputPath string, remote string, component appstudiov1alph
 		}
 	}
 
+	if out, err := e.Execute(repoPath, "rm", "-rf", filepath.Join("components", componentName, "base")); err != nil {
+		return fmt.Errorf("failed to delete %q folder in repository in %q %q: %s", filepath.Join("components", componentName, "base"), repoPath, string(out), err)
+	}
+
 	// Generate the gitops resources and update the parent kustomize yaml file
 	if err := Generate(appFs, gitopsFolder, componentPath, component, gitopsConfig); err != nil {
 		return fmt.Errorf("failed to generate the gitops resources in %q for component %q: %s", componentPath, componentName, err)
