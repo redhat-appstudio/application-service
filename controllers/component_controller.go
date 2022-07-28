@@ -393,7 +393,7 @@ func (r *ComponentReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 
 			// Generate and push the gitops resources, if necessary.
 			component.Status.ContainerImage = component.Spec.ContainerImage
-      if !component.Spec.SkipGitOpsResourceGeneration {
+			if !component.Spec.SkipGitOpsResourceGeneration {
 				if err := r.generateGitops(ctx, &component); err != nil {
 					errMsg := fmt.Sprintf("Unable to generate gitops resources for component %v", req.NamespacedName)
 					log.Error(err, errMsg)
