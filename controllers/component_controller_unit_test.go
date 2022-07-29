@@ -345,7 +345,7 @@ func TestGenerateGitops(t *testing.T) {
 	for _, tt := range tests {
 		tt.reconciler.AppFS = tt.fs
 		t.Run(tt.name, func(t *testing.T) {
-			err := tt.reconciler.generateGitops(ctx, tt.component)
+			err := tt.reconciler.generateGitops(ctx, ctrl.Request{}, tt.component)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("TestGenerateGitops() unexpected error: %v", err)
 			}

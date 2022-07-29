@@ -31,6 +31,8 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/predicate"
 
 	"github.com/go-logr/logr"
+	kcpclient "github.com/kcp-dev/apimachinery/pkg/client"
+	"github.com/kcp-dev/logicalcluster"
 	appstudiov1alpha1 "github.com/redhat-appstudio/application-service/api/v1alpha1"
 	devfile "github.com/redhat-appstudio/application-service/pkg/devfile"
 	"github.com/redhat-appstudio/application-service/pkg/spi"
@@ -64,7 +66,8 @@ type ComponentDetectionQueryReconciler struct {
 // For more details, check Reconcile and its Result here:
 // - https://pkg.go.dev/sigs.k8s.io/controller-runtime@v0.9.2/pkg/reconcile
 func (r *ComponentDetectionQueryReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
-	log := r.Log.WithValues("ComponentDetectionQuery", req.NamespacedName)
+	log := r.Log.WithValues("ComponentDetectionQuery", req.NamespacedName).WithValues("clusterName", req.ClusterName)
+	ctx = kcpclient.WithCluster(ctx, logicalcluster.New(req.ClusterName))
 
 	// Fetch the ComponentDetectionQuery instance
 	var componentDetectionQuery appstudiov1alpha1.ComponentDetectionQuery
@@ -84,7 +87,7 @@ func (r *ComponentDetectionQueryReconciler) Reconcile(ctx context.Context, req c
 	if len(componentDetectionQuery.Status.Conditions) == 0 {
 		// Start the ComponentDetectionQuery, and update its status condition accordingly
 		log.Info(fmt.Sprintf("Checking to see if a component can be detected %v", req.NamespacedName))
-		r.SetDetectingConditionAndUpdateCR(ctx, &componentDetectionQuery)
+		r.SetDetectingConditionAndUpdateCR(ctx, req, &componentDetectionQuery)
 
 		var gitToken string
 		if componentDetectionQuery.Spec.Secret != "" {
@@ -97,7 +100,7 @@ func (r *ComponentDetectionQueryReconciler) Reconcile(ctx context.Context, req c
 			err = r.Client.Get(ctx, namespacedName, &gitSecret)
 			if err != nil {
 				log.Error(err, fmt.Sprintf("Unable to retrieve Git secret %v, exiting reconcile loop %v", componentDetectionQuery.Spec.Secret, req.NamespacedName))
-				r.SetCompleteConditionAndUpdateCR(ctx, &componentDetectionQuery, err)
+				r.SetCompleteConditionAndUpdateCR(ctx, req, &componentDetectionQuery, err)
 				return ctrl.Result{}, nil
 			}
 			gitToken = string(gitSecret.Data["password"])
@@ -122,7 +125,7 @@ func (r *ComponentDetectionQueryReconciler) Reconcile(ctx context.Context, req c
 				gitURL, err = util.ConvertGitHubURL(source.URL, source.Revision)
 				if err != nil {
 					log.Error(err, fmt.Sprintf("Unable to convert Github URL to raw format, exiting reconcile loop %v", req.NamespacedName))
-					r.SetCompleteConditionAndUpdateCR(ctx, &componentDetectionQuery, err)
+					r.SetCompleteConditionAndUpdateCR(ctx, req, &componentDetectionQuery, err)
 					return ctrl.Result{}, nil
 				}
 
@@ -154,14 +157,14 @@ func (r *ComponentDetectionQueryReconciler) Reconcile(ctx context.Context, req c
 				clonePath, err = ioutils.CreateTempPath(componentDetectionQuery.Name, r.AppFS)
 				if err != nil {
 					log.Error(err, fmt.Sprintf("Unable to create a temp path %s for cloning %v", clonePath, req.NamespacedName))
-					r.SetCompleteConditionAndUpdateCR(ctx, &componentDetectionQuery, err)
+					r.SetCompleteConditionAndUpdateCR(ctx, req, &componentDetectionQuery, err)
 					return ctrl.Result{}, nil
 				}
 
 				err = util.CloneRepo(clonePath, source.URL, gitToken)
 				if err != nil {
 					log.Error(err, fmt.Sprintf("Unable to clone repo %s to path %s, exiting reconcile loop %v", source.URL, clonePath, req.NamespacedName))
-					r.SetCompleteConditionAndUpdateCR(ctx, &componentDetectionQuery, err)
+					r.SetCompleteConditionAndUpdateCR(ctx, req, &componentDetectionQuery, err)
 					return ctrl.Result{}, nil
 				}
 				log.Info(fmt.Sprintf("cloned from %s to path %s... %v", source.URL, clonePath, req.NamespacedName))
@@ -169,7 +172,7 @@ func (r *ComponentDetectionQueryReconciler) Reconcile(ctx context.Context, req c
 					components, err := r.AlizerClient.DetectComponents(clonePath)
 					if err != nil {
 						log.Error(err, fmt.Sprintf("Unable to detect components using Alizer for repo %v, under path %v... %v ", source.URL, clonePath, req.NamespacedName))
-						r.SetCompleteConditionAndUpdateCR(ctx, &componentDetectionQuery, err)
+						r.SetCompleteConditionAndUpdateCR(ctx, req, &componentDetectionQuery, err)
 						return ctrl.Result{}, nil
 					}
 					log.Info(fmt.Sprintf("components detected %v... %v", components, req.NamespacedName))
@@ -191,7 +194,7 @@ func (r *ComponentDetectionQueryReconciler) Reconcile(ctx context.Context, req c
 				if err != nil {
 					if _, ok := err.(*devfile.NoDevfileFound); !ok {
 						log.Error(err, fmt.Sprintf("Unable to find devfile(s) in repo %s due to an error %s, exiting reconcile loop %v", source.URL, err.Error(), req.NamespacedName))
-						r.SetCompleteConditionAndUpdateCR(ctx, &componentDetectionQuery, err)
+						r.SetCompleteConditionAndUpdateCR(ctx, req, &componentDetectionQuery, err)
 						return ctrl.Result{}, nil
 					}
 				}
@@ -201,7 +204,7 @@ func (r *ComponentDetectionQueryReconciler) Reconcile(ctx context.Context, req c
 					err := devfile.AnalyzePath(r.AlizerClient, clonePath, "./", r.DevfileRegistryURL, devfilesMap, devfilesURLMap, dockerfileContextMap, isDevfilePresent, isDockerfilePresent)
 					if err != nil {
 						log.Error(err, fmt.Sprintf("Unable to analyze path %s for a dockerfile/devfile %v", clonePath, req.NamespacedName))
-						r.SetCompleteConditionAndUpdateCR(ctx, &componentDetectionQuery, err)
+						r.SetCompleteConditionAndUpdateCR(ctx, req, &componentDetectionQuery, err)
 						return ctrl.Result{}, nil
 					}
 				}
@@ -213,7 +216,7 @@ func (r *ComponentDetectionQueryReconciler) Reconcile(ctx context.Context, req c
 				// if a direct devfileURL is provided and errors out, we dont do an alizer detection
 				log.Error(err, fmt.Sprintf("Unable to GET %s, exiting reconcile loop %v", source.DevfileURL, req.NamespacedName))
 				err := fmt.Errorf("unable to GET from %s", source.DevfileURL)
-				r.SetCompleteConditionAndUpdateCR(ctx, &componentDetectionQuery, err)
+				r.SetCompleteConditionAndUpdateCR(ctx, req, &componentDetectionQuery, err)
 				return ctrl.Result{}, nil
 			}
 			devfilesMap["./"] = devfileBytes
@@ -223,7 +226,7 @@ func (r *ComponentDetectionQueryReconciler) Reconcile(ctx context.Context, req c
 		if isExist, _ := ioutils.IsExisting(r.AppFS, clonePath); isExist {
 			if err := r.AppFS.RemoveAll(clonePath); err != nil {
 				log.Error(err, fmt.Sprintf("Unable to remove the clonepath %s %v", clonePath, req.NamespacedName))
-				r.SetCompleteConditionAndUpdateCR(ctx, &componentDetectionQuery, err)
+				r.SetCompleteConditionAndUpdateCR(ctx, req, &componentDetectionQuery, err)
 				return ctrl.Result{}, nil
 			}
 		}
@@ -232,20 +235,20 @@ func (r *ComponentDetectionQueryReconciler) Reconcile(ctx context.Context, req c
 			updatedLink, err := devfile.UpdateDockerfileLink(source.URL, source.Revision, link)
 			if err != nil {
 				log.Error(err, fmt.Sprintf("Unable to update the dockerfile link %v", req.NamespacedName))
-				r.SetCompleteConditionAndUpdateCR(ctx, &componentDetectionQuery, err)
+				r.SetCompleteConditionAndUpdateCR(ctx, req, &componentDetectionQuery, err)
 				return ctrl.Result{}, nil
 			}
 			dockerfileContextMap[context] = updatedLink
 		}
 
-		err = r.updateComponentStub(&componentDetectionQuery, devfilesMap, devfilesURLMap, dockerfileContextMap)
+		err = r.updateComponentStub(req, &componentDetectionQuery, devfilesMap, devfilesURLMap, dockerfileContextMap)
 		if err != nil {
 			log.Error(err, fmt.Sprintf("Unable to update the component stub %v", req.NamespacedName))
-			r.SetCompleteConditionAndUpdateCR(ctx, &componentDetectionQuery, err)
+			r.SetCompleteConditionAndUpdateCR(ctx, req, &componentDetectionQuery, err)
 			return ctrl.Result{}, nil
 		}
 
-		r.SetCompleteConditionAndUpdateCR(ctx, &componentDetectionQuery, nil)
+		r.SetCompleteConditionAndUpdateCR(ctx, req, &componentDetectionQuery, nil)
 	} else {
 		// CDQ resource has been requeued after it originally ran
 		// Delete the resource as it's no longer needed and can be cleaned up

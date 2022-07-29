@@ -29,11 +29,12 @@ import (
 	"github.com/redhat-appstudio/application-service/pkg/util"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
+	ctrl "sigs.k8s.io/controller-runtime"
 )
 
-func (r *ComponentReconciler) updateComponentDevfileModel(hasCompDevfileData data.DevfileData, component appstudiov1alpha1.Component) error {
+func (r *ComponentReconciler) updateComponentDevfileModel(req ctrl.Request, hasCompDevfileData data.DevfileData, component appstudiov1alpha1.Component) error {
 
-	log := r.Log.WithValues("Component", "updateComponentDevfileModel")
+	log := r.Log.WithValues("Component", req.NamespacedName).WithValues("clusterName", req.ClusterName)
 
 	devfileComponents, err := hasCompDevfileData.GetComponents(common.DevfileOptions{
 		ComponentOptions: common.ComponentOptions{
@@ -257,13 +258,13 @@ func (r *ComponentReconciler) updateApplicationDevfileModel(hasAppDevfileData da
 	return nil
 }
 
-func (r *ComponentDetectionQueryReconciler) updateComponentStub(componentDetectionQuery *appstudiov1alpha1.ComponentDetectionQuery, devfilesMap map[string][]byte, devfilesURLMap map[string]string, dockerfileContextMap map[string]string) error {
+func (r *ComponentDetectionQueryReconciler) updateComponentStub(req ctrl.Request, componentDetectionQuery *appstudiov1alpha1.ComponentDetectionQuery, devfilesMap map[string][]byte, devfilesURLMap map[string]string, dockerfileContextMap map[string]string) error {
 
 	if componentDetectionQuery == nil {
 		return fmt.Errorf("componentDetectionQuery is nil")
 	}
 
-	log := r.Log.WithValues("ComponentDetectionQuery", "updateComponentStub")
+	log := r.Log.WithValues("ComponentDetectionQuery", req.NamespacedName).WithValues("clusterName", req.ClusterName)
 
 	if len(componentDetectionQuery.Status.ComponentDetected) == 0 {
 		componentDetectionQuery.Status.ComponentDetected = make(appstudiov1alpha1.ComponentDetectionMap)

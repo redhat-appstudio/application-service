@@ -22,12 +22,13 @@ import (
 
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	ctrl "sigs.k8s.io/controller-runtime"
 
 	appstudiov1alpha1 "github.com/redhat-appstudio/application-service/api/v1alpha1"
 )
 
-func (r *ComponentDetectionQueryReconciler) SetDetectingConditionAndUpdateCR(ctx context.Context, componentDetectionQuery *appstudiov1alpha1.ComponentDetectionQuery) {
-	log := r.Log.WithValues("ComponentDetectionQuery", componentDetectionQuery.Name)
+func (r *ComponentDetectionQueryReconciler) SetDetectingConditionAndUpdateCR(ctx context.Context, req ctrl.Request, componentDetectionQuery *appstudiov1alpha1.ComponentDetectionQuery) {
+	log := r.Log.WithValues("ComponentDetectionQuery", req.NamespacedName).WithValues("clusterName", req.ClusterName)
 
 	meta.SetStatusCondition(&componentDetectionQuery.Status.Conditions, metav1.Condition{
 		Type:    "Processing",
@@ -42,8 +43,8 @@ func (r *ComponentDetectionQueryReconciler) SetDetectingConditionAndUpdateCR(ctx
 	}
 }
 
-func (r *ComponentDetectionQueryReconciler) SetCompleteConditionAndUpdateCR(ctx context.Context, componentDetectionQuery *appstudiov1alpha1.ComponentDetectionQuery, completeError error) {
-	log := r.Log.WithValues("ComponentDetectionQuery", componentDetectionQuery.Name)
+func (r *ComponentDetectionQueryReconciler) SetCompleteConditionAndUpdateCR(ctx context.Context, req ctrl.Request, componentDetectionQuery *appstudiov1alpha1.ComponentDetectionQuery, completeError error) {
+	log := r.Log.WithValues("ComponentDetectionQuery", req.NamespacedName).WithValues("clusterName", req.ClusterName)
 
 	if completeError == nil {
 		meta.SetStatusCondition(&componentDetectionQuery.Status.Conditions, metav1.Condition{
