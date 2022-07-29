@@ -363,33 +363,37 @@ func TestScanRepo(t *testing.T) {
 	var alizerClient AlizerClient // Use actual client because this is a huge wrapper function and mocking so many possibilities is pretty tedious when everything is changing frequently
 
 	tests := []struct {
-		name                      string
-		clonePath                 string
-		depth                     int
-		repo                      string
-		token                     string
-		wantErr                   bool
-		expectedDevfileContext    []string
-		expectedDevfileURLContext []string
-		expectedDockerfileContext []string
+		name                         string
+		clonePath                    string
+		repo                         string
+		token                        string
+		wantErr                      bool
+		expectedDevfileContext       []string
+		expectedDevfileURLContext    []string
+		expectedDockerfileContextMap map[string]string
 	}{
 		{
 			name:                      "Should return 1 devfiles as this is a multi comp devfile",
 			clonePath:                 "/tmp/testclone",
-			depth:                     1,
 			repo:                      "https://github.com/maysunfaisal/multi-components-deep",
 			expectedDevfileContext:    []string{"devfile-sample-java-springboot-basic", "python"},
 			expectedDevfileURLContext: []string{"python"},
-			expectedDockerfileContext: []string{"devfile-sample-java-springboot-basic", "python"},
+			expectedDockerfileContextMap: map[string]string{
+				"devfile-sample-java-springboot-basic": "devfile-sample-java-springboot-basic/docker/Dockerfile",
+				"python":                               "https://raw.githubusercontent.com/devfile-samples/devfile-sample-python-basic/main/docker/Dockerfile"},
 		},
 		{
-			name:                      "Should return 4 devfiles, 1 devfile url and 2 dockerfile uri as this is a multi comp devfile",
+			name:                      "Should return 4 devfiles, 1 devfile url and 5 dockerfile uri as this is a multi comp devfile",
 			clonePath:                 "/tmp/testclone",
-			depth:                     1,
 			repo:                      "https://github.com/maysunfaisal/multi-components-dockerfile",
 			expectedDevfileContext:    []string{"devfile-sample-java-springboot-basic", "devfile-sample-nodejs-basic", "devfile-sample-python-basic", "python-src-none"},
 			expectedDevfileURLContext: []string{"python-src-none"},
-			expectedDockerfileContext: []string{"python-src-docker", "devfile-sample-nodejs-basic", "devfile-sample-java-springboot-basic", "python-src-none", "devfile-sample-python-basic"},
+			expectedDockerfileContextMap: map[string]string{
+				"python-src-docker":                    "python-src-docker/Dockerfile",
+				"devfile-sample-nodejs-basic":          "https://raw.githubusercontent.com/nodeshift-starters/devfile-sample/main/Dockerfile",
+				"devfile-sample-java-springboot-basic": "devfile-sample-java-springboot-basic/docker/Dockerfile",
+				"python-src-none":                      "https://raw.githubusercontent.com/devfile-samples/devfile-sample-python-basic/main/docker/Dockerfile",
+				"devfile-sample-python-basic":          "https://raw.githubusercontent.com/maysunfaisal/multi-components-dockerfile/main/devfile-sample-python-basic/Dockerfile"},
 		},
 	}
 
@@ -434,16 +438,8 @@ func TestScanRepo(t *testing.T) {
 					}
 
 					for actualContext := range dockerfileMap {
-						matched := false
-						for _, expectedContext := range tt.expectedDockerfileContext {
-							if expectedContext == actualContext {
-								matched = true
-								break
-							}
-						}
-
-						if !matched {
-							t.Errorf("found dockerfile uri at context %v:%v but expected none", actualContext, dockerfileMap[actualContext])
+						if tt.expectedDockerfileContextMap[actualContext] != dockerfileMap[actualContext] {
+							t.Errorf("found dockerfile uri at context %v:%v but expected %v", actualContext, dockerfileMap[actualContext], tt.expectedDockerfileContextMap[actualContext])
 						}
 					}
 				}

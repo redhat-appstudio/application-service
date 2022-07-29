@@ -20,6 +20,7 @@ import (
 	"io/ioutil"
 	"path"
 	"reflect"
+	"strings"
 
 	"github.com/devfile/api/v2/pkg/apis/workspaces/v1alpha2"
 	"github.com/devfile/library/pkg/devfile/parser/data/v2/common"
@@ -140,7 +141,12 @@ func AnalyzePath(a Alizer, localpath, context, devfileRegistryURL string, devfil
 		if dockerfileUri, err := SearchForDockerfile(devfile); err != nil {
 			return err
 		} else if len(dockerfileUri) > 0 {
-			dockerfileContextMapFromRepo[context] = path.Join(context, dockerfileUri)
+			if !strings.HasPrefix(dockerfileUri, "http") {
+				// if it is a relative uri, append the context
+				dockerfileContextMapFromRepo[context] = path.Join(context, dockerfileUri)
+			} else {
+				dockerfileContextMapFromRepo[context] = dockerfileUri
+			}
 			isDockerfilePresent = true
 		}
 	}
