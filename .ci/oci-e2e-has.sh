@@ -65,7 +65,18 @@ function executeE2ETests() {
 
     # The bin will be installed in tmp folder after executing e2e-openshift-ci.sh script
     cd "${WORKSPACE}/tmp/e2e-tests"
-    ./bin/e2e-appstudio --ginkgo.junit-report="${ARTIFACT_DIR}"/e2e-report.xml --ginkgo.focus="${TEST_SUITE}" --ginkgo.progress --ginkgo.v --ginkgo.no-color
+    ./bin/e2e-appstudio --ginkgo.junit-report="${ARTIFACT_DIR}"/e2e-report.xml --ginkgo.focus="${TEST_SUITE}" --ginkgo.progress --ginkgo.v --ginkgo.no-color -webhookConfigPath="./webhookConfig.yml"
+}
+
+function prepareWebhookVariables() {
+    #Export variables
+    export webhook_salt=123456789
+    export webhook_target=https://smee.io/JgVqn2oYFPY1CF
+    export webhook_repositoryURL=https://github.com/$REPO_OWNER/$REPO_NAME
+    export webhook_repositoryFullName=$REPO_OWNER/$REPO_NAME
+    export webhook_pullNumber=$PULL_NUMBER
+    # Rewrite variables in webhookConfig.yml
+    curl https://raw.githubusercontent.com/redhat-appstudio/e2e-tests/main/webhookConfig.yml | envsubst > webhookConfig.yml
 }
 
 
@@ -85,4 +96,5 @@ timeout --foreground 10m bash -c waitAppStudioToBeReady
 timeout --foreground 10m bash -c waitBuildToBeReady
 timeout --foreground 10m bash -c waitHASApplicationToBeReady
 
+prepareWebhookVariables
 executeE2ETests
