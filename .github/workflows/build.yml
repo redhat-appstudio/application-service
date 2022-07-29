@@ -23,15 +23,32 @@ jobs:
   build-image:
     runs-on: ubuntu-20.04
     steps:
-    - name: Checkout application-service source code
-      uses: actions/checkout@v2
-    - name: Docker Build & Push - application-service Operator Image
-      uses: docker/build-push-action@v1.1.0
-      with:
-        username: ${{ secrets.QUAY_USERNAME }}
-        password: ${{ secrets.QUAY_PASSWORD }}
-        registry: quay.io
-        repository: redhat-appstudio/application-service
-        dockerfile: Dockerfile
-        tags: next
-        tag_with_sha: true
+      - name: Checkout application-service source code
+        uses: actions/checkout@v2
+      - name: Docker meta
+        id: meta
+        uses: docker/metadata-action@v4
+        with:
+          images: |
+            quay.io/redhat-appstudio/application-service
+          tags: |
+            next
+            type=sha
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v2
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v2 
+      - name: Login to DockerHub
+        uses: docker/login-action@v2
+        with:
+          username: ${{ secrets.QUAY_USERNAME }}
+          password: ${{ secrets.QUAY_PASSWORD }}
+          registry: quay.io
+          repository: redhat-appstudio/application-service
+      - name: Docker Build & Push - application-service Operator Image
+        uses: docker/build-push-action@v3
+        with:
+          dockerfile: Dockerfile
+          platforms: linux/amd64,linux/ppc64le
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
