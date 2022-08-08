@@ -32,6 +32,9 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 	"sigs.k8s.io/yaml"
 
+	kcpclient "github.com/kcp-dev/apimachinery/pkg/client"
+	"github.com/kcp-dev/logicalcluster"
+
 	appstudiov1alpha1 "github.com/redhat-appstudio/application-service/api/v1alpha1"
 	devfile "github.com/redhat-appstudio/application-service/pkg/devfile"
 	github "github.com/redhat-appstudio/application-service/pkg/github"
@@ -60,7 +63,8 @@ type ApplicationReconciler struct {
 // For more details, check Reconcile and its Result here:
 // - https://pkg.go.dev/sigs.k8s.io/controller-runtime@v0.9.2/pkg/reconcile
 func (r *ApplicationReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
-	log := r.Log.WithValues("Application", req.NamespacedName)
+	log := r.Log.WithValues("Application", req.NamespacedName).WithValues("clusterName", req.ClusterName)
+	ctx = kcpclient.WithCluster(ctx, logicalcluster.New(req.ClusterName))
 
 	// Get the Application resource
 	var application appstudiov1alpha1.Application
@@ -128,7 +132,7 @@ func (r *ApplicationReconciler) Reconcile(ctx context.Context, req ctrl.Request)
 			repoUrl, err := github.GenerateNewRepository(r.GitHubClient, ctx, r.GitHubOrg, repoName, "GitOps Repository")
 			if err != nil {
 				log.Error(err, fmt.Sprintf("Unable to create repository %v", repoUrl))
-				r.SetCreateConditionAndUpdateCR(ctx, &application, err)
+				r.SetCreateConditionAndUpdateCR(ctx, req, &application, err)
 				return reconcile.Result{}, err
 			}
 
@@ -143,13 +147,13 @@ func (r *ApplicationReconciler) Reconcile(ctx context.Context, req ctrl.Request)
 		devfileData, err := devfile.ConvertApplicationToDevfile(application, gitOpsRepo, appModelRepo)
 		if err != nil {
 			log.Error(err, fmt.Sprintf("Unable to convert Application CR to devfile, exiting reconcile loop %v", req.NamespacedName))
-			r.SetCreateConditionAndUpdateCR(ctx, &application, err)
+			r.SetCreateConditionAndUpdateCR(ctx, req, &application, err)
 			return reconcile.Result{}, err
 		}
 		yamlData, err := yaml.Marshal(devfileData)
 		if err != nil {
 			log.Error(err, fmt.Sprintf("Unable to marshall Application devfile, exiting reconcile loop %v", req.NamespacedName))
-			r.SetCreateConditionAndUpdateCR(ctx, &application, err)
+			r.SetCreateConditionAndUpdateCR(ctx, req, &application, err)
 			return reconcile.Result{}, err
 		}
 
@@ -157,13 +161,13 @@ func (r *ApplicationReconciler) Reconcile(ctx context.Context, req ctrl.Request)
 
 		// Create GitOps repository
 		// Update the status of the CR
-		r.SetCreateConditionAndUpdateCR(ctx, &application, nil)
+		r.SetCreateConditionAndUpdateCR(ctx, req, &application, nil)
 	} else {
 		// If the model already exists, see if either the displayname or description need updating
 		// Get the devfile of the hasApp CR
 		devfileData, err := devfile.ParseDevfileModel(application.Status.Devfile)
 		if err != nil {
-			r.SetUpdateConditionAndUpdateCR(ctx, &application, err)
+			r.SetUpdateConditionAndUpdateCR(ctx, req, &application, err)
 			log.Error(err, fmt.Sprintf("Unable to parse devfile model, exiting reconcile loop %v", req.NamespacedName))
 			return ctrl.Result{}, err
 		}
@@ -188,12 +192,12 @@ func (r *ApplicationReconciler) Reconcile(ctx context.Context, req ctrl.Request)
 			yamlData, err := yaml.Marshal(devfileData)
 			if err != nil {
 				log.Error(err, fmt.Sprintf("Unable to marshall Application devfile, exiting reconcile loop %v", req.NamespacedName))
-				r.SetUpdateConditionAndUpdateCR(ctx, &application, err)
+				r.SetUpdateConditionAndUpdateCR(ctx, req, &application, err)
 				return reconcile.Result{}, err
 			}
 
 			application.Status.Devfile = string(yamlData)
-			r.SetUpdateConditionAndUpdateCR(ctx, &application, nil)
+			r.SetUpdateConditionAndUpdateCR(ctx, req, &application, nil)
 		}
 	}
 

@@ -416,7 +416,7 @@ func TestUpdateComponentDevfileModel(t *testing.T) {
 			r := ComponentReconciler{
 				Log: ctrl.Log.WithName("TestUpdateComponentDevfileModel"),
 			}
-			err := r.updateComponentDevfileModel(devfileData, tt.component)
+			err := r.updateComponentDevfileModel(ctrl.Request{}, devfileData, tt.component)
 			if tt.wantErr && (err == nil) {
 				t.Error("wanted error but got nil")
 			} else if !tt.wantErr && err != nil {
@@ -1162,9 +1162,9 @@ func TestUpdateComponentStub(t *testing.T) {
 			}
 			var err error
 			if tt.isNil {
-				err = r.updateComponentStub(nil, devfilesMap, nil, nil)
+				err = r.updateComponentStub(ctrl.Request{}, nil, devfilesMap, nil, nil)
 			} else {
-				err = r.updateComponentStub(&componentDetectionQuery, devfilesMap, tt.devfilesURLMap, tt.dockerfileURLMap)
+				err = r.updateComponentStub(ctrl.Request{}, &componentDetectionQuery, devfilesMap, tt.devfilesURLMap, tt.dockerfileURLMap)
 			}
 
 			if tt.wantErr && (err == nil) {
