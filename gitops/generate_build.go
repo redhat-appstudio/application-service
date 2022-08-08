@@ -19,16 +19,17 @@ package gitops
 import (
 	"encoding/json"
 	"fmt"
+	"net/url"
 	"regexp"
 	"strings"
 	"time"
 
 	devfilev1alpha2 "github.com/devfile/api/v2/pkg/apis/workspaces/v1alpha2"
 	devfilecommon "github.com/devfile/library/pkg/devfile/parser/data/v2/common"
-	pacv1aplha1 "github.com/openshift-pipelines/pipelines-as-code/pkg/apis/pipelinesascode/v1alpha1"
+	pacv1alpha1 "github.com/openshift-pipelines/pipelines-as-code/pkg/apis/pipelinesascode/v1alpha1"
 	routev1 "github.com/openshift/api/route/v1"
 	appstudiov1alpha1 "github.com/redhat-appstudio/application-service/api/v1alpha1"
-	"github.com/redhat-appstudio/application-service/gitops/prepare"
+	gitopsprepare "github.com/redhat-appstudio/application-service/gitops/prepare"
 	"github.com/redhat-appstudio/application-service/gitops/resources"
 	yaml "github.com/redhat-appstudio/application-service/gitops/yaml"
 	"github.com/redhat-appstudio/application-service/pkg/devfile"
@@ -49,7 +50,12 @@ const (
 	buildRepositoryFileName       = "pac-repository.yaml"
 
 	DefaultImageRepo = "quay.io/redhat-appstudio/user-workload"
-	PaCAnnotation    = "pipelinesascode"
+
+	PaCAnnotation                     = "pipelinesascode"
+	GitProviderAnnotationName         = "git-provider"
+	PipelinesAsCodeWebhooksSecretName = "pipelines-as-code-webhooks-secret"
+	PipelinesAsCode_githubAppIdKey    = "github-application-id"
+	PipelinesAsCode_githubPrivateKey  = "github-private-key"
 )
 
 var (
@@ -64,11 +70,14 @@ func SetDefaultImageRepo(repo string) {
 	imageRegistry = repo
 }
 
-func GenerateBuild(fs afero.Fs, outputFolder string, component appstudiov1alpha1.Component, gitopsConfig prepare.GitopsConfig) error {
+func GenerateBuild(fs afero.Fs, outputFolder string, component appstudiov1alpha1.Component, gitopsConfig gitopsprepare.GitopsConfig) error {
 	var buildResources map[string]interface{}
 	val, ok := component.Annotations[PaCAnnotation]
 	if ok && val == "1" {
-		repository := GeneratePACRepository(component)
+		repository, err := GeneratePACRepository(component, gitopsConfig.PipelinesAsCodeCredentials)
+		if err != nil {
+			return err
+		}
 		buildResources = map[string]interface{}{
 			buildRepositoryFileName: repository,
 		}
@@ -103,7 +112,7 @@ func GenerateBuild(fs afero.Fs, outputFolder string, component appstudiov1alpha1
 }
 
 // GenerateInitialBuildPipelineRun generates pipeline run for initial build of the component.
-func GenerateInitialBuildPipelineRun(component appstudiov1alpha1.Component, gitopsConfig prepare.GitopsConfig) (tektonapi.PipelineRun, error) {
+func GenerateInitialBuildPipelineRun(component appstudiov1alpha1.Component, gitopsConfig gitopsprepare.GitopsConfig) (tektonapi.PipelineRun, error) {
 	// normalizeOutputImageURL is not called with initial builds so we can ignore the error here
 	params, err := getParamsForComponentBuild(component, true)
 	if err != nil {
@@ -127,7 +136,7 @@ func getInitialBuildWorkspaceSubpath() string {
 
 // DetermineBuildExecution returns the pipelineRun spec that would be used
 // in webhooks-triggered pipelineRuns as well as user-triggered PipelineRuns
-func DetermineBuildExecution(component appstudiov1alpha1.Component, params []tektonapi.Param, workspaceSubPath string, gitopsConfig prepare.GitopsConfig) tektonapi.PipelineRunSpec {
+func DetermineBuildExecution(component appstudiov1alpha1.Component, params []tektonapi.Param, workspaceSubPath string, gitopsConfig gitopsprepare.GitopsConfig) tektonapi.PipelineRunSpec {
 
 	pipelineRunSpec := tektonapi.PipelineRunSpec{
 		Params: params,
@@ -366,7 +375,7 @@ func GenerateBuildWebhookRoute(component appstudiov1alpha1.Component) routev1.Ro
 // GenerateTriggerTemplate generates the TriggerTemplate resources
 // which defines how a webhook-based trigger event would be handled -
 // In this case, a PipelineRun to build an image would be created.
-func GenerateTriggerTemplate(component appstudiov1alpha1.Component, gitopsConfig prepare.GitopsConfig) (*triggersapi.TriggerTemplate, error) {
+func GenerateTriggerTemplate(component appstudiov1alpha1.Component, gitopsConfig gitopsprepare.GitopsConfig) (*triggersapi.TriggerTemplate, error) {
 	params, err := getParamsForComponentBuild(component, false)
 	if err != nil {
 		return nil, err
@@ -449,9 +458,31 @@ func GenerateEventListener(component appstudiov1alpha1.Component, triggerTemplat
 	return eventListener
 }
 
-// The GeneratePACRepository generates Repository for Pipelines-as-Code
-func GeneratePACRepository(component appstudiov1alpha1.Component) pacv1aplha1.Repository {
-	repository := pacv1aplha1.Repository{
+// GeneratePACRepository creates configuration of Pipelines as Code repository object.
+func GeneratePACRepository(component appstudiov1alpha1.Component, config map[string][]byte) (*pacv1alpha1.Repository, error) {
+	gitProvider, err := GetGitProvider(component)
+	if err != nil {
+		return nil, err
+	}
+
+	isAppUsed := IsPaCApplicationConfigured(gitProvider, config)
+
+	var gitProviderConfig *pacv1alpha1.GitProvider = nil
+	if !isAppUsed {
+		// Webhook is used
+		gitProviderConfig = &pacv1alpha1.GitProvider{
+			Secret: &pacv1alpha1.Secret{
+				Name: gitopsprepare.PipelinesAsCodeSecretName,
+				Key:  GetProviderTokenKey(gitProvider),
+			},
+			WebhookSecret: &pacv1alpha1.Secret{
+				Name: PipelinesAsCodeWebhooksSecretName,
+				Key:  GetWebhookSecretKeyForComponent(component),
+			},
+		}
+	}
+
+	repository := &pacv1alpha1.Repository{
 		TypeMeta: metav1.TypeMeta{
 			Kind:       "Repository",
 			APIVersion: "pipelinesascode.tekton.dev/v1alpha1",
@@ -461,9 +492,75 @@ func GeneratePACRepository(component appstudiov1alpha1.Component) pacv1aplha1.Re
 			Namespace:   component.Namespace,
 			Annotations: getBuildCommonLabelsForComponent(&component),
 		},
-		Spec: pacv1aplha1.RepositorySpec{
-			URL: component.Spec.Source.GitSource.URL,
+		Spec: pacv1alpha1.RepositorySpec{
+			URL:         component.Spec.Source.GitSource.URL,
+			GitProvider: gitProviderConfig,
 		},
 	}
-	return repository
+
+	return repository, nil
+}
+
+// GetProviderTokenKey returns key (field name) of the given provider access token in the Pipelines as Code k8s secret
+func GetProviderTokenKey(gitProvider string) string {
+	return gitProvider + ".token"
+}
+
+func GetWebhookSecretKeyForComponent(component appstudiov1alpha1.Component) string {
+	gitRepoUrl := strings.TrimSuffix(component.Spec.Source.GitSource.URL, ".git")
+
+	notAllowedCharRegex, _ := regexp.Compile("[^-._a-zA-Z0-9]{1}")
+	return notAllowedCharRegex.ReplaceAllString(gitRepoUrl, "_")
+}
+
+// GetGitProvider returns git provider name based on the repository url, e.g. github, gitlab, etc or git-privider annotation
+func GetGitProvider(component appstudiov1alpha1.Component) (string, error) {
+	allowedGitProviders := map[string]bool{"github": true, "gitlab": true, "bitbucket": true}
+	gitProvider := ""
+
+	sourceUrl := component.Spec.Source.GitSource.URL
+	u, err := url.Parse(sourceUrl)
+	if err != nil {
+		return "", err
+	}
+	uParts := strings.Split(u.Hostname(), ".")
+	if len(uParts) == 1 {
+		gitProvider = uParts[0]
+	} else {
+		gitProvider = uParts[len(uParts)-2]
+	}
+
+	if !allowedGitProviders[gitProvider] {
+		// Self-hosted git provider, check for git-provider annotation on the component
+		gitProviderAnnotationValue := component.GetAnnotations()[GitProviderAnnotationName]
+		if gitProviderAnnotationValue != "" {
+			if allowedGitProviders[gitProviderAnnotationValue] {
+				gitProvider = gitProviderAnnotationValue
+			} else {
+				err = fmt.Errorf("unsupported \"%s\" annotation value: %s", GitProviderAnnotationName, gitProviderAnnotationValue)
+			}
+		} else {
+			err = fmt.Errorf("self-hosted git provider is not specified via \"%s\" annotation in the component", GitProviderAnnotationName)
+		}
+	}
+
+	return gitProvider, err
+}
+
+// IsPaCApplicationConfigured checks if Pipelines as Code credentials configured for given provider.
+// Application is preffered over webhook if possible.
+func IsPaCApplicationConfigured(gitProvider string, config map[string][]byte) bool {
+	isAppUsed := false
+
+	switch gitProvider {
+	case "github":
+		if len(config[PipelinesAsCode_githubAppIdKey]) != 0 || len(config[PipelinesAsCode_githubPrivateKey]) != 0 {
+			isAppUsed = true
+		}
+	default:
+		// Application is not supported
+		isAppUsed = false
+	}
+
+	return isAppUsed
 }

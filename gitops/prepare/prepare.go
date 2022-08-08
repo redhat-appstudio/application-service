@@ -35,6 +35,8 @@ const (
 	FallbackBuildBundle = "quay.io/redhat-appstudio/build-templates-bundle:8201a567956ba6d2095d615ea2c0f6ab35f9ba5f"
 	// default secret for app studio registry
 	RegistrySecret = "redhat-appstudio-registry-pull-secret"
+	// Pipelines as Code global configuration secret name
+	PipelinesAsCodeSecretName = "pipelines-as-code-secret"
 )
 
 // Holds data that needs to be queried from the cluster in order for the gitops generation function to work
@@ -43,6 +45,9 @@ type GitopsConfig struct {
 	BuildBundle string
 
 	AppStudioRegistrySecretPresent bool
+
+	// Contains data from Pipelies as Code configuration k8s secret
+	PipelinesAsCodeCredentials map[string][]byte
 }
 
 func PrepareGitopsConfig(ctx context.Context, cli client.Client, component appstudiov1alpha1.Component) GitopsConfig {
@@ -55,6 +60,8 @@ func PrepareGitopsConfig(ctx context.Context, cli client.Client, component appst
 	} else {
 		data.BuildBundle = resolvedBundle
 	}
+
+	data.PipelinesAsCodeCredentials = getPipelinesAsCodeConfigurationSecretData(ctx, cli, component)
 
 	return data
 }
@@ -85,4 +92,13 @@ func resolveRegistrySecretPresence(ctx context.Context, cli client.Client, compo
 	registrySecret := &corev1.Secret{}
 	err := cli.Get(ctx, types.NamespacedName{Name: RegistrySecret, Namespace: component.Namespace}, registrySecret)
 	return err == nil
+}
+
+func getPipelinesAsCodeConfigurationSecretData(ctx context.Context, cli client.Client, component appstudiov1alpha1.Component) map[string][]byte {
+	pacSecret := &corev1.Secret{}
+	err := cli.Get(ctx, types.NamespacedName{Name: PipelinesAsCodeSecretName, Namespace: component.Namespace}, pacSecret)
+	if err != nil {
+		return make(map[string][]byte)
+	}
+	return pacSecret.Data
 }
