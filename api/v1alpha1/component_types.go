@@ -85,9 +85,6 @@ type ComponentSpec struct {
 	// Source describes the Component source
 	Source ComponentSource `json:"source,omitempty"`
 
-	// List of references to ReleaseStrategies to use when releasing the component
-	ReleaseStrategies []string `json:"releaseStrategies,omitempty"`
-
 	// Compute Resources required by this component
 	Resources corev1.ResourceRequirements `json:"resources,omitempty"`
 
