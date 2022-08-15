@@ -45,13 +45,24 @@ fi
 
 
 # now create APIExport and link all created APIResourceSchemas there
+# ToDo: Figure out better way of including permission claims
 KCP_API_EXPORT_FILE="${KCP_API_DIR}/apiexport_has.yaml"
 cat << EOF > ${KCP_API_EXPORT_FILE}
 apiVersion: apis.kcp.dev/v1alpha1
 kind: APIExport
 metadata:
-  name: has
+  name: apiexport-identity-has
 spec:
+  permissionClaims:
+  - group: ""
+    resource: "secrets"
+    verbs: ["get", "list", "watch"]
+  - group: ""
+    resource: "configmaps"
+    verbs: ["get", "list", "watch"]
+  - group: "route.openshift.io"
+    resource: "routes"
+    verbs: ["get", "list", "watch"]
   latestResourceSchemas:
 EOF
 
