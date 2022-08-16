@@ -78,7 +78,7 @@ jobs:
           fi
       - name: Check format
         run: |
-          go install github.com/google/addlicense@lateset
+          go install github.com/google/addlicense@latest
           go install golang.org/x/tools/cmd/goimports@latest
           git reset HEAD --hard
           make check_fmt
