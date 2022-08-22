@@ -1565,7 +1565,10 @@ func TestGetCommitSHAFromRepo(t *testing.T) {
 	if err != nil {
 		t.Errorf("unexpected error: %v", err)
 	}
-	createEmptyGitRepository(NewCmdExecutor(), tempDir)
+	err = createEmptyGitRepository(NewCmdExecutor(), tempDir)
+	if err != nil {
+		t.Errorf("unexpected error: %v", err)
+	}
 	commitSha, err := getCommitSHAFromDotGit(tempDir)
 	if err != nil {
 		t.Errorf("unexpected error: %v", err)
