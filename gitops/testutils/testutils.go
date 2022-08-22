@@ -46,7 +46,11 @@ func NewMockExecutor(outputs ...[]byte) *MockExecutor {
 
 func (m *MockExecutor) Execute(basedir, command string, args ...string) ([]byte, error) {
 	m.Executed = append(m.Executed, Execution{BaseDir: basedir, Command: command, Args: args})
-	return m.Outputs.Pop(), m.Errors.Pop()
+	if command == "git" && len(args) > 0 && args[0] == "rev-parse" {
+		return []byte("ca82a6dff817ec66f44342007202690a93763949"), m.Errors.Pop()
+	} else {
+		return m.Outputs.Pop(), m.Errors.Pop()
+	}
 }
 
 func (m *MockExecutor) GenerateParentKustomize(fs afero.Afero, gitOpsFolder string) error {
