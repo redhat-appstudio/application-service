@@ -1624,13 +1624,13 @@ func TestGetCommitSHAFromRepo(t *testing.T) {
 // createEmptyGitRepository generates an empty git repository under the specified folder
 func createEmptyGitRepository(e Executor, repoPath string) error {
 	// Initialize the Git repository
-	if _, err := e.Execute(repoPath, "git", "init"); err != nil {
-		return err
+	if out, err := e.Execute(repoPath, "git", "init"); err != nil {
+		return fmt.Errorf("Unable to intialize git repository in %q %q: %s", repoPath, out, err)
 	}
 
 	// Create an empty commit
-	if _, err := e.Execute(repoPath, "git", "commit", "--allow-empty", "-m", "\"Empty commit\""); err != nil {
-		return err
+	if out, err := e.Execute(repoPath, "git", "commit", "--allow-empty", "-m", "\"Empty commit\""); err != nil {
+		return fmt.Errorf("Unable to create empty commit in %q %q: %s", repoPath, out, err)
 	}
 	return nil
 }
