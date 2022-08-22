@@ -40,7 +40,7 @@ var _ = Describe("Component Detection Query controller", func() {
 		HASNamespace    = "default"
 		DisplayName     = "petclinic"
 		Description     = "Simple petclinic app"
-		ComponentName   = "backend"
+		ComponentName   = "devfile-sample-java-springboot-basic"
 		SampleRepoLink  = "https://github.com/devfile-samples/devfile-sample-java-springboot-basic"
 	)
 
@@ -130,6 +130,7 @@ var _ = Describe("Component Detection Query controller", func() {
 			for devfileName, devfileDesc := range createdHasCompDetectionQuery.Status.ComponentDetected {
 				Expect(devfileName).Should(ContainSubstring("spring"))
 				Expect(devfileDesc.ComponentStub.Source.GitSource.Context).Should(ContainSubstring("./"))
+				Expect(devfileDesc.ComponentStub.ComponentName).Should(Equal(ComponentName))
 			}
 
 			// Delete the specified Detection Query resource

@@ -96,7 +96,6 @@ func (r *ComponentDetectionQueryReconciler) Reconcile(ctx context.Context, req c
 				Name:      componentDetectionQuery.Spec.Secret,
 				Namespace: componentDetectionQuery.Namespace,
 			}
-
 			err = r.Client.Get(ctx, namespacedName, &gitSecret)
 			if err != nil {
 				log.Error(err, fmt.Sprintf("Unable to retrieve Git secret %v, exiting reconcile loop %v", componentDetectionQuery.Spec.Secret, req.NamespacedName))
