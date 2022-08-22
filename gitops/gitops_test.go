@@ -1629,7 +1629,7 @@ func createEmptyGitRepository(e Executor, repoPath string) error {
 	}
 
 	// Create an empty commit
-	if out, err := e.Execute(repoPath, "git", "commit", "--allow-empty", "-m", "\"Empty commit\""); err != nil {
+	if out, err := e.Execute(repoPath, "git", "commit", "--author", "Test User", "<>", "--allow-empty", "-m", "\"Empty commit\""); err != nil {
 		return fmt.Errorf("Unable to create empty commit in %q %q: %s", repoPath, out, err)
 	}
 	return nil
