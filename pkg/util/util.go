@@ -27,6 +27,8 @@ import (
 	"github.com/go-git/go-git/v5"
 	transportHttp "github.com/go-git/go-git/v5/plumbing/transport/http"
 	appstudiov1alpha1 "github.com/redhat-appstudio/application-service/api/v1alpha1"
+
+	"github.com/go-git/go-git/v5/plumbing"
 )
 
 func SanitizeName(name string) string {
@@ -178,4 +180,17 @@ func CheckWithRegex(pattern, name string) bool {
 	}
 
 	return reg.MatchString(name)
+}
+
+// GetCommitIDFromRepo returns the corresponding commit ID for the given git repository
+func GetCommitIDFromRepo(path, revision string) (string, error) {
+	r, err := git.PlainOpen(path)
+	if err != nil {
+		return "", err
+	}
+	commitSha, err := r.ResolveRevision(plumbing.Revision(revision))
+	if err != nil {
+		return "", err
+	}
+	return commitSha.String(), nil
 }

@@ -18,6 +18,7 @@ package gitops
 import (
 	"errors"
 	"fmt"
+	"os"
 	"path/filepath"
 	"testing"
 
@@ -1555,4 +1556,89 @@ func TestExecute(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestGetCommitSHAFromRepo(t *testing.T) {
+	// Create an empty git repository and git commit to test with
+	fs := ioutils.NewFilesystem()
+	tempDir, err := fs.TempDir(os.TempDir(), "test")
+	if err != nil {
+		t.Errorf("unexpected error: %v", err)
+	}
+	createEmptyGitRepository(NewCmdExecutor(), tempDir)
+	commitSha, err := getCommitSHAFromDotGit(tempDir)
+	if err != nil {
+		t.Errorf("unexpected error: %v", err)
+	}
+	e := NewCmdExecutor()
+	tests := []struct {
+		name     string
+		e        Executor
+		repoPath string
+		want     string
+		wantErr  bool
+	}{
+		{
+			name:     "No errors, successfully retrieve git commit ID",
+			e:        e,
+			repoPath: tempDir,
+			want:     commitSha,
+			wantErr:  false,
+		},
+		{
+			name:     "Invalid git repo, no commit ID",
+			e:        e,
+			repoPath: os.TempDir(),
+			want:     "",
+			wantErr:  true,
+		},
+		{
+			name:     "Test with mock executor, should pass",
+			e:        testutils.NewMockExecutor(),
+			repoPath: os.TempDir(),
+			want:     "ca82a6dff817ec66f44342007202690a93763949",
+			wantErr:  false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			commitID, err := GetCommitSHAFromRepo(fs, tt.e, tt.repoPath)
+
+			if err != nil && !tt.wantErr {
+				t.Errorf("TestGetCommitSHAFromRepo() unexpected error: %s", err.Error())
+			}
+			if err == nil && tt.wantErr {
+				t.Errorf("TestGetCommitSHAFromRepo() did not get expected error")
+			}
+			if commitID != tt.want {
+				t.Errorf("TestGetCommitSHAFromRepo() wanted: %v, got: %v", tt.want, commitID)
+			}
+		})
+	}
+}
+
+// createEmptyGitRepository generates an empty git repository under the specified folder
+func createEmptyGitRepository(e Executor, repoPath string) error {
+	// Initialize the Git repository
+	if _, err := e.Execute(repoPath, "git", "init"); err != nil {
+		return err
+	}
+
+	// Create an empty commit
+	if _, err := e.Execute(repoPath, "git", "commit", "--allow-empty", "-m", "\"Empty commit\""); err != nil {
+		return err
+	}
+	return nil
+}
+
+// getCommitSHAFromDotGit returns the latest commit SHA for the default branch in the given git repository
+func getCommitSHAFromDotGit(repoPath string) (string, error) {
+	fs := ioutils.NewFilesystem()
+	var fileBytes []byte
+	fileBytes, err := fs.ReadFile(filepath.Join(repoPath, ".git", "refs", "heads", "master"))
+	if err != nil {
+		return "", err
+	}
+	return string(fileBytes), nil
 }

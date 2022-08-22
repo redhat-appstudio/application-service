@@ -130,6 +130,9 @@ var _ = Describe("Component controller", func() {
 			Expect(err).Should(Not(HaveOccurred()))
 			Expect(string(createdHasComp.Status.GitOps.RepositoryURL)).Should(Equal(gitopsRepo))
 
+			// Commit ID should be set in the gitops repository and not be empty
+			Expect(createdHasComp.Status.GitOps.CommitID).Should(Not(BeEmpty()))
+
 			hasProjects, err := hasAppDevfile.GetProjects(common.DevfileOptions{})
 			Expect(err).Should(Not(HaveOccurred()))
 			Expect(len(hasProjects)).ShouldNot(Equal(0))
