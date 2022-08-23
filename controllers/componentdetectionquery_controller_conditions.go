@@ -31,10 +31,8 @@ import (
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
-	"github.com/go-logr/logr"
 	appstudiov1alpha1 "github.com/redhat-appstudio/application-service/api/v1alpha1"
 	"github.com/redhat-appstudio/application-service/pkg/util"
-	kvalidation "k8s.io/apimachinery/pkg/util/validation"
 )
 
 func (r *ComponentDetectionQueryReconciler) SetDetectingConditionAndUpdateCR(ctx context.Context, req ctrl.Request, componentDetectionQuery *appstudiov1alpha1.ComponentDetectionQuery) {
@@ -71,7 +69,7 @@ func (r *ComponentDetectionQueryReconciler) SetCompleteConditionAndUpdateCR(ctx 
 			Message: fmt.Sprintf("ComponentDetectionQuery failed: %v", completeError),
 		})
 	}
-	updateComponentName(log, ctx, componentDetectionQuery, r.Client)
+	updateComponentName(ctx, componentDetectionQuery, r.Client)
 
 	err := r.Client.Status().Update(ctx, componentDetectionQuery)
 	if err != nil {
@@ -79,17 +77,17 @@ func (r *ComponentDetectionQueryReconciler) SetCompleteConditionAndUpdateCR(ctx 
 	}
 }
 
-func updateComponentName(log logr.Logger, ctx context.Context, componentDetectionQuery *appstudiov1alpha1.ComponentDetectionQuery, client client.Client) {
+func updateComponentName(ctx context.Context, componentDetectionQuery *appstudiov1alpha1.ComponentDetectionQuery, client client.Client) {
 	for key, value := range componentDetectionQuery.Status.ComponentDetected {
 		repoUrl := value.ComponentStub.Source.GitSource.URL
 		lastElement := repoUrl[strings.LastIndex(repoUrl, "/")+1:]
 		repoName := strings.Split(lastElement, ".git")[0]
 		componentName := repoName
-		context := value.ComponentStub.Source.GitSource.DeepCopy().Context
+		context := value.ComponentStub.Source.GitSource.Context
 		if len(componentDetectionQuery.Status.ComponentDetected) > 1 && context != "" && context != "./" {
 			componentName = fmt.Sprintf("%s-%s", context, repoName)
 		}
-		componentName = sanitizeComponentName(log, ctx, componentName, client, componentDetectionQuery.Namespace)
+		componentName = sanitizeComponentName(ctx, componentName, client, componentDetectionQuery.Namespace)
 		value.ComponentStub.ComponentName = componentName
 
 		componentDetectionQuery.Status.ComponentDetected[key] = value
@@ -102,24 +100,20 @@ func updateComponentName(log logr.Logger, ctx context.Context, componentDetectio
 // - Start with an alphanumeric character
 // - End with an alphanumeric character
 // - Must not contain all numeric values
-func sanitizeComponentName(log logr.Logger, ctx context.Context, name string, client client.Client, namespace string) string {
-	err := kvalidation.IsDNS1123Label(name)
+func sanitizeComponentName(ctx context.Context, name string, client client.Client, namespace string) string {
+	exclusive := regexp.MustCompile(`[^a-zA-Z0-9/-]`)
+	// filter out invalid characters
+	name = exclusive.ReplaceAllString(name, "")
+	_, err := strconv.ParseFloat(name, 64)
 	if err != nil {
-		exclusive := regexp.MustCompile(`[^a-zA-Z0-9/-]`)
-		// filter out invalid characters
-		name = exclusive.ReplaceAllString(name, "")
-
-		_, err := strconv.ParseFloat(name, 64)
-		if err != nil {
-			// convert all Uppercase chars to lowercase
-			name = strings.ToLower(name)
-		} else {
-			// contains only numeric values, prefix a character
-			name = fmt.Sprintf("comp-%s", name)
-		}
-		if len(name) > 58 {
-			name = name[0:58]
-		}
+		// convert all Uppercase chars to lowercase
+		name = strings.ToLower(name)
+	} else {
+		// contains only numeric values, prefix a character
+		name = fmt.Sprintf("comp-%s", name)
+	}
+	if len(name) > 58 {
+		name = name[0:58]
 	}
 
 	// get hc

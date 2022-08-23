@@ -277,6 +277,7 @@ func NewFakeClient(t *testing.T, initObjs ...runtime.Object) *FakeClient {
 type FakeClient struct {
 	client.Client
 	MockList func(ctx context.Context, list client.ObjectList, opts ...client.ListOption) error
+	MockGet  func(ctx context.Context, key types.NamespacedName, obj client.Object) error
 }
 
 func (c *FakeClient) List(ctx context.Context, list client.ObjectList, opts ...client.ListOption) error {
@@ -284,4 +285,11 @@ func (c *FakeClient) List(ctx context.Context, list client.ObjectList, opts ...c
 		return c.MockList(ctx, list, opts...)
 	}
 	return c.Client.List(ctx, list, opts...)
+}
+
+func (c *FakeClient) Get(ctx context.Context, key types.NamespacedName, obj client.Object) error {
+	if c.MockGet != nil {
+		return c.MockGet(ctx, key, obj)
+	}
+	return c.Client.Get(ctx, key, obj)
 }
