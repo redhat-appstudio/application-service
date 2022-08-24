@@ -5,7 +5,721 @@ apiVersion: apis.kcp.dev/v1alpha1
 kind: APIResourceSchema
 metadata:
   creationTimestamp: null
-  name: v202208112106.applications.appstudio.redhat.com
+  name: v202208231850.applicationpromotionruns.appstudio.redhat.com
+spec:
+  group: appstudio.redhat.com
+  names:
+    kind: ApplicationPromotionRun
+    listKind: ApplicationPromotionRunList
+    plural: applicationpromotionruns
+    shortNames:
+    - apr
+    - promotion
+    singular: applicationpromotionrun
+  scope: Namespaced
+  versions:
+  - name: v1alpha1
+    schema:
+      description: ApplicationPromotionRun is the Schema for the applicationpromotionruns
+        API
+      properties:
+        apiVersion:
+          description: 'APIVersion defines the versioned schema of this representation
+            of an object. Servers should convert recognized schemas to the latest
+            internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources'
+          type: string
+        kind:
+          description: 'Kind is a string value representing the REST resource this
+            object represents. Servers may infer this from the endpoint the client
+            submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds'
+          type: string
+        metadata:
+          type: object
+        spec:
+          description: ApplicationPromotionRunSpec defines the desired state of ApplicationPromotionRun
+          properties:
+            application:
+              description: Application is the name of an Application resource defined
+                within the namespaced, and which is the target of the promotion
+              type: string
+            automatedPromotion:
+              description: 'AutomatedPromotion is for fields specific to automated
+                promotion Only one field should be defined: either ''manualPromotion''
+                or ''automatedPromotion'', but not both.'
+              properties:
+                initialEnvironment:
+                  description: 'InitialEnvironment: start iterating through the digraph,
+                    beginning with the value specified in ''initialEnvironment'''
+                  type: string
+              required:
+              - initialEnvironment
+              type: object
+            manualPromotion:
+              description: 'ManualPromotion is for fields specific to manual promotion.
+                Only one field should be defined: either ''manualPromotion'' or ''automatedPromotion'',
+                but not both.'
+              properties:
+                targetEnvironment:
+                  description: TargetEnvironment is the environment to promote to
+                  type: string
+              required:
+              - targetEnvironment
+              type: object
+            snapshot:
+              description: Snapshot refers to the name of a Snapshot resource defined
+                within the namespace, used to promote container images between Environments.
+              type: string
+          required:
+          - application
+          - snapshot
+          type: object
+        status:
+          description: ApplicationPromotionRunStatus defines the observed state of
+            ApplicationPromotionRun
+          properties:
+            activeBindings:
+              description: 'ActiveBindings is the list of active bindings currently
+                being promoted to: - For an automated promotion, there can be multiple
+                active bindings at a time (one for each env at a particular tree depth)
+                - For a manual promotion, there will be only one.'
+              items:
+                type: string
+              type: array
+            completionResult:
+              description: CompletionResult indicates success/failure once the promotion
+                has completed all work. CompletionResult will only have a value if
+                State field is 'Complete'.
+              type: string
+            environmentStatus:
+              description: EnvironmentStatus represents the set of steps taken during
+                the  current promotion
+              items:
+                description: 'PromotionRunEnvironmentStatus represents the set of
+                  steps taken during the  current promotion: - manual promotions will
+                  only have a single step. - automated promotions may have one or
+                  more steps, depending on how many environments have been promoted
+                  to.'
+                properties:
+                  displayStatus:
+                    description: DisplayStatus is human-readible description of the
+                      current state/status.
+                    type: string
+                  environmentName:
+                    description: EnvironmentName is the name of the environment that
+                      was promoted to in this step
+                    type: string
+                  status:
+                    description: Status is/was the result of promoting to that environment.
+                    type: string
+                  step:
+                    description: Step is the sequential number of the step in the
+                      array, starting with 1
+                    type: integer
+                required:
+                - displayStatus
+                - environmentName
+                - status
+                - step
+                type: object
+              type: array
+            state:
+              description: State indicates whether or not the overall promotion (either
+                manual or automated is complete)
+              type: string
+          required:
+          - state
+          type: object
+      type: object
+    served: true
+    storage: true
+    subresources:
+      status: {}
+
+---
+apiVersion: apis.kcp.dev/v1alpha1
+kind: APIResourceSchema
+metadata:
+  creationTimestamp: null
+  name: v202208231850.applicationsnapshotenvironmentbindings.appstudio.redhat.com
+spec:
+  group: appstudio.redhat.com
+  names:
+    kind: ApplicationSnapshotEnvironmentBinding
+    listKind: ApplicationSnapshotEnvironmentBindingList
+    plural: applicationsnapshotenvironmentbindings
+    shortNames:
+    - aseb
+    - binding
+    singular: applicationsnapshotenvironmentbinding
+  scope: Namespaced
+  versions:
+  - name: v1alpha1
+    schema:
+      description: ApplicationSnapshotEnvironmentBinding is the Schema for the applicationsnapshotenvironmentbindings
+        API
+      properties:
+        apiVersion:
+          description: 'APIVersion defines the versioned schema of this representation
+            of an object. Servers should convert recognized schemas to the latest
+            internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources'
+          type: string
+        kind:
+          description: 'Kind is a string value representing the REST resource this
+            object represents. Servers may infer this from the endpoint the client
+            submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds'
+          type: string
+        metadata:
+          type: object
+        spec:
+          description: ApplicationSnapshotEnvironmentBindingSpec defines the desired
+            state of ApplicationSnapshotEnvironmentBinding
+          properties:
+            application:
+              description: Application is a reference to the Application resource
+                (defined in the namespace) involved in the binding
+              type: string
+            components:
+              description: Components contains individual component data
+              items:
+                description: BindingComponent contains individual component data
+                properties:
+                  configuration:
+                    description: Configuration describes GitOps repository customizations
+                      that are specific to the the component-application-environment
+                      combination. - Values defined in this struct will overwrite
+                      values from Application/Environment/Component
+                    properties:
+                      env:
+                        description: Env describes environment variables to use for
+                          the component
+                        items:
+                          description: EnvVarPair describes environment variables
+                            to use for the component
+                          properties:
+                            name:
+                              description: Name is the environment variable name
+                              type: string
+                            value:
+                              description: Value is the environment variable value
+                              type: string
+                          required:
+                          - name
+                          - value
+                          type: object
+                        type: array
+                      replicas:
+                        description: Replicas defines the number of replicas to use
+                          for the component
+                        type: integer
+                      resources:
+                        description: Resources defines the Compute Resources required
+                          by the component
+                        properties:
+                          limits:
+                            additionalProperties:
+                              anyOf:
+                              - type: integer
+                              - type: string
+                              pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
+                              x-kubernetes-int-or-string: true
+                            description: 'Limits describes the maximum amount of compute
+                              resources allowed. More info: https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/'
+                            type: object
+                          requests:
+                            additionalProperties:
+                              anyOf:
+                              - type: integer
+                              - type: string
+                              pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
+                              x-kubernetes-int-or-string: true
+                            description: 'Requests describes the minimum amount of
+                              compute resources required. If Requests is omitted for
+                              a container, it defaults to Limits if that is explicitly
+                              specified, otherwise to an implementation-defined value.
+                              More info: https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/'
+                            type: object
+                        type: object
+                    required:
+                    - replicas
+                    type: object
+                  name:
+                    description: Name is the name of the component.
+                    type: string
+                required:
+                - name
+                type: object
+              type: array
+            environment:
+              description: Environment is the Environment resource (defined in the
+                namespace) that the binding will deploy to
+              type: string
+            snapshot:
+              description: Snapshot is the Snapshot resource (defined in the namespace)
+                that contains the container image versions for the components of the
+                Application
+              type: string
+          required:
+          - application
+          - components
+          - environment
+          - snapshot
+          type: object
+        status:
+          description: ApplicationSnapshotEnvironmentBindingStatus defines the observed
+            state of ApplicationSnapshotEnvironmentBinding
+          properties:
+            components:
+              description: Components describes a component's GitOps repository information.
+                This status is updated by the Application Service controller.
+              items:
+                description: ComponentStatus contains the status of the components
+                properties:
+                  gitopsRepository:
+                    description: GitOpsRepository contains the Git URL, path, and
+                      branch, for the component
+                    properties:
+                      branch:
+                        description: Branch is the branch to use when accessing the
+                          GitOps repository
+                        type: string
+                      generatedResources:
+                        description: GeneratedResources contains the list of GitOps
+                          repository resources generated by the application service
+                          controller in the overlays/<environment> dir, for example,
+                          'deployment-patch.yaml'. This is stored to differentiate
+                          between application-service controller generated resources
+                          vs resources added by a user
+                        items:
+                          type: string
+                        type: array
+                      path:
+                        description: 'Path is a pointer to a folder in the GitOps
+                          repo, containing a kustomization.yaml NOTE: Each component-env
+                          combination must have it''s own separate path'
+                        type: string
+                      url:
+                        description: URL is the Git repository URL e.g. The Git repository
+                          that contains the K8s resources to deployment for the component
+                          of the application.
+                        type: string
+                    required:
+                    - branch
+                    - generatedResources
+                    - path
+                    - url
+                    type: object
+                  name:
+                    description: Name is the name of the component.
+                    type: string
+                required:
+                - gitopsRepository
+                - name
+                type: object
+              type: array
+            gitopsDeployments:
+              description: GitOpsDeployments describes the set of GitOpsDeployment
+                resources that correspond to the binding. To determine the health/sync
+                status of a binding, you can look at the GitOpsDeployments decribed
+                here.
+              items:
+                description: "BindingStatusGitOpsDeployment describes an individual
+                  reference to a GitOpsDeployment resources that is used to deploy
+                  this binding. \n To determine the health/sync status of a binding,
+                  you can look at the GitOpsDeployments decribed here."
+                properties:
+                  componentName:
+                    description: ComponentName is the name of the component in the
+                      (component, gitopsdeployment) pair
+                    type: string
+                  gitopsDeployment:
+                    description: GitOpsDeployment is a reference to the name of a
+                      GitOpsDeployment resource which is used to deploy the binding.
+                      The Health/sync status for the binding can thus be read from
+                      the references GitOpsDEployment
+                    type: string
+                required:
+                - componentName
+                type: object
+              type: array
+            gitopsRepoConditions:
+              description: Condition describes operations on the GitOps repository,
+                for example, if there were issues with generating/processing the repository.
+                This status is updated by the Application Service controller.
+              items:
+                description: "Condition contains details for one aspect of the current
+                  state of this API Resource. --- This struct is intended for direct
+                  use as an array at the field path .status.conditions.  For example,
+                  type FooStatus struct{ // Represents the observations of a foo's
+                  current state. // Known .status.conditions.type are: \"Available\",
+                  \"Progressing\", and \"Degraded\" // +patchMergeKey=type // +patchStrategy=merge
+                  // +listType=map // +listMapKey=type Conditions []metav1.Condition
+                  `json:\"conditions,omitempty\" patchStrategy:\"merge\" patchMergeKey:\"type\"
+                  protobuf:\"bytes,1,rep,name=conditions\"` \n // other fields }"
+                properties:
+                  lastTransitionTime:
+                    description: lastTransitionTime is the last time the condition
+                      transitioned from one status to another. This should be when
+                      the underlying condition changed.  If that is not known, then
+                      using the time when the API field changed is acceptable.
+                    format: date-time
+                    type: string
+                  message:
+                    description: message is a human readable message indicating details
+                      about the transition. This may be an empty string.
+                    maxLength: 32768
+                    type: string
+                  observedGeneration:
+                    description: observedGeneration represents the .metadata.generation
+                      that the condition was set based upon. For instance, if .metadata.generation
+                      is currently 12, but the .status.conditions[x].observedGeneration
+                      is 9, the condition is out of date with respect to the current
+                      state of the instance.
+                    format: int64
+                    minimum: 0
+                    type: integer
+                  reason:
+                    description: reason contains a programmatic identifier indicating
+                      the reason for the condition's last transition. Producers of
+                      specific condition types may define expected values and meanings
+                      for this field, and whether the values are considered a guaranteed
+                      API. The value should be a CamelCase string. This field may
+                      not be empty.
+                    maxLength: 1024
+                    minLength: 1
+                    pattern: ^[A-Za-z]([A-Za-z0-9_,:]*[A-Za-z0-9_])?$
+                    type: string
+                  status:
+                    description: status of the condition, one of True, False, Unknown.
+                    enum:
+                    - "True"
+                    - "False"
+                    - Unknown
+                    type: string
+                  type:
+                    description: type of condition in CamelCase or in foo.example.com/CamelCase.
+                      --- Many .condition.type values are consistent across resources
+                      like Available, but because arbitrary conditions can be useful
+                      (see .node.status.conditions), the ability to deconflict is
+                      important. The regex it matches is (dns1123SubdomainFmt/)?(qualifiedNameFmt)
+                    maxLength: 316
+                    pattern: ^([a-z0-9]([-a-z0-9]*[a-z0-9])?(\.[a-z0-9]([-a-z0-9]*[a-z0-9])?)*/)?(([A-Za-z0-9][-A-Za-z0-9_.]*)?[A-Za-z0-9])$
+                    type: string
+                required:
+                - lastTransitionTime
+                - message
+                - reason
+                - status
+                - type
+                type: object
+              type: array
+          type: object
+      type: object
+    served: true
+    storage: true
+    subresources:
+      status: {}
+
+---
+apiVersion: apis.kcp.dev/v1alpha1
+kind: APIResourceSchema
+metadata:
+  creationTimestamp: null
+  name: v202208231850.applicationsnapshots.appstudio.redhat.com
+spec:
+  group: appstudio.redhat.com
+  names:
+    kind: ApplicationSnapshot
+    listKind: ApplicationSnapshotList
+    plural: applicationsnapshots
+    shortNames:
+    - as
+    - snapshot
+    singular: applicationsnapshot
+  scope: Namespaced
+  versions:
+  - name: v1alpha1
+    schema:
+      description: ApplicationSnapshot is the Schema for the applicationsnapshots
+        API
+      properties:
+        apiVersion:
+          description: 'APIVersion defines the versioned schema of this representation
+            of an object. Servers should convert recognized schemas to the latest
+            internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources'
+          type: string
+        kind:
+          description: 'Kind is a string value representing the REST resource this
+            object represents. Servers may infer this from the endpoint the client
+            submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds'
+          type: string
+        metadata:
+          type: object
+        spec:
+          description: ApplicationSnapshotSpec defines the desired state of ApplicationSnapshot
+          properties:
+            application:
+              description: Application is a reference to the name of an Application
+                resource within the same namespace, which defines the target application
+                for the Snapshot (when used with a Binding).
+              type: string
+            artifacts:
+              description: Artifacts is a placeholder section for 'artifact links'
+                we want to maintain to other AppStudio resources. See Environment
+                API doc for details.
+              properties:
+                unstableFields:
+                  description: 'NOTE: This field (and struct) are placeholders. -
+                    Until this API is stabilized, consumers of the API may store any
+                    unstructured JSON/YAML data here, but no backwards compatibility
+                    will be preserved.'
+                  x-kubernetes-preserve-unknown-fields: true
+              type: object
+            components:
+              description: Components field contains the sets of components to deploy
+                as part of this snapshot.
+              items:
+                description: ApplicationSnapshotComponent
+                properties:
+                  containerImage:
+                    description: ContainerImage is the container image to use when
+                      deploying the component, as part of a Snapshot
+                    type: string
+                  name:
+                    description: Name is the name of the component
+                    type: string
+                required:
+                - containerImage
+                - name
+                type: object
+              type: array
+            displayDescription:
+              description: DisplayDescription is a user-visible, user definable description
+                for the resource (and is not used for any functional behaviour)
+              type: string
+            displayName:
+              description: DisplayName is a user-visible, user-definable name for
+                the resource (and is not used for any functional behaviour)
+              type: string
+          required:
+          - application
+          type: object
+        status:
+          description: ApplicationSnapshotStatus defines the observed state of ApplicationSnapshot
+          properties:
+            conditions:
+              description: Conditions represent the latest available observations
+                for the Snapshot
+              items:
+                description: "Condition contains details for one aspect of the current
+                  state of this API Resource. --- This struct is intended for direct
+                  use as an array at the field path .status.conditions.  For example,
+                  type FooStatus struct{ // Represents the observations of a foo's
+                  current state. // Known .status.conditions.type are: \"Available\",
+                  \"Progressing\", and \"Degraded\" // +patchMergeKey=type // +patchStrategy=merge
+                  // +listType=map // +listMapKey=type Conditions []metav1.Condition
+                  `json:\"conditions,omitempty\" patchStrategy:\"merge\" patchMergeKey:\"type\"
+                  protobuf:\"bytes,1,rep,name=conditions\"` \n // other fields }"
+                properties:
+                  lastTransitionTime:
+                    description: lastTransitionTime is the last time the condition
+                      transitioned from one status to another. This should be when
+                      the underlying condition changed.  If that is not known, then
+                      using the time when the API field changed is acceptable.
+                    format: date-time
+                    type: string
+                  message:
+                    description: message is a human readable message indicating details
+                      about the transition. This may be an empty string.
+                    maxLength: 32768
+                    type: string
+                  observedGeneration:
+                    description: observedGeneration represents the .metadata.generation
+                      that the condition was set based upon. For instance, if .metadata.generation
+                      is currently 12, but the .status.conditions[x].observedGeneration
+                      is 9, the condition is out of date with respect to the current
+                      state of the instance.
+                    format: int64
+                    minimum: 0
+                    type: integer
+                  reason:
+                    description: reason contains a programmatic identifier indicating
+                      the reason for the condition's last transition. Producers of
+                      specific condition types may define expected values and meanings
+                      for this field, and whether the values are considered a guaranteed
+                      API. The value should be a CamelCase string. This field may
+                      not be empty.
+                    maxLength: 1024
+                    minLength: 1
+                    pattern: ^[A-Za-z]([A-Za-z0-9_,:]*[A-Za-z0-9_])?$
+                    type: string
+                  status:
+                    description: status of the condition, one of True, False, Unknown.
+                    enum:
+                    - "True"
+                    - "False"
+                    - Unknown
+                    type: string
+                  type:
+                    description: type of condition in CamelCase or in foo.example.com/CamelCase.
+                      --- Many .condition.type values are consistent across resources
+                      like Available, but because arbitrary conditions can be useful
+                      (see .node.status.conditions), the ability to deconflict is
+                      important. The regex it matches is (dns1123SubdomainFmt/)?(qualifiedNameFmt)
+                    maxLength: 316
+                    pattern: ^([a-z0-9]([-a-z0-9]*[a-z0-9])?(\.[a-z0-9]([-a-z0-9]*[a-z0-9])?)*/)?(([A-Za-z0-9][-A-Za-z0-9_.]*)?[A-Za-z0-9])$
+                    type: string
+                required:
+                - lastTransitionTime
+                - message
+                - reason
+                - status
+                - type
+                type: object
+              type: array
+          type: object
+      type: object
+    served: true
+    storage: true
+    subresources:
+      status: {}
+
+---
+apiVersion: apis.kcp.dev/v1alpha1
+kind: APIResourceSchema
+metadata:
+  creationTimestamp: null
+  name: v202208231850.environments.appstudio.redhat.com
+spec:
+  group: appstudio.redhat.com
+  names:
+    kind: Environment
+    listKind: EnvironmentList
+    plural: environments
+    shortNames:
+    - env
+    singular: environment
+  scope: Namespaced
+  versions:
+  - name: v1alpha1
+    schema:
+      description: Environment is the Schema for the environments API
+      properties:
+        apiVersion:
+          description: 'APIVersion defines the versioned schema of this representation
+            of an object. Servers should convert recognized schemas to the latest
+            internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources'
+          type: string
+        kind:
+          description: 'Kind is a string value representing the REST resource this
+            object represents. Servers may infer this from the endpoint the client
+            submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds'
+          type: string
+        metadata:
+          type: object
+        spec:
+          description: EnvironmentSpec defines the desired state of Environment
+          properties:
+            configuration:
+              description: Configuration contains environment-specific details for
+                Applications/Components that are deployed to the Environment.
+              properties:
+                env:
+                  description: Env is an array of standard environment vairables
+                  items:
+                    description: EnvVarPair describes environment variables to use
+                      for the component
+                    properties:
+                      name:
+                        description: Name is the environment variable name
+                        type: string
+                      value:
+                        description: Value is the environment variable value
+                        type: string
+                    required:
+                    - name
+                    - value
+                    type: object
+                  type: array
+              required:
+              - env
+              type: object
+            deploymentStrategy:
+              description: DeploymentStrategy is the promotion strategy for the Environment
+                See Environment API doc for details.
+              type: string
+            displayName:
+              description: DisplayName is the user-visible, user-definable name for
+                the environment (but not used for functional requirements)
+              type: string
+            parentEnvironment:
+              description: 'ParentEnvironment references another Environment defined
+                in the namespace: when automated promotion is enabled, promotions
+                to the parent environment will cause this environment to be promoted
+                to. See Environment API doc for details.'
+              type: string
+            tags:
+              description: Tags are a user-visisble, user-definable set of tags that
+                can be applied to the environment
+              items:
+                type: string
+              type: array
+            type:
+              description: Type is whether the Environment is a POC or non-POC environment
+              type: string
+            unstableConfigurationFields:
+              description: 'UnstableConfigurationFields are experimental/prototype:
+                the API has not been finalized here, and is subject to breaking changes.
+                See comment on UnstableEnvironmentConfiguration for details.'
+              properties:
+                kubernetesCredentials:
+                  description: "KubernetesClusterCredentials allows you to specify
+                    cluster credentials for stanadard K8s cluster (e.g. non-KCP workspace).
+                    \n See this temporary URL for details on what values to provide
+                    for the APIURL and Secret: https://github.com/redhat-appstudio/managed-gitops/tree/main/examples/m6-demo#gitopsdeploymentmanagedenvironment-resource"
+                  properties:
+                    apiURL:
+                      description: APIURL is a reference to a cluster API url defined
+                        within the kube config file of the cluster credentials secret.
+                      type: string
+                    clusterCredentialsSecret:
+                      description: "ClusterCredentialsSecret is a reference to the
+                        name of k8s Secret, defined within the same namespace as the
+                        Environment resource, that contains a kubeconfig. The Secret
+                        must be of type 'managed-gitops.redhat.com/managed-environment'
+                        \n See this temporary URL for details: https://github.com/redhat-appstudio/managed-gitops/tree/main/examples/m6-demo#gitopsdeploymentmanagedenvironment-resource"
+                      type: string
+                    targetNamespace:
+                      description: TargetNamespace is the default destination target
+                        on the cluster for deployments. This Namespace will be used
+                        for any GitOps repository K8s resources where the `.metadata.Namespace`
+                        field is not specified.
+                      type: string
+                  required:
+                  - apiURL
+                  - clusterCredentialsSecret
+                  - targetNamespace
+                  type: object
+              type: object
+          required:
+          - deploymentStrategy
+          - displayName
+          - type
+          type: object
+        status:
+          description: EnvironmentStatus defines the observed state of Environment
+          type: object
+      type: object
+    served: true
+    storage: true
+    subresources:
+      status: {}
+
+---
+apiVersion: apis.kcp.dev/v1alpha1
+kind: APIResourceSchema
+metadata:
+  creationTimestamp: null
+  name: v202208231850.applications.appstudio.redhat.com
 spec:
   group: appstudio.redhat.com
   names:
@@ -179,7 +893,7 @@ apiVersion: apis.kcp.dev/v1alpha1
 kind: APIResourceSchema
 metadata:
   creationTimestamp: null
-  name: v202208112106.componentdetectionqueries.appstudio.redhat.com
+  name: v202208231850.componentdetectionqueries.appstudio.redhat.com
 spec:
   group: appstudio.redhat.com
   names:
@@ -566,7 +1280,7 @@ apiVersion: apis.kcp.dev/v1alpha1
 kind: APIResourceSchema
 metadata:
   creationTimestamp: null
-  name: v202208112106.components.appstudio.redhat.com
+  name: v202208231850.components.appstudio.redhat.com
 spec:
   group: appstudio.redhat.com
   names:

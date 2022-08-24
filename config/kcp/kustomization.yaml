@@ -6,20 +6,22 @@ namespace: application-service-system
 # "wordpress" becomes "alices-wordpress".
 # Note that it should also match with the prefix (text before '-') of the namespace
 # field above.
-namePrefix: application-service-
+#namePrefix: application-service-
 
 # Labels to add to all resources and selectors.
 #commonLabels:
 #  someName: someValue
 
 bases:
-- ../crd
+#- ../crd
 - ../manager
-- ../rbac
+- ../kcp-rbac
 
 resources:
 - apiexport_has.yaml
 - apiresourceschema_has.yaml
+#- clusterrole.yaml
+#- clusterrolebinding.yaml
 
 patches:
 # Disable webhooks by default on KCP
@@ -39,6 +41,18 @@ patches:
     - op: replace
       path: /spec/template/spec/serviceAccountName
       value: default
+  target:
+    kind: Deployment
+    name: controller-manager
+
+# HAS on KCP needs to pass in the APIExport for HAS when the operator starts up
+- patch: |-
+    - op: add
+      path: /spec/template/spec/containers/0/args/-
+      value: --api-export-name
+    - op: add
+      path: /spec/template/spec/containers/0/args/-
+      value: appstudio-identity-has
   target:
     kind: Deployment
     name: controller-manager

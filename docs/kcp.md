@@ -3,7 +3,7 @@
 ## Prereqs
 
 - Access to a hosted KCP environment
-- An active KCP workspace, with an OpenShift-based `WorkloadCluster` inside it.
+- An active KCP workspace, with an OpenShift-based `SyncTarget` inside it.
 
 ## Before Deployment
 

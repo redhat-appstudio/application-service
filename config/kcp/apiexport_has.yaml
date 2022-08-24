@@ -4,9 +4,23 @@
 apiVersion: apis.kcp.dev/v1alpha1
 kind: APIExport
 metadata:
-  name: has
+  name: appstudio-identity-has
 spec:
+  permissionClaims:
+  - group: ""
+    resource: "secrets"
+    verbs: ["get", "list", "watch"]
+  - group: ""
+    resource: "configmaps"
+    verbs: ["get", "list", "watch"]
+  - group: "route.openshift.io"
+    resource: "routes"
+    verbs: ["get", "list", "watch"]
   latestResourceSchemas:
-    - v202208112106.applications.appstudio.redhat.com
-    - v202208112106.componentdetectionqueries.appstudio.redhat.com
-    - v202208112106.components.appstudio.redhat.com
+    - v202208231850.applicationpromotionruns.appstudio.redhat.com
+    - v202208231850.applicationsnapshotenvironmentbindings.appstudio.redhat.com
+    - v202208231850.applicationsnapshots.appstudio.redhat.com
+    - v202208231850.environments.appstudio.redhat.com
+    - v202208231850.applications.appstudio.redhat.com
+    - v202208231850.componentdetectionqueries.appstudio.redhat.com
+    - v202208231850.components.appstudio.redhat.com

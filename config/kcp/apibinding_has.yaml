@@ -1,0 +1,19 @@
+apiVersion: apis.kcp.dev/v1alpha1
+kind: APIBinding
+metadata:
+  name: has-binding
+spec:
+  reference:
+    workspace:
+      path: ${KCP_WORKSPACE}
+      exportName: appstudio-identity-has
+  acceptedPermissionClaims:
+    - group: ""
+      resource: "secrets"
+      verbs: ["get", "list", "watch"]
+    - group: ""
+      resource: "configmaps"
+      verbs: ["get", "list", "watch"]
+    - group: "route.openshift.io"
+      resource: "routes"
+      verbs: ["get", "list", "watch"]
