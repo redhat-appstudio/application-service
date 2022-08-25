@@ -205,12 +205,12 @@ func (e CmdExecutor) GenerateParentKustomize(fs afero.Afero, gitOpsFolder string
 	return GenerateParentKustomize(fs, gitOpsFolder)
 }
 
-// GetCommitSHAFromRepo returns the commit SHA for the given repository
-func GetCommitSHAFromRepo(fs afero.Afero, e Executor, repoPath string) (string, error) {
+// GetCommitIDFromRepo returns the commit ID for the given repository
+func GetCommitIDFromRepo(fs afero.Afero, e Executor, repoPath string) (string, error) {
 	var out []byte
 	var err error
 	if out, err = e.Execute(repoPath, "git", "rev-parse", "HEAD"); err != nil {
-		return "", fmt.Errorf("failed to retrieve commit sha for repository in %q %q: %s", repoPath, string(out), err)
+		return "", fmt.Errorf("failed to retrieve commit id for repository in %q %q: %s", repoPath, string(out), err)
 	}
 	return string(out), nil
 }

@@ -1558,7 +1558,7 @@ func TestExecute(t *testing.T) {
 	}
 }
 
-func TestGetCommitSHAFromRepo(t *testing.T) {
+func TestGetCommitIDFromRepo(t *testing.T) {
 	// Create an empty git repository and git commit to test with
 	fs := ioutils.NewFilesystem()
 	tempDir, err := fs.TempDir(os.TempDir(), "test")
@@ -1569,7 +1569,7 @@ func TestGetCommitSHAFromRepo(t *testing.T) {
 	if err != nil {
 		t.Errorf("unexpected error: %v", err)
 	}
-	commitSha, err := getCommitSHAFromDotGit(tempDir)
+	commitID, err := getCommitIDFromDotGit(tempDir)
 	if err != nil {
 		t.Errorf("unexpected error: %v", err)
 	}
@@ -1585,7 +1585,7 @@ func TestGetCommitSHAFromRepo(t *testing.T) {
 			name:     "No errors, successfully retrieve git commit ID",
 			e:        e,
 			repoPath: tempDir,
-			want:     commitSha,
+			want:     commitID,
 			wantErr:  false,
 		},
 		{
@@ -1606,16 +1606,16 @@ func TestGetCommitSHAFromRepo(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			commitID, err := GetCommitSHAFromRepo(fs, tt.e, tt.repoPath)
+			commitID, err := GetCommitIDFromRepo(fs, tt.e, tt.repoPath)
 
 			if err != nil && !tt.wantErr {
-				t.Errorf("TestGetCommitSHAFromRepo() unexpected error: %s", err.Error())
+				t.Errorf("TestGetCommitIDFromRepo() unexpected error: %s", err.Error())
 			}
 			if err == nil && tt.wantErr {
-				t.Errorf("TestGetCommitSHAFromRepo() did not get expected error")
+				t.Errorf("TestGetCommitIDFromRepo() did not get expected error")
 			}
 			if commitID != tt.want {
-				t.Errorf("TestGetCommitSHAFromRepo() wanted: %v, got: %v", tt.want, commitID)
+				t.Errorf("TestGetCommitIDFromRepo() wanted: %v, got: %v", tt.want, commitID)
 			}
 		})
 	}
@@ -1635,8 +1635,8 @@ func createEmptyGitRepository(e Executor, repoPath string) error {
 	return nil
 }
 
-// getCommitSHAFromDotGit returns the latest commit SHA for the default branch in the given git repository
-func getCommitSHAFromDotGit(repoPath string) (string, error) {
+// getCommitIDFromDotGit returns the latest commit ID for the default branch in the given git repository
+func getCommitIDFromDotGit(repoPath string) (string, error) {
 	fs := ioutils.NewFilesystem()
 	var fileBytes []byte
 	fileBytes, err := fs.ReadFile(filepath.Join(repoPath, ".git", "refs", "heads", "master"))
