@@ -73,7 +73,7 @@ func SetDefaultImageRepo(repo string) {
 func GenerateBuild(fs afero.Fs, outputFolder string, component appstudiov1alpha1.Component, gitopsConfig gitopsprepare.GitopsConfig) error {
 	var buildResources map[string]interface{}
 	val, ok := component.Annotations[PaCAnnotation]
-	if ok && val == "1" {
+	if (ok && val == "1") || gitopsConfig.IsHACBS {
 		repository, err := GeneratePACRepository(component, gitopsConfig.PipelinesAsCodeCredentials)
 		if err != nil {
 			return err

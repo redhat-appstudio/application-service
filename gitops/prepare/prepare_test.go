@@ -108,9 +108,10 @@ func TestResolveBuildBundle(t *testing.T) {
 	}
 
 	tests := []struct {
-		name string
-		data corev1.ConfigMap
-		want string
+		name    string
+		data    corev1.ConfigMap
+		isHACBS bool
+		want    string
 	}{
 		{
 			name: "should resolve the build bundle in case a configmap exists in the component's namespace",
@@ -185,13 +186,51 @@ func TestResolveBuildBundle(t *testing.T) {
 			},
 			want: "",
 		},
+		{
+			name: "should return HACBS bundle from user namespace",
+			data: corev1.ConfigMap{
+				TypeMeta: metav1.TypeMeta{
+					APIVersion: "v1",
+					Kind:       "ConfigMap",
+				},
+				Data: map[string]string{
+					BuildBundleConfigMapKey: "quay.io/foo/bar:4",
+					HACBSBundleConfigMapKey: "quay.io/foo/bar:5",
+				},
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      BuildBundleConfigMapName,
+					Namespace: component.Namespace,
+				},
+			},
+			isHACBS: true,
+			want:    "quay.io/foo/bar:5",
+		},
+		{
+			name: "should return HACBS bundle from default namespace",
+			data: corev1.ConfigMap{
+				TypeMeta: metav1.TypeMeta{
+					APIVersion: "v1",
+					Kind:       "ConfigMap",
+				},
+				Data: map[string]string{
+					BuildBundleConfigMapKey: "quay.io/foo/bar:6",
+					HACBSBundleConfigMapKey: "quay.io/foo/bar:7",
+				},
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      BuildBundleConfigMapName,
+					Namespace: BuildBundleDefaultNamespace,
+				},
+			},
+			isHACBS: true,
+			want:    "quay.io/foo/bar:7",
+		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			client := fake.NewClientBuilder().WithRuntimeObjects(&tt.data).Build()
 
-			if got := ResolveBuildBundle(ctx, client, component.Namespace); got != tt.want {
+			if got := ResolveBuildBundle(ctx, client, component.Namespace, tt.isHACBS); got != tt.want {
 				t.Errorf("ResolveBuildBundle() = %v, want %v", got, tt.want)
 			}
 		})
