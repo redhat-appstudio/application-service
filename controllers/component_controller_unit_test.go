@@ -340,6 +340,28 @@ func TestGenerateGitops(t *testing.T) {
 			},
 			wantErr: true,
 		},
+		{
+			name:       "Fail to retrieve commit ID for GitOps repository [Mock]",
+			reconciler: r,
+			fs:         appFS,
+			component: &appstudiov1alpha1.Component{
+				TypeMeta: metav1.TypeMeta{
+					APIVersion: "appstudio.redhat.com/v1alpha1",
+					Kind:       "Component",
+				},
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "test-git-error",
+					Namespace: "test-namespace",
+				},
+				Spec: componentSpec,
+				Status: appstudiov1alpha1.ComponentStatus{
+					GitOps: appstudiov1alpha1.GitOpsStatus{
+						RepositoryURL: "https://github.com/test/repo",
+					},
+				},
+			},
+			wantErr: true,
+		},
 	}
 
 	for _, tt := range tests {

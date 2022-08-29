@@ -207,13 +207,24 @@ func (r *ApplicationSnapshotEnvironmentBindingReconciler) Reconcile(ctx context.
 			return ctrl.Result{}, gitOpsErr
 		}
 
+		// Retrieve the commit ID
+		var commitID string
+		repoPath := filepath.Join(tempDir, applicationName)
+		if commitID, err = gitops.GetCommitIDFromRepo(r.AppFS, r.Executor, repoPath); err != nil {
+			gitOpsErr := util.SanitizeErrorMessage(err)
+			log.Error(gitOpsErr, "unable to retrieve gitops repository commit id due to error")
+			r.SetConditionAndUpdateCR(ctx, req, &appSnapshotEnvBinding, gitOpsErr)
+			return ctrl.Result{}, gitOpsErr
+		}
+
 		if !isStatusUpdated {
 			componentStatus := appstudioshared.ComponentStatus{
 				Name: componentName,
 				GitOpsRepository: appstudioshared.BindingComponentGitOpsRepository{
-					URL:    hasComponent.Status.GitOps.RepositoryURL,
-					Branch: gitOpsBranch,
-					Path:   filepath.Join(gitOpsContext, "components", componentName, "overlays", environmentName),
+					URL:      hasComponent.Status.GitOps.RepositoryURL,
+					Branch:   gitOpsBranch,
+					Path:     filepath.Join(gitOpsContext, "components", componentName, "overlays", environmentName),
+					CommitID: commitID,
 				},
 			}
 
