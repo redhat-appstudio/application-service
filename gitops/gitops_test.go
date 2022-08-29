@@ -18,6 +18,7 @@ package gitops
 import (
 	"errors"
 	"fmt"
+	"os"
 	"path/filepath"
 	"testing"
 
@@ -1555,4 +1556,92 @@ func TestExecute(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestGetCommitIDFromRepo(t *testing.T) {
+	// Create an empty git repository and git commit to test with
+	fs := ioutils.NewFilesystem()
+	tempDir, err := fs.TempDir(os.TempDir(), "test")
+	if err != nil {
+		t.Errorf("unexpected error: %v", err)
+	}
+	err = createEmptyGitRepository(NewCmdExecutor(), tempDir)
+	if err != nil {
+		t.Errorf("unexpected error: %v", err)
+	}
+	commitID, err := getCommitIDFromDotGit(tempDir)
+	if err != nil {
+		t.Errorf("unexpected error: %v", err)
+	}
+	e := NewCmdExecutor()
+	tests := []struct {
+		name     string
+		e        Executor
+		repoPath string
+		want     string
+		wantErr  bool
+	}{
+		{
+			name:     "No errors, successfully retrieve git commit ID",
+			e:        e,
+			repoPath: tempDir,
+			want:     commitID,
+			wantErr:  false,
+		},
+		{
+			name:     "Invalid git repo, no commit ID",
+			e:        e,
+			repoPath: os.TempDir(),
+			want:     "",
+			wantErr:  true,
+		},
+		{
+			name:     "Test with mock executor, should pass",
+			e:        testutils.NewMockExecutor(),
+			repoPath: os.TempDir(),
+			want:     "ca82a6dff817ec66f44342007202690a93763949",
+			wantErr:  false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			commitID, err := GetCommitIDFromRepo(fs, tt.e, tt.repoPath)
+
+			if err != nil && !tt.wantErr {
+				t.Errorf("TestGetCommitIDFromRepo() unexpected error: %s", err.Error())
+			}
+			if err == nil && tt.wantErr {
+				t.Errorf("TestGetCommitIDFromRepo() did not get expected error")
+			}
+			if commitID != tt.want {
+				t.Errorf("TestGetCommitIDFromRepo() wanted: %v, got: %v", tt.want, commitID)
+			}
+		})
+	}
+}
+
+// createEmptyGitRepository generates an empty git repository under the specified folder
+func createEmptyGitRepository(e Executor, repoPath string) error {
+	// Initialize the Git repository
+	if out, err := e.Execute(repoPath, "git", "init"); err != nil {
+		return fmt.Errorf("Unable to intialize git repository in %q %q: %s", repoPath, out, err)
+	}
+
+	// Create an empty commit
+	if out, err := e.Execute(repoPath, "git", "-c", "user.name='Test User'", "-c", "user.email='test@test.org'", "commit", "--allow-empty", "-m", "\"Empty commit\""); err != nil {
+		return fmt.Errorf("Unable to create empty commit in %q %q: %s", repoPath, out, err)
+	}
+	return nil
+}
+
+// getCommitIDFromDotGit returns the latest commit ID for the default branch in the given git repository
+func getCommitIDFromDotGit(repoPath string) (string, error) {
+	fs := ioutils.NewFilesystem()
+	var fileBytes []byte
+	fileBytes, err := fs.ReadFile(filepath.Join(repoPath, ".git", "refs", "heads", "master"))
+	if err != nil {
+		return "", err
+	}
+	return string(fileBytes), nil
 }

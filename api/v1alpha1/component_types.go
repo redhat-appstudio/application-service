@@ -141,6 +141,9 @@ type GitOpsStatus struct {
 
 	// ResourceGenerationSkipped is whether or not GitOps resource generation was skipped for the component
 	ResourceGenerationSkipped bool `json:"resourceGenerationSkipped,omitempty"`
+
+	// CommitID is the most recent commit ID in the GitOps repository for this component
+	CommitID string `json:"commitID,omitempty"`
 }
 
 //+kubebuilder:object:root=true

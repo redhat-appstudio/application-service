@@ -204,3 +204,13 @@ func (e CmdExecutor) Execute(baseDir, command string, args ...string) ([]byte, e
 func (e CmdExecutor) GenerateParentKustomize(fs afero.Afero, gitOpsFolder string) error {
 	return GenerateParentKustomize(fs, gitOpsFolder)
 }
+
+// GetCommitIDFromRepo returns the commit ID for the given repository
+func GetCommitIDFromRepo(fs afero.Afero, e Executor, repoPath string) (string, error) {
+	var out []byte
+	var err error
+	if out, err = e.Execute(repoPath, "git", "rev-parse", "HEAD"); err != nil {
+		return "", fmt.Errorf("failed to retrieve commit id for repository in %q %q: %s", repoPath, string(out), err)
+	}
+	return string(out), nil
+}
