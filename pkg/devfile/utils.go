@@ -79,6 +79,8 @@ func getContext(localpath string, currentLevel int) string {
 	return context
 }
 
+// UpdateDockerfileLink updates teh Dockerfile relative uri
+// to a full URL link with the context & revision
 func UpdateDockerfileLink(repo, revision, context string) (string, error) {
 
 	link := context

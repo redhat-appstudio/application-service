@@ -109,7 +109,7 @@ func TestSearchForDockerfile(t *testing.T) {
 	tests := []struct {
 		name          string
 		devfileString string
-		wantUri       string
+		found         bool
 		wantErr       bool
 	}{
 		{
@@ -124,7 +124,7 @@ components:
       imageName: nodejs-image:latest
       dockerfile:
         uri: "myuri"`,
-			wantUri: "myuri",
+			found: true,
 		},
 		{
 			name: "No Devfile Uri",
@@ -138,19 +138,22 @@ components:
       imageName: nodejs-image:latest
       dockerfile:
         uri: ""`,
+			found: false,
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			devfileBytes := []byte(tt.devfileString)
-			gotUri, err := SearchForDockerfile(devfileBytes)
+			dockerfileImage, err := SearchForDockerfile(devfileBytes)
 			if !tt.wantErr && err != nil {
 				t.Errorf("Unexpected err: %+v", err)
 			} else if tt.wantErr && err == nil {
 				t.Errorf("Expected error but got nil")
-			} else if gotUri != tt.wantUri {
-				t.Errorf("Expected %v but got %v", tt.wantUri, gotUri)
+			} else if tt.found && dockerfileImage == nil {
+				t.Errorf("dockerfile should be found, but got %v", dockerfileImage)
+			} else if !tt.found && dockerfileImage != nil {
+				t.Errorf("dockerfile should be found, but got %v", dockerfileImage)
 			}
 		})
 	}

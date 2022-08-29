@@ -5,7 +5,7 @@ apiVersion: apis.kcp.dev/v1alpha1
 kind: APIResourceSchema
 metadata:
   creationTimestamp: null
-  name: v202207121506.applications.appstudio.redhat.com
+  name: v202208112106.applications.appstudio.redhat.com
 spec:
   group: appstudio.redhat.com
   names:
@@ -179,7 +179,7 @@ apiVersion: apis.kcp.dev/v1alpha1
 kind: APIResourceSchema
 metadata:
   creationTimestamp: null
-  name: v202207121506.componentdetectionqueries.appstudio.redhat.com
+  name: v202208112106.componentdetectionqueries.appstudio.redhat.com
 spec:
   group: appstudio.redhat.com
   names:
@@ -387,12 +387,6 @@ spec:
                           - name
                           type: object
                         type: array
-                      releaseStrategies:
-                        description: List of references to ReleaseStrategies to use
-                          when releasing the component
-                        items:
-                          type: string
-                        type: array
                       replicas:
                         description: The number of replicas to deploy the component
                           with
@@ -572,7 +566,7 @@ apiVersion: apis.kcp.dev/v1alpha1
 kind: APIResourceSchema
 metadata:
   creationTimestamp: null
-  name: v202207121506.components.appstudio.redhat.com
+  name: v202208112106.components.appstudio.redhat.com
 spec:
   group: appstudio.redhat.com
   names:
@@ -722,12 +716,6 @@ spec:
                 required:
                 - name
                 type: object
-              type: array
-            releaseStrategies:
-              description: List of references to ReleaseStrategies to use when releasing
-                the component
-              items:
-                type: string
               type: array
             replicas:
               description: The number of replicas to deploy the component with
