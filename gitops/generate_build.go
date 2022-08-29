@@ -294,38 +294,30 @@ func getParamsForComponentBuild(component appstudiov1alpha1.Component, isInitial
 		})
 	}
 	// Analyze component model for additional parameters
-	if componentDevfileData, err := devfile.ParseDevfileModel(component.Status.Devfile); err == nil {
+	dockerfile, err := devfile.SearchForDockerfile([]byte(component.Status.Devfile))
+	if err != nil {
+		return []tektonapi.Param{}, err
+	}
+	if dockerfile != nil {
+		// Set dockerfile location
+		params = append(params, tektonapi.Param{
+			Name: "dockerfile",
+			Value: tektonapi.ArrayOrString{
+				Type:      tektonapi.ParamTypeString,
+				StringVal: dockerfile.Uri,
+			},
+		})
 
-		// Check for dockerfile in outerloop-build devfile component
-		if devfileComponents, err := componentDevfileData.GetComponents(devfilecommon.DevfileOptions{}); err == nil {
-			for _, devfileComponent := range devfileComponents {
-				if devfileComponent.Name == "outerloop-build" {
-					if devfileComponent.Image != nil && devfileComponent.Image.Dockerfile != nil && devfileComponent.Image.Dockerfile.Uri != "" {
-						// Set dockerfile location
-						params = append(params, tektonapi.Param{
-							Name: "dockerfile",
-							Value: tektonapi.ArrayOrString{
-								Type:      tektonapi.ParamTypeString,
-								StringVal: devfileComponent.Image.Dockerfile.Uri,
-							},
-						})
-
-						// Check for docker build context
-						if devfileComponent.Image.Dockerfile.BuildContext != "" {
-							params = append(params, tektonapi.Param{
-								Name: "path-context",
-								Value: tektonapi.ArrayOrString{
-									Type:      tektonapi.ParamTypeString,
-									StringVal: devfileComponent.Image.Dockerfile.BuildContext,
-								},
-							})
-						}
-					}
-					break
-				}
-			}
+		// Check for docker build context
+		if dockerfile.BuildContext != "" {
+			params = append(params, tektonapi.Param{
+				Name: "path-context",
+				Value: tektonapi.ArrayOrString{
+					Type:      tektonapi.ParamTypeString,
+					StringVal: dockerfile.BuildContext,
+				},
+			})
 		}
-
 	}
 
 	return params, err
