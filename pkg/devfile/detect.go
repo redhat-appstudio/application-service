@@ -138,14 +138,16 @@ func AnalyzePath(a Alizer, localpath, context, devfileRegistryURL string, devfil
 		// If devfile is present, check to see if we can determine a Dockerfile from it
 		devfile := devfileMapFromRepo[context]
 
-		if dockerfileUri, err := SearchForDockerfile(devfile); err != nil {
+		dockerfileImage, err := SearchForDockerfile(devfile)
+		if err != nil {
 			return err
-		} else if len(dockerfileUri) > 0 {
-			if !strings.HasPrefix(dockerfileUri, "http") {
+		}
+		if dockerfileImage != nil {
+			if !strings.HasPrefix(dockerfileImage.Uri, "http") {
 				// if it is a relative uri, append the context
-				dockerfileContextMapFromRepo[context] = path.Join(context, dockerfileUri)
+				dockerfileContextMapFromRepo[context] = path.Join(context, dockerfileImage.Uri)
 			} else {
-				dockerfileContextMapFromRepo[context] = dockerfileUri
+				dockerfileContextMapFromRepo[context] = dockerfileImage.Uri
 			}
 			isDockerfilePresent = true
 		}
@@ -176,11 +178,15 @@ func AnalyzePath(a Alizer, localpath, context, devfileRegistryURL string, devfil
 				return err
 			}
 
-			dockerfileUri, err := SearchForDockerfile(detectedDevfile)
+			dockerfileImage, err := SearchForDockerfile(detectedDevfile)
 			if err != nil {
 				return err
 			}
 
+			var dockerfileUri string
+			if dockerfileImage != nil {
+				dockerfileUri = dockerfileImage.Uri
+			}
 			link, err := UpdateDockerfileLink(sampleRepoURL, "", dockerfileUri)
 			if err != nil {
 				return err
@@ -194,14 +200,15 @@ func AnalyzePath(a Alizer, localpath, context, devfileRegistryURL string, devfil
 	return nil
 }
 
-// SearchForDockerfile searches for a Dockerfile from a devfile image component and
-// returns the dockerfile uri
-func SearchForDockerfile(devfile []byte) (string, error) {
-	var dockerfile string
-
+// SearchForDockerfile searches for a dockerfile from a devfile image component.
+// If no dockerfile is found, nil will be returned.
+func SearchForDockerfile(devfile []byte) (*v1alpha2.DockerfileImage, error) {
+	if len(devfile) == 0 {
+		return nil, nil
+	}
 	devfileData, err := ParseDevfileModel(string(devfile))
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 	devfileImageComponents, err := devfileData.GetComponents(common.DevfileOptions{
 		ComponentOptions: common.ComponentOptions{
@@ -209,18 +216,17 @@ func SearchForDockerfile(devfile []byte) (string, error) {
 		},
 	})
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 
 	for _, component := range devfileImageComponents {
 		// Only check for the Dockerfile Uri at this point, in later stages we need to account for Dockerfile from Git & the Registry
 		if component.Image != nil && component.Image.Dockerfile != nil && component.Image.Dockerfile.DockerfileSrc.Uri != "" {
-			dockerfile = component.Image.Dockerfile.DockerfileSrc.Uri
-			break
+			return component.Image.Dockerfile, nil
 		}
 	}
 
-	return dockerfile, nil
+	return nil, nil
 }
 
 // Analyze is a wrapper call to Alizer's Analyze()

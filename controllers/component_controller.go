@@ -470,6 +470,15 @@ func (r *ComponentReconciler) generateGitops(ctx context.Context, req ctrl.Reque
 		return gitOpsErr
 	}
 
+	// Get the commit ID for the gitops repository
+	var commitID string
+	if commitID, err = gitops.GetCommitIDFromRepo(r.AppFS, r.Executor, tempDir); err != nil {
+		gitOpsErr := util.SanitizeErrorMessage(err)
+		log.Error(gitOpsErr, "unable to retrieve gitops repository commit id due to error")
+		return gitOpsErr
+	}
+	component.Status.GitOps.CommitID = commitID
+
 	// Remove the temp folder that was created
 	return r.AppFS.RemoveAll(tempDir)
 }

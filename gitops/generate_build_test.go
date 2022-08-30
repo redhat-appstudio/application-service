@@ -85,13 +85,15 @@ func getSampleDevfileComponents() []v1alpha2.Component {
 
 func TestGenerateBuild(t *testing.T) {
 	outoutFolder := "output"
-	gitopsConfig := gitopsprepare.GitopsConfig{}
+	emptyGitopsConfig := gitopsprepare.GitopsConfig{}
 
 	tests := []struct {
-		name      string
-		fs        afero.Afero
-		component appstudiov1alpha1.Component
-		want      []string
+		name         string
+		fs           afero.Afero
+		component    appstudiov1alpha1.Component
+		gitopsConfig gitopsprepare.GitopsConfig
+		want         []string
+		expectFail   bool
 	}{
 		{
 			name: "Check trigger based resources",
@@ -111,6 +113,7 @@ func TestGenerateBuild(t *testing.T) {
 					},
 				},
 			},
+			gitopsConfig: emptyGitopsConfig,
 			want: []string{
 				kustomizeFileName,
 				buildTriggerTemplateFileName,
@@ -119,7 +122,7 @@ func TestGenerateBuild(t *testing.T) {
 			},
 		},
 		{
-			name: "Check pipeline as code resources",
+			name: "Check pipeline as code resources with annotation",
 			fs:   ioutils.NewMemoryFilesystem(),
 			component: appstudiov1alpha1.Component{
 				ObjectMeta: metav1.ObjectMeta{
@@ -139,16 +142,68 @@ func TestGenerateBuild(t *testing.T) {
 					},
 				},
 			},
+			gitopsConfig: emptyGitopsConfig,
 			want: []string{
 				kustomizeFileName,
 				buildRepositoryFileName,
 			},
 		},
+		{
+			name: "Check pipeline as code resources on HACBS",
+			fs:   ioutils.NewMemoryFilesystem(),
+			component: appstudiov1alpha1.Component{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "testcomponent",
+					Namespace: "workspace-name",
+				},
+				Spec: appstudiov1alpha1.ComponentSpec{
+					Source: appstudiov1alpha1.ComponentSource{
+						ComponentSourceUnion: appstudiov1alpha1.ComponentSourceUnion{
+							GitSource: &appstudiov1alpha1.GitSource{
+								URL: "https://github.com/user/git-repo.git",
+							},
+						},
+					},
+				},
+			},
+			gitopsConfig: gitopsprepare.GitopsConfig{IsHACBS: true},
+			want: []string{
+				kustomizeFileName,
+				buildRepositoryFileName,
+			},
+		},
+		{
+			name: "Fail build generation by invalid git URL.",
+			fs:   ioutils.NewMemoryFilesystem(),
+			component: appstudiov1alpha1.Component{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "testcomponent",
+					Namespace: "workspace-name",
+				},
+				Spec: appstudiov1alpha1.ComponentSpec{
+					Source: appstudiov1alpha1.ComponentSource{
+						ComponentSourceUnion: appstudiov1alpha1.ComponentSourceUnion{
+							GitSource: &appstudiov1alpha1.GitSource{
+								URL: "invalid-url-here",
+							},
+						},
+					},
+				},
+			},
+			expectFail: true,
+		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if err := GenerateBuild(tt.fs, outoutFolder, tt.component, gitopsConfig); err != nil {
+			if tt.expectFail {
+				err := GenerateBuild(tt.fs, outoutFolder, tt.component, tt.gitopsConfig)
+				if err != nil {
+					t.Errorf("Failure build generation is expected by invalid git URL, but seems no error is returned.")
+				}
+			}
+
+			if err := GenerateBuild(tt.fs, outoutFolder, tt.component, tt.gitopsConfig); err != nil {
 				t.Errorf("Failed to generate builf gitops resources. Cause: %v", err)
 			}
 

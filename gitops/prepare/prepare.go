@@ -31,12 +31,18 @@ const (
 	BuildBundleConfigMapName = "build-pipelines-defaults"
 	// data key within a configMap that holds the URL to a build bundle
 	BuildBundleConfigMapKey = "default_build_bundle"
+	HACBSBundleConfigMapKey = "hacbs_build_bundle"
+
 	// fallback bundle that will be used in case the bundle resolution fails
 	FallbackBuildBundle = "quay.io/redhat-appstudio/build-templates-bundle:8201a567956ba6d2095d615ea2c0f6ab35f9ba5f"
 	// default secret for app studio registry
 	RegistrySecret = "redhat-appstudio-registry-pull-secret"
 	// Pipelines as Code global configuration secret name
 	PipelinesAsCodeSecretName = "pipelines-as-code-secret"
+	// ConfigMap name for detection hacbs workflow
+	// Note: HACBS detection by configmap is temporary solution, will be changed to detection based
+	// on APIBinding API in KCP environment.
+	HACBSConfigMapName = "hacbs"
 )
 
 // Holds data that needs to be queried from the cluster in order for the gitops generation function to work
@@ -48,13 +54,16 @@ type GitopsConfig struct {
 
 	// Contains data from Pipelies as Code configuration k8s secret
 	PipelinesAsCodeCredentials map[string][]byte
+
+	IsHACBS bool
 }
 
 func PrepareGitopsConfig(ctx context.Context, cli client.Client, component appstudiov1alpha1.Component) GitopsConfig {
 	data := GitopsConfig{}
 
 	data.AppStudioRegistrySecretPresent = resolveRegistrySecretPresence(ctx, cli, component)
-	resolvedBundle := ResolveBuildBundle(ctx, cli, component.Namespace)
+	data.IsHACBS = IsHACBS(ctx, cli, component.Namespace)
+	resolvedBundle := ResolveBuildBundle(ctx, cli, component.Namespace, data.IsHACBS)
 	if resolvedBundle == "" {
 		data.BuildBundle = FallbackBuildBundle
 	} else {
@@ -68,9 +77,13 @@ func PrepareGitopsConfig(ctx context.Context, cli client.Client, component appst
 
 // Tries to load a custom build bundle path from a configmap.
 // The following priority is used: component's namespace -> default namespace -> empty string.
-func ResolveBuildBundle(ctx context.Context, cli client.Client, namespace string) string {
+func ResolveBuildBundle(ctx context.Context, cli client.Client, namespace string, isHACBS bool) string {
 	namespaces := [2]string{namespace, BuildBundleDefaultNamespace}
 
+	bundleConfigMapKey := BuildBundleConfigMapKey
+	if isHACBS {
+		bundleConfigMapKey = HACBSBundleConfigMapKey
+	}
 	for _, namespace := range namespaces {
 		var configMap = corev1.ConfigMap{}
 
@@ -78,12 +91,19 @@ func ResolveBuildBundle(ctx context.Context, cli client.Client, namespace string
 		// TODO: Add logging to help the debugging of eventual issues
 		_ = cli.Get(ctx, types.NamespacedName{Name: BuildBundleConfigMapName, Namespace: namespace}, &configMap)
 
-		if value, isPresent := configMap.Data[BuildBundleConfigMapKey]; isPresent && value != "" {
+		if value, isPresent := configMap.Data[bundleConfigMapKey]; isPresent && value != "" {
 			return value
 		}
 	}
 
 	return ""
+}
+
+// Return true when hacbs configmap exists in the namespace
+func IsHACBS(ctx context.Context, cli client.Client, namespace string) bool {
+	var configMap = corev1.ConfigMap{}
+	err := cli.Get(ctx, types.NamespacedName{Name: HACBSConfigMapName, Namespace: namespace}, &configMap)
+	return err == nil
 }
 
 // Determines whether the 'redhat-appstudio-registry-pull-secret' Secret exists, so that the Generate* functions
