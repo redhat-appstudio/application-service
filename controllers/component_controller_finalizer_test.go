@@ -262,7 +262,7 @@ var _ = Describe("Application controller finalizer counter tests", func() {
 			createdHasComp := &appstudiov1alpha1.Component{}
 			Eventually(func() bool {
 				k8sClient.Get(context.Background(), hasCompLookupKey, createdHasComp)
-				return len(createdHasComp.Status.Conditions) > 0 && createdHasComp.Status.GitOps.RepositoryURL != ""
+				return len(createdHasComp.Status.Conditions) > 1 && createdHasComp.Status.GitOps.RepositoryURL != ""
 			}, timeout, interval).Should(BeTrue())
 
 			// Make sure the devfile model was properly set in Component
@@ -314,8 +314,8 @@ var _ = Describe("Application controller finalizer counter tests", func() {
 
 	Context("Delete Component CR with specified git branch and context", func() {
 		It("Should delete successfully", func() {
-			applicationName := AppName + "3"
-			componentName := CompName + "3"
+			applicationName := AppName + "4"
+			componentName := CompName + "4"
 
 			// Create a simple Application CR and get its devfile
 			createAndFetchSimpleApp(applicationName, AppNamespace, DisplayName, Description)

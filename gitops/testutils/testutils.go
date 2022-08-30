@@ -16,7 +16,9 @@
 package testutils
 
 import (
+	"fmt"
 	"regexp"
+	"strings"
 	"sync"
 	"testing"
 
@@ -47,7 +49,12 @@ func NewMockExecutor(outputs ...[]byte) *MockExecutor {
 func (m *MockExecutor) Execute(basedir, command string, args ...string) ([]byte, error) {
 	m.Executed = append(m.Executed, Execution{BaseDir: basedir, Command: command, Args: args})
 	if command == "git" && len(args) > 0 && args[0] == "rev-parse" {
-		return []byte("ca82a6dff817ec66f44342007202690a93763949"), m.Errors.Pop()
+		if strings.Contains(basedir, "test-git-error") {
+			return []byte(""), fmt.Errorf("unable to retrive git commit id")
+		} else {
+			return []byte("ca82a6dff817ec66f44342007202690a93763949"), m.Errors.Pop()
+		}
+
 	} else {
 		return m.Outputs.Pop(), m.Errors.Pop()
 	}

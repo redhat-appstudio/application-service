@@ -19,6 +19,7 @@ package controllers
 import (
 	"context"
 	"fmt"
+	"path/filepath"
 	"reflect"
 	"time"
 
@@ -472,7 +473,8 @@ func (r *ComponentReconciler) generateGitops(ctx context.Context, req ctrl.Reque
 
 	// Get the commit ID for the gitops repository
 	var commitID string
-	if commitID, err = gitops.GetCommitIDFromRepo(r.AppFS, r.Executor, tempDir); err != nil {
+	repoPath := filepath.Join(tempDir, component.Name)
+	if commitID, err = gitops.GetCommitIDFromRepo(r.AppFS, r.Executor, repoPath); err != nil {
 		gitOpsErr := util.SanitizeErrorMessage(err)
 		log.Error(gitOpsErr, "unable to retrieve gitops repository commit id due to error")
 		return gitOpsErr

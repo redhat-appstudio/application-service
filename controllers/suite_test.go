@@ -70,7 +70,7 @@ var _ = BeforeSuite(func() {
 	logf.SetLogger(zap.New(zap.WriteTo(GinkgoWriter), zap.UseDevMode(true)))
 
 	ctx, cancel = context.WithCancel(context.TODO())
-	managedGitOpsDepVersion := "v0.0.0-20220623041404-010a781bb3fb"
+	managedGitOpsDepVersion := "v0.0.0-20220826075641-33705d2bf7fa"
 
 	By("bootstrapping test environment")
 	testEnv = &envtest.Environment{
