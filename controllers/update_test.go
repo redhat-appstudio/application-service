@@ -1299,7 +1299,7 @@ func TestUpdateComponentStub(t *testing.T) {
 	}
 }
 
-func TestUpdateComponentName(t *testing.T) {
+func TestGetComponentName(t *testing.T) {
 	ctx := context.Background()
 	fakeClientNoError := NewFakeClient(t)
 	fakeClientNoError.MockGet = func(ctx context.Context, key types.NamespacedName, obj client.Object) error {
@@ -1385,7 +1385,7 @@ func TestUpdateComponentName(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			gotComponentName := updateComponentName(ctx, tt.gitSource, tt.client, "default")
+			gotComponentName := getComponentName(ctx, tt.gitSource, tt.client, "default")
 			if tt.expectedRandomString {
 				assert.Contains(t, gotComponentName, tt.expectedName, "the component name should contain repo name")
 				assert.NotEqual(t, tt.expectedName, gotComponentName, "the component name should not equal to repo name")

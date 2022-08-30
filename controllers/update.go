@@ -305,7 +305,7 @@ func (r *ComponentDetectionQueryReconciler) updateComponentStub(req ctrl.Request
 			DevfileURL:    devfilesURLMap[context],
 			DockerfileURL: dockerfileContextMap[context],
 		}
-		componentName := updateComponentName(ctx, gitSource, r.Client, req.Namespace)
+		componentName := getComponentName(ctx, gitSource, r.Client, req.Namespace)
 
 		componentStub := appstudiov1alpha1.ComponentSpec{
 			ComponentName: componentName,
@@ -478,7 +478,7 @@ func (r *ComponentDetectionQueryReconciler) updateComponentStub(req ctrl.Request
 			URL:           componentDetectionQuery.Spec.GitSource.URL,
 			DockerfileURL: link,
 		}
-		componentName := updateComponentName(ctx, gitSource, r.Client, req.Namespace)
+		componentName := getComponentName(ctx, gitSource, r.Client, req.Namespace)
 
 		componentDetectionQuery.Status.ComponentDetected[componentName] = appstudiov1alpha1.ComponentDetectionDescription{
 			DevfileFound: false, // always false since there is only a dockerfile present for these contexts
@@ -499,7 +499,7 @@ func (r *ComponentDetectionQueryReconciler) updateComponentStub(req ctrl.Request
 	return nil
 }
 
-func updateComponentName(ctx context.Context, gitSource *appstudiov1alpha1.GitSource, client client.Client, namespace string) string {
+func getComponentName(ctx context.Context, gitSource *appstudiov1alpha1.GitSource, client client.Client, namespace string) string {
 	repoUrl := gitSource.URL
 	lastElement := repoUrl[strings.LastIndex(repoUrl, "/")+1:]
 	repoName := strings.Split(lastElement, ".git")[0]
