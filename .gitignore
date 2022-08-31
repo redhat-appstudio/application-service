@@ -8,3 +8,5 @@ tmp
 
 .idea/
 .vscode/
+.kcp/
+kcp-output.log
