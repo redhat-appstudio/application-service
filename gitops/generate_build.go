@@ -24,14 +24,15 @@ import (
 	"strings"
 	"time"
 
+	"github.com/redhat-developer/gitops-generator/pkg/resources"
+	"github.com/redhat-developer/gitops-generator/pkg/yaml"
+
 	devfilev1alpha2 "github.com/devfile/api/v2/pkg/apis/workspaces/v1alpha2"
 	devfilecommon "github.com/devfile/library/pkg/devfile/parser/data/v2/common"
 	pacv1alpha1 "github.com/openshift-pipelines/pipelines-as-code/pkg/apis/pipelinesascode/v1alpha1"
 	routev1 "github.com/openshift/api/route/v1"
 	appstudiov1alpha1 "github.com/redhat-appstudio/application-service/api/v1alpha1"
 	gitopsprepare "github.com/redhat-appstudio/application-service/gitops/prepare"
-	"github.com/redhat-appstudio/application-service/gitops/resources"
-	yaml "github.com/redhat-appstudio/application-service/gitops/yaml"
 	"github.com/redhat-appstudio/application-service/pkg/devfile"
 	"github.com/spf13/afero"
 	tektonapi "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
@@ -107,7 +108,6 @@ func GenerateBuild(fs afero.Fs, outputFolder string, component appstudiov1alpha1
 	if _, err := yaml.WriteResources(fs, outputFolder, buildResources); err != nil {
 		return err
 	}
-
 	return nil
 }
 

@@ -40,11 +40,11 @@ import (
 	appstudiov1alpha1 "github.com/redhat-appstudio/application-service/api/v1alpha1"
 	appstudioshared "github.com/redhat-appstudio/managed-gitops/appstudio-shared/apis/appstudio.redhat.com/v1alpha1"
 
-	"github.com/redhat-appstudio/application-service/gitops/testutils"
 	"github.com/redhat-appstudio/application-service/pkg/devfile"
 	github "github.com/redhat-appstudio/application-service/pkg/github"
 	"github.com/redhat-appstudio/application-service/pkg/spi"
 	"github.com/redhat-appstudio/application-service/pkg/util/ioutils"
+	"github.com/redhat-developer/gitops-generator/pkg/testutils"
 	//+kubebuilder:scaffold:imports
 )
 
@@ -70,7 +70,7 @@ var _ = BeforeSuite(func() {
 	logf.SetLogger(zap.New(zap.WriteTo(GinkgoWriter), zap.UseDevMode(true)))
 
 	ctx, cancel = context.WithCancel(context.TODO())
-	managedGitOpsDepVersion := "v0.0.0-20220623041404-010a781bb3fb"
+	managedGitOpsDepVersion := "v0.0.0-20220826075641-33705d2bf7fa"
 
 	By("bootstrapping test environment")
 	testEnv = &envtest.Environment{

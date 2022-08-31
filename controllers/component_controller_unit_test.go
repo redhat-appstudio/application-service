@@ -26,9 +26,9 @@ import (
 	data "github.com/devfile/library/pkg/devfile/parser/data"
 	v2 "github.com/devfile/library/pkg/devfile/parser/data/v2"
 	appstudiov1alpha1 "github.com/redhat-appstudio/application-service/api/v1alpha1"
-	"github.com/redhat-appstudio/application-service/gitops/testutils"
 	"github.com/redhat-appstudio/application-service/pkg/github"
 	"github.com/redhat-appstudio/application-service/pkg/util/ioutils"
+	"github.com/redhat-developer/gitops-generator/pkg/testutils"
 	"github.com/spf13/afero"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
@@ -329,6 +329,28 @@ func TestGenerateGitops(t *testing.T) {
 				},
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "test-component",
+					Namespace: "test-namespace",
+				},
+				Spec: componentSpec,
+				Status: appstudiov1alpha1.ComponentStatus{
+					GitOps: appstudiov1alpha1.GitOpsStatus{
+						RepositoryURL: "https://github.com/test/repo",
+					},
+				},
+			},
+			wantErr: true,
+		},
+		{
+			name:       "Fail to retrieve commit ID for GitOps repository [Mock]",
+			reconciler: r,
+			fs:         appFS,
+			component: &appstudiov1alpha1.Component{
+				TypeMeta: metav1.TypeMeta{
+					APIVersion: "appstudio.redhat.com/v1alpha1",
+					Kind:       "Component",
+				},
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "test-git-error",
 					Namespace: "test-namespace",
 				},
 				Spec: componentSpec,
