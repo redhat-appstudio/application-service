@@ -375,6 +375,7 @@ func TestGenerateDeploymentPatch(t *testing.T) {
 				},
 				Spec: appsv1.DeploymentSpec{
 					Replicas: &replicas,
+					Selector: &v1.LabelSelector{},
 					Template: corev1.PodTemplateSpec{
 						Spec: corev1.PodSpec{
 							Containers: []corev1.Container{
