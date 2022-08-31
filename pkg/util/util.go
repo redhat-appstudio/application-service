@@ -24,6 +24,9 @@ import (
 	"regexp"
 	"strings"
 
+	gitopsgenv1alpha1 "github.com/redhat-developer/gitops-generator/api/v1alpha1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+
 	"github.com/go-git/go-git/v5"
 	transportHttp "github.com/go-git/go-git/v5/plumbing/transport/http"
 	appstudiov1alpha1 "github.com/redhat-appstudio/application-service/api/v1alpha1"
@@ -178,4 +181,39 @@ func CheckWithRegex(pattern, name string) bool {
 	}
 
 	return reg.MatchString(name)
+}
+
+func GetMappedGitOpsComponent(component appstudiov1alpha1.Component) gitopsgenv1alpha1.Component {
+	gitopsMapComponent := gitopsgenv1alpha1.Component{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      component.ObjectMeta.Name,
+			Namespace: component.ObjectMeta.Namespace,
+		},
+		Spec: gitopsgenv1alpha1.ComponentSpec{
+			ComponentName:                component.Spec.ComponentName,
+			Application:                  component.Spec.Application,
+			Secret:                       component.Spec.Secret,
+			Resources:                    component.Spec.Resources,
+			Replicas:                     component.Spec.Replicas,
+			TargetPort:                   component.Spec.TargetPort,
+			Route:                        component.Spec.Route,
+			Env:                          component.Spec.Env,
+			ContainerImage:               component.Spec.ContainerImage,
+			SkipGitOpsResourceGeneration: component.Spec.SkipGitOpsResourceGeneration,
+		},
+	}
+	if component.Spec.Source.ComponentSourceUnion.GitSource != nil {
+		gitopsMapComponent.Spec.Source = gitopsgenv1alpha1.ComponentSource{
+			ComponentSourceUnion: gitopsgenv1alpha1.ComponentSourceUnion{
+				GitSource: &gitopsgenv1alpha1.GitSource{
+					URL:           component.Spec.Source.ComponentSourceUnion.GitSource.URL,
+					Revision:      component.Spec.Source.ComponentSourceUnion.GitSource.Revision,
+					Context:       component.Spec.Source.ComponentSourceUnion.GitSource.Context,
+					DevfileURL:    component.Spec.Source.ComponentSourceUnion.GitSource.DevfileURL,
+					DockerfileURL: component.Spec.Source.ComponentSourceUnion.GitSource.DockerfileURL,
+				},
+			},
+		}
+	}
+	return gitopsMapComponent
 }

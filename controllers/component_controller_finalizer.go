@@ -20,8 +20,9 @@ import (
 	"context"
 	"fmt"
 
+	gitopsgen "github.com/redhat-developer/gitops-generator/pkg"
+
 	appstudiov1alpha1 "github.com/redhat-appstudio/application-service/api/v1alpha1"
-	"github.com/redhat-appstudio/application-service/gitops"
 	devfile "github.com/redhat-appstudio/application-service/pkg/devfile"
 	"github.com/redhat-appstudio/application-service/pkg/util"
 	"github.com/redhat-appstudio/application-service/pkg/util/ioutils"
@@ -80,7 +81,7 @@ func (r *ComponentReconciler) Finalize(ctx context.Context, component *appstudio
 		return fmt.Errorf("unable to create temp directory for gitops resources due to error: %v", err)
 	}
 
-	err = gitops.RemoveAndPush(tempDir, gitOpsURL, *component, r.Executor, r.AppFS, gitOpsBranch, gitOpsContext)
+	err = gitopsgen.RemoveAndPush(tempDir, gitOpsURL, component.Name, r.Executor, r.AppFS, gitOpsBranch, gitOpsContext, true)
 	if err != nil {
 		gitOpsErr := util.SanitizeErrorMessage(err)
 		return gitOpsErr

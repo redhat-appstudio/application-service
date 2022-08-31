@@ -47,11 +47,12 @@ import (
 
 	appstudiov1alpha1 "github.com/redhat-appstudio/application-service/api/v1alpha1"
 	"github.com/redhat-appstudio/application-service/controllers"
-	"github.com/redhat-appstudio/application-service/gitops"
+	appservicegitops "github.com/redhat-appstudio/application-service/gitops"
 	"github.com/redhat-appstudio/application-service/pkg/devfile"
 	"github.com/redhat-appstudio/application-service/pkg/spi"
 	"github.com/redhat-appstudio/application-service/pkg/util/ioutils"
 	appstudioshared "github.com/redhat-appstudio/managed-gitops/appstudio-shared/apis/appstudio.redhat.com/v1alpha1"
+	gitopsgen "github.com/redhat-developer/gitops-generator/pkg"
 
 	//+kubebuilder:scaffold:imports
 	apisv1alpha1 "github.com/kcp-dev/kcp/pkg/apis/apis/v1alpha1"
@@ -150,9 +151,9 @@ func main() {
 	// Retrieve the name of the default repository to use
 	imageRepository := os.Getenv("IMAGE_REPOSITORY")
 	if imageRepository == "" {
-		imageRepository = gitops.DefaultImageRepo
+		imageRepository = appservicegitops.DefaultImageRepo
 	}
-	gitops.SetDefaultImageRepo(imageRepository)
+	appservicegitops.SetDefaultImageRepo(imageRepository)
 
 	// Retrieve the option to specify a custom devfile registry
 	devfileRegistryURL := os.Getenv("DEVFILE_REGISTRY_URL")
@@ -178,7 +179,7 @@ func main() {
 		Client:          mgr.GetClient(),
 		Scheme:          mgr.GetScheme(),
 		Log:             ctrl.Log.WithName("controllers").WithName("Component"),
-		Executor:        gitops.NewCmdExecutor(),
+		Executor:        gitopsgen.NewCmdExecutor(),
 		AppFS:           ioutils.NewFilesystem(),
 		GitToken:        ghToken,
 		ImageRepository: imageRepository,
@@ -216,7 +217,7 @@ func main() {
 		Client:   mgr.GetClient(),
 		Scheme:   mgr.GetScheme(),
 		Log:      ctrl.Log.WithName("controllers").WithName("ApplicationSnapshotEnvironmentBinding"),
-		Executor: gitops.NewCmdExecutor(),
+		Executor: gitopsgen.NewCmdExecutor(),
 		AppFS:    ioutils.NewFilesystem(),
 		GitToken: ghToken,
 	}).SetupWithManager(mgr); err != nil {
