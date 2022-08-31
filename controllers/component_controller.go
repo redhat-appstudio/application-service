@@ -45,12 +45,13 @@ import (
 	routev1 "github.com/openshift/api/route/v1"
 
 	appstudiov1alpha1 "github.com/redhat-appstudio/application-service/api/v1alpha1"
-	"github.com/redhat-appstudio/application-service/gitops"
+	appservicegitops "github.com/redhat-appstudio/application-service/gitops"
 	"github.com/redhat-appstudio/application-service/gitops/prepare"
 	devfile "github.com/redhat-appstudio/application-service/pkg/devfile"
 	"github.com/redhat-appstudio/application-service/pkg/spi"
 	"github.com/redhat-appstudio/application-service/pkg/util"
 	"github.com/redhat-appstudio/application-service/pkg/util/ioutils"
+	gitopsgen "github.com/redhat-developer/gitops-generator/pkg"
 
 	"github.com/spf13/afero"
 )
@@ -63,7 +64,7 @@ type ComponentReconciler struct {
 	GitToken        string
 	GitHubOrg       string
 	ImageRepository string
-	Executor        gitops.Executor
+	Executor        gitopsgen.Executor
 	AppFS           afero.Afero
 	SPIClient       spi.SPI
 }
@@ -421,7 +422,7 @@ func (r *ComponentReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 	// Only attempt to get it if the build generation succeeded, otherwise the route won't exist
 	if len(component.Status.Conditions) > 0 && component.Status.Conditions[len(component.Status.Conditions)-1].Status == metav1.ConditionTrue &&
 		component.Spec.Source.GitSource != nil && component.Spec.Source.GitSource.URL != "" &&
-		(component.ObjectMeta.Annotations == nil || component.ObjectMeta.Annotations[gitops.PaCAnnotation] != "1") {
+		(component.ObjectMeta.Annotations == nil || component.ObjectMeta.Annotations[appservicegitops.PaCAnnotation] != "1") {
 		createdWebhook := &routev1.Route{}
 		err = r.Client.Get(ctx, types.NamespacedName{Name: "el" + component.Name, Namespace: component.Namespace}, createdWebhook)
 		if err != nil {
@@ -463,18 +464,31 @@ func (r *ComponentReconciler) generateGitops(ctx context.Context, req ctrl.Reque
 
 	// Generate and push the gitops resources
 	gitopsConfig := prepare.PrepareGitopsConfig(ctx, r.Client, *component)
-
-	err = gitops.GenerateAndPush(tempDir, gitOpsURL, *component, r.Executor, r.AppFS, gitOpsBranch, gitOpsContext, gitopsConfig)
+	mappedGitOpsComponent := util.GetMappedGitOpsComponent(*component)
+	err = gitopsgen.CloneGenerateAndPush(tempDir, gitOpsURL, mappedGitOpsComponent, r.Executor, r.AppFS, gitOpsBranch, gitOpsContext, false)
 	if err != nil {
 		gitOpsErr := util.SanitizeErrorMessage(err)
 		log.Error(gitOpsErr, "unable to generate gitops resources due to error")
 		return gitOpsErr
 	}
 
+	err = appservicegitops.GenerateTektonBuild(tempDir, *component, r.AppFS, gitOpsContext, gitopsConfig)
+	if err != nil {
+		gitOpsErr := util.SanitizeErrorMessage(err)
+		log.Error(gitOpsErr, "unable to generate gitops build resources due to error")
+		return gitOpsErr
+	}
+	err = gitopsgen.CommitAndPush(tempDir, "", gitOpsURL, mappedGitOpsComponent.Name, r.Executor, gitOpsBranch, "Generating Tekton resources")
+	if err != nil {
+		gitOpsErr := util.SanitizeErrorMessage(err)
+		log.Error(gitOpsErr, "unable to commit and push gitops resources due to error")
+		return gitOpsErr
+	}
+
 	// Get the commit ID for the gitops repository
 	var commitID string
 	repoPath := filepath.Join(tempDir, component.Name)
-	if commitID, err = gitops.GetCommitIDFromRepo(r.AppFS, r.Executor, repoPath); err != nil {
+	if commitID, err = gitopsgen.GetCommitIDFromRepo(r.AppFS, r.Executor, repoPath); err != nil {
 		gitOpsErr := util.SanitizeErrorMessage(err)
 		log.Error(gitOpsErr, "unable to retrieve gitops repository commit id due to error")
 		return gitOpsErr

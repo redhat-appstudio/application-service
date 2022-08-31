@@ -18,7 +18,13 @@ package util
 import (
 	"fmt"
 	"os"
+	"reflect"
 	"testing"
+
+	gitopsgenv1alpha1 "github.com/redhat-developer/gitops-generator/api/v1alpha1"
+	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/resource"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	appstudiov1alpha1 "github.com/redhat-appstudio/application-service/api/v1alpha1"
 	"github.com/stretchr/testify/assert"
@@ -408,6 +414,229 @@ func TestSanitizeErrorMessage(t *testing.T) {
 			sanitizedError := SanitizeErrorMessage(tt.err)
 			if sanitizedError.Error() != tt.want.Error() {
 				t.Errorf("SanitizeName() error: expected %v got %v", tt.want, sanitizedError)
+			}
+		})
+	}
+}
+
+func TestGetMappedComponent(t *testing.T) {
+
+	tests := []struct {
+		name      string
+		component appstudiov1alpha1.Component
+		want      gitopsgenv1alpha1.Component
+	}{
+		{
+			name: "Test01ComponentSpecFilledIn",
+			component: appstudiov1alpha1.Component{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "testcomponent",
+					Namespace: "testnamespace",
+				},
+				Spec: appstudiov1alpha1.ComponentSpec{
+					ComponentName: "frontEnd",
+					Application:   "AppTest001",
+					Secret:        "Secret",
+					Resources: corev1.ResourceRequirements{
+						Limits: corev1.ResourceList{
+							corev1.ResourceLimitsCPU: resource.MustParse("1"),
+							corev1.ResourceMemory:    resource.MustParse("1Gi"),
+						},
+					},
+					TargetPort: 8080,
+					Route:      "https://testroute",
+					Env: []corev1.EnvVar{
+						{
+							Name:  "env1",
+							Value: "env1Value",
+						},
+					},
+					ContainerImage:               "myimage:image",
+					SkipGitOpsResourceGeneration: false,
+					Source: appstudiov1alpha1.ComponentSource{
+						ComponentSourceUnion: appstudiov1alpha1.ComponentSourceUnion{
+							GitSource: &appstudiov1alpha1.GitSource{
+								URL:           "https://host/git-repo.git",
+								Revision:      "1.0",
+								Context:       "/context",
+								DevfileURL:    "https://mydevfileurl",
+								DockerfileURL: "https://mydockerfileurl",
+							},
+						},
+					},
+				},
+			},
+			want: gitopsgenv1alpha1.Component{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "testcomponent",
+					Namespace: "testnamespace",
+				},
+				Spec: gitopsgenv1alpha1.ComponentSpec{
+					ComponentName: "frontEnd",
+					Application:   "AppTest001",
+					Secret:        "Secret",
+					Resources: corev1.ResourceRequirements{
+						Limits: corev1.ResourceList{
+							corev1.ResourceLimitsCPU: resource.MustParse("1"),
+							corev1.ResourceMemory:    resource.MustParse("1Gi"),
+						},
+					},
+					TargetPort: 8080,
+					Route:      "https://testroute",
+					Env: []corev1.EnvVar{
+						{
+							Name:  "env1",
+							Value: "env1Value",
+						},
+					},
+					ContainerImage:               "myimage:image",
+					SkipGitOpsResourceGeneration: false,
+					Source: gitopsgenv1alpha1.ComponentSource{
+						ComponentSourceUnion: gitopsgenv1alpha1.ComponentSourceUnion{
+							GitSource: &gitopsgenv1alpha1.GitSource{
+								URL:           "https://host/git-repo.git",
+								Revision:      "1.0",
+								Context:       "/context",
+								DevfileURL:    "https://mydevfileurl",
+								DockerfileURL: "https://mydockerfileurl",
+							},
+						},
+					},
+				},
+			},
+		},
+		{
+			name: "Test02EmptyComponentSource",
+			component: appstudiov1alpha1.Component{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "testcomponent",
+					Namespace: "testnamespace",
+				},
+				Spec: appstudiov1alpha1.ComponentSpec{
+					ComponentName: "frontEnd",
+					Application:   "AppTest002",
+					Source:        appstudiov1alpha1.ComponentSource{},
+				},
+			},
+			want: gitopsgenv1alpha1.Component{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "testcomponent",
+					Namespace: "testnamespace",
+				},
+				Spec: gitopsgenv1alpha1.ComponentSpec{
+					ComponentName: "frontEnd",
+					Application:   "AppTest002",
+					Source:        gitopsgenv1alpha1.ComponentSource{},
+				},
+			},
+		},
+		{
+			name: "Test03NoSource",
+			component: appstudiov1alpha1.Component{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "testcomponent",
+					Namespace: "testnamespace",
+				},
+				Spec: appstudiov1alpha1.ComponentSpec{
+					ComponentName: "frontEnd",
+					Application:   "AppTest003",
+				},
+			},
+			want: gitopsgenv1alpha1.Component{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "testcomponent",
+					Namespace: "testnamespace",
+				},
+				Spec: gitopsgenv1alpha1.ComponentSpec{
+					ComponentName: "frontEnd",
+					Application:   "AppTest003",
+				},
+			},
+		},
+		{
+			name: "Test04EmptyComponentSourceUnion",
+			component: appstudiov1alpha1.Component{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "testcomponent",
+					Namespace: "testnamespace",
+				},
+				Spec: appstudiov1alpha1.ComponentSpec{
+					ComponentName: "frontEnd",
+					Application:   "AppTest004",
+					Source: appstudiov1alpha1.ComponentSource{
+						ComponentSourceUnion: appstudiov1alpha1.ComponentSourceUnion{},
+					},
+				},
+			},
+			want: gitopsgenv1alpha1.Component{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "testcomponent",
+					Namespace: "testnamespace",
+				},
+				Spec: gitopsgenv1alpha1.ComponentSpec{
+					ComponentName: "frontEnd",
+					Application:   "AppTest004",
+					Source: gitopsgenv1alpha1.ComponentSource{
+						ComponentSourceUnion: gitopsgenv1alpha1.ComponentSourceUnion{},
+					},
+				},
+			},
+		},
+		{
+			name: "Test05EmptyGitSource",
+			component: appstudiov1alpha1.Component{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "testcomponent",
+					Namespace: "testnamespace",
+				},
+				Spec: appstudiov1alpha1.ComponentSpec{
+					ComponentName: "frontEnd",
+					Application:   "AppTest005",
+					Source: appstudiov1alpha1.ComponentSource{
+						ComponentSourceUnion: appstudiov1alpha1.ComponentSourceUnion{
+							GitSource: &appstudiov1alpha1.GitSource{},
+						},
+					},
+				},
+			},
+			want: gitopsgenv1alpha1.Component{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "testcomponent",
+					Namespace: "testnamespace",
+				},
+				Spec: gitopsgenv1alpha1.ComponentSpec{
+					ComponentName: "frontEnd",
+					Application:   "AppTest005",
+					Source: gitopsgenv1alpha1.ComponentSource{
+						ComponentSourceUnion: gitopsgenv1alpha1.ComponentSourceUnion{
+							GitSource: &gitopsgenv1alpha1.GitSource{},
+						},
+					},
+				},
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			mappedComponent := GetMappedGitOpsComponent(tt.component)
+			assert.True(t, tt.want.ObjectMeta.Name == mappedComponent.ObjectMeta.Name, "Expected ObjectMeta.Name: %s, is different than actual: %s", tt.want.ObjectMeta.Name, mappedComponent.ObjectMeta.Name)
+			assert.True(t, tt.want.ObjectMeta.Namespace == mappedComponent.ObjectMeta.Namespace, "Expected ObjectMeta.Namespace: %s, is different than actual: %s", tt.want.ObjectMeta.Namespace, mappedComponent.ObjectMeta.Namespace)
+			assert.True(t, tt.want.Spec.ComponentName == mappedComponent.Spec.ComponentName, "Expected Spec.ComponentName: %s, is different than actual: %s", tt.want.Spec.ComponentName, mappedComponent.Spec.ComponentName)
+			assert.True(t, tt.want.Spec.Application == mappedComponent.Spec.Application, "Expected Spec.Application: %s, is different than actual: %s", tt.want.Spec.Application, mappedComponent.Spec.Application)
+			assert.True(t, tt.want.Spec.Secret == mappedComponent.Spec.Secret, "Expected Spec.Secret: %s, is different than actual: %s", tt.want.Spec.Secret, mappedComponent.Spec.Secret)
+			assert.True(t, reflect.DeepEqual(tt.want.Spec.Resources, mappedComponent.Spec.Resources), "Expected Spec.Resources: %s, is different than actual: %s", tt.want.Spec.Resources, mappedComponent.Spec.Resources)
+			assert.True(t, tt.want.Spec.Route == mappedComponent.Spec.Route, "Expected Spec.Route: %s, is different than actual: %s", tt.want.Spec.Route, mappedComponent.Spec.Route)
+			assert.True(t, reflect.DeepEqual(tt.want.Spec.Env, mappedComponent.Spec.Env), "Expected Spec.Env: %s, is different than actual: %s", tt.want.Spec.Env, mappedComponent.Spec.Env)
+			assert.True(t, tt.want.Spec.ContainerImage == mappedComponent.Spec.ContainerImage, "Expected Spec.ContainerImage: %s, is different than actual: %s", tt.want.Spec.ContainerImage, mappedComponent.Spec.ContainerImage)
+			assert.True(t, tt.want.Spec.SkipGitOpsResourceGeneration == mappedComponent.Spec.SkipGitOpsResourceGeneration, "Expected Spec.SkipGitOpsResourceGeneration: %s, is different than actual: %s", tt.want.Spec.SkipGitOpsResourceGeneration, mappedComponent.Spec.SkipGitOpsResourceGeneration)
+
+			if tt.want.Spec.Source.ComponentSourceUnion.GitSource != nil {
+				assert.True(t, tt.want.Spec.Source.ComponentSourceUnion.GitSource.URL == mappedComponent.Spec.Source.ComponentSourceUnion.GitSource.URL, "Expected GitSource URL: %s, is different than actual: %s", tt.want.Spec.Source.ComponentSourceUnion.GitSource.URL, mappedComponent.Spec.Source.ComponentSourceUnion.GitSource.URL)
+				assert.True(t, tt.want.Spec.Source.ComponentSourceUnion.GitSource.Revision == mappedComponent.Spec.Source.ComponentSourceUnion.GitSource.Revision, "Expected GitSource Revision: %s, is different than actual: %s", tt.want.Spec.Source.ComponentSourceUnion.GitSource.Revision, mappedComponent.Spec.Source.ComponentSourceUnion.GitSource.Revision)
+				assert.True(t, tt.want.Spec.Source.ComponentSourceUnion.GitSource.Context == mappedComponent.Spec.Source.ComponentSourceUnion.GitSource.Context, "Expected GitSource Context: %s, is different than actual: %s", tt.want.Spec.Source.ComponentSourceUnion.GitSource.Context, mappedComponent.Spec.Source.ComponentSourceUnion.GitSource.Context)
+				assert.True(t, tt.want.Spec.Source.ComponentSourceUnion.GitSource.DevfileURL == mappedComponent.Spec.Source.ComponentSourceUnion.GitSource.DevfileURL, "Expected GitSource DevfileURL: %s, is different than actual: %s", tt.want.Spec.Source.ComponentSourceUnion.GitSource.DevfileURL, mappedComponent.Spec.Source.ComponentSourceUnion.GitSource.DevfileURL)
+				assert.True(t, tt.want.Spec.Source.ComponentSourceUnion.GitSource.DockerfileURL == mappedComponent.Spec.Source.ComponentSourceUnion.GitSource.DockerfileURL, "Expected GitSource DockerfileURL: %s, is different than actual: %s", tt.want.Spec.Source.ComponentSourceUnion.GitSource.DockerfileURL, mappedComponent.Spec.Source.ComponentSourceUnion.GitSource.DockerfileURL)
 			}
 		})
 	}

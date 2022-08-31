@@ -21,11 +21,14 @@ import (
 	"fmt"
 	"path/filepath"
 
+	gitopsgenv1alpha1 "github.com/redhat-developer/gitops-generator/api/v1alpha1"
+	gitopsgen "github.com/redhat-developer/gitops-generator/pkg"
+	corev1 "k8s.io/api/core/v1"
+
 	"github.com/go-logr/logr"
 	kcpclient "github.com/kcp-dev/apimachinery/pkg/client"
 	"github.com/kcp-dev/logicalcluster"
 	appstudiov1alpha1 "github.com/redhat-appstudio/application-service/api/v1alpha1"
-	"github.com/redhat-appstudio/application-service/gitops"
 	"github.com/redhat-appstudio/application-service/pkg/util"
 	"github.com/redhat-appstudio/application-service/pkg/util/ioutils"
 	appstudioshared "github.com/redhat-appstudio/managed-gitops/appstudio-shared/apis/appstudio.redhat.com/v1alpha1"
@@ -48,7 +51,7 @@ type ApplicationSnapshotEnvironmentBindingReconciler struct {
 	Scheme   *runtime.Scheme
 	Log      logr.Logger
 	AppFS    afero.Afero
-	Executor gitops.Executor
+	Executor gitopsgen.Executor
 	GitToken string
 }
 
@@ -198,7 +201,36 @@ func (r *ApplicationSnapshotEnvironmentBindingReconciler) Reconcile(ctx context.
 			}
 		}
 
-		err = gitops.GenerateOverlaysAndPush(tempDir, clone, gitOpsRemoteURL, component, environment, applicationName, environmentName, imageName, appSnapshotEnvBinding.Namespace, r.Executor, r.AppFS, gitOpsBranch, gitOpsContext, componentGeneratedResources)
+		envVars := make([]corev1.EnvVar, 0)
+		for _, env := range component.Configuration.Env {
+			envVars = append(envVars, corev1.EnvVar{
+				Name:  env.Name,
+				Value: env.Value,
+			})
+		}
+		gitopsgenBinding := gitopsgenv1alpha1.BindingComponentConfiguration{
+			Name:      component.Name,
+			Replicas:  component.Configuration.Replicas,
+			Resources: component.Configuration.Resources,
+			Env:       envVars,
+		}
+
+		environmentConfigEnvVars := make([]corev1.EnvVar, 0)
+		for _, env := range environment.Spec.Configuration.Env {
+			environmentConfigEnvVars = append(environmentConfigEnvVars, corev1.EnvVar{
+				Name:  env.Name,
+				Value: env.Value,
+			})
+		}
+
+		gitopsgenEnv := gitopsgenv1alpha1.Environment{
+			Spec: gitopsgenv1alpha1.EnvironmentSpec{
+				Configuration: gitopsgenv1alpha1.EnvironmentConfiguration{
+					Env: environmentConfigEnvVars,
+				},
+			},
+		}
+		err = gitopsgen.GenerateOverlaysAndPush(tempDir, clone, gitOpsRemoteURL, gitopsgenBinding, gitopsgenEnv, applicationName, environmentName, imageName, appSnapshotEnvBinding.Namespace, r.Executor, r.AppFS, gitOpsBranch, gitOpsContext, true, componentGeneratedResources)
 		if err != nil {
 			gitOpsErr := util.SanitizeErrorMessage(err)
 			log.Error(gitOpsErr, fmt.Sprintf("unable to get generate gitops resources for %s %v", componentName, req.NamespacedName))
@@ -210,7 +242,7 @@ func (r *ApplicationSnapshotEnvironmentBindingReconciler) Reconcile(ctx context.
 		// Retrieve the commit ID
 		var commitID string
 		repoPath := filepath.Join(tempDir, applicationName)
-		if commitID, err = gitops.GetCommitIDFromRepo(r.AppFS, r.Executor, repoPath); err != nil {
+		if commitID, err = gitopsgen.GetCommitIDFromRepo(r.AppFS, r.Executor, repoPath); err != nil {
 			gitOpsErr := util.SanitizeErrorMessage(err)
 			log.Error(gitOpsErr, "unable to retrieve gitops repository commit id due to error")
 			r.SetConditionAndUpdateCR(ctx, req, &appSnapshotEnvBinding, gitOpsErr)
