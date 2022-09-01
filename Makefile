@@ -189,18 +189,9 @@ CONTROLLER_GEN = $(shell pwd)/bin/controller-gen
 controller-gen: ## Download controller-gen locally if necessary.
 	$(call go-get-tool,$(CONTROLLER_GEN),sigs.k8s.io/controller-tools/cmd/controller-gen@v0.6.1)
 
-LOCALBIN ?= $(shell pwd)/bin
-$(LOCALBIN):
-	mkdir -p $(LOCALBIN)
-	
-KUSTOMIZE_INSTALL_SCRIPT ?= "https://raw.githubusercontent.com/kubernetes-sigs/kustomize/master/hack/install_kustomize.sh"
-KUSTOMIZE_VERSION ?= v4.4.1
-KUSTOMIZE ?= $(LOCALBIN)/kustomize
-
-.PHONY: kustomize
-kustomize: $(KUSTOMIZE) ## Download kustomize locally if necessary.
-$(KUSTOMIZE): $(LOCALBIN)
-	curl -s $(KUSTOMIZE_INSTALL_SCRIPT) | bash -s -- $(subst v,,$(KUSTOMIZE_VERSION)) $(LOCALBIN)
+KUSTOMIZE = $(shell pwd)/bin/kustomize
+kustomize: ## Download kustomize locally if necessary.
+	$(call go-get-tool,$(KUSTOMIZE),sigs.k8s.io/kustomize/kustomize/v4@v4.5.2)
 
 ENVTEST = $(shell pwd)/bin/setup-envtest
 envtest: ## Download envtest-setup locally if necessary.

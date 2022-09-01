@@ -29,8 +29,8 @@ import (
 	pacv1alpha1 "github.com/openshift-pipelines/pipelines-as-code/pkg/apis/pipelinesascode/v1alpha1"
 	appstudiov1alpha1 "github.com/redhat-appstudio/application-service/api/v1alpha1"
 	gitopsprepare "github.com/redhat-appstudio/application-service/gitops/prepare"
-	"github.com/redhat-appstudio/application-service/gitops/testutils"
 	"github.com/redhat-appstudio/application-service/pkg/util/ioutils"
+	"github.com/redhat-developer/gitops-generator/pkg/testutils"
 	"github.com/spf13/afero"
 	"github.com/stretchr/testify/assert"
 	tektonapi "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
@@ -85,13 +85,15 @@ func getSampleDevfileComponents() []v1alpha2.Component {
 
 func TestGenerateBuild(t *testing.T) {
 	outoutFolder := "output"
-	gitopsConfig := gitopsprepare.GitopsConfig{}
+	emptyGitopsConfig := gitopsprepare.GitopsConfig{}
 
 	tests := []struct {
-		name      string
-		fs        afero.Afero
-		component appstudiov1alpha1.Component
-		want      []string
+		name         string
+		fs           afero.Afero
+		component    appstudiov1alpha1.Component
+		gitopsConfig gitopsprepare.GitopsConfig
+		want         []string
+		expectFail   bool
 	}{
 		{
 			name: "Check trigger based resources",
@@ -111,6 +113,7 @@ func TestGenerateBuild(t *testing.T) {
 					},
 				},
 			},
+			gitopsConfig: emptyGitopsConfig,
 			want: []string{
 				kustomizeFileName,
 				buildTriggerTemplateFileName,
@@ -119,7 +122,7 @@ func TestGenerateBuild(t *testing.T) {
 			},
 		},
 		{
-			name: "Check pipeline as code resources",
+			name: "Check pipeline as code resources with annotation",
 			fs:   ioutils.NewMemoryFilesystem(),
 			component: appstudiov1alpha1.Component{
 				ObjectMeta: metav1.ObjectMeta{
@@ -139,16 +142,68 @@ func TestGenerateBuild(t *testing.T) {
 					},
 				},
 			},
+			gitopsConfig: emptyGitopsConfig,
 			want: []string{
 				kustomizeFileName,
 				buildRepositoryFileName,
 			},
 		},
+		{
+			name: "Check pipeline as code resources on HACBS",
+			fs:   ioutils.NewMemoryFilesystem(),
+			component: appstudiov1alpha1.Component{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "testcomponent",
+					Namespace: "workspace-name",
+				},
+				Spec: appstudiov1alpha1.ComponentSpec{
+					Source: appstudiov1alpha1.ComponentSource{
+						ComponentSourceUnion: appstudiov1alpha1.ComponentSourceUnion{
+							GitSource: &appstudiov1alpha1.GitSource{
+								URL: "https://github.com/user/git-repo.git",
+							},
+						},
+					},
+				},
+			},
+			gitopsConfig: gitopsprepare.GitopsConfig{IsHACBS: true},
+			want: []string{
+				kustomizeFileName,
+				buildRepositoryFileName,
+			},
+		},
+		{
+			name: "Fail build generation by invalid git URL.",
+			fs:   ioutils.NewMemoryFilesystem(),
+			component: appstudiov1alpha1.Component{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "testcomponent",
+					Namespace: "workspace-name",
+				},
+				Spec: appstudiov1alpha1.ComponentSpec{
+					Source: appstudiov1alpha1.ComponentSource{
+						ComponentSourceUnion: appstudiov1alpha1.ComponentSourceUnion{
+							GitSource: &appstudiov1alpha1.GitSource{
+								URL: "invalid-url-here",
+							},
+						},
+					},
+				},
+			},
+			expectFail: true,
+		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if err := GenerateBuild(tt.fs, outoutFolder, tt.component, gitopsConfig); err != nil {
+			if tt.expectFail {
+				err := GenerateBuild(tt.fs, outoutFolder, tt.component, tt.gitopsConfig)
+				if err != nil {
+					t.Errorf("Failure build generation is expected by invalid git URL, but seems no error is returned.")
+				}
+			}
+
+			if err := GenerateBuild(tt.fs, outoutFolder, tt.component, tt.gitopsConfig); err != nil {
 				t.Errorf("Failed to generate builf gitops resources. Cause: %v", err)
 			}
 
@@ -1036,7 +1091,7 @@ func TestGeneratePACRepository(t *testing.T) {
 			repoUrl: "https://github.com/user/test-component-repository",
 			pacConfig: map[string][]byte{
 				"github.token": []byte("ghp_token"),
-				"gitlab.token": []byte("token"),
+				"gitlab.token": []byte("glpat-token"),
 			},
 			expectedGitProviderConfig: &pacv1alpha1.GitProvider{
 				Secret: &pacv1alpha1.Secret{
@@ -1054,7 +1109,7 @@ func TestGeneratePACRepository(t *testing.T) {
 			repoUrl: "https://gitlab.com/user/test-component-repository",
 			pacConfig: map[string][]byte{
 				"github.token": []byte("ghp_token"),
-				"gitlab.token": []byte("token"),
+				"gitlab.token": []byte("glpat-token"),
 			},
 			expectedGitProviderConfig: &pacv1alpha1.GitProvider{
 				Secret: &pacv1alpha1.Secret{
@@ -1065,6 +1120,7 @@ func TestGeneratePACRepository(t *testing.T) {
 					Name: PipelinesAsCodeWebhooksSecretName,
 					Key:  GetWebhookSecretKeyForComponent(getComponent("https://gitlab.com/user/test-component-repository")),
 				},
+				URL: "https://gitlab.com",
 			},
 		},
 		{
@@ -1073,7 +1129,7 @@ func TestGeneratePACRepository(t *testing.T) {
 			pacConfig: map[string][]byte{
 				PipelinesAsCode_githubAppIdKey:   []byte("12345"),
 				PipelinesAsCode_githubPrivateKey: []byte("private-key"),
-				"gitlab.token":                   []byte("token"),
+				"gitlab.token":                   []byte("glpat-token"),
 			},
 			expectedGitProviderConfig: &pacv1alpha1.GitProvider{
 				Secret: &pacv1alpha1.Secret{
@@ -1084,6 +1140,7 @@ func TestGeneratePACRepository(t *testing.T) {
 					Name: PipelinesAsCodeWebhooksSecretName,
 					Key:  GetWebhookSecretKeyForComponent(getComponent("https://gitlab.com/user/test-component-repository")),
 				},
+				URL: "https://gitlab.com",
 			},
 		},
 	}
@@ -1346,7 +1403,7 @@ func TestIsPaCApplicationConfigured(t *testing.T) {
 			config: map[string][]byte{
 				PipelinesAsCode_githubAppIdKey:   []byte("12345"),
 				PipelinesAsCode_githubPrivateKey: []byte("private-key"),
-				"gitlab.token":                   []byte("token"),
+				"gitlab.token":                   []byte("glpat-token"),
 			},
 			want: false,
 		},

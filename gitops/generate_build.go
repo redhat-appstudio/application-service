@@ -24,14 +24,15 @@ import (
 	"strings"
 	"time"
 
+	"github.com/redhat-developer/gitops-generator/pkg/resources"
+	"github.com/redhat-developer/gitops-generator/pkg/yaml"
+
 	devfilev1alpha2 "github.com/devfile/api/v2/pkg/apis/workspaces/v1alpha2"
 	devfilecommon "github.com/devfile/library/pkg/devfile/parser/data/v2/common"
 	pacv1alpha1 "github.com/openshift-pipelines/pipelines-as-code/pkg/apis/pipelinesascode/v1alpha1"
 	routev1 "github.com/openshift/api/route/v1"
 	appstudiov1alpha1 "github.com/redhat-appstudio/application-service/api/v1alpha1"
 	gitopsprepare "github.com/redhat-appstudio/application-service/gitops/prepare"
-	"github.com/redhat-appstudio/application-service/gitops/resources"
-	yaml "github.com/redhat-appstudio/application-service/gitops/yaml"
 	"github.com/redhat-appstudio/application-service/pkg/devfile"
 	"github.com/spf13/afero"
 	tektonapi "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
@@ -73,7 +74,7 @@ func SetDefaultImageRepo(repo string) {
 func GenerateBuild(fs afero.Fs, outputFolder string, component appstudiov1alpha1.Component, gitopsConfig gitopsprepare.GitopsConfig) error {
 	var buildResources map[string]interface{}
 	val, ok := component.Annotations[PaCAnnotation]
-	if ok && val == "1" {
+	if (ok && val == "1") || gitopsConfig.IsHACBS {
 		repository, err := GeneratePACRepository(component, gitopsConfig.PipelinesAsCodeCredentials)
 		if err != nil {
 			return err
@@ -107,7 +108,6 @@ func GenerateBuild(fs afero.Fs, outputFolder string, component appstudiov1alpha1
 	if _, err := yaml.WriteResources(fs, outputFolder, buildResources); err != nil {
 		return err
 	}
-
 	return nil
 }
 
@@ -294,38 +294,30 @@ func getParamsForComponentBuild(component appstudiov1alpha1.Component, isInitial
 		})
 	}
 	// Analyze component model for additional parameters
-	if componentDevfileData, err := devfile.ParseDevfileModel(component.Status.Devfile); err == nil {
+	dockerfile, err := devfile.SearchForDockerfile([]byte(component.Status.Devfile))
+	if err != nil {
+		return []tektonapi.Param{}, err
+	}
+	if dockerfile != nil {
+		// Set dockerfile location
+		params = append(params, tektonapi.Param{
+			Name: "dockerfile",
+			Value: tektonapi.ArrayOrString{
+				Type:      tektonapi.ParamTypeString,
+				StringVal: dockerfile.Uri,
+			},
+		})
 
-		// Check for dockerfile in outerloop-build devfile component
-		if devfileComponents, err := componentDevfileData.GetComponents(devfilecommon.DevfileOptions{}); err == nil {
-			for _, devfileComponent := range devfileComponents {
-				if devfileComponent.Name == "outerloop-build" {
-					if devfileComponent.Image != nil && devfileComponent.Image.Dockerfile != nil && devfileComponent.Image.Dockerfile.Uri != "" {
-						// Set dockerfile location
-						params = append(params, tektonapi.Param{
-							Name: "dockerfile",
-							Value: tektonapi.ArrayOrString{
-								Type:      tektonapi.ParamTypeString,
-								StringVal: devfileComponent.Image.Dockerfile.Uri,
-							},
-						})
-
-						// Check for docker build context
-						if devfileComponent.Image.Dockerfile.BuildContext != "" {
-							params = append(params, tektonapi.Param{
-								Name: "path-context",
-								Value: tektonapi.ArrayOrString{
-									Type:      tektonapi.ParamTypeString,
-									StringVal: devfileComponent.Image.Dockerfile.BuildContext,
-								},
-							})
-						}
-					}
-					break
-				}
-			}
+		// Check for docker build context
+		if dockerfile.BuildContext != "" {
+			params = append(params, tektonapi.Param{
+				Name: "path-context",
+				Value: tektonapi.ArrayOrString{
+					Type:      tektonapi.ParamTypeString,
+					StringVal: dockerfile.BuildContext,
+				},
+			})
 		}
-
 	}
 
 	return params, err
@@ -479,6 +471,10 @@ func GeneratePACRepository(component appstudiov1alpha1.Component, config map[str
 				Name: PipelinesAsCodeWebhooksSecretName,
 				Key:  GetWebhookSecretKeyForComponent(component),
 			},
+		}
+
+		if gitProvider == "gitlab" {
+			gitProviderConfig.URL = "https://gitlab.com"
 		}
 	}
 

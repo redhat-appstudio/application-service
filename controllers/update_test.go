@@ -16,6 +16,9 @@
 package controllers
 
 import (
+	"context"
+	"encoding/json"
+	"fmt"
 	"testing"
 
 	devfileAPIV1 "github.com/devfile/api/v2/pkg/apis/workspaces/v1alpha2"
@@ -27,7 +30,9 @@ import (
 	"github.com/stretchr/testify/assert"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
+	"k8s.io/apimachinery/pkg/types"
 	ctrl "sigs.k8s.io/controller-runtime"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 	"sigs.k8s.io/yaml"
 )
@@ -1157,14 +1162,19 @@ func TestUpdateComponentStub(t *testing.T) {
 			ctrl.SetLogger(zap.New(zap.UseFlagOptions(&zap.Options{
 				Development: true,
 			})))
+			fakeClient := NewFakeClient(t)
+			fakeClient.MockGet = func(ctx context.Context, key types.NamespacedName, obj client.Object) error {
+				return nil
+			}
 			r := ComponentDetectionQueryReconciler{
-				Log: ctrl.Log.WithName("TestUpdateComponentStub"),
+				Client: fakeClient,
+				Log:    ctrl.Log.WithName("TestUpdateComponentStub"),
 			}
 			var err error
 			if tt.isNil {
-				err = r.updateComponentStub(ctrl.Request{}, nil, devfilesMap, nil, nil)
+				err = r.updateComponentStub(ctrl.Request{}, nil, nil, devfilesMap, nil, nil)
 			} else {
-				err = r.updateComponentStub(ctrl.Request{}, &componentDetectionQuery, devfilesMap, tt.devfilesURLMap, tt.dockerfileURLMap)
+				err = r.updateComponentStub(ctrl.Request{}, nil, &componentDetectionQuery, devfilesMap, tt.devfilesURLMap, tt.dockerfileURLMap)
 			}
 
 			if tt.wantErr && (err == nil) {
@@ -1187,11 +1197,7 @@ func TestUpdateComponentStub(t *testing.T) {
 						assert.Equal(t, hasCompDetection.DevfileFound, len(tt.devfilesURLMap[hasCompDetection.ComponentStub.Source.GitSource.Context]) == 0, "The devfile found did not match expected")
 
 						// Component Name
-						if len(tt.devfilesDataMap[hasCompDetection.ComponentStub.Source.GitSource.Context].Metadata.Name) > 0 {
-							assert.Contains(t, hasCompDetection.ComponentStub.ComponentName, tt.devfilesDataMap[hasCompDetection.ComponentStub.Source.GitSource.Context].Metadata.Name, "The component name did not match the expected")
-						} else {
-							assert.Contains(t, hasCompDetection.ComponentStub.ComponentName, "component", "The component name did not match the expected")
-						}
+						assert.Contains(t, hasCompDetection.ComponentStub.ComponentName, "url", "The component name did not match the expected")
 
 						// Devfile URL
 						if len(tt.devfilesURLMap) > 0 {
@@ -1278,7 +1284,7 @@ func TestUpdateComponentStub(t *testing.T) {
 						assert.Equal(t, hasCompDetection.DevfileFound, false, "The devfile found did not match expected")
 
 						// Component Name
-						assert.Contains(t, hasCompDetection.ComponentStub.ComponentName, "component", "The component name did not match the expected")
+						assert.Contains(t, hasCompDetection.ComponentStub.ComponentName, "url", "The component name did not match the expected")
 
 						// Dockerfile URL
 						if len(tt.dockerfileURLMap) > 0 {
@@ -1293,50 +1299,100 @@ func TestUpdateComponentStub(t *testing.T) {
 	}
 }
 
-func TestCheckComponentName(t *testing.T) {
+func TestGetComponentName(t *testing.T) {
+	ctx := context.Background()
+	fakeClientNoError := NewFakeClient(t)
+	fakeClientNoError.MockGet = func(ctx context.Context, key types.NamespacedName, obj client.Object) error {
+		return nil
+	}
+	fakeClientHCExist := NewFakeClient(t)
+	fakeClientHCExist.MockGet = func(ctx context.Context, key types.NamespacedName, obj client.Object) error {
+		hc := appstudiov1alpha1.Component{
+			Spec: appstudiov1alpha1.ComponentSpec{
+				ComponentName: "devfile-sample-go-basic",
+			},
+			Status: appstudiov1alpha1.ComponentStatus{},
+		}
+		data, _ := json.Marshal(hc)
+
+		json.Unmarshal(data, obj)
+		return nil
+	}
+	fakeClientWithError := NewFakeClient(t)
+	fakeClientWithError.MockGet = func(ctx context.Context, key types.NamespacedName, obj client.Object) error {
+		return fmt.Errorf("some error")
+	}
+
 	tests := []struct {
 		name                 string
-		componentName        string
-		componentDetectedMap appstudiov1alpha1.ComponentDetectionMap
-		wantName             string
+		client               client.Client
+		gitSource            *appstudiov1alpha1.GitSource
+		expectedName         string
+		expectedRandomString bool
 	}{
 		{
-			name:          "component already present",
-			componentName: "python",
-			componentDetectedMap: appstudiov1alpha1.ComponentDetectionMap{
-				"python":   appstudiov1alpha1.ComponentDetectionDescription{},
-				"python-1": appstudiov1alpha1.ComponentDetectionDescription{},
-				"nodejs":   appstudiov1alpha1.ComponentDetectionDescription{},
-				"nodejs-1": appstudiov1alpha1.ComponentDetectionDescription{},
+			name: "valid repo name",
+			gitSource: &appstudiov1alpha1.GitSource{
+				URL: "https://github.com/devfile-samples/devfile-sample-go-basic",
 			},
-			wantName: "python-2",
+			client:       fakeClientNoError,
+			expectedName: "devfile-sample-go-basic",
 		},
 		{
-			name:          "component not present",
-			componentName: "nodejs",
-			componentDetectedMap: appstudiov1alpha1.ComponentDetectionMap{
-				"python": appstudiov1alpha1.ComponentDetectionDescription{},
+			name: "long repo name with special chars",
+			gitSource: &appstudiov1alpha1.GitSource{
+				URL: "https://github.com/devfile-samples/123-testdevfilego--ImportRepository--withaverylongreporitoryname-test-validation-and-generation",
 			},
-			wantName: "nodejs",
+			client:       fakeClientNoError,
+			expectedName: "123-testdevfilego--importrepository--withaverylongreporito",
 		},
 		{
-			name:          "component already present edge",
-			componentName: "component",
-			componentDetectedMap: appstudiov1alpha1.ComponentDetectionMap{
-				"component":   appstudiov1alpha1.ComponentDetectionDescription{},
-				"component-1": appstudiov1alpha1.ComponentDetectionDescription{},
-				"component-2": appstudiov1alpha1.ComponentDetectionDescription{},
-				"component-3": appstudiov1alpha1.ComponentDetectionDescription{},
-				"Component-4": appstudiov1alpha1.ComponentDetectionDescription{},
+			name: "numeric repo name",
+			gitSource: &appstudiov1alpha1.GitSource{
+				URL: "https://github.com/devfile-samples/123454678.git",
 			},
-			wantName: "component-4",
+			client:       fakeClientNoError,
+			expectedName: "comp-123454678",
+		},
+		{
+			name: "error when look for hc",
+			gitSource: &appstudiov1alpha1.GitSource{
+				URL: "https://github.com/devfile-samples/devfile-sample-go-basic",
+			},
+			client:               fakeClientWithError,
+			expectedName:         "devfile-sample-go-basic",
+			expectedRandomString: true,
+		},
+		{
+			name: "hc exist with conflict name",
+			gitSource: &appstudiov1alpha1.GitSource{
+				URL: "https://github.com/devfile-samples/devfile-sample-go-basic",
+			},
+			client:               fakeClientHCExist,
+			expectedName:         "devfile-sample-go-basic",
+			expectedRandomString: true,
+		},
+		{
+			name: "valid repo name with context",
+			gitSource: &appstudiov1alpha1.GitSource{
+				URL:     "https://github.com/devfile-samples/devfile-multi-component",
+				Context: "nodejs",
+			},
+			client:       fakeClientNoError,
+			expectedName: "nodejs-devfile-multi-component",
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			gotName := checkComponentName(tt.componentName, tt.componentDetectedMap)
-			assert.Equal(t, tt.wantName, gotName, "the name should match")
+			gotComponentName := getComponentName(ctx, tt.gitSource, tt.client, "default")
+			if tt.expectedRandomString {
+				assert.Contains(t, gotComponentName, tt.expectedName, "the component name should contain repo name")
+				assert.NotEqual(t, tt.expectedName, gotComponentName, "the component name should not equal to repo name")
+			} else {
+				assert.Equal(t, tt.expectedName, gotComponentName, "the component name does not match expected name")
+			}
 		})
 	}
+
 }

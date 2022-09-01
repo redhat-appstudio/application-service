@@ -5,7 +5,7 @@ apiVersion: apis.kcp.dev/v1alpha1
 kind: APIResourceSchema
 metadata:
   creationTimestamp: null
-  name: v202208241415.applications.appstudio.redhat.com
+  name: v202209011919.applications.appstudio.redhat.com
 spec:
   group: appstudio.redhat.com
   names:
@@ -179,7 +179,7 @@ apiVersion: apis.kcp.dev/v1alpha1
 kind: APIResourceSchema
 metadata:
   creationTimestamp: null
-  name: v202208241415.componentdetectionqueries.appstudio.redhat.com
+  name: v202209011919.componentdetectionqueries.appstudio.redhat.com
 spec:
   group: appstudio.redhat.com
   names:
@@ -566,7 +566,7 @@ apiVersion: apis.kcp.dev/v1alpha1
 kind: APIResourceSchema
 metadata:
   creationTimestamp: null
-  name: v202208241415.components.appstudio.redhat.com
+  name: v202209011919.components.appstudio.redhat.com
 spec:
   group: appstudio.redhat.com
   names:
@@ -882,6 +882,10 @@ spec:
               properties:
                 branch:
                   description: Branch is the branch used for the gitops repository
+                  type: string
+                commitID:
+                  description: CommitID is the most recent commit ID in the GitOps
+                    repository for this component
                   type: string
                 context:
                   description: Context is the path within the gitops repository used

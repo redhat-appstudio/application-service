@@ -14,6 +14,6 @@ spec:
     resource: "configmaps"
     verbs: ["get", "list", "watch"]
   latestResourceSchemas:
-    - v202208241415.applications.appstudio.redhat.com
-    - v202208241415.componentdetectionqueries.appstudio.redhat.com
-    - v202208241415.components.appstudio.redhat.com
+    - v202209011919.applications.appstudio.redhat.com
+    - v202209011919.componentdetectionqueries.appstudio.redhat.com
+    - v202209011919.components.appstudio.redhat.com
