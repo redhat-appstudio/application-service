@@ -96,7 +96,6 @@ func (r *ComponentDetectionQueryReconciler) Reconcile(ctx context.Context, req c
 				Name:      componentDetectionQuery.Spec.Secret,
 				Namespace: componentDetectionQuery.Namespace,
 			}
-
 			err = r.Client.Get(ctx, namespacedName, &gitSecret)
 			if err != nil {
 				log.Error(err, fmt.Sprintf("Unable to retrieve Git secret %v, exiting reconcile loop %v", componentDetectionQuery.Spec.Secret, req.NamespacedName))
@@ -241,7 +240,7 @@ func (r *ComponentDetectionQueryReconciler) Reconcile(ctx context.Context, req c
 			dockerfileContextMap[context] = updatedLink
 		}
 
-		err = r.updateComponentStub(req, &componentDetectionQuery, devfilesMap, devfilesURLMap, dockerfileContextMap)
+		err = r.updateComponentStub(req, ctx, &componentDetectionQuery, devfilesMap, devfilesURLMap, dockerfileContextMap)
 		if err != nil {
 			log.Error(err, fmt.Sprintf("Unable to update the component stub %v", req.NamespacedName))
 			r.SetCompleteConditionAndUpdateCR(ctx, req, &componentDetectionQuery, err)

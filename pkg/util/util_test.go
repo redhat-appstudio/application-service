@@ -19,6 +19,7 @@ import (
 	"fmt"
 	"os"
 	"reflect"
+	"strings"
 	"testing"
 
 	gitopsgenv1alpha1 "github.com/redhat-developer/gitops-generator/api/v1alpha1"
@@ -415,6 +416,38 @@ func TestSanitizeErrorMessage(t *testing.T) {
 			if sanitizedError.Error() != tt.want.Error() {
 				t.Errorf("SanitizeName() error: expected %v got %v", tt.want, sanitizedError)
 			}
+		})
+	}
+}
+
+func TestGetRandomString(t *testing.T) {
+	tests := []struct {
+		name   string
+		length int
+		lower  bool
+	}{
+		{
+			name:   "all lower case string",
+			length: 5,
+			lower:  true,
+		},
+		{
+			name:   "contain upper case string",
+			length: 10,
+			lower:  false,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			gotString := GetRandomString(tt.length, tt.lower)
+			assert.Equal(t, tt.length, len(gotString), "the values should match")
+
+			if tt.lower == true {
+				assert.Equal(t, strings.ToLower(gotString), gotString, "the values should match")
+			}
+
+			gotString2 := GetRandomString(tt.length, tt.lower)
+			assert.NotEqual(t, gotString, gotString2, "the two random string should not be the same")
 		})
 	}
 }

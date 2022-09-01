@@ -18,6 +18,7 @@ package util
 import (
 	"fmt"
 	"io/ioutil"
+	"math/rand"
 	"net/http"
 	"net/url"
 	"os"
@@ -181,6 +182,22 @@ func CheckWithRegex(pattern, name string) bool {
 	}
 
 	return reg.MatchString(name)
+}
+
+const schemaBytes = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789"
+
+// GetRandomString returns a random string which is n characters long.
+// If lower is set to true a lower case string is returned.
+func GetRandomString(n int, lower bool) string {
+	b := make([]byte, n)
+	for i := range b {
+		b[i] = schemaBytes[rand.Intn(len(schemaBytes)-1)]
+	}
+	randomString := string(b)
+	if lower {
+		randomString = strings.ToLower(randomString)
+	}
+	return randomString
 }
 
 func GetMappedGitOpsComponent(component appstudiov1alpha1.Component) gitopsgenv1alpha1.Component {
