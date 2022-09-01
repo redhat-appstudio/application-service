@@ -23,7 +23,7 @@ require (
 	github.com/redhat-appstudio/managed-gitops/appstudio-shared v0.0.0-20220826075641-33705d2bf7fa // Update mod version in suite_test.go for tests
 	github.com/redhat-appstudio/service-provider-integration-scm-file-retriever v0.6.10
 	github.com/redhat-developer/alizer/go v0.0.0-20220704150640-ef50ead0b279
-	github.com/redhat-developer/gitops-generator v0.0.0-20220831163837-f095cbb71b42
+	github.com/redhat-developer/gitops-generator v0.0.0-20220901170915-a4d650cac486
 	github.com/spf13/afero v1.8.0
 	github.com/stretchr/testify v1.8.0
 	github.com/tektoncd/pipeline v0.33.0
