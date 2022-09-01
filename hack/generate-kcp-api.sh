@@ -50,7 +50,7 @@ cat << EOF > ${KCP_API_EXPORT_FILE}
 apiVersion: apis.kcp.dev/v1alpha1
 kind: APIExport
 metadata:
-  name: appstudio-identity-has
+  name: has
 spec:
   permissionClaims:
   - group: ""
@@ -58,9 +58,6 @@ spec:
     verbs: ["get", "list", "watch"]
   - group: ""
     resource: "configmaps"
-    verbs: ["get", "list", "watch"]
-  - group: "route.openshift.io"
-    resource: "routes"
     verbs: ["get", "list", "watch"]
   latestResourceSchemas:
 EOF
