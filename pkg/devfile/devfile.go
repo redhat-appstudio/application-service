@@ -127,7 +127,10 @@ func ConvertImageComponentToDevfile(comp appstudiov1alpha1.Component) (data.Devf
 		},
 	}
 
-	devfileData.AddComponents(components)
+	err = devfileData.AddComponents(components)
+	if err != nil {
+		return nil, err
+	}
 
 	return devfileData, nil
 }
