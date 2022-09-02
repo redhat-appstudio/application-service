@@ -52,7 +52,7 @@ patches:
       value: --api-export-name
     - op: add
       path: /spec/template/spec/containers/0/args/-
-      value: appstudio-identity-has
+      value: has
   target:
     kind: Deployment
     name: controller-manager
