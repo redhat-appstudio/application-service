@@ -55,10 +55,8 @@ spec:
   permissionClaims:
   - group: ""
     resource: "secrets"
-    verbs: ["get", "list", "watch"]
   - group: ""
     resource: "configmaps"
-    verbs: ["get", "list", "watch"]
   latestResourceSchemas:
 EOF
 

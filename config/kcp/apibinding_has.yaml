@@ -6,11 +6,9 @@ spec:
   reference:
     workspace:
       path: root:has
-      exportName: appstudio-identity-has
+      exportName: has
   acceptedPermissionClaims:
       - group: ""
         resource: "secrets"
-        verbs: ["get", "list", "watch"]
       - group: ""
         resource: "configmaps"
-        verbs: ["get", "list", "watch"]
