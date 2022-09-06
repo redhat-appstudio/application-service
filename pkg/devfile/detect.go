@@ -68,6 +68,7 @@ func search(log logr.Logger, a Alizer, localpath string, devfileRegistryURL stri
 			for _, f := range files {
 				if f.Name() == DevfileName || f.Name() == HiddenDevfileName {
 					// Check for devfile.yaml or .devfile.yaml
+					/* #nosec G304 -- false positive, filename is not based on user input*/
 					devfileBytes, err := ioutil.ReadFile(path.Join(curPath, f.Name()))
 					if err != nil {
 						return nil, nil, nil, err
@@ -87,6 +88,7 @@ func search(log logr.Logger, a Alizer, localpath string, devfileRegistryURL stri
 					for _, f := range hiddenfiles {
 						if f.Name() == DevfileName || f.Name() == HiddenDevfileName {
 							// Check for devfile.yaml or .devfile.yaml
+							/* #nosec G304 -- false positive, filename is not based on user input*/
 							devfileBytes, err := ioutil.ReadFile(path.Join(hiddenDirPath, f.Name()))
 							if err != nil {
 								return nil, nil, nil, err

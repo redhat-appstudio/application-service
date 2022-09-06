@@ -126,6 +126,7 @@ func ConvertGitHubURL(URL string, revision string) (string, error) {
 // CurlEndpoint curls the endpoint and returns the response or an error if the response is a non-200 status
 func CurlEndpoint(endpoint string) ([]byte, error) {
 	var respBytes []byte
+	/* #nosec G107 --  The URL is validated by the CDQ if the request is coming from the UI.  If we do happen to download invalid bytes, the devfile parser will catch this and fail. */
 	resp, err := http.Get(endpoint)
 	if err != nil {
 		return nil, err
