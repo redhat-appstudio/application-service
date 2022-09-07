@@ -3,7 +3,7 @@
 ## Prereqs
 
 - Access to a hosted KCP environment
-- An active KCP workspace, with an OpenShift-based `WorkloadCluster` inside it.
+- An active KCP workspace, with an OpenShift-based `SyncTarget` inside it.
 
 ## Before Deployment
 
@@ -16,6 +16,10 @@ kubectl create secret generic has-github-token --from-literal=token=$TOKEN -n ap
 If `kubectl` complains that `application-service-system` does not exist, create it, and then retry the command.
 
 where `$TOKEN` is the GitHub token to be used with HAS, as described [here](https://github.com/redhat-appstudio/application-service#creating-a-github-secret-for-has).
+
+It's also recommended to run `./hack/pull-appstudio-shared-and-regen.sh` before deploying, to ensure the AppStudio-shared APIs are available.
+   
+   - Otherwise, you will need to manually pull down the AppStudio-shared APIs, and bind them before deploying.
 
 ## Deploying the Operator
 

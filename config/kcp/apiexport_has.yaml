@@ -6,7 +6,12 @@ kind: APIExport
 metadata:
   name: has
 spec:
+  permissionClaims:
+  - group: ""
+    resource: "secrets"
+  - group: ""
+    resource: "configmaps"
   latestResourceSchemas:
-    - v202208221503.applications.appstudio.redhat.com
-    - v202208221503.componentdetectionqueries.appstudio.redhat.com
-    - v202208221503.components.appstudio.redhat.com
+    - v202209071537.applications.appstudio.redhat.com
+    - v202209071537.componentdetectionqueries.appstudio.redhat.com
+    - v202209071537.components.appstudio.redhat.com
