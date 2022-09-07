@@ -12,6 +12,6 @@ spec:
   - group: ""
     resource: "configmaps"
   latestResourceSchemas:
-    - v202208241415.applications.appstudio.redhat.com
-    - v202208241415.componentdetectionqueries.appstudio.redhat.com
-    - v202208241415.components.appstudio.redhat.com
+    - v202209071523.applications.appstudio.redhat.com
+    - v202209071523.componentdetectionqueries.appstudio.redhat.com
+    - v202209071523.components.appstudio.redhat.com
