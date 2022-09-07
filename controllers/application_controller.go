@@ -63,7 +63,11 @@ type ApplicationReconciler struct {
 // - https://pkg.go.dev/sigs.k8s.io/controller-runtime@v0.9.2/pkg/reconcile
 func (r *ApplicationReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
 	log := r.Log.WithValues("Application", req.NamespacedName).WithValues("clusterName", req.ClusterName)
-	ctx = logicalcluster.WithCluster(ctx, logicalcluster.New(req.ClusterName))
+
+	// if we're running on kcp, we need to include workspace in context
+	if req.ClusterName != "" {
+		ctx = logicalcluster.WithCluster(ctx, logicalcluster.New(req.ClusterName))
+	}
 
 	// Get the Application resource
 	var application appstudiov1alpha1.Application

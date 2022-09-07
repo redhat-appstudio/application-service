@@ -85,7 +85,11 @@ type ComponentReconciler struct {
 // - https://pkg.go.dev/sigs.k8s.io/controller-runtime@v0.9.2/pkg/reconcile
 func (r *ComponentReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
 	log := r.Log.WithValues("Component", req.NamespacedName).WithValues("clusterName", req.ClusterName)
-	ctx = logicalcluster.WithCluster(ctx, logicalcluster.New(req.ClusterName))
+
+	// if we're running on kcp, we need to include workspace in context
+	if req.ClusterName != "" {
+		ctx = logicalcluster.WithCluster(ctx, logicalcluster.New(req.ClusterName))
+	}
 
 	// Fetch the Component instance
 	var component appstudiov1alpha1.Component

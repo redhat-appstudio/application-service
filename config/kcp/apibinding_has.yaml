@@ -5,7 +5,7 @@ metadata:
 spec:
   reference:
     workspace:
-      path: $(KCP_WORKSPACE)
+      path: ${KCP_WORKSPACE}
       exportName: has
   acceptedPermissionClaims:
       - group: ""
