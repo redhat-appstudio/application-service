@@ -17,8 +17,6 @@ package controllers
 
 import (
 	"context"
-	"encoding/json"
-	"fmt"
 	"testing"
 
 	devfileAPIV1 "github.com/devfile/api/v2/pkg/apis/workspaces/v1alpha2"
@@ -1172,9 +1170,9 @@ func TestUpdateComponentStub(t *testing.T) {
 			}
 			var err error
 			if tt.isNil {
-				err = r.updateComponentStub(ctrl.Request{}, nil, nil, devfilesMap, nil, nil)
+				err = r.updateComponentStub(ctrl.Request{}, nil, devfilesMap, nil, nil)
 			} else {
-				err = r.updateComponentStub(ctrl.Request{}, nil, &componentDetectionQuery, devfilesMap, tt.devfilesURLMap, tt.dockerfileURLMap)
+				err = r.updateComponentStub(ctrl.Request{}, &componentDetectionQuery, devfilesMap, tt.devfilesURLMap, tt.dockerfileURLMap)
 			}
 
 			if tt.wantErr && (err == nil) {
@@ -1300,42 +1298,17 @@ func TestUpdateComponentStub(t *testing.T) {
 }
 
 func TestGetComponentName(t *testing.T) {
-	ctx := context.Background()
-	fakeClientNoError := NewFakeClient(t)
-	fakeClientNoError.MockGet = func(ctx context.Context, key types.NamespacedName, obj client.Object) error {
-		return nil
-	}
-	fakeClientHCExist := NewFakeClient(t)
-	fakeClientHCExist.MockGet = func(ctx context.Context, key types.NamespacedName, obj client.Object) error {
-		hc := appstudiov1alpha1.Component{
-			Spec: appstudiov1alpha1.ComponentSpec{
-				ComponentName: "devfile-sample-go-basic",
-			},
-			Status: appstudiov1alpha1.ComponentStatus{},
-		}
-		data, _ := json.Marshal(hc)
-
-		json.Unmarshal(data, obj)
-		return nil
-	}
-	fakeClientWithError := NewFakeClient(t)
-	fakeClientWithError.MockGet = func(ctx context.Context, key types.NamespacedName, obj client.Object) error {
-		return fmt.Errorf("some error")
-	}
 
 	tests := []struct {
-		name                 string
-		client               client.Client
-		gitSource            *appstudiov1alpha1.GitSource
-		expectedName         string
-		expectedRandomString bool
+		name         string
+		gitSource    *appstudiov1alpha1.GitSource
+		expectedName string
 	}{
 		{
 			name: "valid repo name",
 			gitSource: &appstudiov1alpha1.GitSource{
 				URL: "https://github.com/devfile-samples/devfile-sample-go-basic",
 			},
-			client:       fakeClientNoError,
 			expectedName: "devfile-sample-go-basic",
 		},
 		{
@@ -1343,7 +1316,6 @@ func TestGetComponentName(t *testing.T) {
 			gitSource: &appstudiov1alpha1.GitSource{
 				URL: "https://github.com/devfile-samples/123-testdevfilego--ImportRepository--withaverylongreporitoryname-test-validation-and-generation",
 			},
-			client:       fakeClientNoError,
 			expectedName: "123-testdevfilego--importrepository--withaverylongreporito",
 		},
 		{
@@ -1351,7 +1323,6 @@ func TestGetComponentName(t *testing.T) {
 			gitSource: &appstudiov1alpha1.GitSource{
 				URL: "https://github.com/devfile-samples/123454678.git",
 			},
-			client:       fakeClientNoError,
 			expectedName: "comp-123454678",
 		},
 		{
@@ -1359,18 +1330,14 @@ func TestGetComponentName(t *testing.T) {
 			gitSource: &appstudiov1alpha1.GitSource{
 				URL: "https://github.com/devfile-samples/devfile-sample-go-basic",
 			},
-			client:               fakeClientWithError,
-			expectedName:         "devfile-sample-go-basic",
-			expectedRandomString: true,
+			expectedName: "devfile-sample-go-basic",
 		},
 		{
 			name: "hc exist with conflict name",
 			gitSource: &appstudiov1alpha1.GitSource{
 				URL: "https://github.com/devfile-samples/devfile-sample-go-basic",
 			},
-			client:               fakeClientHCExist,
-			expectedName:         "devfile-sample-go-basic",
-			expectedRandomString: true,
+			expectedName: "devfile-sample-go-basic",
 		},
 		{
 			name: "valid repo name with context",
@@ -1378,20 +1345,18 @@ func TestGetComponentName(t *testing.T) {
 				URL:     "https://github.com/devfile-samples/devfile-multi-component",
 				Context: "nodejs",
 			},
-			client:       fakeClientNoError,
 			expectedName: "nodejs-devfile-multi-component",
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			gotComponentName := getComponentName(ctx, tt.gitSource, tt.client, "default")
-			if tt.expectedRandomString {
-				assert.Contains(t, gotComponentName, tt.expectedName, "the component name should contain repo name")
-				assert.NotEqual(t, tt.expectedName, gotComponentName, "the component name should not equal to repo name")
-			} else {
-				assert.Equal(t, tt.expectedName, gotComponentName, "the component name does not match expected name")
-			}
+			gotComponentName := getComponentName(tt.gitSource)
+			assert.Contains(t, gotComponentName, tt.expectedName, "the component name should contain repo name")
+			assert.NotEqual(t, tt.expectedName, gotComponentName, "the component name should not equal to repo name")
+			gotComponentName2 := getComponentName(tt.gitSource)
+			assert.Contains(t, gotComponentName2, tt.expectedName, "the component name should contain repo name")
+			assert.NotEqual(t, gotComponentName, gotComponentName2, "the two generated component names should not equal")
 		})
 	}
 
