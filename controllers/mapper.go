@@ -19,8 +19,7 @@ import (
 	"context"
 	"fmt"
 
-	kcpclient "github.com/kcp-dev/apimachinery/pkg/client"
-	"github.com/kcp-dev/logicalcluster"
+	logicalcluster "github.com/kcp-dev/logicalcluster/v2"
 	appstudioshared "github.com/redhat-appstudio/managed-gitops/appstudio-shared/apis/appstudio.redhat.com/v1alpha1"
 	"k8s.io/apimachinery/pkg/types"
 	ctrl "sigs.k8s.io/controller-runtime"
@@ -38,7 +37,7 @@ func MapToBindingByBoundObjectName(cl client.Client, objectType, label string) f
 
 		mapperLog := ctrl.Log.WithName("MapToBindingByBoundObjectName")
 		log := mapperLog.WithValues("object-name", obj.GetName(), "object-kind", obj.GetObjectKind()).WithValues("clusterName", clusterName)
-		ctx := kcpclient.WithCluster(context.TODO(), logicalcluster.New(clusterName))
+		ctx := logicalcluster.WithCluster(context.TODO(), logicalcluster.New(clusterName))
 
 		bindingList := &appstudioshared.ApplicationSnapshotEnvironmentBindingList{}
 		err := cl.List(ctx, bindingList,

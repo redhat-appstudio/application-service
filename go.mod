@@ -11,9 +11,8 @@ require (
 	github.com/go-git/go-git/v5 v5.4.2
 	github.com/go-logr/logr v1.2.3
 	github.com/google/go-github/v41 v41.0.0
-	github.com/kcp-dev/apimachinery v0.0.0-20220627134323-8c44889e6e09
-	github.com/kcp-dev/kcp/pkg/apis v0.5.0-alpha.1
-	github.com/kcp-dev/logicalcluster v1.0.0
+	github.com/kcp-dev/kcp/pkg/apis v0.7.0
+	github.com/kcp-dev/logicalcluster/v2 v2.0.0-alpha.1
 	github.com/migueleliasweb/go-github-mock v0.0.10
 	github.com/mitchellh/go-homedir v1.1.0
 	github.com/onsi/ginkgo v1.16.5
@@ -30,9 +29,9 @@ require (
 	github.com/tektoncd/triggers v0.19.1
 	go.uber.org/zap v1.21.0
 	golang.org/x/oauth2 v0.0.0-20211104180415-d3ed0bb246c8
-	k8s.io/api v0.23.5
-	k8s.io/apimachinery v0.23.5
-	k8s.io/client-go v0.23.5
+	k8s.io/api v0.24.3
+	k8s.io/apimachinery v0.24.3
+	k8s.io/client-go v0.24.3
 	sigs.k8s.io/controller-runtime v0.11.2
 	sigs.k8s.io/yaml v1.3.0
 
@@ -40,4 +39,4 @@ require (
 
 replace github.com/antlr/antlr4 => github.com/antlr/antlr4 v0.0.0-20211106181442-e4c1a74c66bd
 
-replace sigs.k8s.io/controller-runtime => github.com/kcp-dev/controller-runtime v0.11.3-0.20220624161137-f6e5a2f56683
+replace sigs.k8s.io/controller-runtime => github.com/kcp-dev/controller-runtime v0.12.2-0.20220808200255-4b60fd66e5de
