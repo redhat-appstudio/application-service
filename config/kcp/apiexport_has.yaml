@@ -11,12 +11,6 @@ spec:
     resource: "secrets"
   - group: ""
     resource: "configmaps"
-  - identityHash: a3fb9deb688ebe2ac15ee7f5ad5d34243c0defd475b23367081c377d60f67493
-    group: "appstudio.redhat.com"
-    resource: "environments"
-  - identityHash: a3fb9deb688ebe2ac15ee7f5ad5d34243c0defd475b23367081c377d60f67493
-    group: "appstudio.redhat.com"
-    resource: "applicationsnapshotenvironmentbindings"
   latestResourceSchemas:
     - v202208241415.applications.appstudio.redhat.com
     - v202208241415.componentdetectionqueries.appstudio.redhat.com
