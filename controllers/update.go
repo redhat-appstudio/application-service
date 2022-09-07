@@ -17,9 +17,7 @@ limitations under the License.
 package controllers
 
 import (
-	"context"
 	"fmt"
-	"reflect"
 	"regexp"
 	"strconv"
 	"strings"
@@ -32,11 +30,8 @@ import (
 	devfile "github.com/redhat-appstudio/application-service/pkg/devfile"
 	"github.com/redhat-appstudio/application-service/pkg/util"
 	corev1 "k8s.io/api/core/v1"
-	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/resource"
-	"k8s.io/apimachinery/pkg/types"
 	ctrl "sigs.k8s.io/controller-runtime"
-	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 func (r *ComponentReconciler) updateComponentDevfileModel(req ctrl.Request, hasCompDevfileData data.DevfileData, component appstudiov1alpha1.Component) error {
@@ -265,7 +260,7 @@ func (r *ComponentReconciler) updateApplicationDevfileModel(hasAppDevfileData da
 	return nil
 }
 
-func (r *ComponentDetectionQueryReconciler) updateComponentStub(req ctrl.Request, ctx context.Context, componentDetectionQuery *appstudiov1alpha1.ComponentDetectionQuery, devfilesMap map[string][]byte, devfilesURLMap map[string]string, dockerfileContextMap map[string]string) error {
+func (r *ComponentDetectionQueryReconciler) updateComponentStub(req ctrl.Request, componentDetectionQuery *appstudiov1alpha1.ComponentDetectionQuery, devfilesMap map[string][]byte, devfilesURLMap map[string]string, dockerfileContextMap map[string]string) error {
 
 	if componentDetectionQuery == nil {
 		return fmt.Errorf("componentDetectionQuery is nil")
@@ -305,7 +300,7 @@ func (r *ComponentDetectionQueryReconciler) updateComponentStub(req ctrl.Request
 			DevfileURL:    devfilesURLMap[context],
 			DockerfileURL: dockerfileContextMap[context],
 		}
-		componentName := getComponentName(ctx, gitSource, r.Client, req.Namespace)
+		componentName := getComponentName(gitSource)
 
 		componentStub := appstudiov1alpha1.ComponentSpec{
 			ComponentName: componentName,
@@ -478,7 +473,7 @@ func (r *ComponentDetectionQueryReconciler) updateComponentStub(req ctrl.Request
 			URL:           componentDetectionQuery.Spec.GitSource.URL,
 			DockerfileURL: link,
 		}
-		componentName := getComponentName(ctx, gitSource, r.Client, req.Namespace)
+		componentName := getComponentName(gitSource)
 
 		componentDetectionQuery.Status.ComponentDetected[componentName] = appstudiov1alpha1.ComponentDetectionDescription{
 			DevfileFound: false, // always false since there is only a dockerfile present for these contexts
@@ -499,7 +494,7 @@ func (r *ComponentDetectionQueryReconciler) updateComponentStub(req ctrl.Request
 	return nil
 }
 
-func getComponentName(ctx context.Context, gitSource *appstudiov1alpha1.GitSource, client client.Client, namespace string) string {
+func getComponentName(gitSource *appstudiov1alpha1.GitSource) string {
 	repoUrl := gitSource.URL
 	lastElement := repoUrl[strings.LastIndex(repoUrl, "/")+1:]
 	repoName := strings.Split(lastElement, ".git")[0]
@@ -508,7 +503,7 @@ func getComponentName(ctx context.Context, gitSource *appstudiov1alpha1.GitSourc
 	if context != "" && context != "./" {
 		componentName = fmt.Sprintf("%s-%s", context, repoName)
 	}
-	return sanitizeComponentName(ctx, componentName, client, namespace)
+	return sanitizeComponentName(componentName)
 }
 
 // sanitizeComponentName sanitizes component name with the following requirements:
@@ -517,7 +512,7 @@ func getComponentName(ctx context.Context, gitSource *appstudiov1alpha1.GitSourc
 // - Start with an alphanumeric character
 // - End with an alphanumeric character
 // - Must not contain all numeric values
-func sanitizeComponentName(ctx context.Context, name string, client client.Client, namespace string) string {
+func sanitizeComponentName(name string) string {
 	exclusive := regexp.MustCompile(`[^a-zA-Z0-9/-]`)
 	// filter out invalid characters
 	name = exclusive.ReplaceAllString(name, "")
@@ -533,18 +528,8 @@ func sanitizeComponentName(ctx context.Context, name string, client client.Clien
 		name = name[0:58]
 	}
 
-	// get hc
-	hc := &appstudiov1alpha1.Component{}
-	namespacedName := types.NamespacedName{
-		Name:      name,
-		Namespace: namespace,
-	}
-	newErr := client.Get(ctx, namespacedName, hc)
-
-	if (newErr != nil && !apierrors.IsNotFound(newErr)) || !reflect.DeepEqual(*hc, appstudiov1alpha1.Component{}) {
-		// name conflict with existing component, append random 4 chars at end of the name
-		name = fmt.Sprintf("%s-%s", name, util.GetRandomString(4, true))
-	}
+	// to avoid name conflict with existing component, append random 4 chars at end of the name
+	name = fmt.Sprintf("%s-%s", name, util.GetRandomString(4, true))
 
 	return name
 }
