@@ -69,7 +69,7 @@ func (r *ComponentDetectionQueryReconciler) Reconcile(ctx context.Context, req c
 
 	// if we're running on kcp, we need to include workspace in context
 	if req.ClusterName != "" {
-		ctx = logicalcluster.WithCluster(context.TODO(), logicalcluster.New(req.ClusterName))
+		ctx = logicalcluster.WithCluster(ctx, logicalcluster.New(req.ClusterName))
 	}
 
 	// Fetch the ComponentDetectionQuery instance
