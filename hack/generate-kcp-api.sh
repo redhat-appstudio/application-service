@@ -52,6 +52,11 @@ kind: APIExport
 metadata:
   name: has
 spec:
+  permissionClaims:
+  - group: ""
+    resource: "secrets"
+  - group: ""
+    resource: "configmaps"
   latestResourceSchemas:
 EOF
 

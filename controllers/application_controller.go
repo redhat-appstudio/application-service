@@ -32,8 +32,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 	"sigs.k8s.io/yaml"
 
-	kcpclient "github.com/kcp-dev/apimachinery/pkg/client"
-	"github.com/kcp-dev/logicalcluster"
+	logicalcluster "github.com/kcp-dev/logicalcluster/v2"
 
 	appstudiov1alpha1 "github.com/redhat-appstudio/application-service/api/v1alpha1"
 	devfile "github.com/redhat-appstudio/application-service/pkg/devfile"
@@ -64,7 +63,11 @@ type ApplicationReconciler struct {
 // - https://pkg.go.dev/sigs.k8s.io/controller-runtime@v0.9.2/pkg/reconcile
 func (r *ApplicationReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
 	log := r.Log.WithValues("Application", req.NamespacedName).WithValues("clusterName", req.ClusterName)
-	ctx = kcpclient.WithCluster(ctx, logicalcluster.New(req.ClusterName))
+
+	// if we're running on kcp, we need to include workspace in context
+	if req.ClusterName != "" {
+		ctx = logicalcluster.WithCluster(ctx, logicalcluster.New(req.ClusterName))
+	}
 
 	// Get the Application resource
 	var application appstudiov1alpha1.Application

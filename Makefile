@@ -58,6 +58,9 @@ else
 GOBIN=$(shell go env GOBIN)
 endif
 
+# create the temporary directory under the same parent dir as the Makefile
+TEMP_DIR := $(shell dirname $(realpath $(firstword $(MAKEFILE_LIST))))/.tmp
+
 # Setting SHELL to bash allows bash commands to be executed by recipes.
 # This is a requirement for 'setup-envtest.sh' in the test target.
 # Options are set to exit when a recipe line exits non-zero or a piped command fails.
@@ -176,12 +179,11 @@ deploy: manifests kustomize ## Deploy controller to the K8s cluster specified in
 undeploy: ## Undeploy controller from the K8s cluster specified in ~/.kube/config.
 	$(KUSTOMIZE) build config/default | kubectl delete -f -
 
-deploy-kcp: manifests install ## Install CRDs and deploy HAS on KCP
+deploy-kcp: ensure-tmp manifests kustomize ##install ## Install CRDs and deploy HAS on KCP
 	cd config/manager && $(KUSTOMIZE) edit set image controller=${IMG}
-	GITHUB_ORG=${GITHUB_ORG} DEVFILE_REGISTRY_URL=${DEVFILE_REGISTRY_URL} $(KUSTOMIZE) build config/kcp | kubectl apply -f -
-
-undeploy-kcp: # Undeploy HAS from KCP (including CRDs)
-	$(KUSTOMIZE) build config/kcp | kubectl delete -f -
+	$(eval KCP_WORKSPACE?=$(shell kubectl kcp workspace . --short))
+	KCP_WORKSPACE=$(KCP_WORKSPACE) GITHUB_ORG=${GITHUB_ORG} DEVFILE_REGISTRY_URL=${DEVFILE_REGISTRY_URL} hack/replace_placeholders_and_deploy.sh "${KUSTOMIZE}" "kcp" "kcp"
+	kubectl apply -f .tmp/deployment_kcp/kcp/apibinding_has.yaml
 
 CONTROLLER_GEN = $(shell pwd)/bin/controller-gen
 controller-gen: ## Download controller-gen locally if necessary.
@@ -293,3 +295,6 @@ debug: dlv generate manifests kustomize apply-crds
 debug-stop:
 	echo "Terminate debug session"
 	pkill dlv || true
+
+ensure-tmp:
+	mkdir -p $(TEMP_DIR)
