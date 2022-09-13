@@ -113,6 +113,9 @@ For example:
 
 Webhooks require self-signed certificates to validate the resources. To disable webhooks during local dev and testing, export `ENABLE_WEBHOOKS=false`
 
-
-Useful links:
+### Useful links:
 * [HAS Project information page](https://docs.google.com/document/d/1axzNOhRBSkly3M2Y32Pxr1MBpBif2ljb-ufj0_aEt74/edit?usp=sharing)
+
+## Contributions
+
+Please see our [CONTRIBUTING](./docs/CONTRIBUTING.md) for more information.
