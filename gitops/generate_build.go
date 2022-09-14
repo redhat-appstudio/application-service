@@ -325,12 +325,12 @@ func getParamsForComponentBuild(component appstudiov1alpha1.Component, isInitial
 
 func getBuildCommonLabelsForComponent(component *appstudiov1alpha1.Component) map[string]string {
 	labels := map[string]string{
-		"pipelines.appstudio.openshift.io/type":    "build",
-		"build.appstudio.openshift.io/build":       "true",
-		"build.appstudio.openshift.io/type":        "build",
-		"build.appstudio.openshift.io/version":     "0.1",
-		"build.appstudio.openshift.io/component":   component.Name,
-		"build.appstudio.openshift.io/application": component.Spec.Application,
+		"pipelines.appstudio.openshift.io/type": "build",
+		"build.appstudio.openshift.io/build":    "true",
+		"build.appstudio.openshift.io/type":     "build",
+		"build.appstudio.openshift.io/version":  "0.1",
+		"appstudio.openshift.io/component":      component.Name,
+		"appstudio.openshift.io/application":    component.Spec.Application,
 	}
 	return labels
 }
