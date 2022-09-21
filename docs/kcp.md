@@ -41,7 +41,7 @@ By default, Webhooks will **not** be installed with HAS. If you wish to install 
 
 3) `kubectl create ns default` to create a namespace to use
 
-4) Run `kubectl apply -f samples/application/hasapp.yaml` to create a simple Application resource
+4) Run `kubectl apply -f samples/hasapplication/hasapp.yml` to create a simple Application resource
 
 5) Run `kubectl get hasapp application-sample -o yaml`, and verify you see the following:
 
