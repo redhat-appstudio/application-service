@@ -158,13 +158,24 @@ func DetermineBuildExecution(component appstudiov1alpha1.Component, params []tek
 		},
 	}
 	if gitopsConfig.AppStudioRegistrySecretPresent {
-		pipelineRunSpec.Workspaces = append(pipelineRunSpec.Workspaces, tektonapi.WorkspaceBinding{
-			Name: "registry-auth",
-			Secret: &corev1.SecretVolumeSource{
-				SecretName: "redhat-appstudio-registry-pull-secret",
+		pipelineRunSpec.Workspaces = append(pipelineRunSpec.Workspaces,
+			tektonapi.WorkspaceBinding{
+				Name: "registry-auth",
+				Secret: &corev1.SecretVolumeSource{
+					SecretName: gitopsprepare.RegistrySecret,
+				},
 			},
-		})
+		)
+		// imagePullSecret to be set in the podTemplate used by chains
+		pipelineRunSpec.PodTemplate = &tektonapi.PodTemplate{
+			ImagePullSecrets: []corev1.LocalObjectReference{
+				{
+					Name: gitopsprepare.RegistrySecret,
+				},
+			},
+		}
 	}
+
 	return pipelineRunSpec
 }
 

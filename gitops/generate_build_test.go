@@ -410,6 +410,13 @@ func TestGenerateInitialBuildPipelineRun(t *testing.T) {
 							},
 						},
 					},
+					PodTemplate: &tektonapi.PodTemplate{
+						ImagePullSecrets: []corev1.LocalObjectReference{
+							{
+								Name: "redhat-appstudio-registry-pull-secret",
+							},
+						},
+					},
 				},
 			},
 		},
@@ -561,6 +568,13 @@ func TestDetermineBuildExecution(t *testing.T) {
 						},
 					},
 				},
+				PodTemplate: &tektonapi.PodTemplate{
+					ImagePullSecrets: []corev1.LocalObjectReference{
+						{
+							Name: "redhat-appstudio-registry-pull-secret",
+						},
+					},
+				},
 			},
 		},
 		{
@@ -600,6 +614,13 @@ func TestDetermineBuildExecution(t *testing.T) {
 						Name: "registry-auth",
 						Secret: &corev1.SecretVolumeSource{
 							SecretName: "redhat-appstudio-registry-pull-secret",
+						},
+					},
+				},
+				PodTemplate: &tektonapi.PodTemplate{
+					ImagePullSecrets: []corev1.LocalObjectReference{
+						{
+							Name: "redhat-appstudio-registry-pull-secret",
 						},
 					},
 				},
