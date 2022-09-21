@@ -815,11 +815,11 @@ func TestGenerateTriggerTemplate(t *testing.T) {
 						if pr.Namespace != tt.component.Namespace {
 							t.Errorf("GenerateTriggerTemplate() namespace mismatch: got %s want %s", pr.Namespace, tt.component.Namespace)
 						}
-						compA, ok := pr.Annotations["build.appstudio.openshift.io/component"]
+						compA, ok := pr.Annotations["appstudio.openshift.io/component"]
 						if !ok || compA != tt.component.Name {
 							t.Errorf("GenerateTriggerTemplate() component annotation incorrect: %v %s", ok, compA)
 						}
-						appA, ok := pr.Annotations["build.appstudio.openshift.io/application"]
+						appA, ok := pr.Annotations["appstudio.openshift.io/application"]
 						if !ok || appA != tt.component.Spec.Application {
 							t.Errorf("GenerateTriggerTemplate() app annotation incorrect: %v %s", ok, appA)
 						}
@@ -1201,7 +1201,7 @@ func TestGeneratePACRepository(t *testing.T) {
 			if len(pacRepo.Annotations) == 0 {
 				t.Errorf("Generated PaC repository must have annotations")
 			}
-			if pacRepo.Annotations["build.appstudio.openshift.io/component"] != component.Name {
+			if pacRepo.Annotations["appstudio.openshift.io/component"] != component.Name {
 				t.Errorf("Generated PaC repository must have component annotation")
 			}
 
