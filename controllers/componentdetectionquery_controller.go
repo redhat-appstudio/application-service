@@ -111,9 +111,16 @@ func (r *ComponentDetectionQueryReconciler) Reconcile(ctx context.Context, req c
 		source := componentDetectionQuery.Spec.GitSource
 		var devfileBytes, dockerfileBytes []byte
 		var clonePath string
+		var componentPath string
 		devfilesMap := make(map[string][]byte)
 		devfilesURLMap := make(map[string]string)
 		dockerfileContextMap := make(map[string]string)
+
+		context := source.Context
+		contextDir := context
+		if context == "" {
+			contextDir = "./"
+		}
 
 		if source.DevfileURL == "" {
 			isMultiComponent := false
@@ -121,21 +128,19 @@ func (r *ComponentDetectionQueryReconciler) Reconcile(ctx context.Context, req c
 			isDevfilePresent := false
 			log.Info(fmt.Sprintf("Attempting to read a devfile from the URL %s... %v", source.URL, req.NamespacedName))
 			// check if the project is multi-component or single-component
-			log.Info(fmt.Sprintf("Look for devfile or dockerfile at the root dir... %v", req.NamespacedName))
-			var gitURL string
 			if gitToken == "" {
-				gitURL, err = util.ConvertGitHubURL(source.URL, source.Revision)
+				gitURL, err := util.ConvertGitHubURL(source.URL, source.Revision, context)
+				log.Info(fmt.Sprintf("Look for devfile or dockerfile at the URL %s... %v", gitURL, req.NamespacedName))
 				if err != nil {
 					log.Error(err, fmt.Sprintf("Unable to convert Github URL to raw format, exiting reconcile loop %v", req.NamespacedName))
 					r.SetCompleteConditionAndUpdateCR(ctx, req, &componentDetectionQuery, err)
 					return ctrl.Result{}, nil
 				}
-
 				devfileBytes, dockerfileBytes = devfile.DownloadDevfileAndDockerfile(gitURL)
 			} else {
 				// Use SPI to retrieve the devfile from the private repository
 				// TODO - maysunfaisal also search for Dockerfile
-				devfileBytes, err = spi.DownloadDevfileUsingSPI(r.SPIClient, ctx, componentDetectionQuery.Namespace, source.URL, "main", "")
+				devfileBytes, err = spi.DownloadDevfileUsingSPI(r.SPIClient, ctx, componentDetectionQuery.Namespace, source.URL, "main", context)
 				if err != nil {
 					log.Error(err, fmt.Sprintf("Unable to curl for any known devfile locations from %s %v", source.URL, req.NamespacedName))
 				}
@@ -146,10 +151,10 @@ func (r *ComponentDetectionQueryReconciler) Reconcile(ctx context.Context, req c
 
 			if isDevfilePresent {
 				log.Info(fmt.Sprintf("Found a devfile, devfile to be analyzed to see if a Dockerfile is referenced %v", req.NamespacedName))
-				devfilesMap["./"] = devfileBytes
+				devfilesMap[contextDir] = devfileBytes
 			} else if isDockerfilePresent {
 				log.Info(fmt.Sprintf("Determined that this is a Dockerfile only component  %v", req.NamespacedName))
-				dockerfileContextMap["./"] = "./Dockerfile"
+				dockerfileContextMap[contextDir] = "./Dockerfile"
 			}
 
 			// Clone the repo if no dockerfile present
@@ -170,10 +175,15 @@ func (r *ComponentDetectionQueryReconciler) Reconcile(ctx context.Context, req c
 					return ctrl.Result{}, nil
 				}
 				log.Info(fmt.Sprintf("cloned from %s to path %s... %v", source.URL, clonePath, req.NamespacedName))
+				componentPath = clonePath
+				if context != "" {
+					componentPath = path.Join(clonePath, context)
+				}
+
 				if !isDevfilePresent {
-					components, err := r.AlizerClient.DetectComponents(clonePath)
+					components, err := r.AlizerClient.DetectComponents(componentPath)
 					if err != nil {
-						log.Error(err, fmt.Sprintf("Unable to detect components using Alizer for repo %v, under path %v... %v ", source.URL, clonePath, req.NamespacedName))
+						log.Error(err, fmt.Sprintf("Unable to detect components using Alizer for repo %v, under path %v... %v ", source.URL, componentPath, req.NamespacedName))
 						r.SetCompleteConditionAndUpdateCR(ctx, req, &componentDetectionQuery, err)
 						return ctrl.Result{}, nil
 					}
@@ -182,7 +192,7 @@ func (r *ComponentDetectionQueryReconciler) Reconcile(ctx context.Context, req c
 					// case 1: no components been detected by Alizer, might still has subfolders contains dockerfile. Need to scan repo
 					// case 2: more than 1 components been detected by Alizer, is certain a multi-component project. Need to scan repo
 					// case 3: one or more than 1 compinents been detected by Alizer, and the first one in the list is under sub-folder. Need to scan repo.
-					if len(components) != 1 || (len(components) != 0 && path.Clean(components[0].Path) != path.Clean(clonePath)) {
+					if len(components) != 1 || (len(components) != 0 && path.Clean(components[0].Path) != path.Clean(componentPath)) {
 						isMultiComponent = true
 					}
 				}
@@ -192,7 +202,7 @@ func (r *ComponentDetectionQueryReconciler) Reconcile(ctx context.Context, req c
 			if isMultiComponent {
 				log.Info(fmt.Sprintf("Since this is a multi-component, attempt will be made to read only level 1 dir for devfiles... %v", req.NamespacedName))
 
-				devfilesMap, devfilesURLMap, dockerfileContextMap, err = devfile.ScanRepo(log, r.AlizerClient, clonePath, r.DevfileRegistryURL)
+				devfilesMap, devfilesURLMap, dockerfileContextMap, err = devfile.ScanRepo(log, r.AlizerClient, componentPath, r.DevfileRegistryURL)
 				if err != nil {
 					if _, ok := err.(*devfile.NoDevfileFound); !ok {
 						log.Error(err, fmt.Sprintf("Unable to find devfile(s) in repo %s due to an error %s, exiting reconcile loop %v", source.URL, err.Error(), req.NamespacedName))
@@ -203,9 +213,9 @@ func (r *ComponentDetectionQueryReconciler) Reconcile(ctx context.Context, req c
 			} else {
 				log.Info(fmt.Sprintf("Since this is not a multi-component, attempt will be made to read devfile at the root dir... %v", req.NamespacedName))
 				if !isDockerfilePresent {
-					err := devfile.AnalyzePath(r.AlizerClient, clonePath, "./", r.DevfileRegistryURL, devfilesMap, devfilesURLMap, dockerfileContextMap, isDevfilePresent, isDockerfilePresent)
+					err := devfile.AnalyzePath(r.AlizerClient, componentPath, contextDir, r.DevfileRegistryURL, devfilesMap, devfilesURLMap, dockerfileContextMap, isDevfilePresent, isDockerfilePresent)
 					if err != nil {
-						log.Error(err, fmt.Sprintf("Unable to analyze path %s for a dockerfile/devfile %v", clonePath, req.NamespacedName))
+						log.Error(err, fmt.Sprintf("Unable to analyze path %s for a dockerfile/devfile %v", componentPath, req.NamespacedName))
 						r.SetCompleteConditionAndUpdateCR(ctx, req, &componentDetectionQuery, err)
 						return ctrl.Result{}, nil
 					}
@@ -221,7 +231,7 @@ func (r *ComponentDetectionQueryReconciler) Reconcile(ctx context.Context, req c
 				r.SetCompleteConditionAndUpdateCR(ctx, req, &componentDetectionQuery, err)
 				return ctrl.Result{}, nil
 			}
-			devfilesMap["./"] = devfileBytes
+			devfilesMap[contextDir] = devfileBytes
 		}
 
 		// Remove the cloned path if present
