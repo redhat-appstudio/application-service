@@ -128,6 +128,22 @@ func GenerateInitialBuildPipelineRun(component appstudiov1alpha1.Component, gito
 	}, nil
 }
 
+// Generate volumeClaimTemplate for pipeline runs that requires their own PVC during run.
+func GenerateVolumeClaimTemplate() *corev1.PersistentVolumeClaim {
+	return &corev1.PersistentVolumeClaim{
+		Spec: corev1.PersistentVolumeClaimSpec{
+			AccessModes: []corev1.PersistentVolumeAccessMode{
+				"ReadWriteOnce",
+			},
+			Resources: corev1.ResourceRequirements{
+				Requests: corev1.ResourceList{
+					"storage": resource.MustParse("1Gi"),
+				},
+			},
+		},
+	}
+}
+
 // DetermineBuildExecution returns the pipelineRun spec that would be used
 // in webhooks-triggered pipelineRuns as well as user-triggered PipelineRuns
 func DetermineBuildExecution(component appstudiov1alpha1.Component, params []tektonapi.Param, gitopsConfig gitopsprepare.GitopsConfig) tektonapi.PipelineRunSpec {
@@ -141,19 +157,8 @@ func DetermineBuildExecution(component appstudiov1alpha1.Component, params []tek
 
 		Workspaces: []tektonapi.WorkspaceBinding{
 			{
-				Name: "workspace",
-				VolumeClaimTemplate: &corev1.PersistentVolumeClaim{
-					Spec: corev1.PersistentVolumeClaimSpec{
-						AccessModes: []corev1.PersistentVolumeAccessMode{
-							"ReadWriteOnce",
-						},
-						Resources: corev1.ResourceRequirements{
-							Requests: corev1.ResourceList{
-								"storage": resource.MustParse("1Gi"),
-							},
-						},
-					},
-				},
+				Name:                "workspace",
+				VolumeClaimTemplate: GenerateVolumeClaimTemplate(),
 			},
 		},
 	}
