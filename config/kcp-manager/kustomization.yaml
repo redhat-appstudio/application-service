@@ -29,15 +29,6 @@ patches:
     kind: Deployment
     name: controller-manager
 
-# HAS on KCP needs to use default service account name right now
-- patch: |-
-    - op: replace
-      path: /spec/template/spec/serviceAccountName
-      value: default
-  target:
-    kind: Deployment
-    name: controller-manager
-
 # HAS on KCP needs to pass in the APIExport for HAS when the operator starts up
 - patch: |-
     - op: add
