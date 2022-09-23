@@ -90,6 +90,8 @@ func UpdateDockerfileLink(repo, revision, context string) (string, error) {
 			return "", err
 		}
 
+	} else {
+		return context, nil
 	}
 
 	return rawGitURL, nil
