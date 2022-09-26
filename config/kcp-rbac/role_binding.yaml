@@ -8,7 +8,7 @@ roleRef:
   name: manager-role
 subjects:
 - kind: ServiceAccount
-  name: default
+  name: controller-manager
   namespace: system
 ---
 apiVersion: rbac.authorization.k8s.io/v1
@@ -21,7 +21,7 @@ roleRef:
   name: manager-role-build
 subjects:
 - kind: ServiceAccount
-  name: default
+  name: controller-manager
   namespace: system
 ---
 apiVersion: rbac.authorization.k8s.io/v1
@@ -34,5 +34,5 @@ roleRef:
   name: manager-role-spi
 subjects:
 - kind: ServiceAccount
-  name: default
+  name: controller-manager
   namespace: system

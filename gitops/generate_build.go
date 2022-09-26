@@ -22,7 +22,6 @@ import (
 	"net/url"
 	"regexp"
 	"strings"
-	"time"
 
 	"github.com/redhat-developer/gitops-generator/pkg/resources"
 	"github.com/redhat-developer/gitops-generator/pkg/yaml"
@@ -38,17 +37,17 @@ import (
 	tektonapi "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	triggersapi "github.com/tektoncd/triggers/pkg/apis/triggers/v1alpha1"
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/util/intstr"
 )
 
 const (
-	buildCommonStoragePVCFileName = "common-storage-pvc.yaml"
-	buildTriggerTemplateFileName  = "trigger-template.yaml"
-	buildEventListenerFileName    = "event-listener.yaml"
-	buildWebhookRouteFileName     = "build-webhook-route.yaml"
-	buildRepositoryFileName       = "pac-repository.yaml"
+	buildTriggerTemplateFileName = "trigger-template.yaml"
+	buildEventListenerFileName   = "event-listener.yaml"
+	buildWebhookRouteFileName    = "build-webhook-route.yaml"
+	buildRepositoryFileName      = "pac-repository.yaml"
 
 	DefaultImageRepo = "quay.io/redhat-appstudio/user-workload"
 
@@ -91,7 +90,6 @@ func GenerateBuild(fs afero.Fs, outputFolder string, component appstudiov1alpha1
 		webhookRoute := GenerateBuildWebhookRoute(component)
 
 		buildResources = map[string]interface{}{
-			//buildCommonStoragePVCFileName: commonStoragePVC,
 			buildTriggerTemplateFileName: triggerTemplate,
 			buildEventListenerFileName:   eventListener,
 			buildWebhookRouteFileName:    webhookRoute,
@@ -118,7 +116,7 @@ func GenerateInitialBuildPipelineRun(component appstudiov1alpha1.Component, gito
 	if err != nil {
 		return tektonapi.PipelineRun{}, err
 	}
-	initialBuildSpec := DetermineBuildExecution(component, params, getInitialBuildWorkspaceSubpath(), gitopsConfig)
+	initialBuildSpec := DetermineBuildExecution(component, params, gitopsConfig)
 
 	return tektonapi.PipelineRun{
 		ObjectMeta: metav1.ObjectMeta{
@@ -130,13 +128,25 @@ func GenerateInitialBuildPipelineRun(component appstudiov1alpha1.Component, gito
 	}, nil
 }
 
-func getInitialBuildWorkspaceSubpath() string {
-	return "initialbuild-" + time.Now().Format("2006-Jan-02_15-04-05")
+// Generate volumeClaimTemplate for pipeline runs that requires their own PVC during run.
+func GenerateVolumeClaimTemplate() *corev1.PersistentVolumeClaim {
+	return &corev1.PersistentVolumeClaim{
+		Spec: corev1.PersistentVolumeClaimSpec{
+			AccessModes: []corev1.PersistentVolumeAccessMode{
+				"ReadWriteOnce",
+			},
+			Resources: corev1.ResourceRequirements{
+				Requests: corev1.ResourceList{
+					"storage": resource.MustParse("1Gi"),
+				},
+			},
+		},
+	}
 }
 
 // DetermineBuildExecution returns the pipelineRun spec that would be used
 // in webhooks-triggered pipelineRuns as well as user-triggered PipelineRuns
-func DetermineBuildExecution(component appstudiov1alpha1.Component, params []tektonapi.Param, workspaceSubPath string, gitopsConfig gitopsprepare.GitopsConfig) tektonapi.PipelineRunSpec {
+func DetermineBuildExecution(component appstudiov1alpha1.Component, params []tektonapi.Param, gitopsConfig gitopsprepare.GitopsConfig) tektonapi.PipelineRunSpec {
 
 	pipelineRunSpec := tektonapi.PipelineRunSpec{
 		Params: params,
@@ -147,22 +157,30 @@ func DetermineBuildExecution(component appstudiov1alpha1.Component, params []tek
 
 		Workspaces: []tektonapi.WorkspaceBinding{
 			{
-				Name: "workspace",
-				PersistentVolumeClaim: &corev1.PersistentVolumeClaimVolumeSource{
-					ClaimName: "appstudio",
-				},
-				SubPath: component.Name + "/" + workspaceSubPath,
+				Name:                "workspace",
+				VolumeClaimTemplate: GenerateVolumeClaimTemplate(),
 			},
 		},
 	}
 	if gitopsConfig.AppStudioRegistrySecretPresent {
-		pipelineRunSpec.Workspaces = append(pipelineRunSpec.Workspaces, tektonapi.WorkspaceBinding{
-			Name: "registry-auth",
-			Secret: &corev1.SecretVolumeSource{
-				SecretName: "redhat-appstudio-registry-pull-secret",
+		pipelineRunSpec.Workspaces = append(pipelineRunSpec.Workspaces,
+			tektonapi.WorkspaceBinding{
+				Name: "registry-auth",
+				Secret: &corev1.SecretVolumeSource{
+					SecretName: gitopsprepare.RegistrySecret,
+				},
 			},
-		})
+		)
+		// imagePullSecret to be set in the podTemplate used by chains
+		pipelineRunSpec.PodTemplate = &tektonapi.PodTemplate{
+			ImagePullSecrets: []corev1.LocalObjectReference{
+				{
+					Name: gitopsprepare.RegistrySecret,
+				},
+			},
+		}
 	}
+
 	return pipelineRunSpec
 }
 
@@ -325,12 +343,12 @@ func getParamsForComponentBuild(component appstudiov1alpha1.Component, isInitial
 
 func getBuildCommonLabelsForComponent(component *appstudiov1alpha1.Component) map[string]string {
 	labels := map[string]string{
-		"pipelines.appstudio.openshift.io/type":    "build",
-		"build.appstudio.openshift.io/build":       "true",
-		"build.appstudio.openshift.io/type":        "build",
-		"build.appstudio.openshift.io/version":     "0.1",
-		"build.appstudio.openshift.io/component":   component.Name,
-		"build.appstudio.openshift.io/application": component.Spec.Application,
+		"pipelines.appstudio.openshift.io/type": "build",
+		"build.appstudio.openshift.io/build":    "true",
+		"build.appstudio.openshift.io/type":     "build",
+		"build.appstudio.openshift.io/version":  "0.1",
+		"appstudio.openshift.io/component":      component.Name,
+		"appstudio.openshift.io/application":    component.Spec.Application,
 	}
 	return labels
 }
@@ -372,7 +390,7 @@ func GenerateTriggerTemplate(component appstudiov1alpha1.Component, gitopsConfig
 	if err != nil {
 		return nil, err
 	}
-	webhookBasedBuildTemplate := DetermineBuildExecution(component, params, "$(tt.params.git-revision)", gitopsConfig)
+	webhookBasedBuildTemplate := DetermineBuildExecution(component, params, gitopsConfig)
 	resoureTemplatePipelineRun := tektonapi.PipelineRun{
 		ObjectMeta: metav1.ObjectMeta{
 			GenerateName: component.Name + "-",

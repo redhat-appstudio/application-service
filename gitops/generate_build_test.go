@@ -35,6 +35,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	tektonapi "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/yaml"
 )
@@ -389,15 +390,30 @@ func TestGenerateInitialBuildPipelineRun(t *testing.T) {
 					Workspaces: []tektonapi.WorkspaceBinding{
 						{
 							Name: "workspace",
-							PersistentVolumeClaim: &corev1.PersistentVolumeClaimVolumeSource{
-								ClaimName: "appstudio",
+							VolumeClaimTemplate: &corev1.PersistentVolumeClaim{
+								Spec: corev1.PersistentVolumeClaimSpec{
+									AccessModes: []corev1.PersistentVolumeAccessMode{
+										"ReadWriteOnce",
+									},
+									Resources: corev1.ResourceRequirements{
+										Requests: corev1.ResourceList{
+											"storage": resource.MustParse("1Gi"),
+										},
+									},
+								},
 							},
-							SubPath: "testcomponent/" + getInitialBuildWorkspaceSubpath(),
 						},
 						{
 							Name: "registry-auth",
 							Secret: &corev1.SecretVolumeSource{
 								SecretName: "redhat-appstudio-registry-pull-secret",
+							},
+						},
+					},
+					PodTemplate: &tektonapi.PodTemplate{
+						ImagePullSecrets: []corev1.LocalObjectReference{
+							{
+								Name: "redhat-appstudio-registry-pull-secret",
 							},
 						},
 					},
@@ -440,10 +456,18 @@ func TestGenerateInitialBuildPipelineRun(t *testing.T) {
 					Workspaces: []tektonapi.WorkspaceBinding{
 						{
 							Name: "workspace",
-							PersistentVolumeClaim: &corev1.PersistentVolumeClaimVolumeSource{
-								ClaimName: "appstudio",
+							VolumeClaimTemplate: &corev1.PersistentVolumeClaim{
+								Spec: corev1.PersistentVolumeClaimSpec{
+									AccessModes: []corev1.PersistentVolumeAccessMode{
+										"ReadWriteOnce",
+									},
+									Resources: corev1.ResourceRequirements{
+										Requests: corev1.ResourceList{
+											"storage": resource.MustParse("1Gi"),
+										},
+									},
+								},
 							},
-							SubPath: "testcomponent/" + getInitialBuildWorkspaceSubpath(),
 						},
 					},
 				},
@@ -492,9 +516,8 @@ func TestGenerateInitialBuildPipelineRun(t *testing.T) {
 
 func TestDetermineBuildExecution(t *testing.T) {
 	type args struct {
-		component        appstudiov1alpha1.Component
-		params           []tektonapi.Param
-		workspaceSubPath string
+		component appstudiov1alpha1.Component
+		params    []tektonapi.Param
 	}
 
 	buildBundle := "quay.io/redhat-appstudio/build-templates-bundle:0.0.1"
@@ -514,8 +537,7 @@ func TestDetermineBuildExecution(t *testing.T) {
 						Namespace: "kcpworkspacename",
 					},
 				},
-				workspaceSubPath: "initialbuild",
-				params:           []tektonapi.Param{},
+				params: []tektonapi.Param{},
 			},
 			want: tektonapi.PipelineRunSpec{
 				PipelineRef: &tektonapi.PipelineRef{
@@ -526,15 +548,30 @@ func TestDetermineBuildExecution(t *testing.T) {
 				Workspaces: []tektonapi.WorkspaceBinding{
 					{
 						Name: "workspace",
-						PersistentVolumeClaim: &corev1.PersistentVolumeClaimVolumeSource{
-							ClaimName: "appstudio",
+						VolumeClaimTemplate: &corev1.PersistentVolumeClaim{
+							Spec: corev1.PersistentVolumeClaimSpec{
+								AccessModes: []corev1.PersistentVolumeAccessMode{
+									"ReadWriteOnce",
+								},
+								Resources: corev1.ResourceRequirements{
+									Requests: corev1.ResourceList{
+										"storage": resource.MustParse("1Gi"),
+									},
+								},
+							},
 						},
-						SubPath: "testcomponent/initialbuild",
 					},
 					{
 						Name: "registry-auth",
 						Secret: &corev1.SecretVolumeSource{
 							SecretName: "redhat-appstudio-registry-pull-secret",
+						},
+					},
+				},
+				PodTemplate: &tektonapi.PodTemplate{
+					ImagePullSecrets: []corev1.LocalObjectReference{
+						{
+							Name: "redhat-appstudio-registry-pull-secret",
 						},
 					},
 				},
@@ -549,8 +586,7 @@ func TestDetermineBuildExecution(t *testing.T) {
 						Namespace: "kcpworkspacename",
 					},
 				},
-				workspaceSubPath: "a-long-git-reference",
-				params:           []tektonapi.Param{},
+				params: []tektonapi.Param{},
 			},
 			want: tektonapi.PipelineRunSpec{
 				PipelineRef: &tektonapi.PipelineRef{
@@ -561,15 +597,30 @@ func TestDetermineBuildExecution(t *testing.T) {
 				Workspaces: []tektonapi.WorkspaceBinding{
 					{
 						Name: "workspace",
-						PersistentVolumeClaim: &corev1.PersistentVolumeClaimVolumeSource{
-							ClaimName: "appstudio",
+						VolumeClaimTemplate: &corev1.PersistentVolumeClaim{
+							Spec: corev1.PersistentVolumeClaimSpec{
+								AccessModes: []corev1.PersistentVolumeAccessMode{
+									"ReadWriteOnce",
+								},
+								Resources: corev1.ResourceRequirements{
+									Requests: corev1.ResourceList{
+										"storage": resource.MustParse("1Gi"),
+									},
+								},
+							},
 						},
-						SubPath: "testcomponent/a-long-git-reference",
 					},
 					{
 						Name: "registry-auth",
 						Secret: &corev1.SecretVolumeSource{
 							SecretName: "redhat-appstudio-registry-pull-secret",
+						},
+					},
+				},
+				PodTemplate: &tektonapi.PodTemplate{
+					ImagePullSecrets: []corev1.LocalObjectReference{
+						{
+							Name: "redhat-appstudio-registry-pull-secret",
 						},
 					},
 				},
@@ -585,8 +636,7 @@ func TestDetermineBuildExecution(t *testing.T) {
 						Namespace: "kcpworkspacename",
 					},
 				},
-				workspaceSubPath: "a-long-git-reference",
-				params:           []tektonapi.Param{},
+				params: []tektonapi.Param{},
 			},
 			want: tektonapi.PipelineRunSpec{
 				PipelineRef: &tektonapi.PipelineRef{
@@ -597,10 +647,18 @@ func TestDetermineBuildExecution(t *testing.T) {
 				Workspaces: []tektonapi.WorkspaceBinding{
 					{
 						Name: "workspace",
-						PersistentVolumeClaim: &corev1.PersistentVolumeClaimVolumeSource{
-							ClaimName: "appstudio",
+						VolumeClaimTemplate: &corev1.PersistentVolumeClaim{
+							Spec: corev1.PersistentVolumeClaimSpec{
+								AccessModes: []corev1.PersistentVolumeAccessMode{
+									"ReadWriteOnce",
+								},
+								Resources: corev1.ResourceRequirements{
+									Requests: corev1.ResourceList{
+										"storage": resource.MustParse("1Gi"),
+									},
+								},
+							},
 						},
-						SubPath: "testcomponent/a-long-git-reference",
 					},
 				},
 			},
@@ -609,7 +667,7 @@ func TestDetermineBuildExecution(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			gitopsConfig := gitopsprepare.GitopsConfig{BuildBundle: buildBundle, AppStudioRegistrySecretPresent: !tt.registrySecretMissing}
-			if got := DetermineBuildExecution(tt.args.component, tt.args.params, tt.args.workspaceSubPath, gitopsConfig); !reflect.DeepEqual(got, tt.want) {
+			if got := DetermineBuildExecution(tt.args.component, tt.args.params, gitopsConfig); !reflect.DeepEqual(got, tt.want) {
 				t.Errorf("DetermineBuildExecution() = %v, want %v", got, tt.want)
 			}
 		})
@@ -778,11 +836,11 @@ func TestGenerateTriggerTemplate(t *testing.T) {
 						if pr.Namespace != tt.component.Namespace {
 							t.Errorf("GenerateTriggerTemplate() namespace mismatch: got %s want %s", pr.Namespace, tt.component.Namespace)
 						}
-						compA, ok := pr.Annotations["build.appstudio.openshift.io/component"]
+						compA, ok := pr.Annotations["appstudio.openshift.io/component"]
 						if !ok || compA != tt.component.Name {
 							t.Errorf("GenerateTriggerTemplate() component annotation incorrect: %v %s", ok, compA)
 						}
-						appA, ok := pr.Annotations["build.appstudio.openshift.io/application"]
+						appA, ok := pr.Annotations["appstudio.openshift.io/application"]
 						if !ok || appA != tt.component.Spec.Application {
 							t.Errorf("GenerateTriggerTemplate() app annotation incorrect: %v %s", ok, appA)
 						}
@@ -1164,7 +1222,7 @@ func TestGeneratePACRepository(t *testing.T) {
 			if len(pacRepo.Annotations) == 0 {
 				t.Errorf("Generated PaC repository must have annotations")
 			}
-			if pacRepo.Annotations["build.appstudio.openshift.io/component"] != component.Name {
+			if pacRepo.Annotations["appstudio.openshift.io/component"] != component.Name {
 				t.Errorf("Generated PaC repository must have component annotation")
 			}
 

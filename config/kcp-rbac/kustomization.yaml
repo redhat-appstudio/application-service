@@ -18,7 +18,7 @@ resources:
 - role_binding.yaml
 - leader_election_role.yaml
 - leader_election_role_binding.yaml
-
+- service_account.yaml
 # Aggegating roles which are otherwise done by OLM
 - application_editor_role.yaml
 - application_viewer_role.yaml
