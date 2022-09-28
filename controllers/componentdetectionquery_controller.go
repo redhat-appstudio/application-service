@@ -117,9 +117,8 @@ func (r *ComponentDetectionQueryReconciler) Reconcile(ctx context.Context, req c
 		dockerfileContextMap := make(map[string]string)
 
 		context := source.Context
-		contextDir := context
 		if context == "" {
-			contextDir = "./"
+			context = "./"
 		}
 
 		if source.DevfileURL == "" {
@@ -151,10 +150,10 @@ func (r *ComponentDetectionQueryReconciler) Reconcile(ctx context.Context, req c
 
 			if isDevfilePresent {
 				log.Info(fmt.Sprintf("Found a devfile, devfile to be analyzed to see if a Dockerfile is referenced %v", req.NamespacedName))
-				devfilesMap[contextDir] = devfileBytes
+				devfilesMap[context] = devfileBytes
 			} else if isDockerfilePresent {
 				log.Info(fmt.Sprintf("Determined that this is a Dockerfile only component  %v", req.NamespacedName))
-				dockerfileContextMap[contextDir] = "./Dockerfile"
+				dockerfileContextMap[context] = "./Dockerfile"
 			}
 
 			// Clone the repo if no dockerfile present
@@ -213,7 +212,7 @@ func (r *ComponentDetectionQueryReconciler) Reconcile(ctx context.Context, req c
 			} else {
 				log.Info(fmt.Sprintf("Since this is not a multi-component, attempt will be made to read devfile at the root dir... %v", req.NamespacedName))
 				if !isDockerfilePresent {
-					err := devfile.AnalyzePath(r.AlizerClient, componentPath, contextDir, r.DevfileRegistryURL, devfilesMap, devfilesURLMap, dockerfileContextMap, isDevfilePresent, isDockerfilePresent)
+					err := devfile.AnalyzePath(r.AlizerClient, componentPath, context, r.DevfileRegistryURL, devfilesMap, devfilesURLMap, dockerfileContextMap, isDevfilePresent, isDockerfilePresent)
 					if err != nil {
 						log.Error(err, fmt.Sprintf("Unable to analyze path %s for a dockerfile/devfile %v", componentPath, req.NamespacedName))
 						r.SetCompleteConditionAndUpdateCR(ctx, req, &componentDetectionQuery, err)
@@ -231,7 +230,7 @@ func (r *ComponentDetectionQueryReconciler) Reconcile(ctx context.Context, req c
 				r.SetCompleteConditionAndUpdateCR(ctx, req, &componentDetectionQuery, err)
 				return ctrl.Result{}, nil
 			}
-			devfilesMap[contextDir] = devfileBytes
+			devfilesMap[context] = devfileBytes
 		}
 
 		// Remove the cloned path if present

@@ -113,7 +113,7 @@ func ConvertGitHubURL(URL string, revision string, context string) (string, erro
 			// Add "main" branch for GitHub raw URL by default if revision is not specified
 			URL = URL + "/main"
 		}
-		if context != "" && context != "./" {
+		if context != "" && context != "./" && context != "." {
 			// trim the prefix / in context
 			context = strings.TrimPrefix(context, "/")
 			URL = URL + "/" + context

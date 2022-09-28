@@ -214,15 +214,6 @@ func (r *ComponentReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 						return ctrl.Result{}, err
 					}
 
-					// append context to the path if present
-					// context is usually set when the git repo is a multi-component repo (example - contains both frontend & backend)
-					// var devfileDir string
-					// if context == "" {
-					// 	devfileDir = gitURL
-					// } else {
-					// 	devfileDir = gitURL + "/" + context
-					// }
-
 					devfileBytes, err = devfile.DownloadDevfile(gitURL)
 					if err != nil {
 						log.Error(err, fmt.Sprintf("Unable to read the devfile from dir %s %v", gitURL, req.NamespacedName))
