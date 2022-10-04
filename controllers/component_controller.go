@@ -423,24 +423,27 @@ func (r *ComponentReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 
 	// Get the Webhook from the event listener route and update it
 	// Only attempt to get it if the build generation succeeded, otherwise the route won't exist
-	if len(component.Status.Conditions) > 0 && component.Status.Conditions[len(component.Status.Conditions)-1].Status == metav1.ConditionTrue &&
-		component.Spec.Source.GitSource != nil && component.Spec.Source.GitSource.URL != "" &&
-		(component.ObjectMeta.Annotations == nil || component.ObjectMeta.Annotations[appservicegitops.PaCAnnotation] != "1") {
-		createdWebhook := &routev1.Route{}
-		err = r.Client.Get(ctx, types.NamespacedName{Name: "el" + component.Name, Namespace: component.Namespace}, createdWebhook)
-		if err != nil {
-			if errors.IsNotFound(err) {
-				log.Error(err, fmt.Sprintf("Unable to fetch the created webhook %v, retrying", "el-"+component.Name))
-				return ctrl.Result{Requeue: true}, nil
-			} else {
-				return ctrl.Result{}, err
+	// Don't get webhook route on KCP
+	if req.ClusterName == "" {
+		if len(component.Status.Conditions) > 0 && component.Status.Conditions[len(component.Status.Conditions)-1].Status == metav1.ConditionTrue &&
+			component.Spec.Source.GitSource != nil && component.Spec.Source.GitSource.URL != "" &&
+			(component.ObjectMeta.Annotations == nil || component.ObjectMeta.Annotations[appservicegitops.PaCAnnotation] != "1") {
+			createdWebhook := &routev1.Route{}
+			err = r.Client.Get(ctx, types.NamespacedName{Name: "el" + component.Name, Namespace: component.Namespace}, createdWebhook)
+			if err != nil {
+				if errors.IsNotFound(err) {
+					log.Error(err, fmt.Sprintf("Unable to fetch the created webhook %v, retrying", "el-"+component.Name))
+					return ctrl.Result{Requeue: true}, nil
+				} else {
+					return ctrl.Result{}, err
+				}
 			}
-		}
 
-		// Get the ingress url from the status of the route, if it exists
-		if len(createdWebhook.Status.Ingress) != 0 {
-			component.Status.Webhook = createdWebhook.Status.Ingress[0].Host
-			r.Client.Status().Update(ctx, &component)
+			// Get the ingress url from the status of the route, if it exists
+			if len(createdWebhook.Status.Ingress) != 0 {
+				component.Status.Webhook = createdWebhook.Status.Ingress[0].Host
+				r.Client.Status().Update(ctx, &component)
+			}
 		}
 	}
 
