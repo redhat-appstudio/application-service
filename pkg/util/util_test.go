@@ -268,6 +268,7 @@ func TestConvertGitHubURL(t *testing.T) {
 		name     string
 		url      string
 		revision string
+		context  string
 		useAPI   bool
 		wantUrl  string
 		wantErr  bool
@@ -286,13 +287,27 @@ func TestConvertGitHubURL(t *testing.T) {
 		{
 			name:    "Successfully convert a github url with a trailing / suffix to raw url",
 			url:     "https://github.com/devfile-samples/devfile-sample-java-springboot-basic/",
+			context: "./",
 			wantUrl: "https://raw.githubusercontent.com/devfile-samples/devfile-sample-java-springboot-basic/main",
 		},
 		{
-			name:     "Successfully convert a github url with revision and a trailing / suffix to raw url",
+			name:    "Successfully convert a github url with a context to raw url",
+			url:     "https://github.com/devfile-samples/devfile-sample-java-springboot-basic/",
+			context: "testfolder",
+			wantUrl: "https://raw.githubusercontent.com/devfile-samples/devfile-sample-java-springboot-basic/main/testfolder",
+		},
+		{
+			name:    "Successfully convert a github url with a context with a prefix / to raw url",
+			url:     "https://github.com/devfile-samples/devfile-sample-java-springboot-basic/",
+			context: "/testfolder",
+			wantUrl: "https://raw.githubusercontent.com/devfile-samples/devfile-sample-java-springboot-basic/main/testfolder",
+		},
+		{
+			name:     "Successfully convert a github url with revision and a trailing / suffix and a context to raw url",
 			url:      "https://github.com/devfile-samples/devfile-sample-java-springboot-basic/",
 			revision: "testbranch",
-			wantUrl:  "https://raw.githubusercontent.com/devfile-samples/devfile-sample-java-springboot-basic/testbranch",
+			context:  "testfolder",
+			wantUrl:  "https://raw.githubusercontent.com/devfile-samples/devfile-sample-java-springboot-basic/testbranch/testfolder",
 		},
 		{
 			name:    "Successfully convert a github url with .git to raw url",
@@ -300,10 +315,11 @@ func TestConvertGitHubURL(t *testing.T) {
 			wantUrl: "https://raw.githubusercontent.com/devfile-samples/devfile-sample-java-springboot-basic/main",
 		},
 		{
-			name:     "Successfully convert a github url with revision and .git to raw url",
+			name:     "Successfully convert a github url with revision and .git and a context with prefix / to raw url",
 			url:      "https://github.com/devfile-samples/devfile-sample-java-springboot-basic.git",
 			revision: "testbranch",
-			wantUrl:  "https://raw.githubusercontent.com/devfile-samples/devfile-sample-java-springboot-basic/testbranch",
+			context:  "/testfolder",
+			wantUrl:  "https://raw.githubusercontent.com/devfile-samples/devfile-sample-java-springboot-basic/testbranch/testfolder",
 		},
 		{
 			name:    "A non github url",
@@ -335,7 +351,7 @@ func TestConvertGitHubURL(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			convertedUrl, err := ConvertGitHubURL(tt.url, tt.revision)
+			convertedUrl, err := ConvertGitHubURL(tt.url, tt.revision, tt.context)
 			if tt.wantErr && (err == nil) {
 				t.Error("wanted error but got nil")
 			} else if !tt.wantErr && err != nil {

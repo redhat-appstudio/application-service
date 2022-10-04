@@ -500,7 +500,7 @@ func getComponentName(gitSource *appstudiov1alpha1.GitSource) string {
 	repoName := strings.Split(lastElement, ".git")[0]
 	componentName := repoName
 	context := gitSource.Context
-	if context != "" && context != "./" {
+	if context != "" && context != "./" && context != "." {
 		componentName = fmt.Sprintf("%s-%s", context, repoName)
 	}
 	return sanitizeComponentName(componentName)
@@ -513,9 +513,10 @@ func getComponentName(gitSource *appstudiov1alpha1.GitSource) string {
 // - End with an alphanumeric character
 // - Must not contain all numeric values
 func sanitizeComponentName(name string) string {
-	exclusive := regexp.MustCompile(`[^a-zA-Z0-9/-]`)
+	exclusive := regexp.MustCompile(`[^a-zA-Z0-9-]`)
 	// filter out invalid characters
 	name = exclusive.ReplaceAllString(name, "")
+
 	_, err := strconv.ParseFloat(name, 64)
 	if err != nil {
 		// convert all Uppercase chars to lowercase

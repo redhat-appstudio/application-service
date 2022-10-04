@@ -1003,6 +1003,147 @@ var _ = Describe("Component Detection Query controller", func() {
 				deleteCompDetQueryCR(hasCompDetQueryLookupKey)
 			})
 		})
+
+		Context("Create Component Detection Query with context provided", func() {
+			It("Should successfully get the devfiles", func() {
+				ctx := context.Background()
+
+				queryName := HASCompDetQuery + "22"
+
+				hasCompDetectionQuery := &appstudiov1alpha1.ComponentDetectionQuery{
+					TypeMeta: metav1.TypeMeta{
+						APIVersion: "appstudio.redhat.com/v1alpha1",
+						Kind:       "ComponentDetectionQuery",
+					},
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      queryName,
+						Namespace: HASNamespace,
+					},
+					Spec: appstudiov1alpha1.ComponentDetectionQuerySpec{
+						GitSource: appstudiov1alpha1.GitSource{
+							URL:     "https://github.com/maysunfaisal/multi-components-none",
+							Context: "devfile-sample-java-springboot-basic",
+						},
+					},
+				}
+
+				Expect(k8sClient.Create(ctx, hasCompDetectionQuery)).Should(Succeed())
+
+				// Look up the has app resource that was created.
+				// num(conditions) may still be < 1 on the first try, so retry until at least _some_ condition is set
+				hasCompDetQueryLookupKey := types.NamespacedName{Name: queryName, Namespace: HASNamespace}
+				createdHasCompDetectionQuery := &appstudiov1alpha1.ComponentDetectionQuery{}
+				Eventually(func() bool {
+					k8sClient.Get(context.Background(), hasCompDetQueryLookupKey, createdHasCompDetectionQuery)
+					return len(createdHasCompDetectionQuery.Status.Conditions) > 1
+				}, timeout, interval).Should(BeTrue())
+
+				// Make sure the a devfile is detected
+				Expect(len(createdHasCompDetectionQuery.Status.ComponentDetected)).Should(Equal(1))
+
+				for devfileName, devfileDesc := range createdHasCompDetectionQuery.Status.ComponentDetected {
+					Expect(devfileName).Should(ContainSubstring("java-springboot"))
+					Expect(devfileDesc.ComponentStub.Source.GitSource.Context).Should(ContainSubstring("devfile-sample-java-springboot-basic"))
+				}
+
+				// Delete the specified Detection Query resource
+				deleteCompDetQueryCR(hasCompDetQueryLookupKey)
+			})
+		})
+
+		Context("Create Component Detection Query with context set to \"./\"", func() {
+			It("Should successfully detect a devfile", func() {
+				ctx := context.Background()
+
+				queryName := HASCompDetQuery + "23"
+
+				hasCompDetectionQuery := &appstudiov1alpha1.ComponentDetectionQuery{
+					TypeMeta: metav1.TypeMeta{
+						APIVersion: "appstudio.redhat.com/v1alpha1",
+						Kind:       "ComponentDetectionQuery",
+					},
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      queryName,
+						Namespace: HASNamespace,
+					},
+					Spec: appstudiov1alpha1.ComponentDetectionQuerySpec{
+						GitSource: appstudiov1alpha1.GitSource{
+							URL:     SampleRepoLink,
+							Context: "./",
+						},
+					},
+				}
+
+				Expect(k8sClient.Create(ctx, hasCompDetectionQuery)).Should(Succeed())
+
+				// Look up the has app resource that was created.
+				// num(conditions) may still be < 1 on the first try, so retry until at least _some_ condition is set
+				hasCompDetQueryLookupKey := types.NamespacedName{Name: queryName, Namespace: HASNamespace}
+				createdHasCompDetectionQuery := &appstudiov1alpha1.ComponentDetectionQuery{}
+				Eventually(func() bool {
+					k8sClient.Get(context.Background(), hasCompDetQueryLookupKey, createdHasCompDetectionQuery)
+					return len(createdHasCompDetectionQuery.Status.Conditions) > 1
+				}, timeout, interval).Should(BeTrue())
+
+				// Make sure the a devfile is detected
+				Expect(len(createdHasCompDetectionQuery.Status.ComponentDetected)).Should(Equal(1))
+
+				for devfileName, devfileDesc := range createdHasCompDetectionQuery.Status.ComponentDetected {
+					Expect(devfileName).Should(ContainSubstring("spring"))
+					Expect(devfileDesc.ComponentStub.Source.GitSource.Context).Should(ContainSubstring("./"))
+				}
+
+				// Delete the specified Detection Query resource
+				deleteCompDetQueryCR(hasCompDetQueryLookupKey)
+			})
+		})
+
+		Context("Create Component Detection Query with context set to a deeper level folder", func() {
+			It("Should successfully detect a devfile", func() {
+				ctx := context.Background()
+
+				queryName := HASCompDetQuery + "24"
+
+				hasCompDetectionQuery := &appstudiov1alpha1.ComponentDetectionQuery{
+					TypeMeta: metav1.TypeMeta{
+						APIVersion: "appstudio.redhat.com/v1alpha1",
+						Kind:       "ComponentDetectionQuery",
+					},
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      queryName,
+						Namespace: HASNamespace,
+					},
+					Spec: appstudiov1alpha1.ComponentDetectionQuerySpec{
+						GitSource: appstudiov1alpha1.GitSource{
+							URL:     "https://github.com/maysunfaisal/multi-components-deep",
+							Context: "python/devfile-sample-python-basic",
+						},
+					},
+				}
+
+				Expect(k8sClient.Create(ctx, hasCompDetectionQuery)).Should(Succeed())
+
+				// Look up the has app resource that was created.
+				// num(conditions) may still be < 1 on the first try, so retry until at least _some_ condition is set
+				hasCompDetQueryLookupKey := types.NamespacedName{Name: queryName, Namespace: HASNamespace}
+				createdHasCompDetectionQuery := &appstudiov1alpha1.ComponentDetectionQuery{}
+				Eventually(func() bool {
+					k8sClient.Get(context.Background(), hasCompDetQueryLookupKey, createdHasCompDetectionQuery)
+					return len(createdHasCompDetectionQuery.Status.Conditions) > 1
+				}, timeout, interval).Should(BeTrue())
+
+				// Make sure the a devfile is detected
+				Expect(len(createdHasCompDetectionQuery.Status.ComponentDetected)).Should(Equal(1))
+
+				for devfileName, devfileDesc := range createdHasCompDetectionQuery.Status.ComponentDetected {
+					Expect(devfileName).Should(ContainSubstring("python-basic"))
+					Expect(devfileDesc.ComponentStub.Source.GitSource.Context).Should(ContainSubstring("python/devfile-sample-python-basic"))
+				}
+
+				// Delete the specified Detection Query resource
+				deleteCompDetQueryCR(hasCompDetQueryLookupKey)
+			})
+		})
 	})
 
 })

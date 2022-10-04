@@ -207,25 +207,16 @@ func (r *ComponentReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 			var gitURL string
 			if source.GitSource.DevfileURL == "" && source.GitSource.DockerfileURL == "" {
 				if gitToken == "" {
-					gitURL, err = util.ConvertGitHubURL(source.GitSource.URL, source.GitSource.Revision)
+					gitURL, err = util.ConvertGitHubURL(source.GitSource.URL, source.GitSource.Revision, context)
 					if err != nil {
 						log.Error(err, fmt.Sprintf("Unable to convert Github URL to raw format, exiting reconcile loop %v", req.NamespacedName))
 						r.SetCreateConditionAndUpdateCR(ctx, req, &component, err)
 						return ctrl.Result{}, err
 					}
 
-					// append context to the path if present
-					// context is usually set when the git repo is a multi-component repo (example - contains both frontend & backend)
-					var devfileDir string
-					if context == "" {
-						devfileDir = gitURL
-					} else {
-						devfileDir = gitURL + "/" + context
-					}
-
-					devfileBytes, err = devfile.DownloadDevfile(devfileDir)
+					devfileBytes, err = devfile.DownloadDevfile(gitURL)
 					if err != nil {
-						log.Error(err, fmt.Sprintf("Unable to read the devfile from dir %s %v", devfileDir, req.NamespacedName))
+						log.Error(err, fmt.Sprintf("Unable to read the devfile from dir %s %v", gitURL, req.NamespacedName))
 						r.SetCreateConditionAndUpdateCR(ctx, req, &component, err)
 						return ctrl.Result{}, err
 					}
