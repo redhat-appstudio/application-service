@@ -27,10 +27,9 @@ import (
 
 	"github.com/go-logr/logr"
 	logicalcluster "github.com/kcp-dev/logicalcluster/v2"
-	appstudiov1alpha1 "github.com/redhat-appstudio/application-service/api/v1alpha1"
+	appstudiov1alpha1 "github.com/redhat-appstudio/application-api/api/v1alpha1"
 	"github.com/redhat-appstudio/application-service/pkg/util"
 	"github.com/redhat-appstudio/application-service/pkg/util/ioutils"
-	appstudioshared "github.com/redhat-appstudio/managed-gitops/appstudio-shared/apis/appstudio.redhat.com/v1alpha1"
 	"github.com/spf13/afero"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -78,7 +77,7 @@ func (r *ApplicationSnapshotEnvironmentBindingReconciler) Reconcile(ctx context.
 	}
 
 	// Fetch the ApplicationSnapshotEnvironmentBinding instance
-	var appSnapshotEnvBinding appstudioshared.ApplicationSnapshotEnvironmentBinding
+	var appSnapshotEnvBinding appstudiov1alpha1.ApplicationSnapshotEnvironmentBinding
 	err := r.Get(ctx, req.NamespacedName, &appSnapshotEnvBinding)
 	if err != nil {
 		if errors.IsNotFound(err) {
@@ -112,7 +111,7 @@ func (r *ApplicationSnapshotEnvironmentBindingReconciler) Reconcile(ctx context.
 	}
 
 	// Get the Environment CR
-	environment := appstudioshared.Environment{}
+	environment := appstudiov1alpha1.Environment{}
 	err = r.Get(ctx, types.NamespacedName{Name: environmentName, Namespace: appSnapshotEnvBinding.Namespace}, &environment)
 	if err != nil {
 		log.Error(err, fmt.Sprintf("unable to get the Environment %s %v", environmentName, req.NamespacedName))
@@ -121,7 +120,7 @@ func (r *ApplicationSnapshotEnvironmentBindingReconciler) Reconcile(ctx context.
 	}
 
 	// Get the Snapshot CR
-	appSnapshot := appstudioshared.ApplicationSnapshot{}
+	appSnapshot := appstudiov1alpha1.ApplicationSnapshot{}
 	err = r.Get(ctx, types.NamespacedName{Name: snapshotName, Namespace: appSnapshotEnvBinding.Namespace}, &appSnapshot)
 	if err != nil {
 		log.Error(err, fmt.Sprintf("unable to get the Application Snapshot %s %v", snapshotName, req.NamespacedName))
@@ -253,9 +252,9 @@ func (r *ApplicationSnapshotEnvironmentBindingReconciler) Reconcile(ctx context.
 		}
 
 		if !isStatusUpdated {
-			componentStatus := appstudioshared.ComponentStatus{
+			componentStatus := appstudiov1alpha1.BindingComponentStatus{
 				Name: componentName,
-				GitOpsRepository: appstudioshared.BindingComponentGitOpsRepository{
+				GitOpsRepository: appstudiov1alpha1.BindingComponentGitOpsRepository{
 					URL:      hasComponent.Status.GitOps.RepositoryURL,
 					Branch:   gitOpsBranch,
 					Path:     filepath.Join(gitOpsContext, "components", componentName, "overlays", environmentName),
@@ -297,9 +296,9 @@ func (r *ApplicationSnapshotEnvironmentBindingReconciler) Reconcile(ctx context.
 // SetupWithManager sets up the controller with the Manager.
 func (r *ApplicationSnapshotEnvironmentBindingReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
-		For(&appstudioshared.ApplicationSnapshotEnvironmentBinding{}, builder.WithPredicates(predicate.GenerationChangedPredicate{})).
+		For(&appstudiov1alpha1.ApplicationSnapshotEnvironmentBinding{}, builder.WithPredicates(predicate.GenerationChangedPredicate{})).
 		// Watch for Environment CR updates and reconcile all the Bindings that reference the Environment
-		Watches(&source.Kind{Type: &appstudioshared.Environment{}},
+		Watches(&source.Kind{Type: &appstudiov1alpha1.Environment{}},
 			handler.EnqueueRequestsFromMapFunc(MapToBindingByBoundObjectName(r.Client, "Environment", "appstudio.environment")), builder.WithPredicates(predicate.Funcs{
 				CreateFunc: func(e event.CreateEvent) bool {
 					return false

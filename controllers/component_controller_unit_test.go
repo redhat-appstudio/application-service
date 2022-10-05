@@ -25,7 +25,7 @@ import (
 	"github.com/devfile/api/v2/pkg/attributes"
 	data "github.com/devfile/library/pkg/devfile/parser/data"
 	v2 "github.com/devfile/library/pkg/devfile/parser/data/v2"
-	appstudiov1alpha1 "github.com/redhat-appstudio/application-service/api/v1alpha1"
+	appstudiov1alpha1 "github.com/redhat-appstudio/application-api/api/v1alpha1"
 	"github.com/redhat-appstudio/application-service/pkg/github"
 	"github.com/redhat-appstudio/application-service/pkg/util/ioutils"
 	"github.com/redhat-developer/gitops-generator/pkg/testutils"

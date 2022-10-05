@@ -30,7 +30,7 @@ import (
 
 	"github.com/go-git/go-git/v5"
 	transportHttp "github.com/go-git/go-git/v5/plumbing/transport/http"
-	appstudiov1alpha1 "github.com/redhat-appstudio/application-service/api/v1alpha1"
+	appstudiov1alpha1 "github.com/redhat-appstudio/application-api/api/v1alpha1"
 )
 
 func SanitizeName(name string) string {

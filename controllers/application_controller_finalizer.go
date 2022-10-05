@@ -21,7 +21,7 @@ import (
 	"strconv"
 	"strings"
 
-	appstudiov1alpha1 "github.com/redhat-appstudio/application-service/api/v1alpha1"
+	appstudiov1alpha1 "github.com/redhat-appstudio/application-api/api/v1alpha1"
 	devfile "github.com/redhat-appstudio/application-service/pkg/devfile"
 	github "github.com/redhat-appstudio/application-service/pkg/github"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"

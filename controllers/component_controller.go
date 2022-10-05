@@ -43,7 +43,7 @@ import (
 	logicalcluster "github.com/kcp-dev/logicalcluster/v2"
 	routev1 "github.com/openshift/api/route/v1"
 
-	appstudiov1alpha1 "github.com/redhat-appstudio/application-service/api/v1alpha1"
+	appstudiov1alpha1 "github.com/redhat-appstudio/application-api/api/v1alpha1"
 	appservicegitops "github.com/redhat-appstudio/application-service/gitops"
 	"github.com/redhat-appstudio/application-service/gitops/prepare"
 	devfile "github.com/redhat-appstudio/application-service/pkg/devfile"
