@@ -37,7 +37,7 @@ func (r *ComponentDetectionQueryReconciler) SetDetectingConditionAndUpdateCR(ctx
 		Reason:  "Success",
 		Message: "ComponentDetectionQuery is processing",
 	})
-	logutil.LogAPIResourceChangeEvent(log, componentDetectionQuery.Name, "ComponentDetectionQuery", logutil.ResourceCreate)
+	logutil.LogAPIResourceChangeEvent(log, componentDetectionQuery.Name, "ComponentDetectionQuery", logutil.ResourceCreate, nil)
 
 	err := r.Client.Status().Update(ctx, componentDetectionQuery)
 	if err != nil {
@@ -55,7 +55,7 @@ func (r *ComponentDetectionQueryReconciler) SetCompleteConditionAndUpdateCR(ctx 
 			Reason:  "OK",
 			Message: "ComponentDetectionQuery has successfully finished",
 		})
-		logutil.LogAPIResourceChangeEvent(log, componentDetectionQuery.Name, "ComponentDetectionQuery", logutil.ResourceComplete)
+		logutil.LogAPIResourceChangeEvent(log, componentDetectionQuery.Name, "ComponentDetectionQuery", logutil.ResourceComplete, nil)
 
 	} else {
 		meta.SetStatusCondition(&componentDetectionQuery.Status.Conditions, metav1.Condition{
@@ -64,7 +64,7 @@ func (r *ComponentDetectionQueryReconciler) SetCompleteConditionAndUpdateCR(ctx 
 			Reason:  "Error",
 			Message: fmt.Sprintf("ComponentDetectionQuery failed: %v", completeError),
 		})
-		logutil.LogAPIResourceChangeEventFailure(log, componentDetectionQuery.Name, "ComponentDetectionQuery", logutil.ResourceComplete, completeError)
+		logutil.LogAPIResourceChangeEvent(log, componentDetectionQuery.Name, "ComponentDetectionQuery", logutil.ResourceComplete, completeError)
 	}
 
 	err := r.Client.Status().Update(ctx, componentDetectionQuery)

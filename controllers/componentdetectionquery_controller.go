@@ -267,9 +267,9 @@ func (r *ComponentDetectionQueryReconciler) Reconcile(ctx context.Context, req c
 		log.Info(fmt.Sprintf("Deleting finished ComponentDetectionQuery resource %v", req.NamespacedName))
 		if err = r.Delete(ctx, &componentDetectionQuery); err != nil {
 			// Delete failed. Log the error but don't bother modifying the resource's status
-			logutil.LogAPIResourceChangeEventFailure(log, componentDetectionQuery.Name, "ComponentDetectionQuery", logutil.ResourceDelete, err)
+			logutil.LogAPIResourceChangeEvent(log, componentDetectionQuery.Name, "ComponentDetectionQuery", logutil.ResourceDelete, err)
 		} else {
-			logutil.LogAPIResourceChangeEvent(log, componentDetectionQuery.Name, "ComponentDetectionQuery", logutil.ResourceDelete)
+			logutil.LogAPIResourceChangeEvent(log, componentDetectionQuery.Name, "ComponentDetectionQuery", logutil.ResourceDelete, nil)
 		}
 	}
 

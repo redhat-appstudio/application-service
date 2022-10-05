@@ -36,7 +36,7 @@ func (r *ApplicationSnapshotEnvironmentBindingReconciler) SetConditionAndUpdateC
 			Reason:  "OK",
 			Message: "GitOps repository sync successful",
 		})
-		logutil.LogAPIResourceChangeEvent(log, appSnapshotEnvBinding.Name, "ApplicationSnapshotEnvironmentBinding", logutil.ResourceCreate)
+		logutil.LogAPIResourceChangeEvent(log, appSnapshotEnvBinding.Name, "ApplicationSnapshotEnvironmentBinding", logutil.ResourceCreate, nil)
 	} else {
 		meta.SetStatusCondition(&appSnapshotEnvBinding.Status.GitOpsRepoConditions, metav1.Condition{
 			Type:    "GitOpsResourcesGenerated",
@@ -44,7 +44,7 @@ func (r *ApplicationSnapshotEnvironmentBindingReconciler) SetConditionAndUpdateC
 			Reason:  "GenerateError",
 			Message: fmt.Sprintf("GitOps repository sync failed: %v", createError),
 		})
-		logutil.LogAPIResourceChangeEventFailure(log, appSnapshotEnvBinding.Name, "ApplicationSnapshotEnvironmentBinding", logutil.ResourceCreate, createError)
+		logutil.LogAPIResourceChangeEvent(log, appSnapshotEnvBinding.Name, "ApplicationSnapshotEnvironmentBinding", logutil.ResourceCreate, createError)
 	}
 
 	err := r.Client.Status().Update(ctx, appSnapshotEnvBinding)
