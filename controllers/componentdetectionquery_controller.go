@@ -34,6 +34,7 @@ import (
 	logicalcluster "github.com/kcp-dev/logicalcluster/v2"
 	appstudiov1alpha1 "github.com/redhat-appstudio/application-service/api/v1alpha1"
 	devfile "github.com/redhat-appstudio/application-service/pkg/devfile"
+	logutil "github.com/redhat-appstudio/application-service/pkg/log"
 	"github.com/redhat-appstudio/application-service/pkg/spi"
 	"github.com/redhat-appstudio/application-service/pkg/util"
 	"github.com/redhat-appstudio/application-service/pkg/util/ioutils"
@@ -266,7 +267,9 @@ func (r *ComponentDetectionQueryReconciler) Reconcile(ctx context.Context, req c
 		log.Info(fmt.Sprintf("Deleting finished ComponentDetectionQuery resource %v", req.NamespacedName))
 		if err = r.Delete(ctx, &componentDetectionQuery); err != nil {
 			// Delete failed. Log the error but don't bother modifying the resource's status
-			log.Error(err, fmt.Sprintf("Unable to delete the ComponentDetectionQuery resource %v", req.NamespacedName))
+			logutil.LogAPIResourceChangeEventFailure(log, componentDetectionQuery.Name, "ComponentDetectionQuery", logutil.ResourceDelete, err)
+		} else {
+			logutil.LogAPIResourceChangeEvent(log, componentDetectionQuery.Name, "ComponentDetectionQuery", logutil.ResourceDelete)
 		}
 	}
 

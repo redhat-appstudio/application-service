@@ -19,6 +19,7 @@ import (
 	"context"
 	"fmt"
 
+	logutil "github.com/redhat-appstudio/application-service/pkg/log"
 	appstudioshared "github.com/redhat-appstudio/managed-gitops/appstudio-shared/apis/appstudio.redhat.com/v1alpha1"
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -35,6 +36,7 @@ func (r *ApplicationSnapshotEnvironmentBindingReconciler) SetConditionAndUpdateC
 			Reason:  "OK",
 			Message: "GitOps repository sync successful",
 		})
+		logutil.LogAPIResourceChangeEvent(log, appSnapshotEnvBinding.Name, "ApplicationSnapshotEnvironmentBinding", logutil.ResourceCreate)
 	} else {
 		meta.SetStatusCondition(&appSnapshotEnvBinding.Status.GitOpsRepoConditions, metav1.Condition{
 			Type:    "GitOpsResourcesGenerated",
@@ -42,6 +44,7 @@ func (r *ApplicationSnapshotEnvironmentBindingReconciler) SetConditionAndUpdateC
 			Reason:  "GenerateError",
 			Message: fmt.Sprintf("GitOps repository sync failed: %v", createError),
 		})
+		logutil.LogAPIResourceChangeEventFailure(log, appSnapshotEnvBinding.Name, "ApplicationSnapshotEnvironmentBinding", logutil.ResourceCreate, createError)
 	}
 
 	err := r.Client.Status().Update(ctx, appSnapshotEnvBinding)

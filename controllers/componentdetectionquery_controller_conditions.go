@@ -25,6 +25,7 @@ import (
 	ctrl "sigs.k8s.io/controller-runtime"
 
 	appstudiov1alpha1 "github.com/redhat-appstudio/application-service/api/v1alpha1"
+	logutil "github.com/redhat-appstudio/application-service/pkg/log"
 )
 
 func (r *ComponentDetectionQueryReconciler) SetDetectingConditionAndUpdateCR(ctx context.Context, req ctrl.Request, componentDetectionQuery *appstudiov1alpha1.ComponentDetectionQuery) {
@@ -36,6 +37,7 @@ func (r *ComponentDetectionQueryReconciler) SetDetectingConditionAndUpdateCR(ctx
 		Reason:  "Success",
 		Message: "ComponentDetectionQuery is processing",
 	})
+	logutil.LogAPIResourceChangeEvent(log, componentDetectionQuery.Name, "ComponentDetectionQuery", logutil.ResourceCreate)
 
 	err := r.Client.Status().Update(ctx, componentDetectionQuery)
 	if err != nil {
@@ -53,6 +55,8 @@ func (r *ComponentDetectionQueryReconciler) SetCompleteConditionAndUpdateCR(ctx 
 			Reason:  "OK",
 			Message: "ComponentDetectionQuery has successfully finished",
 		})
+		logutil.LogAPIResourceChangeEvent(log, componentDetectionQuery.Name, "ComponentDetectionQuery", logutil.ResourceComplete)
+
 	} else {
 		meta.SetStatusCondition(&componentDetectionQuery.Status.Conditions, metav1.Condition{
 			Type:    "Completed",
@@ -60,6 +64,7 @@ func (r *ComponentDetectionQueryReconciler) SetCompleteConditionAndUpdateCR(ctx 
 			Reason:  "Error",
 			Message: fmt.Sprintf("ComponentDetectionQuery failed: %v", completeError),
 		})
+		logutil.LogAPIResourceChangeEventFailure(log, componentDetectionQuery.Name, "ComponentDetectionQuery", logutil.ResourceComplete, completeError)
 	}
 
 	err := r.Client.Status().Update(ctx, componentDetectionQuery)

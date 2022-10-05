@@ -20,6 +20,7 @@ import (
 	"context"
 	"fmt"
 
+	logutil "github.com/redhat-appstudio/application-service/pkg/log"
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	ctrl "sigs.k8s.io/controller-runtime"
@@ -37,6 +38,7 @@ func (r *ApplicationReconciler) SetCreateConditionAndUpdateCR(ctx context.Contex
 			Reason:  "OK",
 			Message: "Application has been successfully created",
 		})
+		logutil.LogAPIResourceChangeEvent(log, application.Name, "Application", logutil.ResourceCreate)
 	} else {
 		meta.SetStatusCondition(&application.Status.Conditions, metav1.Condition{
 			Type:    "Created",
@@ -44,11 +46,12 @@ func (r *ApplicationReconciler) SetCreateConditionAndUpdateCR(ctx context.Contex
 			Reason:  "Error",
 			Message: fmt.Sprintf("Application create failed: %v", createError),
 		})
+		logutil.LogAPIResourceChangeEventFailure(log, application.Name, "Application", logutil.ResourceCreate, createError)
 	}
 
 	err := r.Client.Status().Update(ctx, application)
 	if err != nil {
-		log.Error(err, "Unable to update Application")
+		log.Error(err, "Unable to update Application status")
 	}
 }
 
@@ -62,6 +65,7 @@ func (r *ApplicationReconciler) SetUpdateConditionAndUpdateCR(ctx context.Contex
 			Reason:  "OK",
 			Message: "Application has been successfully updated",
 		})
+		logutil.LogAPIResourceChangeEvent(log, application.Name, "Application", logutil.ResourceUpdate)
 	} else {
 		meta.SetStatusCondition(&application.Status.Conditions, metav1.Condition{
 			Type:    "Updated",
@@ -69,10 +73,11 @@ func (r *ApplicationReconciler) SetUpdateConditionAndUpdateCR(ctx context.Contex
 			Reason:  "Error",
 			Message: fmt.Sprintf("Application updated failed: %v", updateError),
 		})
+		logutil.LogAPIResourceChangeEventFailure(log, application.Name, "Application", logutil.ResourceUpdate, updateError)
 	}
 
 	err := r.Client.Status().Update(ctx, application)
 	if err != nil {
-		log.Error(err, "Unable to update Application")
+		log.Error(err, "Unable to update Application status")
 	}
 }

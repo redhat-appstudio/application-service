@@ -25,6 +25,7 @@ import (
 	ctrl "sigs.k8s.io/controller-runtime"
 
 	appstudiov1alpha1 "github.com/redhat-appstudio/application-service/api/v1alpha1"
+	logutil "github.com/redhat-appstudio/application-service/pkg/log"
 )
 
 func (r *ComponentReconciler) SetCreateConditionAndUpdateCR(ctx context.Context, req ctrl.Request, component *appstudiov1alpha1.Component, createError error) {
@@ -37,6 +38,7 @@ func (r *ComponentReconciler) SetCreateConditionAndUpdateCR(ctx context.Context,
 			Reason:  "OK",
 			Message: "Component has been successfully created",
 		})
+		logutil.LogAPIResourceChangeEvent(log, component.Name, "Component", logutil.ResourceCreate)
 	} else {
 		meta.SetStatusCondition(&component.Status.Conditions, metav1.Condition{
 			Type:    "Created",
@@ -44,6 +46,7 @@ func (r *ComponentReconciler) SetCreateConditionAndUpdateCR(ctx context.Context,
 			Reason:  "Error",
 			Message: fmt.Sprintf("Component create failed: %v", createError),
 		})
+		logutil.LogAPIResourceChangeEventFailure(log, component.Name, "Component", logutil.ResourceCreate, createError)
 	}
 
 	err := r.Client.Status().Update(ctx, component)
@@ -62,6 +65,7 @@ func (r *ComponentReconciler) SetUpdateConditionAndUpdateCR(ctx context.Context,
 			Reason:  "OK",
 			Message: "Component has been successfully updated",
 		})
+		logutil.LogAPIResourceChangeEvent(log, component.Name, "Component", logutil.ResourceUpdate)
 	} else {
 		meta.SetStatusCondition(&component.Status.Conditions, metav1.Condition{
 			Type:    "Updated",
@@ -69,6 +73,7 @@ func (r *ComponentReconciler) SetUpdateConditionAndUpdateCR(ctx context.Context,
 			Reason:  "Error",
 			Message: fmt.Sprintf("Component updated failed: %v", updateError),
 		})
+		logutil.LogAPIResourceChangeEventFailure(log, component.Name, "Component", logutil.ResourceUpdate, updateError)
 	}
 
 	err := r.Client.Status().Update(ctx, component)
@@ -87,6 +92,7 @@ func (r *ComponentReconciler) SetGitOpsGeneratedConditionAndUpdateCR(ctx context
 			Reason:  "OK",
 			Message: "GitOps resource generated successfully",
 		})
+		logutil.LogAPIResourceChangeEvent(log, component.Name, "ComponentGitOpsResources", logutil.ResourceCreate)
 	} else {
 		meta.SetStatusCondition(&component.Status.Conditions, metav1.Condition{
 			Type:    "GitOpsResourcesGenerated",
@@ -94,6 +100,7 @@ func (r *ComponentReconciler) SetGitOpsGeneratedConditionAndUpdateCR(ctx context
 			Reason:  "GenerateError",
 			Message: fmt.Sprintf("GitOps resources failed to generate: %v", generateError),
 		})
+		logutil.LogAPIResourceChangeEventFailure(log, component.Name, "ComponentGitOpsResources", logutil.ResourceCreate, generateError)
 	}
 
 	err := r.Client.Status().Update(ctx, component)
