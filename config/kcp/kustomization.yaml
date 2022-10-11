@@ -16,4 +16,4 @@ bases:
 - ../kcp-manager
 
 resources:
-- apiexport_has.yaml
+- apiexport_application-service.yaml
