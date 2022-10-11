@@ -12,7 +12,6 @@ RUN go mod download
 # Copy the go source
 COPY main.go main.go
 # ToDo: Uncomment once API added
-COPY api/ api/
 COPY controllers/ controllers/
 COPY pkg pkg/
 COPY gitops gitops/
