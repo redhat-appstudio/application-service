@@ -17,7 +17,7 @@ package devfile
 
 import "fmt"
 
-//NoFileFound returns an error if no file was found
+// NoFileFound returns an error if no file was found
 type NoFileFound struct {
 	Location string
 	Err      error

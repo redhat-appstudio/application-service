@@ -452,7 +452,7 @@ func (r *ComponentDetectionQueryReconciler) updateComponentStub(req ctrl.Request
 		}
 
 		componentDetectionQuery.Status.ComponentDetected[componentName] = appstudiov1alpha1.ComponentDetectionDescription{
-			DevfileFound:  len(devfilesURLMap[context]) == 0, // if we did not find a devfile URL map for the given context, it means a devfile was found in the context
+			DevfileFound:  len(devfilesURLMap[context]) != 0, // if we did not find a devfile URL map for the given context, it means a devfile was not found in the context
 			Language:      devfileMetadata.Language,
 			ProjectType:   devfileMetadata.ProjectType,
 			ComponentStub: componentStub,

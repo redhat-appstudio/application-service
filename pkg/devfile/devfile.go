@@ -206,8 +206,8 @@ func CreateDevfileForDockerfileBuild(uri, context string) (data.DevfileData, err
 	return devfileData, nil
 }
 
-// DownloadDevfile downloads devfile from the various possible devfile locations in dir and returns the contents
-func DownloadDevfile(dir string) ([]byte, error) {
+// DownloadDevfile downloads devfile from the various possible devfile locations in dir and returns the contents and its context
+func DownloadDevfile(dir string) ([]byte, string, error) {
 	var devfileBytes []byte
 	var err error
 	validDevfileLocations := []string{Devfile, HiddenDevfile, HiddenDirDevfile, HiddenDirHiddenDevfile}
@@ -217,11 +217,11 @@ func DownloadDevfile(dir string) ([]byte, error) {
 		devfileBytes, err = DownloadFile(devfilePath)
 		if err == nil {
 			// if we get a 200, return
-			return devfileBytes, err
+			return devfileBytes, path, err
 		}
 	}
 
-	return nil, &NoDevfileFound{Location: dir}
+	return nil, "", &NoDevfileFound{Location: dir}
 }
 
 // DownloadFile downloads the specified file
@@ -229,14 +229,15 @@ func DownloadFile(file string) ([]byte, error) {
 	return util.CurlEndpoint(file)
 }
 
-// DownloadDevfileAndDockerfile attempts to download the  devfile and dockerfile from the root of the specified url
-func DownloadDevfileAndDockerfile(url string) ([]byte, []byte) {
+// DownloadDevfileAndDockerfile attempts to download and return the devfile, devfile context and dockerfile from the root of the specified url
+func DownloadDevfileAndDockerfile(url string) ([]byte, string, []byte) {
 	var devfileBytes, dockerfileBytes []byte
+	var devfilePath string
 
-	devfileBytes, _ = DownloadDevfile(url)
+	devfileBytes, devfilePath, _ = DownloadDevfile(url)
 	dockerfileBytes, _ = DownloadFile(url + "/Dockerfile")
 
-	return devfileBytes, dockerfileBytes
+	return devfileBytes, devfilePath, dockerfileBytes
 }
 
 // ScanRepo attempts to read and return devfiles and dockerfiles from the local path upto the specified depth

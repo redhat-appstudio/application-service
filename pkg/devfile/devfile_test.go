@@ -30,6 +30,7 @@ import (
 	appstudiov1alpha1 "github.com/redhat-appstudio/application-api/api/v1alpha1"
 	"github.com/redhat-appstudio/application-service/pkg/util"
 	"github.com/stretchr/testify/assert"
+	ctrl "sigs.k8s.io/controller-runtime"
 )
 
 func TestParseDevfileModel(t *testing.T) {
@@ -209,25 +210,30 @@ func TestConvertImageComponentToDevfile(t *testing.T) {
 
 func TestDownloadDevfile(t *testing.T) {
 	tests := []struct {
-		name    string
-		url     string
-		wantErr bool
+		name               string
+		url                string
+		wantDevfileContext string
+		wantErr            bool
 	}{
 		{
-			name: "Curl devfile.yaml",
-			url:  "https://raw.githubusercontent.com/devfile-samples/devfile-sample-java-springboot-basic/main",
+			name:               "Curl devfile.yaml",
+			url:                "https://raw.githubusercontent.com/devfile-samples/devfile-sample-java-springboot-basic/main",
+			wantDevfileContext: "devfile.yaml",
 		},
 		{
-			name: "Curl .devfile.yaml",
-			url:  "https://raw.githubusercontent.com/maysunfaisal/hiddendevfile/main",
+			name:               "Curl .devfile.yaml",
+			url:                "https://raw.githubusercontent.com/maysunfaisal/hiddendevfile/main",
+			wantDevfileContext: ".devfile.yaml",
 		},
 		{
-			name: "Curl .devfile/devfile.yaml",
-			url:  "https://raw.githubusercontent.com/maysunfaisal/hiddendirdevfile/main",
+			name:               "Curl .devfile/devfile.yaml",
+			url:                "https://raw.githubusercontent.com/maysunfaisal/hiddendirdevfile/main",
+			wantDevfileContext: ".devfile/devfile.yaml",
 		},
 		{
-			name: "Curl .devfile/.devfile.yaml",
-			url:  "https://raw.githubusercontent.com/maysunfaisal/hiddendirhiddendevfile/main",
+			name:               "Curl .devfile/.devfile.yaml",
+			url:                "https://raw.githubusercontent.com/maysunfaisal/hiddendirhiddendevfile/main",
+			wantDevfileContext: ".devfile/.devfile.yaml",
 		},
 		{
 			name:    "Cannot curl for a devfile",
@@ -238,13 +244,15 @@ func TestDownloadDevfile(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			contents, err := DownloadDevfile(tt.url)
+			contents, devfileContext, err := DownloadDevfile(tt.url)
 			if tt.wantErr && (err == nil) {
 				t.Error("wanted error but got nil")
 			} else if !tt.wantErr && err != nil {
 				t.Errorf("got unexpected error %v", err)
 			} else if err == nil && contents == nil {
 				t.Errorf("unable to read body")
+			} else if err == nil && (devfileContext != tt.wantDevfileContext) {
+				t.Errorf("devfile context did not match, got %v, wanted %v", devfileContext, tt.wantDevfileContext)
 			}
 		})
 	}
@@ -331,14 +339,16 @@ func TestCreateDevfileForDockerfileBuild(t *testing.T) {
 
 func TestDownloadDevfileAndDockerfile(t *testing.T) {
 	tests := []struct {
-		name string
-		url  string
-		want bool
+		name               string
+		url                string
+		wantDevfileContext string
+		want               bool
 	}{
 		{
-			name: "Curl devfile.yaml and dockerfile",
-			url:  "https://raw.githubusercontent.com/maysunfaisal/devfile-sample-python-samelevel/main",
-			want: true,
+			name:               "Curl devfile.yaml and dockerfile",
+			url:                "https://raw.githubusercontent.com/maysunfaisal/devfile-sample-python-samelevel/main",
+			wantDevfileContext: ".devfile.yaml",
+			want:               true,
 		},
 		{
 			name: "Cannot curl for a devfile nor a dockerfile",
@@ -349,9 +359,13 @@ func TestDownloadDevfileAndDockerfile(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			devfile, dockerfile := DownloadDevfileAndDockerfile(tt.url)
+			devfile, devfileContext, dockerfile := DownloadDevfileAndDockerfile(tt.url)
 			if tt.want != (len(devfile) > 0 && len(dockerfile) > 0) {
 				t.Errorf("devfile and a dockerfile wanted: %v but got devfile: %v dockerfile: %v", tt.want, len(devfile) > 0, len(dockerfile) > 0)
+			}
+
+			if devfileContext != tt.wantDevfileContext {
+				t.Errorf("devfile context did not match, got %v, wanted %v", devfileContext, tt.wantDevfileContext)
 			}
 		})
 	}
@@ -399,6 +413,7 @@ func TestScanRepo(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			logger = ctrl.Log.WithName("TestScanRepo")
 			err := util.CloneRepo(tt.clonePath, tt.repo, tt.token)
 			if err != nil {
 				t.Errorf("got unexpected error %v", err)

@@ -79,9 +79,9 @@ func getContext(localpath string, currentLevel int) string {
 	return context
 }
 
-// UpdateDockerfileLink updates teh Dockerfile relative uri
+// UpdateGitLink updates the relative uri
 // to a full URL link with the context & revision
-func UpdateDockerfileLink(repo, revision, context string) (string, error) {
+func UpdateGitLink(repo, revision, context string) (string, error) {
 	var rawGitURL string
 	var err error
 	if !strings.HasPrefix(context, "http") {

@@ -189,7 +189,7 @@ func AnalyzePath(a Alizer, localpath, context, devfileRegistryURL string, devfil
 			if dockerfileImage != nil {
 				dockerfileUri = dockerfileImage.Uri
 			}
-			link, err := UpdateDockerfileLink(sampleRepoURL, "", dockerfileUri)
+			link, err := UpdateGitLink(sampleRepoURL, "", dockerfileUri)
 			if err != nil {
 				return err
 			}

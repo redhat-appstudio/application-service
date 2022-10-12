@@ -83,6 +83,9 @@ var _ = Describe("Component Detection Query controller", func() {
 			for devfileName, devfileDesc := range createdHasCompDetectionQuery.Status.ComponentDetected {
 				Expect(devfileName).Should(ContainSubstring("spring"))
 				Expect(devfileDesc.ComponentStub.Source.GitSource.Context).Should(ContainSubstring("./"))
+				Expect(devfileDesc.ComponentStub.Source.GitSource.DevfileURL).Should(Equal("https://raw.githubusercontent.com/devfile-samples/devfile-sample-java-springboot-basic/main/devfile.yaml"))
+				Expect(devfileDesc.ComponentStub.Source.GitSource.DockerfileURL).Should(Equal("https://raw.githubusercontent.com/devfile-samples/devfile-sample-java-springboot-basic/main/docker/Dockerfile"))
+				Expect(devfileDesc.DevfileFound).Should(BeTrue())
 			}
 
 			// Delete the specified Detection Query resource

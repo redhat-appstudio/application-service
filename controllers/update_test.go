@@ -1192,7 +1192,7 @@ func TestUpdateComponentStub(t *testing.T) {
 						assert.Equal(t, hasCompDetection.ProjectType, tt.devfilesDataMap[hasCompDetection.ComponentStub.Source.GitSource.Context].Metadata.ProjectType, "The project type should be the same")
 
 						// Devfile Found
-						assert.Equal(t, hasCompDetection.DevfileFound, len(tt.devfilesURLMap[hasCompDetection.ComponentStub.Source.GitSource.Context]) == 0, "The devfile found did not match expected")
+						assert.Equal(t, hasCompDetection.DevfileFound, len(tt.devfilesURLMap[hasCompDetection.ComponentStub.Source.GitSource.Context]) != 0, "The devfile found did not match expected")
 
 						// Component Name
 						assert.Contains(t, hasCompDetection.ComponentStub.ComponentName, "url", "The component name did not match the expected")
