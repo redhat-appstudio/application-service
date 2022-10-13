@@ -41,7 +41,7 @@ func TestGenerateNewRepositoryName(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			sanitizedName := util.SanitizeName(tt.displayName)
-			generatedRepo := GenerateNewRepositoryName(tt.displayName, tt.namespace)
+			generatedRepo := GenerateNewRepositoryName(tt.displayName, tt.namespace, "root:test-workspace")
 
 			if !strings.Contains(generatedRepo, sanitizedName) {
 				t.Errorf("TestSanitizeDisplayName() error: expected %v got %v", tt.want, sanitizedName)

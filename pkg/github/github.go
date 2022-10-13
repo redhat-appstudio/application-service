@@ -17,6 +17,7 @@ package github
 
 import (
 	"context"
+	"crypto/sha256"
 	"fmt"
 	"strings"
 
@@ -27,10 +28,14 @@ import (
 
 const AppStudioAppDataOrg = "redhat-appstudio-appdata"
 
-func GenerateNewRepositoryName(displayName string, namespace string) string {
+// GenerateNewRepositoryName creates a new gitops repository name, based on the following format:
+// <display-name>-<partial-hash-of-clustername-and-namespace>-<random-word>-<random-word>
+func GenerateNewRepositoryName(displayName, namespace, clusterName string) string {
 	sanitizedName := util.SanitizeName(displayName)
-
-	repoName := sanitizedName + "-" + namespace + "-" + util.SanitizeName(gofakeit.Verb()) + "-" + util.SanitizeName(gofakeit.Verb())
+	h := sha256.New()
+	h.Write([]byte(clusterName + namespace))
+	namespaceClusterHash := string(h.Sum(nil))[0:5]
+	repoName := sanitizedName + "-" + namespaceClusterHash + "-" + util.SanitizeName(gofakeit.Verb()) + "-" + util.SanitizeName(gofakeit.Verb())
 	return repoName
 }
 
