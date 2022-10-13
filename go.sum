@@ -1930,6 +1930,8 @@ github.com/redhat-developer/alizer/go v0.0.0-20220704150640-ef50ead0b279 h1:+S8l
 github.com/redhat-developer/alizer/go v0.0.0-20220704150640-ef50ead0b279/go.mod h1:jzZFFoqYo3vQfo6dNNEv1biEZ1g55GPvvNPeP2gu43c=
 github.com/redhat-developer/gitops-generator v0.0.0-20220901170915-a4d650cac486 h1:v2HxAJxd2JsVCqDXmF1dioHTPUAhvSZYtJNkJVLjH3c=
 github.com/redhat-developer/gitops-generator v0.0.0-20220901170915-a4d650cac486/go.mod h1:oRmoPfhkSvjOCncDigpalGvU2AaZeaivDpf9H7DxDuU=
+github.com/redhat-developer/gitops-generator v0.0.0-20221006150505-48bd0619bdcc h1:hd016QCxbVgnvCvy0yh64agZF6m3Z9ZJAv3C86UAgyg=
+github.com/redhat-developer/gitops-generator v0.0.0-20221006150505-48bd0619bdcc/go.mod h1:oRmoPfhkSvjOCncDigpalGvU2AaZeaivDpf9H7DxDuU=
 github.com/renier/xmlrpc v0.0.0-20170708154548-ce4a1a486c03/go.mod h1:gRAiPF5C5Nd0eyyRdqIu9qTiFSoZzpTq727b5B8fkkU=
 github.com/rickb777/date v1.13.0/go.mod h1:GZf3LoGnxPWjX+/1TXOuzHefZFDovTyNLHDMd3qH70k=
 github.com/rickb777/plural v1.2.1/go.mod h1:j058+3M5QQFgcZZ2oKIOekcygoZUL8gKW5yRO14BuAw=
