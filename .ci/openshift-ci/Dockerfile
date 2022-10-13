@@ -1,5 +1,5 @@
 FROM quay.io/redhat-appstudio/e2e-tests:latest as e2e
-FROM registry.ci.openshift.org/openshift/release:golang-1.17
+FROM registry.ci.openshift.org/openshift/release:golang-1.18
 
 SHELL ["/bin/bash", "-c"]
 
