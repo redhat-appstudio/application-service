@@ -86,6 +86,11 @@ func (r *ComponentDetectionQueryReconciler) Reconcile(ctx context.Context, req c
 		return ctrl.Result{}, err
 	}
 
+	// If on KCP, requeue if the kcp.dev/cluster annotation has not yet been added
+	if req.ClusterName != "" && componentDetectionQuery.GetAnnotations()["kcp.dev/cluster"] == "" {
+		return ctrl.Result{Requeue: true}, nil
+	}
+
 	// If there are no conditions attached to the CDQ, the resource was just created
 	if len(componentDetectionQuery.Status.Conditions) == 0 {
 		// Start the ComponentDetectionQuery, and update its status condition accordingly
