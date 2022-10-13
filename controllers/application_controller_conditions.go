@@ -38,7 +38,6 @@ func (r *ApplicationReconciler) SetCreateConditionAndUpdateCR(ctx context.Contex
 			Reason:  "OK",
 			Message: "Application has been successfully created",
 		})
-		logutil.LogAPIResourceChangeEvent(log, application.Name, "Application", logutil.ResourceCreate, nil)
 	} else {
 		meta.SetStatusCondition(&application.Status.Conditions, metav1.Condition{
 			Type:    "Created",
@@ -72,6 +71,7 @@ func (r *ApplicationReconciler) SetUpdateConditionAndUpdateCR(ctx context.Contex
 			Reason:  "Error",
 			Message: fmt.Sprintf("Application updated failed: %v", updateError),
 		})
+		logutil.LogAPIResourceChangeEvent(log, application.Name, "Application", logutil.ResourceUpdate, updateError)
 	}
 
 	err := r.Client.Status().Update(ctx, application)

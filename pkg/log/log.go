@@ -24,9 +24,10 @@ import (
 type ResourceChangeType string
 
 const (
-	ResourceCreate   ResourceChangeType = "Create"
-	ResourceUpdate   ResourceChangeType = "Update"
-	ResourceDelete   ResourceChangeType = "Delete"
+	ResourceCreate ResourceChangeType = "Create"
+	ResourceUpdate ResourceChangeType = "Update"
+	ResourceDelete ResourceChangeType = "Delete"
+	// complete is only for CDQ condition change upon completion
 	ResourceComplete ResourceChangeType = "Complete"
 )
 

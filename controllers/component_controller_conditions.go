@@ -38,7 +38,6 @@ func (r *ComponentReconciler) SetCreateConditionAndUpdateCR(ctx context.Context,
 			Reason:  "OK",
 			Message: "Component has been successfully created",
 		})
-		logutil.LogAPIResourceChangeEvent(log, component.Name, "Component", logutil.ResourceCreate, nil)
 	} else {
 		meta.SetStatusCondition(&component.Status.Conditions, metav1.Condition{
 			Type:    "Created",
@@ -65,7 +64,6 @@ func (r *ComponentReconciler) SetUpdateConditionAndUpdateCR(ctx context.Context,
 			Reason:  "OK",
 			Message: "Component has been successfully updated",
 		})
-		logutil.LogAPIResourceChangeEvent(log, component.Name, "Component", logutil.ResourceUpdate, nil)
 	} else {
 		meta.SetStatusCondition(&component.Status.Conditions, metav1.Condition{
 			Type:    "Updated",
@@ -92,7 +90,6 @@ func (r *ComponentReconciler) SetGitOpsGeneratedConditionAndUpdateCR(ctx context
 			Reason:  "OK",
 			Message: "GitOps resource generated successfully",
 		})
-		logutil.LogAPIResourceChangeEvent(log, component.Name, "ComponentGitOpsResources", logutil.ResourceCreate, nil)
 	} else {
 		meta.SetStatusCondition(&component.Status.Conditions, metav1.Condition{
 			Type:    "GitOpsResourcesGenerated",

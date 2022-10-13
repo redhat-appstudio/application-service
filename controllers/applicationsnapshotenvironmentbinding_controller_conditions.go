@@ -36,7 +36,6 @@ func (r *ApplicationSnapshotEnvironmentBindingReconciler) SetConditionAndUpdateC
 			Reason:  "OK",
 			Message: "GitOps repository sync successful",
 		})
-		logutil.LogAPIResourceChangeEvent(log, appSnapshotEnvBinding.Name, "ApplicationSnapshotEnvironmentBinding", logutil.ResourceCreate, nil)
 	} else {
 		meta.SetStatusCondition(&appSnapshotEnvBinding.Status.GitOpsRepoConditions, metav1.Condition{
 			Type:    "GitOpsResourcesGenerated",

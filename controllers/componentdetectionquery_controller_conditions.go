@@ -37,7 +37,6 @@ func (r *ComponentDetectionQueryReconciler) SetDetectingConditionAndUpdateCR(ctx
 		Reason:  "Success",
 		Message: "ComponentDetectionQuery is processing",
 	})
-	logutil.LogAPIResourceChangeEvent(log, componentDetectionQuery.Name, "ComponentDetectionQuery", logutil.ResourceCreate, nil)
 
 	err := r.Client.Status().Update(ctx, componentDetectionQuery)
 	if err != nil {
