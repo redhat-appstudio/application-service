@@ -21,6 +21,7 @@ import (
 	"fmt"
 	"path"
 
+	"go.uber.org/zap/zapcore"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -28,6 +29,8 @@ import (
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/builder"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/event"
+	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 	"sigs.k8s.io/controller-runtime/pkg/predicate"
 
 	"github.com/go-logr/logr"
@@ -268,8 +271,6 @@ func (r *ComponentDetectionQueryReconciler) Reconcile(ctx context.Context, req c
 		if err = r.Delete(ctx, &componentDetectionQuery); err != nil {
 			// Delete failed. Log the error but don't bother modifying the resource's status
 			logutil.LogAPIResourceChangeEvent(log, componentDetectionQuery.Name, "ComponentDetectionQuery", logutil.ResourceDelete, err)
-		} else {
-			logutil.LogAPIResourceChangeEvent(log, componentDetectionQuery.Name, "ComponentDetectionQuery", logutil.ResourceDelete, nil)
 		}
 	}
 
@@ -278,7 +279,29 @@ func (r *ComponentDetectionQueryReconciler) Reconcile(ctx context.Context, req c
 
 // SetupWithManager sets up the controller with the Manager.
 func (r *ComponentDetectionQueryReconciler) SetupWithManager(mgr ctrl.Manager) error {
+	opts := zap.Options{
+		TimeEncoder: zapcore.ISO8601TimeEncoder,
+	}
+	ctrl.SetLogger(zap.New(zap.UseFlagOptions(&opts)))
+	log := ctrl.Log.WithName("controllers").WithName("ComponentDetectionQuery").WithValues("appstudio-component", "HAS")
 	return ctrl.NewControllerManagedBy(mgr).
-		For(&appstudiov1alpha1.ComponentDetectionQuery{}, builder.WithPredicates(predicate.GenerationChangedPredicate{})).
+		For(&appstudiov1alpha1.ComponentDetectionQuery{},
+			builder.WithPredicates(predicate.GenerationChangedPredicate{})).WithEventFilter(predicate.Funcs{
+		CreateFunc: func(e event.CreateEvent) bool {
+			log.WithValues("Namespace", e.Object.GetNamespace())
+			logutil.LogAPIResourceChangeEvent(log, e.Object.GetName(), "ComponentDetectionQuery", logutil.ResourceCreate, nil)
+			return true
+		},
+		UpdateFunc: func(e event.UpdateEvent) bool {
+			log.WithValues("Namespace", e.ObjectNew.GetNamespace())
+			logutil.LogAPIResourceChangeEvent(log, e.ObjectNew.GetName(), "ComponentDetectionQuery", logutil.ResourceUpdate, nil)
+			return true
+		},
+		DeleteFunc: func(e event.DeleteEvent) bool {
+			log.WithValues("Namespace", e.Object.GetNamespace())
+			logutil.LogAPIResourceChangeEvent(log, e.Object.GetName(), "ComponentDetectionQuery", logutil.ResourceDelete, nil)
+			return false
+		},
+	}).
 		Complete(r)
 }
