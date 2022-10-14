@@ -46,10 +46,10 @@ func (r *ComponentDetectionQueryReconciler) SetDetectingConditionAndUpdateCR(ctx
 	}
 }
 
-func (r *ComponentDetectionQueryReconciler) SetCompleteConditionAndUpdateCR(ctx context.Context, req ctrl.Request, componentDetectionQuery *appstudiov1alpha1.ComponentDetectionQuery, completeError error) {
+func (r *ComponentDetectionQueryReconciler) SetCompleteConditionAndUpdateCR(ctx context.Context, req ctrl.Request, componentDetectionQuery *appstudiov1alpha1.ComponentDetectionQuery, originalCDQ *appstudiov1alpha1.ComponentDetectionQuery, completeError error) {
 	log := r.Log.WithValues("ComponentDetectionQuery", req.NamespacedName).WithValues("clusterName", req.ClusterName)
 
-	patch := client.MergeFrom(componentDetectionQuery.DeepCopy())
+	patch := client.MergeFrom(originalCDQ.DeepCopy())
 
 	if completeError == nil {
 		meta.SetStatusCondition(&componentDetectionQuery.Status.Conditions, metav1.Condition{
