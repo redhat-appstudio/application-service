@@ -5,7 +5,7 @@ Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
 You may obtain a copy of the License at
 
-    http://www.apache.org/licenses/LICENSE-2.0
+	http://www.apache.org/licenses/LICENSE-2.0
 
 Unless required by applicable law or agreed to in writing, software
 distributed under the License is distributed on an "AS IS" BASIS,
@@ -33,8 +33,12 @@ const (
 	BuildBundleConfigMapKey = "default_build_bundle"
 	HACBSBundleConfigMapKey = "hacbs_build_bundle"
 
-	// fallback bundle that will be used in case the bundle resolution fails
-	FallbackBuildBundle = "quay.io/redhat-appstudio/build-templates-bundle:8201a567956ba6d2095d615ea2c0f6ab35f9ba5f"
+	// Fallback bundle that will be used in case the bundle resolution fails
+	// List of AppStudio bundle tags: https://quay.io/repository/redhat-appstudio/build-templates-bundle?tab=tags
+	AppStudioFallbackBuildBundle = "quay.io/redhat-appstudio/build-templates-bundle:9f5d549dd64aacf10e3baac90972dfd5df788324"
+	// List of HACBS bundle tags: https://quay.io/repository/redhat-appstudio/hacbs-templates-bundle?tab=tags
+	HACBSFallbackBuildBundle = "quay.io/redhat-appstudio/hacbs-templates-bundle:9f5d549dd64aacf10e3baac90972dfd5df788324"
+
 	// default secret for app studio registry
 	RegistrySecret = "redhat-appstudio-registry-pull-secret"
 	// Pipelines as Code global configuration secret name
@@ -58,45 +62,50 @@ type GitopsConfig struct {
 	IsHACBS bool
 }
 
-func PrepareGitopsConfig(ctx context.Context, cli client.Client, component appstudiov1alpha1.Component) GitopsConfig {
+func PrepareGitopsConfig(ctx context.Context, localCli, cli client.Client, component appstudiov1alpha1.Component) GitopsConfig {
 	data := GitopsConfig{}
 
 	data.AppStudioRegistrySecretPresent = resolveRegistrySecretPresence(ctx, cli, component)
 	data.IsHACBS = IsHACBS(ctx, cli, component.Namespace)
-	resolvedBundle := ResolveBuildBundle(ctx, cli, component.Namespace, data.IsHACBS)
-	if resolvedBundle == "" {
-		data.BuildBundle = FallbackBuildBundle
-	} else {
-		data.BuildBundle = resolvedBundle
-	}
-
+	data.BuildBundle = ResolveBuildBundle(ctx, localCli, cli, component.Namespace, data.IsHACBS)
 	data.PipelinesAsCodeCredentials = getPipelinesAsCodeConfigurationSecretData(ctx, cli, component)
 
 	return data
 }
 
-// Tries to load a custom build bundle path from a configmap.
-// The following priority is used: component's namespace -> default namespace -> empty string.
-func ResolveBuildBundle(ctx context.Context, cli client.Client, namespace string, isHACBS bool) string {
-	namespaces := [2]string{namespace, BuildBundleDefaultNamespace}
-
+// ResolveBuildBundle detects build bundle to use.
+// localClient is the client that operates in the workspace where the operator's APIExport defined.
+// The following priority is used:
+// 1. User's workspace, Component's namespace, build-pipelines-defaults ConfigMap
+// 2. The workspace where the operator's APIExport defined, build-templates namespace, build-pipelines-defaults ConfigMap
+// 3. Fallback bundle
+// For non-KCP deployments, workspace is ignored.
+// In case of HACBS the ConfigMap key and fallback bundle are different.
+func ResolveBuildBundle(ctx context.Context, localClient, cli client.Client, namespace string, isHACBS bool) string {
 	bundleConfigMapKey := BuildBundleConfigMapKey
 	if isHACBS {
 		bundleConfigMapKey = HACBSBundleConfigMapKey
 	}
-	for _, namespace := range namespaces {
-		var configMap = corev1.ConfigMap{}
 
-		// All errors during the loading of the configmaps should be treated as non-fatal
-		// TODO: Add logging to help the debugging of eventual issues
-		_ = cli.Get(ctx, types.NamespacedName{Name: BuildBundleConfigMapName, Namespace: namespace}, &configMap)
-
+	// All errors during the loading of the ConfigMaps should be treated as non-fatal
+	configMap := corev1.ConfigMap{}
+	if err := cli.Get(ctx, types.NamespacedName{Name: BuildBundleConfigMapName, Namespace: namespace}, &configMap); err == nil {
 		if value, isPresent := configMap.Data[bundleConfigMapKey]; isPresent && value != "" {
 			return value
 		}
 	}
-
-	return ""
+	// There is no build bundle configuration in the component namespace
+	// Try global build bundle configuration
+	if err := localClient.Get(ctx, types.NamespacedName{Name: BuildBundleConfigMapName, Namespace: BuildBundleDefaultNamespace}, &configMap); err == nil {
+		if value, isPresent := configMap.Data[bundleConfigMapKey]; isPresent && value != "" {
+			return value
+		}
+	}
+	// Use fallback bundle
+	if isHACBS {
+		return HACBSFallbackBuildBundle
+	}
+	return AppStudioFallbackBuildBundle
 }
 
 // Return true when hacbs configmap exists in the namespace

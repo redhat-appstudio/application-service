@@ -5,7 +5,7 @@ Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
 You may obtain a copy of the License at
 
-    http://www.apache.org/licenses/LICENSE-2.0
+	http://www.apache.org/licenses/LICENSE-2.0
 
 Unless required by applicable law or agreed to in writing, software
 distributed under the License is distributed on an "AS IS" BASIS,
@@ -85,7 +85,7 @@ func TestPrepareGitopsConfig(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			client := fake.NewClientBuilder().WithRuntimeObjects(&tt.buildBundleConfigMap, &tt.pacSecret).Build()
-			if got := PrepareGitopsConfig(context.TODO(), client, component); !reflect.DeepEqual(got, tt.want) {
+			if got := PrepareGitopsConfig(context.TODO(), client, client, component); !reflect.DeepEqual(got, tt.want) {
 				t.Errorf("PrepareGitopsConfig() = %v, want %v", got, tt.want)
 			}
 		})
@@ -150,7 +150,7 @@ func TestResolveBuildBundle(t *testing.T) {
 		{
 			name: "should fall back to the hard-coded bundle in case the resolution fails",
 			data: corev1.ConfigMap{},
-			want: "",
+			want: AppStudioFallbackBuildBundle,
 		},
 		{
 			name: "should ignore malformed configmaps",
@@ -167,7 +167,7 @@ func TestResolveBuildBundle(t *testing.T) {
 					Namespace: BuildBundleDefaultNamespace,
 				},
 			},
-			want: "",
+			want: AppStudioFallbackBuildBundle,
 		},
 		{
 			name: "should ignore configmaps with empty keys",
@@ -184,7 +184,7 @@ func TestResolveBuildBundle(t *testing.T) {
 					Namespace: BuildBundleDefaultNamespace,
 				},
 			},
-			want: "",
+			want: AppStudioFallbackBuildBundle,
 		},
 		{
 			name: "should return HACBS bundle from user namespace",
@@ -230,7 +230,7 @@ func TestResolveBuildBundle(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			client := fake.NewClientBuilder().WithRuntimeObjects(&tt.data).Build()
 
-			if got := ResolveBuildBundle(ctx, client, component.Namespace, tt.isHACBS); got != tt.want {
+			if got := ResolveBuildBundle(ctx, client, client, component.Namespace, tt.isHACBS); got != tt.want {
 				t.Errorf("ResolveBuildBundle() = %v, want %v", got, tt.want)
 			}
 		})
