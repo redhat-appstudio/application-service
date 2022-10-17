@@ -17,6 +17,7 @@ package github
 
 import (
 	"context"
+	"crypto/sha256"
 	"strings"
 	"testing"
 
@@ -28,12 +29,14 @@ func TestGenerateNewRepositoryName(t *testing.T) {
 		name        string
 		displayName string
 		namespace   string
+		clusterName string
 		want        string
 	}{
 		{
 			name:        "Simple display name, no spaces",
 			displayName: "PetClinic",
 			namespace:   "default",
+			clusterName: "root:test-workspace",
 			want:        "petclinic-default",
 		},
 	}
@@ -41,9 +44,12 @@ func TestGenerateNewRepositoryName(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			sanitizedName := util.SanitizeName(tt.displayName)
-			generatedRepo := GenerateNewRepositoryName(tt.displayName, tt.namespace, "root:test-workspace")
+			h := sha256.New()
+			h.Write([]byte(tt.clusterName + tt.namespace))
+			namespaceClusterHash := string(h.Sum(nil))
+			generatedRepo := GenerateNewRepositoryName(tt.displayName, tt.namespace, tt.clusterName)
 
-			if !strings.Contains(generatedRepo, sanitizedName) {
+			if !strings.Contains(generatedRepo, sanitizedName) || !strings.Contains(generatedRepo, namespaceClusterHash) {
 				t.Errorf("TestSanitizeDisplayName() error: expected %v got %v", tt.want, sanitizedName)
 			}
 		})
