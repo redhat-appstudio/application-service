@@ -21,6 +21,7 @@ import (
 	"fmt"
 	"path"
 
+	"go.uber.org/zap/zapcore"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -28,12 +29,15 @@ import (
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/builder"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/event"
+	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 	"sigs.k8s.io/controller-runtime/pkg/predicate"
 
 	"github.com/go-logr/logr"
 	logicalcluster "github.com/kcp-dev/logicalcluster/v2"
 	appstudiov1alpha1 "github.com/redhat-appstudio/application-service/api/v1alpha1"
 	devfile "github.com/redhat-appstudio/application-service/pkg/devfile"
+	logutil "github.com/redhat-appstudio/application-service/pkg/log"
 	"github.com/redhat-appstudio/application-service/pkg/spi"
 	"github.com/redhat-appstudio/application-service/pkg/util"
 	"github.com/redhat-appstudio/application-service/pkg/util/ioutils"
@@ -269,7 +273,7 @@ func (r *ComponentDetectionQueryReconciler) Reconcile(ctx context.Context, req c
 		log.Info(fmt.Sprintf("Deleting finished ComponentDetectionQuery resource %v", req.NamespacedName))
 		if err = r.Delete(ctx, &componentDetectionQuery); err != nil {
 			// Delete failed. Log the error but don't bother modifying the resource's status
-			log.Error(err, fmt.Sprintf("Unable to delete the ComponentDetectionQuery resource %v", req.NamespacedName))
+			logutil.LogAPIResourceChangeEvent(log, componentDetectionQuery.Name, "ComponentDetectionQuery", logutil.ResourceDelete, err)
 		}
 	}
 
@@ -278,7 +282,29 @@ func (r *ComponentDetectionQueryReconciler) Reconcile(ctx context.Context, req c
 
 // SetupWithManager sets up the controller with the Manager.
 func (r *ComponentDetectionQueryReconciler) SetupWithManager(mgr ctrl.Manager) error {
+	opts := zap.Options{
+		TimeEncoder: zapcore.ISO8601TimeEncoder,
+	}
+	ctrl.SetLogger(zap.New(zap.UseFlagOptions(&opts)))
+	log := ctrl.Log.WithName("controllers").WithName("ComponentDetectionQuery").WithValues("appstudio-component", "HAS")
 	return ctrl.NewControllerManagedBy(mgr).
-		For(&appstudiov1alpha1.ComponentDetectionQuery{}, builder.WithPredicates(predicate.GenerationChangedPredicate{})).
+		For(&appstudiov1alpha1.ComponentDetectionQuery{},
+			builder.WithPredicates(predicate.GenerationChangedPredicate{})).WithEventFilter(predicate.Funcs{
+		CreateFunc: func(e event.CreateEvent) bool {
+			log = log.WithValues("Namespace", e.Object.GetNamespace()).WithValues("clusterName", logicalcluster.From(e.Object).String())
+			logutil.LogAPIResourceChangeEvent(log, e.Object.GetName(), "ComponentDetectionQuery", logutil.ResourceCreate, nil)
+			return true
+		},
+		UpdateFunc: func(e event.UpdateEvent) bool {
+			log = log.WithValues("Namespace", e.ObjectNew.GetNamespace()).WithValues("clusterName", logicalcluster.From(e.ObjectNew).String())
+			logutil.LogAPIResourceChangeEvent(log, e.ObjectNew.GetName(), "ComponentDetectionQuery", logutil.ResourceUpdate, nil)
+			return true
+		},
+		DeleteFunc: func(e event.DeleteEvent) bool {
+			log = log.WithValues("Namespace", e.Object.GetNamespace()).WithValues("clusterName", logicalcluster.From(e.Object).String())
+			logutil.LogAPIResourceChangeEvent(log, e.Object.GetName(), "ComponentDetectionQuery", logutil.ResourceDelete, nil)
+			return false
+		},
+	}).
 		Complete(r)
 }

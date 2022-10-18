@@ -95,7 +95,7 @@ func main() {
 	ctx := ctrl.SetupSignalHandler()
 
 	restConfig := ctrl.GetConfigOrDie()
-	setupLog = setupLog.WithValues("api-export-name", apiExportName)
+	setupLog = setupLog.WithValues("api-export-name", apiExportName).WithValues("appstudio-component", "HAS")
 
 	var mgr ctrl.Manager
 	var err error
@@ -168,7 +168,7 @@ func main() {
 	if err = (&controllers.ApplicationReconciler{
 		Client:       mgr.GetClient(),
 		Scheme:       mgr.GetScheme(),
-		Log:          ctrl.Log.WithName("controllers").WithName("Application"),
+		Log:          ctrl.Log.WithName("controllers").WithName("Application").WithValues("appstudio-component", "HAS"),
 		GitHubClient: client,
 		GitHubOrg:    ghOrg,
 	}).SetupWithManager(mgr); err != nil {
@@ -178,7 +178,7 @@ func main() {
 	if err = (&controllers.ComponentReconciler{
 		Client:          mgr.GetClient(),
 		Scheme:          mgr.GetScheme(),
-		Log:             ctrl.Log.WithName("controllers").WithName("Component"),
+		Log:             ctrl.Log.WithName("controllers").WithName("Component").WithValues("appstudio-component", "HAS"),
 		Executor:        gitopsgen.NewCmdExecutor(),
 		AppFS:           ioutils.NewFilesystem(),
 		GitToken:        ghToken,
@@ -191,7 +191,7 @@ func main() {
 	if err = (&controllers.ComponentDetectionQueryReconciler{
 		Client:             mgr.GetClient(),
 		Scheme:             mgr.GetScheme(),
-		Log:                ctrl.Log.WithName("controllers").WithName("ComponentDetectionQuery"),
+		Log:                ctrl.Log.WithName("controllers").WithName("ComponentDetectionQuery").WithValues("appstudio-component", "HAS"),
 		SPIClient:          spi.SPIClient{},
 		AlizerClient:       devfile.AlizerClient{},
 		DevfileRegistryURL: devfileRegistryURL,
@@ -216,7 +216,7 @@ func main() {
 	if err = (&controllers.ApplicationSnapshotEnvironmentBindingReconciler{
 		Client:   mgr.GetClient(),
 		Scheme:   mgr.GetScheme(),
-		Log:      ctrl.Log.WithName("controllers").WithName("ApplicationSnapshotEnvironmentBinding"),
+		Log:      ctrl.Log.WithName("controllers").WithName("ApplicationSnapshotEnvironmentBinding").WithValues("appstudio-component", "HAS"),
 		Executor: gitopsgen.NewCmdExecutor(),
 		AppFS:    ioutils.NewFilesystem(),
 		GitToken: ghToken,

@@ -23,11 +23,13 @@ import (
 
 	gitopsgenv1alpha1 "github.com/redhat-developer/gitops-generator/api/v1alpha1"
 	gitopsgen "github.com/redhat-developer/gitops-generator/pkg"
+	"go.uber.org/zap/zapcore"
 	corev1 "k8s.io/api/core/v1"
 
 	"github.com/go-logr/logr"
 	logicalcluster "github.com/kcp-dev/logicalcluster/v2"
 	appstudiov1alpha1 "github.com/redhat-appstudio/application-service/api/v1alpha1"
+	logutil "github.com/redhat-appstudio/application-service/pkg/log"
 	"github.com/redhat-appstudio/application-service/pkg/util"
 	"github.com/redhat-appstudio/application-service/pkg/util/ioutils"
 	appstudioshared "github.com/redhat-appstudio/managed-gitops/appstudio-shared/apis/appstudio.redhat.com/v1alpha1"
@@ -40,6 +42,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/event"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
+	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 	"sigs.k8s.io/controller-runtime/pkg/predicate"
 	"sigs.k8s.io/controller-runtime/pkg/source"
 )
@@ -296,23 +299,50 @@ func (r *ApplicationSnapshotEnvironmentBindingReconciler) Reconcile(ctx context.
 
 // SetupWithManager sets up the controller with the Manager.
 func (r *ApplicationSnapshotEnvironmentBindingReconciler) SetupWithManager(mgr ctrl.Manager) error {
+	opts := zap.Options{
+		TimeEncoder: zapcore.ISO8601TimeEncoder,
+	}
+	ctrl.SetLogger(zap.New(zap.UseFlagOptions(&opts)))
+	log := ctrl.Log.WithName("controllers").WithName("Environment").WithValues("appstudio-component", "HAS")
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&appstudioshared.ApplicationSnapshotEnvironmentBinding{}, builder.WithPredicates(predicate.GenerationChangedPredicate{})).
 		// Watch for Environment CR updates and reconcile all the Bindings that reference the Environment
 		Watches(&source.Kind{Type: &appstudioshared.Environment{}},
 			handler.EnqueueRequestsFromMapFunc(MapToBindingByBoundObjectName(r.Client, "Environment", "appstudio.environment")), builder.WithPredicates(predicate.Funcs{
 				CreateFunc: func(e event.CreateEvent) bool {
+					log = log.WithValues("Namespace", e.Object.GetNamespace()).WithValues("clusterName", logicalcluster.From(e.Object).String())
+					logutil.LogAPIResourceChangeEvent(log, e.Object.GetName(), "Environment", logutil.ResourceCreate, nil)
 					return false
 				},
 				UpdateFunc: func(e event.UpdateEvent) bool {
+					log = log.WithValues("Namespace", e.ObjectNew.GetNamespace()).WithValues("clusterName", logicalcluster.From(e.ObjectNew).String())
+					logutil.LogAPIResourceChangeEvent(log, e.ObjectNew.GetName(), "Environment", logutil.ResourceUpdate, nil)
 					return true
 				},
 				DeleteFunc: func(e event.DeleteEvent) bool {
+					log = log.WithValues("Namespace", e.Object.GetNamespace()).WithValues("clusterName", logicalcluster.From(e.Object).String())
+					logutil.LogAPIResourceChangeEvent(log, e.Object.GetName(), "Environment", logutil.ResourceDelete, nil)
 					return false
 				},
 				GenericFunc: func(e event.GenericEvent) bool {
 					return false
 				},
-			})).
+			})).WithEventFilter(predicate.Funcs{
+		CreateFunc: func(e event.CreateEvent) bool {
+			log = log.WithValues("Namespace", e.Object.GetNamespace()).WithValues("clusterName", logicalcluster.From(e.Object).String())
+			logutil.LogAPIResourceChangeEvent(log, e.Object.GetName(), "ApplicationSnapshotEnvironmentBinding", logutil.ResourceCreate, nil)
+			return true
+		},
+		UpdateFunc: func(e event.UpdateEvent) bool {
+			log = log.WithValues("Namespace", e.ObjectNew.GetNamespace()).WithValues("clusterName", logicalcluster.From(e.ObjectNew).String())
+			logutil.LogAPIResourceChangeEvent(log, e.ObjectNew.GetName(), "ApplicationSnapshotEnvironmentBinding", logutil.ResourceUpdate, nil)
+			return true
+		},
+		DeleteFunc: func(e event.DeleteEvent) bool {
+			log = log.WithValues("Namespace", e.Object.GetNamespace()).WithValues("clusterName", logicalcluster.From(e.Object).String())
+			logutil.LogAPIResourceChangeEvent(log, e.Object.GetName(), "ApplicationSnapshotEnvironmentBinding", logutil.ResourceDelete, nil)
+			return false
+		},
+	}).
 		Complete(r)
 }
