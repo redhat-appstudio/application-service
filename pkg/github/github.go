@@ -34,7 +34,7 @@ func GenerateNewRepositoryName(displayName, namespace, clusterName string) strin
 	sanitizedName := util.SanitizeName(displayName)
 	h := sha256.New()
 	h.Write([]byte(clusterName + namespace))
-	namespaceClusterHash := string(h.Sum(nil))
+	namespaceClusterHash := string(h.Sum(nil))[0:5]
 	repoName := sanitizedName + "-" + namespaceClusterHash + "-" + util.SanitizeName(gofakeit.Verb()) + "-" + util.SanitizeName(gofakeit.Verb())
 	return repoName
 }
