@@ -25,6 +25,7 @@ import (
 	ctrl "sigs.k8s.io/controller-runtime"
 
 	appstudiov1alpha1 "github.com/redhat-appstudio/application-api/api/v1alpha1"
+	logutil "github.com/redhat-appstudio/application-service/pkg/log"
 )
 
 func (r *ComponentReconciler) SetCreateConditionAndUpdateCR(ctx context.Context, req ctrl.Request, component *appstudiov1alpha1.Component, createError error) {
@@ -44,6 +45,7 @@ func (r *ComponentReconciler) SetCreateConditionAndUpdateCR(ctx context.Context,
 			Reason:  "Error",
 			Message: fmt.Sprintf("Component create failed: %v", createError),
 		})
+		logutil.LogAPIResourceChangeEvent(log, component.Name, "Component", logutil.ResourceCreate, createError)
 	}
 
 	err := r.Client.Status().Update(ctx, component)
@@ -69,6 +71,7 @@ func (r *ComponentReconciler) SetUpdateConditionAndUpdateCR(ctx context.Context,
 			Reason:  "Error",
 			Message: fmt.Sprintf("Component updated failed: %v", updateError),
 		})
+		logutil.LogAPIResourceChangeEvent(log, component.Name, "Component", logutil.ResourceUpdate, updateError)
 	}
 
 	err := r.Client.Status().Update(ctx, component)
@@ -94,6 +97,7 @@ func (r *ComponentReconciler) SetGitOpsGeneratedConditionAndUpdateCR(ctx context
 			Reason:  "GenerateError",
 			Message: fmt.Sprintf("GitOps resources failed to generate: %v", generateError),
 		})
+		logutil.LogAPIResourceChangeEvent(log, component.Name, "ComponentGitOpsResources", logutil.ResourceCreate, generateError)
 	}
 
 	err := r.Client.Status().Update(ctx, component)

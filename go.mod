@@ -22,7 +22,7 @@ require (
 	github.com/redhat-appstudio/application-api v0.0.0-20221005164756-847094032024
 	github.com/redhat-appstudio/service-provider-integration-scm-file-retriever v0.6.10
 	github.com/redhat-developer/alizer/go v0.0.0-20220704150640-ef50ead0b279
-	github.com/redhat-developer/gitops-generator v0.0.0-20220901170915-a4d650cac486
+	github.com/redhat-developer/gitops-generator v0.0.0-20221006150505-48bd0619bdcc
 	github.com/spf13/afero v1.8.0
 	github.com/stretchr/testify v1.8.0
 	github.com/tektoncd/pipeline v0.33.0
