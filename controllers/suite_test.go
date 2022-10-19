@@ -116,6 +116,7 @@ var _ = BeforeSuite(func() {
 
 	err = (&ComponentReconciler{
 		Client:          k8sManager.GetClient(),
+		LocalClient:     k8sManager.GetClient(),
 		Scheme:          k8sManager.GetScheme(),
 		Log:             ctrl.Log.WithName("controllers").WithName("Component"),
 		Executor:        testutils.NewMockExecutor(),

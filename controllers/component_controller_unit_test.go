@@ -155,22 +155,24 @@ func TestGenerateGitops(t *testing.T) {
 	fakeClient := fake.NewClientBuilder().Build()
 
 	r := &ComponentReconciler{
-		Log:       ctrl.Log.WithName("controllers").WithName("Component"),
-		GitHubOrg: github.AppStudioAppDataOrg,
-		GitToken:  "fake-token",
-		Executor:  executor,
-		Client:    fakeClient,
+		Log:         ctrl.Log.WithName("controllers").WithName("Component"),
+		GitHubOrg:   github.AppStudioAppDataOrg,
+		GitToken:    "fake-token",
+		Executor:    executor,
+		Client:      fakeClient,
+		LocalClient: fakeClient,
 	}
 
 	// Create a second reconciler for testing error scenarios
 	errExec := testutils.NewMockExecutor()
 	errExec.Errors.Push(errors.New("Fatal error"))
 	errReconciler := &ComponentReconciler{
-		Log:       ctrl.Log.WithName("controllers").WithName("Component"),
-		GitHubOrg: github.AppStudioAppDataOrg,
-		GitToken:  "fake-token",
-		Executor:  errExec,
-		Client:    fakeClient,
+		Log:         ctrl.Log.WithName("controllers").WithName("Component"),
+		GitHubOrg:   github.AppStudioAppDataOrg,
+		GitToken:    "fake-token",
+		Executor:    errExec,
+		Client:      fakeClient,
+		LocalClient: fakeClient,
 	}
 
 	componentSpec := appstudiov1alpha1.ComponentSpec{
