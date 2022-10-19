@@ -46,7 +46,7 @@ func TestGenerateNewRepositoryName(t *testing.T) {
 			sanitizedName := util.SanitizeName(tt.displayName)
 			h := sha256.New()
 			h.Write([]byte(tt.clusterName + tt.namespace))
-			namespaceClusterHash := string(h.Sum(nil))
+			namespaceClusterHash := string(h.Sum(nil))[0:5]
 			generatedRepo := GenerateNewRepositoryName(tt.displayName, tt.namespace, tt.clusterName)
 
 			if !strings.Contains(generatedRepo, sanitizedName) || !strings.Contains(generatedRepo, namespaceClusterHash) {
