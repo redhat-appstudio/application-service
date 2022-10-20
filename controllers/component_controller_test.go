@@ -28,7 +28,7 @@ import (
 	"github.com/devfile/library/pkg/devfile/parser/data/v2/common"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
-	appstudiov1alpha1 "github.com/redhat-appstudio/application-service/api/v1alpha1"
+	appstudiov1alpha1 "github.com/redhat-appstudio/application-api/api/v1alpha1"
 	devfile "github.com/redhat-appstudio/application-service/pkg/devfile"
 	"sigs.k8s.io/yaml"
 

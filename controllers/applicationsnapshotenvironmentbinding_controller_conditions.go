@@ -19,14 +19,14 @@ import (
 	"context"
 	"fmt"
 
+	appstudiov1alpha1 "github.com/redhat-appstudio/application-api/api/v1alpha1"
 	logutil "github.com/redhat-appstudio/application-service/pkg/log"
-	appstudioshared "github.com/redhat-appstudio/managed-gitops/appstudio-shared/apis/appstudio.redhat.com/v1alpha1"
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	ctrl "sigs.k8s.io/controller-runtime"
 )
 
-func (r *ApplicationSnapshotEnvironmentBindingReconciler) SetConditionAndUpdateCR(ctx context.Context, req ctrl.Request, appSnapshotEnvBinding *appstudioshared.ApplicationSnapshotEnvironmentBinding, createError error) {
+func (r *ApplicationSnapshotEnvironmentBindingReconciler) SetConditionAndUpdateCR(ctx context.Context, req ctrl.Request, appSnapshotEnvBinding *appstudiov1alpha1.ApplicationSnapshotEnvironmentBinding, createError error) {
 	log := r.Log.WithValues("ApplicationSnapshotEnvironmentBinding", req.NamespacedName).WithValues("clusterName", req.ClusterName)
 
 	if createError == nil {

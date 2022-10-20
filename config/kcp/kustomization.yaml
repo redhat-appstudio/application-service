@@ -17,4 +17,3 @@ bases:
 
 resources:
 - apiexport_application-service.yaml
-- apiresourceschema_has.yaml

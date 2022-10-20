@@ -44,7 +44,7 @@ GITHUB_ORG ?= redhat-appstudio-appdata
 DEVFILE_REGISTRY_URL ?= https://registry.devfile.io
 ENABLE_WEBHOOKS ?= true
 
-GITOPS_SHARED_CRD = https://raw.githubusercontent.com/redhat-appstudio/managed-gitops/main/appstudio-shared/manifests/appstudio-shared-customresourcedefinitions.yaml
+APPLICATION_API_CRD = https://raw.githubusercontent.com/redhat-appstudio/application-api/main/manifests/application-api-customresourcedefinitions.yaml
 
 # Produce CRDs that work back to Kubernetes 1.11 (no version conversion)
 CRD_OPTIONS ?= "crd:trivialVersions=true,preserveUnknownFields=false"
@@ -88,11 +88,7 @@ help: ## Display this help.
 ##@ Development
 
 manifests: controller-gen ## Generate WebhookConfiguration, ClusterRole and CustomResourceDefinition objects.
-	$(CONTROLLER_GEN) $(CRD_OPTIONS) rbac:roleName=manager-role webhook paths="./..." output:crd:artifacts:config=config/crd/bases
-	$(MAKE) manifests-kcp
-
-manifests-kcp:	## Generate KCP APIResourceSchema from CRDs
-	hack/generate-kcp-api.sh
+	$(CONTROLLER_GEN) $(CRD_OPTIONS) rbac:roleName=manager-role webhook paths="./..."
 
 generate: controller-gen ## Generate code containing DeepCopy, DeepCopyInto, and DeepCopyObject method implementations.
 	$(CONTROLLER_GEN) object:headerFile="hack/boilerplate.go.txt" paths="./..."
@@ -162,15 +158,11 @@ uninstall-cert:
 
 ##@ Deployment
 
-install-kcp: manifests kustomize
-	$(KUSTOMIZE) build config/crd | kubectl apply -f -
-
 install: manifests kustomize #install-cert ## Install CRDs into the K8s cluster specified in ~/.kube/config.
-	$(KUSTOMIZE) build config/crd | kubectl apply -f -
-	kubectl apply -f $(GITOPS_SHARED_CRD)
+	kubectl apply -f $(APPLICATION_API_CRD)
 
 uninstall: manifests kustomize #uninstall-cert ## Uninstall CRDs from the K8s cluster specified in ~/.kube/config.
-	$(KUSTOMIZE) build config/crd | kubectl delete -f -
+	kubectl delete -f $(APPLICATION_API_CRD)
 
 deploy: manifests kustomize ## Deploy controller to the K8s cluster specified in ~/.kube/config.
 	cd config/manager && $(KUSTOMIZE) edit set image controller=${IMG}
@@ -270,18 +262,11 @@ catalog-build: opm ## Build a catalog image.
 .PHONY: catalog-push
 catalog-push: ## Push a catalog image.
 	$(MAKE) docker-push IMG=$(CATALOG_IMG)
-
-APPLICATIONS_CRD=$(shell pwd)/config/crd/bases/appstudio.redhat.com_applications.yaml
-COMPONENT_DETECTION_QUERIES_CRD=$(shell pwd)/config/crd/bases/appstudio.redhat.com_componentdetectionqueries.yaml
-COMPONENT_CRD=$(shell pwd)/config/crd/bases/appstudio.redhat.com_components.yaml
-
+	
 .PHONY: apply-crds
 apply-crds:
 	kubectl apply \
-	-f $(APPLICATIONS_CRD) \
-	-f $(COMPONENT_DETECTION_QUERIES_CRD) \
-	-f $(COMPONENT_CRD) \
-	-f $(GITOPS_SHARED_CRD)
+	-f $(APPLICATION_API_CRD)
 .PHONY: debug
 debug: dlv generate manifests kustomize apply-crds
 	$(MAKE) debug-stop; \

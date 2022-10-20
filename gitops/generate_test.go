@@ -20,7 +20,7 @@ import (
 	"testing"
 
 	"github.com/mitchellh/go-homedir"
-	appstudiov1alpha1 "github.com/redhat-appstudio/application-service/api/v1alpha1"
+	appstudiov1alpha1 "github.com/redhat-appstudio/application-api/api/v1alpha1"
 	"github.com/redhat-appstudio/application-service/gitops/prepare"
 	"github.com/redhat-appstudio/application-service/pkg/util/ioutils"
 	"github.com/redhat-developer/gitops-generator/pkg/testutils"
