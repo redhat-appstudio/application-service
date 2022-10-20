@@ -22,14 +22,13 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"os/exec"
 	"regexp"
 	"strings"
 
 	gitopsgenv1alpha1 "github.com/redhat-developer/gitops-generator/api/v1alpha1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
-	"github.com/go-git/go-git/v5"
-	transportHttp "github.com/go-git/go-git/v5/plumbing/transport/http"
 	appstudiov1alpha1 "github.com/redhat-appstudio/application-service/api/v1alpha1"
 )
 
@@ -151,22 +150,43 @@ func CurlEndpoint(endpoint string) ([]byte, error) {
 
 // CloneRepo clones the repoURL to clonePath
 func CloneRepo(clonePath, repoURL string, token string) error {
-	// Set up the Clone options
-	cloneOpts := &git.CloneOptions{
-		URL: repoURL,
+	exist, err := IsExist(clonePath)
+	if !exist || err != nil {
+		os.MkdirAll(clonePath, 0755)
+		// if err != nil {
+		// 	return err
+		// }
 	}
-
-	// If a token was passed in, configure token auth for the git client
+	cloneURL := repoURL
+	// Execute does an exec.Command on the specified command
 	if token != "" {
-		cloneOpts.Auth = &transportHttp.BasicAuth{
-			Username: "token",
-			Password: token,
-		}
+		tempStr := strings.Split(repoURL, "https://")
+		cloneURL = fmt.Sprintf("https://token:%s@%s", token, tempStr[1])
+
 	}
-	// Clone the repo
-	_, err := git.PlainClone(clonePath, false, cloneOpts)
+	c := exec.Command("git", "clone", cloneURL, clonePath)
+	c.Dir = clonePath
+	output, err := c.CombinedOutput()
+
+	// // Set up the Clone options
+	// cloneOpts := &git.CloneOptions{
+	// 	URL: repoURL,
+	// }
+
+	// // If a token was passed in, configure token auth for the git client
+	// if token != "" {
+	// 	cloneOpts.Auth = &transportHttp.BasicAuth{
+	// 		Username: "token",
+	// 		Password: token,
+	// 	}
+	// }
+	// // Clone the repo
+	// _, err := git.PlainClone(clonePath, false, cloneOpts)
 	if err != nil {
+		fmt.Printf("error is : %v", err)
 		return err
+	} else {
+		fmt.Printf("output is : %v", output)
 	}
 
 	return nil
