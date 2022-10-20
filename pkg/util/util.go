@@ -167,11 +167,14 @@ func CloneRepo(clonePath, repoURL string, token string) error {
 	}
 	c := exec.Command("git", "clone", cloneURL, clonePath)
 	c.Dir = clonePath
-	output, err := c.CombinedOutput()
+
+	// set env to skip authentication prompt and directly error out
+	c.Env = os.Environ()
+	c.Env = append(c.Env, "GIT_TERMINAL_PROMPT=0", "GIT_ASKPASS=/bin/echo")
+
+	_, err = c.CombinedOutput()
 	if err != nil {
 		return fmt.Errorf("failed to clone the repo: %v", err)
-	} else {
-		fmt.Printf("output is : %v", string(output))
 	}
 
 	return nil
