@@ -161,32 +161,17 @@ func CloneRepo(clonePath, repoURL string, token string) error {
 	// Execute does an exec.Command on the specified command
 	if token != "" {
 		tempStr := strings.Split(repoURL, "https://")
-		cloneURL = fmt.Sprintf("https://token:%s@%s", token, tempStr[1])
 
+		// e.g. https://token:<token>@github.com/owner/repoName.git
+		cloneURL = fmt.Sprintf("https://token:%s@%s", token, tempStr[1])
 	}
 	c := exec.Command("git", "clone", cloneURL, clonePath)
 	c.Dir = clonePath
 	output, err := c.CombinedOutput()
-
-	// // Set up the Clone options
-	// cloneOpts := &git.CloneOptions{
-	// 	URL: repoURL,
-	// }
-
-	// // If a token was passed in, configure token auth for the git client
-	// if token != "" {
-	// 	cloneOpts.Auth = &transportHttp.BasicAuth{
-	// 		Username: "token",
-	// 		Password: token,
-	// 	}
-	// }
-	// // Clone the repo
-	// _, err := git.PlainClone(clonePath, false, cloneOpts)
 	if err != nil {
-		fmt.Printf("error is : %v", err)
-		return err
+		return fmt.Errorf("failed to clone the repo: %v", err)
 	} else {
-		fmt.Printf("output is : %v", output)
+		fmt.Printf("output is : %v", string(output))
 	}
 
 	return nil

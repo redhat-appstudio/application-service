@@ -244,7 +244,7 @@ func TestCloneRepo(t *testing.T) {
 		{
 			name:      "Invalid token, should err out",
 			clonePath: "/tmp/alreadyexistingdir",
-			repo:      "https://github.com/devfile-samples/devfile-sample-java-springboot-basic",
+			repo:      "https://github.com/yangcao77/multi-components-private/",
 			token:     "fake-token",
 			wantErr:   true,
 		},
