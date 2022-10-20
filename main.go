@@ -45,13 +45,12 @@ import (
 
 	"github.com/google/go-github/v41/github"
 
-	appstudiov1alpha1 "github.com/redhat-appstudio/application-service/api/v1alpha1"
+	appstudiov1alpha1 "github.com/redhat-appstudio/application-api/api/v1alpha1"
 	"github.com/redhat-appstudio/application-service/controllers"
 	appservicegitops "github.com/redhat-appstudio/application-service/gitops"
 	"github.com/redhat-appstudio/application-service/pkg/devfile"
 	"github.com/redhat-appstudio/application-service/pkg/spi"
 	"github.com/redhat-appstudio/application-service/pkg/util/ioutils"
-	appstudioshared "github.com/redhat-appstudio/managed-gitops/appstudio-shared/apis/appstudio.redhat.com/v1alpha1"
 	gitopsgen "github.com/redhat-developer/gitops-generator/pkg"
 
 	//+kubebuilder:scaffold:imports
@@ -68,7 +67,6 @@ func init() {
 
 	utilruntime.Must(appstudiov1alpha1.AddToScheme(scheme))
 
-	utilruntime.Must(appstudioshared.AddToScheme(scheme))
 	//+kubebuilder:scaffold:scheme
 }
 

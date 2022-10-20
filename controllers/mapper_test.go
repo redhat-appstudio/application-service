@@ -20,7 +20,7 @@ import (
 	"fmt"
 	"testing"
 
-	appstudioshared "github.com/redhat-appstudio/managed-gitops/appstudio-shared/apis/appstudio.redhat.com/v1alpha1"
+	appstudiov1alpha1 "github.com/redhat-appstudio/application-api/api/v1alpha1"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -62,7 +62,7 @@ func TestMapToBindingByBoundObject(t *testing.T) {
 	replicas := int32(3)
 
 	// given
-	binding1 := &appstudioshared.ApplicationSnapshotEnvironmentBinding{
+	binding1 := &appstudiov1alpha1.ApplicationSnapshotEnvironmentBinding{
 		TypeMeta: metav1.TypeMeta{
 			APIVersion: "appstudio.redhat.com/v1alpha1",
 			Kind:       "ApplicationSnapshotEnvironmentBinding",
@@ -75,14 +75,14 @@ func TestMapToBindingByBoundObject(t *testing.T) {
 				"appstudio.application": applicationName,
 			},
 		},
-		Spec: appstudioshared.ApplicationSnapshotEnvironmentBindingSpec{
+		Spec: appstudiov1alpha1.ApplicationSnapshotEnvironmentBindingSpec{
 			Application: applicationName,
 			Environment: staging,
 			Snapshot:    snapshotName,
-			Components: []appstudioshared.BindingComponent{
+			Components: []appstudiov1alpha1.BindingComponent{
 				{
 					Name: componentName,
-					Configuration: appstudioshared.BindingComponentConfiguration{
+					Configuration: appstudiov1alpha1.BindingComponentConfiguration{
 						Replicas: int(replicas),
 					},
 				},
@@ -90,7 +90,7 @@ func TestMapToBindingByBoundObject(t *testing.T) {
 		},
 	}
 
-	binding2 := &appstudioshared.ApplicationSnapshotEnvironmentBinding{
+	binding2 := &appstudiov1alpha1.ApplicationSnapshotEnvironmentBinding{
 		TypeMeta: metav1.TypeMeta{
 			APIVersion: "appstudio.redhat.com/v1alpha1",
 			Kind:       "ApplicationSnapshotEnvironmentBinding",
@@ -103,14 +103,14 @@ func TestMapToBindingByBoundObject(t *testing.T) {
 				"appstudio.application": applicationName2,
 			},
 		},
-		Spec: appstudioshared.ApplicationSnapshotEnvironmentBindingSpec{
+		Spec: appstudiov1alpha1.ApplicationSnapshotEnvironmentBindingSpec{
 			Application: applicationName2,
 			Environment: dev,
 			Snapshot:    snapshotName2,
-			Components: []appstudioshared.BindingComponent{
+			Components: []appstudiov1alpha1.BindingComponent{
 				{
 					Name: componentName2,
-					Configuration: appstudioshared.BindingComponentConfiguration{
+					Configuration: appstudiov1alpha1.BindingComponentConfiguration{
 						Replicas: int(replicas),
 					},
 				},
@@ -118,7 +118,7 @@ func TestMapToBindingByBoundObject(t *testing.T) {
 		},
 	}
 
-	binding3 := &appstudioshared.ApplicationSnapshotEnvironmentBinding{
+	binding3 := &appstudiov1alpha1.ApplicationSnapshotEnvironmentBinding{
 		TypeMeta: metav1.TypeMeta{
 			APIVersion: "appstudio.redhat.com/v1alpha1",
 			Kind:       "ApplicationSnapshotEnvironmentBinding",
@@ -131,14 +131,14 @@ func TestMapToBindingByBoundObject(t *testing.T) {
 				"appstudio.application": applicationName2,
 			},
 		},
-		Spec: appstudioshared.ApplicationSnapshotEnvironmentBindingSpec{
+		Spec: appstudiov1alpha1.ApplicationSnapshotEnvironmentBindingSpec{
 			Application: applicationName2,
 			Environment: staging,
 			Snapshot:    snapshotName,
-			Components: []appstudioshared.BindingComponent{
+			Components: []appstudiov1alpha1.BindingComponent{
 				{
 					Name: componentName,
-					Configuration: appstudioshared.BindingComponentConfiguration{
+					Configuration: appstudiov1alpha1.BindingComponentConfiguration{
 						Replicas: int(replicas),
 					},
 				},
@@ -146,7 +146,7 @@ func TestMapToBindingByBoundObject(t *testing.T) {
 		},
 	}
 
-	binding4 := &appstudioshared.ApplicationSnapshotEnvironmentBinding{
+	binding4 := &appstudiov1alpha1.ApplicationSnapshotEnvironmentBinding{
 		TypeMeta: metav1.TypeMeta{
 			APIVersion: "appstudio.redhat.com/v1alpha1",
 			Kind:       "ApplicationSnapshotEnvironmentBinding",
@@ -155,14 +155,14 @@ func TestMapToBindingByBoundObject(t *testing.T) {
 			Name:      bindingName4,
 			Namespace: Namespace,
 		},
-		Spec: appstudioshared.ApplicationSnapshotEnvironmentBindingSpec{
+		Spec: appstudiov1alpha1.ApplicationSnapshotEnvironmentBindingSpec{
 			Application: applicationName,
 			Environment: staging,
 			Snapshot:    snapshotName,
-			Components: []appstudioshared.BindingComponent{
+			Components: []appstudiov1alpha1.BindingComponent{
 				{
 					Name: componentName,
-					Configuration: appstudioshared.BindingComponentConfiguration{
+					Configuration: appstudiov1alpha1.BindingComponentConfiguration{
 						Replicas: int(replicas),
 					},
 				},
@@ -170,7 +170,7 @@ func TestMapToBindingByBoundObject(t *testing.T) {
 		},
 	}
 
-	stagingEnv := &appstudioshared.Environment{
+	stagingEnv := &appstudiov1alpha1.Environment{
 		TypeMeta: metav1.TypeMeta{
 			APIVersion: "appstudio.redhat.com/v1alpha1",
 			Kind:       "Environment",
@@ -179,12 +179,12 @@ func TestMapToBindingByBoundObject(t *testing.T) {
 			Name:      staging,
 			Namespace: Namespace,
 		},
-		Spec: appstudioshared.EnvironmentSpec{
+		Spec: appstudiov1alpha1.EnvironmentSpec{
 			Type:               "POC",
 			DisplayName:        DisplayName,
-			DeploymentStrategy: appstudioshared.DeploymentStrategy_AppStudioAutomated,
-			Configuration: appstudioshared.EnvironmentConfiguration{
-				Env: []appstudioshared.EnvVarPair{
+			DeploymentStrategy: appstudiov1alpha1.DeploymentStrategy_AppStudioAutomated,
+			Configuration: appstudiov1alpha1.EnvironmentConfiguration{
+				Env: []appstudiov1alpha1.EnvVarPair{
 					{
 						Name:  "FOO",
 						Value: "BAR",
@@ -194,7 +194,7 @@ func TestMapToBindingByBoundObject(t *testing.T) {
 		},
 	}
 
-	prodEnv := &appstudioshared.Environment{
+	prodEnv := &appstudiov1alpha1.Environment{
 		TypeMeta: metav1.TypeMeta{
 			APIVersion: "appstudio.redhat.com/v1alpha1",
 			Kind:       "Environment",
@@ -203,12 +203,12 @@ func TestMapToBindingByBoundObject(t *testing.T) {
 			Name:      prod,
 			Namespace: Namespace,
 		},
-		Spec: appstudioshared.EnvironmentSpec{
+		Spec: appstudiov1alpha1.EnvironmentSpec{
 			Type:               "Non-POC",
 			DisplayName:        DisplayName,
-			DeploymentStrategy: appstudioshared.DeploymentStrategy_AppStudioAutomated,
-			Configuration: appstudioshared.EnvironmentConfiguration{
-				Env: []appstudioshared.EnvVarPair{
+			DeploymentStrategy: appstudiov1alpha1.DeploymentStrategy_AppStudioAutomated,
+			Configuration: appstudiov1alpha1.EnvironmentConfiguration{
+				Env: []appstudiov1alpha1.EnvVarPair{
 					{
 						Name:  "FOO",
 						Value: "BAR",
@@ -265,7 +265,7 @@ func newRequest(name string) reconcile.Request {
 // see https://github.com/kubernetes-sigs/controller-runtime/blob/master/pkg/client/fake/doc.go#L31
 func NewFakeClient(t *testing.T, initObjs ...runtime.Object) *FakeClient {
 	s := scheme.Scheme
-	err := appstudioshared.AddToScheme(s)
+	err := appstudiov1alpha1.AddToScheme(s)
 	require.NoError(t, err)
 	cl := fake.NewClientBuilder().
 		WithScheme(s).

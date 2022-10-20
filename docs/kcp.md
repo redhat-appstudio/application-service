@@ -17,10 +17,6 @@ If `kubectl` complains that `application-service-system` does not exist, create 
 
 where `$TOKEN` is the GitHub token to be used with HAS, as described [here](https://github.com/redhat-appstudio/application-service#creating-a-github-secret-for-has).
 
-It's also recommended to run `./hack/pull-appstudio-shared-and-regen.sh` before deploying, to ensure the AppStudio-shared APIs are available.
-   
-   - Otherwise, you will need to manually pull down the AppStudio-shared APIs, and bind them before deploying.
-
 ## Deploying the Operator
 
 To deploy HAS on KCP, just run:

@@ -22,8 +22,7 @@ import (
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
-	appstudiov1alpha1 "github.com/redhat-appstudio/application-service/api/v1alpha1"
-	appstudioshared "github.com/redhat-appstudio/managed-gitops/appstudio-shared/apis/appstudio.redhat.com/v1alpha1"
+	appstudiov1alpha1 "github.com/redhat-appstudio/application-api/api/v1alpha1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -68,7 +67,7 @@ var _ = Describe("ApplicationSnapshotEnvironmentBinding controller", func() {
 			// Make sure the devfile model was properly set in Component
 			Expect(hasComp.Status.Devfile).Should(Not(Equal("")))
 
-			appSnapshot := &appstudioshared.ApplicationSnapshot{
+			appSnapshot := &appstudiov1alpha1.ApplicationSnapshot{
 				TypeMeta: metav1.TypeMeta{
 					APIVersion: "appstudio.redhat.com/v1alpha1",
 					Kind:       "ApplicationSnapshot",
@@ -77,11 +76,11 @@ var _ = Describe("ApplicationSnapshotEnvironmentBinding controller", func() {
 					Name:      snapshotName,
 					Namespace: HASAppNamespace,
 				},
-				Spec: appstudioshared.ApplicationSnapshotSpec{
+				Spec: appstudiov1alpha1.ApplicationSnapshotSpec{
 					Application:        applicationName,
 					DisplayName:        "My Snapshot",
 					DisplayDescription: "My Snapshot",
-					Components: []appstudioshared.ApplicationSnapshotComponent{
+					Components: []appstudiov1alpha1.ApplicationSnapshotComponent{
 						{
 							Name:           componentName,
 							ContainerImage: "image1",
@@ -92,13 +91,13 @@ var _ = Describe("ApplicationSnapshotEnvironmentBinding controller", func() {
 			Expect(k8sClient.Create(ctx, appSnapshot)).Should(Succeed())
 
 			appSnapshotLookupKey := types.NamespacedName{Name: snapshotName, Namespace: HASAppNamespace}
-			createdAppSnapshot := &appstudioshared.ApplicationSnapshot{}
+			createdAppSnapshot := &appstudiov1alpha1.ApplicationSnapshot{}
 			Eventually(func() bool {
 				k8sClient.Get(context.Background(), appSnapshotLookupKey, createdAppSnapshot)
 				return len(createdAppSnapshot.Spec.Components) > 0
 			}, timeout, interval).Should(BeTrue())
 
-			stagingEnv := &appstudioshared.Environment{
+			stagingEnv := &appstudiov1alpha1.Environment{
 				TypeMeta: metav1.TypeMeta{
 					APIVersion: "appstudio.redhat.com/v1alpha1",
 					Kind:       "Environment",
@@ -107,12 +106,12 @@ var _ = Describe("ApplicationSnapshotEnvironmentBinding controller", func() {
 					Name:      environmentName,
 					Namespace: HASAppNamespace,
 				},
-				Spec: appstudioshared.EnvironmentSpec{
+				Spec: appstudiov1alpha1.EnvironmentSpec{
 					Type:               "POC",
 					DisplayName:        DisplayName,
-					DeploymentStrategy: appstudioshared.DeploymentStrategy_AppStudioAutomated,
-					Configuration: appstudioshared.EnvironmentConfiguration{
-						Env: []appstudioshared.EnvVarPair{
+					DeploymentStrategy: appstudiov1alpha1.DeploymentStrategy_AppStudioAutomated,
+					Configuration: appstudiov1alpha1.EnvironmentConfiguration{
+						Env: []appstudiov1alpha1.EnvVarPair{
 							{
 								Name:  "FOO",
 								Value: "BAR",
@@ -123,7 +122,7 @@ var _ = Describe("ApplicationSnapshotEnvironmentBinding controller", func() {
 			}
 			Expect(k8sClient.Create(ctx, stagingEnv)).Should(Succeed())
 
-			appBinding := &appstudioshared.ApplicationSnapshotEnvironmentBinding{
+			appBinding := &appstudiov1alpha1.ApplicationSnapshotEnvironmentBinding{
 				TypeMeta: metav1.TypeMeta{
 					APIVersion: "appstudio.redhat.com/v1alpha1",
 					Kind:       "ApplicationSnapshotEnvironmentBinding",
@@ -132,16 +131,16 @@ var _ = Describe("ApplicationSnapshotEnvironmentBinding controller", func() {
 					Name:      bindingName,
 					Namespace: HASAppNamespace,
 				},
-				Spec: appstudioshared.ApplicationSnapshotEnvironmentBindingSpec{
+				Spec: appstudiov1alpha1.ApplicationSnapshotEnvironmentBindingSpec{
 					Application: applicationName,
 					Environment: environmentName,
 					Snapshot:    snapshotName,
-					Components: []appstudioshared.BindingComponent{
+					Components: []appstudiov1alpha1.BindingComponent{
 						{
 							Name: componentName,
-							Configuration: appstudioshared.BindingComponentConfiguration{
+							Configuration: appstudiov1alpha1.BindingComponentConfiguration{
 								Replicas: int(replicas),
-								Env: []appstudioshared.EnvVarPair{
+								Env: []appstudiov1alpha1.EnvVarPair{
 									{
 										Name:  "FOO",
 										Value: "BAR",
@@ -161,7 +160,7 @@ var _ = Describe("ApplicationSnapshotEnvironmentBinding controller", func() {
 			Expect(k8sClient.Create(ctx, appBinding)).Should(Succeed())
 
 			bindingLookupKey := types.NamespacedName{Name: bindingName, Namespace: HASAppNamespace}
-			createdBinding := &appstudioshared.ApplicationSnapshotEnvironmentBinding{}
+			createdBinding := &appstudiov1alpha1.ApplicationSnapshotEnvironmentBinding{}
 			Eventually(func() bool {
 				k8sClient.Get(context.Background(), bindingLookupKey, createdBinding)
 				return len(createdBinding.Status.GitOpsRepoConditions) > 0 && len(createdBinding.Status.Components) == 1
@@ -217,7 +216,7 @@ var _ = Describe("ApplicationSnapshotEnvironmentBinding controller", func() {
 			// Make sure the devfile model was properly set in Component
 			Expect(hasComp.Status.Devfile).Should(Not(Equal("")))
 
-			appSnapshot := &appstudioshared.ApplicationSnapshot{
+			appSnapshot := &appstudiov1alpha1.ApplicationSnapshot{
 				TypeMeta: metav1.TypeMeta{
 					APIVersion: "appstudio.redhat.com/v1alpha1",
 					Kind:       "ApplicationSnapshot",
@@ -226,11 +225,11 @@ var _ = Describe("ApplicationSnapshotEnvironmentBinding controller", func() {
 					Name:      snapshotName,
 					Namespace: HASAppNamespace,
 				},
-				Spec: appstudioshared.ApplicationSnapshotSpec{
+				Spec: appstudiov1alpha1.ApplicationSnapshotSpec{
 					Application:        applicationName,
 					DisplayName:        "My Snapshot",
 					DisplayDescription: "My Snapshot",
-					Components: []appstudioshared.ApplicationSnapshotComponent{
+					Components: []appstudiov1alpha1.ApplicationSnapshotComponent{
 						{
 							Name:           componentName,
 							ContainerImage: "image1",
@@ -241,13 +240,13 @@ var _ = Describe("ApplicationSnapshotEnvironmentBinding controller", func() {
 			Expect(k8sClient.Create(ctx, appSnapshot)).Should(Succeed())
 
 			appSnapshotLookupKey := types.NamespacedName{Name: snapshotName, Namespace: HASAppNamespace}
-			createdAppSnapshot := &appstudioshared.ApplicationSnapshot{}
+			createdAppSnapshot := &appstudiov1alpha1.ApplicationSnapshot{}
 			Eventually(func() bool {
 				k8sClient.Get(context.Background(), appSnapshotLookupKey, createdAppSnapshot)
 				return len(createdAppSnapshot.Spec.Components) > 0
 			}, timeout, interval).Should(BeTrue())
 
-			stagingEnv := &appstudioshared.Environment{
+			stagingEnv := &appstudiov1alpha1.Environment{
 				TypeMeta: metav1.TypeMeta{
 					APIVersion: "appstudio.redhat.com/v1alpha1",
 					Kind:       "Environment",
@@ -256,12 +255,12 @@ var _ = Describe("ApplicationSnapshotEnvironmentBinding controller", func() {
 					Name:      environmentName,
 					Namespace: HASAppNamespace,
 				},
-				Spec: appstudioshared.EnvironmentSpec{
+				Spec: appstudiov1alpha1.EnvironmentSpec{
 					Type:               "POC",
 					DisplayName:        DisplayName,
-					DeploymentStrategy: appstudioshared.DeploymentStrategy_AppStudioAutomated,
-					Configuration: appstudioshared.EnvironmentConfiguration{
-						Env: []appstudioshared.EnvVarPair{
+					DeploymentStrategy: appstudiov1alpha1.DeploymentStrategy_AppStudioAutomated,
+					Configuration: appstudiov1alpha1.EnvironmentConfiguration{
+						Env: []appstudiov1alpha1.EnvVarPair{
 							{
 								Name:  "FOO",
 								Value: "BAR",
@@ -272,7 +271,7 @@ var _ = Describe("ApplicationSnapshotEnvironmentBinding controller", func() {
 			}
 			Expect(k8sClient.Create(ctx, stagingEnv)).Should(Succeed())
 
-			appBinding := &appstudioshared.ApplicationSnapshotEnvironmentBinding{
+			appBinding := &appstudiov1alpha1.ApplicationSnapshotEnvironmentBinding{
 				TypeMeta: metav1.TypeMeta{
 					APIVersion: "appstudio.redhat.com/v1alpha1",
 					Kind:       "ApplicationSnapshotEnvironmentBinding",
@@ -281,16 +280,16 @@ var _ = Describe("ApplicationSnapshotEnvironmentBinding controller", func() {
 					Name:      bindingName,
 					Namespace: HASAppNamespace,
 				},
-				Spec: appstudioshared.ApplicationSnapshotEnvironmentBindingSpec{
+				Spec: appstudiov1alpha1.ApplicationSnapshotEnvironmentBindingSpec{
 					Application: applicationName,
 					Environment: environmentName,
 					Snapshot:    snapshotName,
-					Components: []appstudioshared.BindingComponent{
+					Components: []appstudiov1alpha1.BindingComponent{
 						{
 							Name: componentName,
-							Configuration: appstudioshared.BindingComponentConfiguration{
+							Configuration: appstudiov1alpha1.BindingComponentConfiguration{
 								Replicas: int(replicas),
-								Env: []appstudioshared.EnvVarPair{
+								Env: []appstudiov1alpha1.EnvVarPair{
 									{
 										Name:  "FOO",
 										Value: "BAR",
@@ -305,7 +304,7 @@ var _ = Describe("ApplicationSnapshotEnvironmentBinding controller", func() {
 						},
 						{
 							Name: componentName2,
-							Configuration: appstudioshared.BindingComponentConfiguration{
+							Configuration: appstudiov1alpha1.BindingComponentConfiguration{
 								Replicas: int(replicas),
 							},
 						},
@@ -316,7 +315,7 @@ var _ = Describe("ApplicationSnapshotEnvironmentBinding controller", func() {
 			Expect(k8sClient.Create(ctx, appBinding)).Should(Succeed())
 
 			bindingLookupKey := types.NamespacedName{Name: bindingName, Namespace: HASAppNamespace}
-			createdBinding := &appstudioshared.ApplicationSnapshotEnvironmentBinding{}
+			createdBinding := &appstudiov1alpha1.ApplicationSnapshotEnvironmentBinding{}
 			Eventually(func() bool {
 				k8sClient.Get(context.Background(), bindingLookupKey, createdBinding)
 				return len(createdBinding.Status.GitOpsRepoConditions) > 0
@@ -362,7 +361,7 @@ var _ = Describe("ApplicationSnapshotEnvironmentBinding controller", func() {
 			// Make sure the devfile model was properly set in Component
 			Expect(hasComp.Status.Devfile).Should(Not(Equal("")))
 
-			stagingEnv := &appstudioshared.Environment{
+			stagingEnv := &appstudiov1alpha1.Environment{
 				TypeMeta: metav1.TypeMeta{
 					APIVersion: "appstudio.redhat.com/v1alpha1",
 					Kind:       "Environment",
@@ -371,12 +370,12 @@ var _ = Describe("ApplicationSnapshotEnvironmentBinding controller", func() {
 					Name:      environmentName,
 					Namespace: HASAppNamespace,
 				},
-				Spec: appstudioshared.EnvironmentSpec{
+				Spec: appstudiov1alpha1.EnvironmentSpec{
 					Type:               "POC",
 					DisplayName:        DisplayName,
-					DeploymentStrategy: appstudioshared.DeploymentStrategy_AppStudioAutomated,
-					Configuration: appstudioshared.EnvironmentConfiguration{
-						Env: []appstudioshared.EnvVarPair{
+					DeploymentStrategy: appstudiov1alpha1.DeploymentStrategy_AppStudioAutomated,
+					Configuration: appstudiov1alpha1.EnvironmentConfiguration{
+						Env: []appstudiov1alpha1.EnvVarPair{
 							{
 								Name:  "FOO",
 								Value: "BAR",
@@ -387,7 +386,7 @@ var _ = Describe("ApplicationSnapshotEnvironmentBinding controller", func() {
 			}
 			Expect(k8sClient.Create(ctx, stagingEnv)).Should(Succeed())
 
-			appBinding := &appstudioshared.ApplicationSnapshotEnvironmentBinding{
+			appBinding := &appstudiov1alpha1.ApplicationSnapshotEnvironmentBinding{
 				TypeMeta: metav1.TypeMeta{
 					APIVersion: "appstudio.redhat.com/v1alpha1",
 					Kind:       "ApplicationSnapshotEnvironmentBinding",
@@ -396,16 +395,16 @@ var _ = Describe("ApplicationSnapshotEnvironmentBinding controller", func() {
 					Name:      bindingName,
 					Namespace: HASAppNamespace,
 				},
-				Spec: appstudioshared.ApplicationSnapshotEnvironmentBindingSpec{
+				Spec: appstudiov1alpha1.ApplicationSnapshotEnvironmentBindingSpec{
 					Application: applicationName,
 					Environment: environmentName,
 					Snapshot:    snapshotName,
-					Components: []appstudioshared.BindingComponent{
+					Components: []appstudiov1alpha1.BindingComponent{
 						{
 							Name: componentName,
-							Configuration: appstudioshared.BindingComponentConfiguration{
+							Configuration: appstudiov1alpha1.BindingComponentConfiguration{
 								Replicas: int(replicas),
-								Env: []appstudioshared.EnvVarPair{
+								Env: []appstudiov1alpha1.EnvVarPair{
 									{
 										Name:  "FOO",
 										Value: "BAR",
@@ -425,7 +424,7 @@ var _ = Describe("ApplicationSnapshotEnvironmentBinding controller", func() {
 			Expect(k8sClient.Create(ctx, appBinding)).Should(Succeed())
 
 			bindingLookupKey := types.NamespacedName{Name: bindingName, Namespace: HASAppNamespace}
-			createdBinding := &appstudioshared.ApplicationSnapshotEnvironmentBinding{}
+			createdBinding := &appstudiov1alpha1.ApplicationSnapshotEnvironmentBinding{}
 			Eventually(func() bool {
 				k8sClient.Get(context.Background(), bindingLookupKey, createdBinding)
 				return len(createdBinding.Status.GitOpsRepoConditions) > 0
@@ -469,7 +468,7 @@ var _ = Describe("ApplicationSnapshotEnvironmentBinding controller", func() {
 			// Make sure the devfile model was properly set in Component
 			Expect(hasComp.Status.Devfile).Should(Not(Equal("")))
 
-			appSnapshot := &appstudioshared.ApplicationSnapshot{
+			appSnapshot := &appstudiov1alpha1.ApplicationSnapshot{
 				TypeMeta: metav1.TypeMeta{
 					APIVersion: "appstudio.redhat.com/v1alpha1",
 					Kind:       "ApplicationSnapshot",
@@ -478,11 +477,11 @@ var _ = Describe("ApplicationSnapshotEnvironmentBinding controller", func() {
 					Name:      snapshotName,
 					Namespace: HASAppNamespace,
 				},
-				Spec: appstudioshared.ApplicationSnapshotSpec{
+				Spec: appstudiov1alpha1.ApplicationSnapshotSpec{
 					Application:        applicationName2,
 					DisplayName:        "My Snapshot",
 					DisplayDescription: "My Snapshot",
-					Components: []appstudioshared.ApplicationSnapshotComponent{
+					Components: []appstudiov1alpha1.ApplicationSnapshotComponent{
 						{
 							Name:           componentName,
 							ContainerImage: "image1",
@@ -493,13 +492,13 @@ var _ = Describe("ApplicationSnapshotEnvironmentBinding controller", func() {
 			Expect(k8sClient.Create(ctx, appSnapshot)).Should(Succeed())
 
 			appSnapshotLookupKey := types.NamespacedName{Name: snapshotName, Namespace: HASAppNamespace}
-			createdAppSnapshot := &appstudioshared.ApplicationSnapshot{}
+			createdAppSnapshot := &appstudiov1alpha1.ApplicationSnapshot{}
 			Eventually(func() bool {
 				k8sClient.Get(context.Background(), appSnapshotLookupKey, createdAppSnapshot)
 				return len(createdAppSnapshot.Spec.Components) > 0
 			}, timeout, interval).Should(BeTrue())
 
-			stagingEnv := &appstudioshared.Environment{
+			stagingEnv := &appstudiov1alpha1.Environment{
 				TypeMeta: metav1.TypeMeta{
 					APIVersion: "appstudio.redhat.com/v1alpha1",
 					Kind:       "Environment",
@@ -508,12 +507,12 @@ var _ = Describe("ApplicationSnapshotEnvironmentBinding controller", func() {
 					Name:      environmentName,
 					Namespace: HASAppNamespace,
 				},
-				Spec: appstudioshared.EnvironmentSpec{
+				Spec: appstudiov1alpha1.EnvironmentSpec{
 					Type:               "POC",
 					DisplayName:        DisplayName,
-					DeploymentStrategy: appstudioshared.DeploymentStrategy_AppStudioAutomated,
-					Configuration: appstudioshared.EnvironmentConfiguration{
-						Env: []appstudioshared.EnvVarPair{
+					DeploymentStrategy: appstudiov1alpha1.DeploymentStrategy_AppStudioAutomated,
+					Configuration: appstudiov1alpha1.EnvironmentConfiguration{
+						Env: []appstudiov1alpha1.EnvVarPair{
 							{
 								Name:  "FOO",
 								Value: "BAR",
@@ -524,7 +523,7 @@ var _ = Describe("ApplicationSnapshotEnvironmentBinding controller", func() {
 			}
 			Expect(k8sClient.Create(ctx, stagingEnv)).Should(Succeed())
 
-			appBinding := &appstudioshared.ApplicationSnapshotEnvironmentBinding{
+			appBinding := &appstudiov1alpha1.ApplicationSnapshotEnvironmentBinding{
 				TypeMeta: metav1.TypeMeta{
 					APIVersion: "appstudio.redhat.com/v1alpha1",
 					Kind:       "ApplicationSnapshotEnvironmentBinding",
@@ -533,16 +532,16 @@ var _ = Describe("ApplicationSnapshotEnvironmentBinding controller", func() {
 					Name:      bindingName,
 					Namespace: HASAppNamespace,
 				},
-				Spec: appstudioshared.ApplicationSnapshotEnvironmentBindingSpec{
+				Spec: appstudiov1alpha1.ApplicationSnapshotEnvironmentBindingSpec{
 					Application: applicationName,
 					Environment: environmentName,
 					Snapshot:    snapshotName,
-					Components: []appstudioshared.BindingComponent{
+					Components: []appstudiov1alpha1.BindingComponent{
 						{
 							Name: componentName,
-							Configuration: appstudioshared.BindingComponentConfiguration{
+							Configuration: appstudiov1alpha1.BindingComponentConfiguration{
 								Replicas: int(replicas),
-								Env: []appstudioshared.EnvVarPair{
+								Env: []appstudiov1alpha1.EnvVarPair{
 									{
 										Name:  "FOO",
 										Value: "BAR",
@@ -562,7 +561,7 @@ var _ = Describe("ApplicationSnapshotEnvironmentBinding controller", func() {
 			Expect(k8sClient.Create(ctx, appBinding)).Should(Succeed())
 
 			bindingLookupKey := types.NamespacedName{Name: bindingName, Namespace: HASAppNamespace}
-			createdBinding := &appstudioshared.ApplicationSnapshotEnvironmentBinding{}
+			createdBinding := &appstudiov1alpha1.ApplicationSnapshotEnvironmentBinding{}
 			Eventually(func() bool {
 				k8sClient.Get(context.Background(), bindingLookupKey, createdBinding)
 				return len(createdBinding.Status.GitOpsRepoConditions) > 0
@@ -615,7 +614,7 @@ var _ = Describe("ApplicationSnapshotEnvironmentBinding controller", func() {
 			// Make sure the devfile model was properly set in Component
 			Expect(hasComp2.Status.Devfile).Should(Not(Equal("")))
 
-			appSnapshot := &appstudioshared.ApplicationSnapshot{
+			appSnapshot := &appstudiov1alpha1.ApplicationSnapshot{
 				TypeMeta: metav1.TypeMeta{
 					APIVersion: "appstudio.redhat.com/v1alpha1",
 					Kind:       "ApplicationSnapshot",
@@ -624,11 +623,11 @@ var _ = Describe("ApplicationSnapshotEnvironmentBinding controller", func() {
 					Name:      snapshotName,
 					Namespace: HASAppNamespace,
 				},
-				Spec: appstudioshared.ApplicationSnapshotSpec{
+				Spec: appstudiov1alpha1.ApplicationSnapshotSpec{
 					Application:        applicationName,
 					DisplayName:        "My Snapshot",
 					DisplayDescription: "My Snapshot",
-					Components: []appstudioshared.ApplicationSnapshotComponent{
+					Components: []appstudiov1alpha1.ApplicationSnapshotComponent{
 						{
 							Name:           componentName,
 							ContainerImage: "image1",
@@ -639,13 +638,13 @@ var _ = Describe("ApplicationSnapshotEnvironmentBinding controller", func() {
 			Expect(k8sClient.Create(ctx, appSnapshot)).Should(Succeed())
 
 			appSnapshotLookupKey := types.NamespacedName{Name: snapshotName, Namespace: HASAppNamespace}
-			createdAppSnapshot := &appstudioshared.ApplicationSnapshot{}
+			createdAppSnapshot := &appstudiov1alpha1.ApplicationSnapshot{}
 			Eventually(func() bool {
 				k8sClient.Get(context.Background(), appSnapshotLookupKey, createdAppSnapshot)
 				return len(createdAppSnapshot.Spec.Components) > 0
 			}, timeout, interval).Should(BeTrue())
 
-			stagingEnv := &appstudioshared.Environment{
+			stagingEnv := &appstudiov1alpha1.Environment{
 				TypeMeta: metav1.TypeMeta{
 					APIVersion: "appstudio.redhat.com/v1alpha1",
 					Kind:       "Environment",
@@ -654,12 +653,12 @@ var _ = Describe("ApplicationSnapshotEnvironmentBinding controller", func() {
 					Name:      environmentName,
 					Namespace: HASAppNamespace,
 				},
-				Spec: appstudioshared.EnvironmentSpec{
+				Spec: appstudiov1alpha1.EnvironmentSpec{
 					Type:               "POC",
 					DisplayName:        DisplayName,
-					DeploymentStrategy: appstudioshared.DeploymentStrategy_AppStudioAutomated,
-					Configuration: appstudioshared.EnvironmentConfiguration{
-						Env: []appstudioshared.EnvVarPair{
+					DeploymentStrategy: appstudiov1alpha1.DeploymentStrategy_AppStudioAutomated,
+					Configuration: appstudiov1alpha1.EnvironmentConfiguration{
+						Env: []appstudiov1alpha1.EnvVarPair{
 							{
 								Name:  "FOO",
 								Value: "BAR",
@@ -670,7 +669,7 @@ var _ = Describe("ApplicationSnapshotEnvironmentBinding controller", func() {
 			}
 			Expect(k8sClient.Create(ctx, stagingEnv)).Should(Succeed())
 
-			appBinding := &appstudioshared.ApplicationSnapshotEnvironmentBinding{
+			appBinding := &appstudiov1alpha1.ApplicationSnapshotEnvironmentBinding{
 				TypeMeta: metav1.TypeMeta{
 					APIVersion: "appstudio.redhat.com/v1alpha1",
 					Kind:       "ApplicationSnapshotEnvironmentBinding",
@@ -679,16 +678,16 @@ var _ = Describe("ApplicationSnapshotEnvironmentBinding controller", func() {
 					Name:      bindingName,
 					Namespace: HASAppNamespace,
 				},
-				Spec: appstudioshared.ApplicationSnapshotEnvironmentBindingSpec{
+				Spec: appstudiov1alpha1.ApplicationSnapshotEnvironmentBindingSpec{
 					Application: applicationName,
 					Environment: environmentName,
 					Snapshot:    snapshotName,
-					Components: []appstudioshared.BindingComponent{
+					Components: []appstudiov1alpha1.BindingComponent{
 						{
 							Name: componentName,
-							Configuration: appstudioshared.BindingComponentConfiguration{
+							Configuration: appstudiov1alpha1.BindingComponentConfiguration{
 								Replicas: int(replicas),
-								Env: []appstudioshared.EnvVarPair{
+								Env: []appstudiov1alpha1.EnvVarPair{
 									{
 										Name:  "FOO",
 										Value: "BAR",
@@ -703,7 +702,7 @@ var _ = Describe("ApplicationSnapshotEnvironmentBinding controller", func() {
 						},
 						{
 							Name: componentName2,
-							Configuration: appstudioshared.BindingComponentConfiguration{
+							Configuration: appstudiov1alpha1.BindingComponentConfiguration{
 								Replicas: int(replicas),
 							},
 						},
@@ -714,7 +713,7 @@ var _ = Describe("ApplicationSnapshotEnvironmentBinding controller", func() {
 			Expect(k8sClient.Create(ctx, appBinding)).Should(Succeed())
 
 			bindingLookupKey := types.NamespacedName{Name: bindingName, Namespace: HASAppNamespace}
-			createdBinding := &appstudioshared.ApplicationSnapshotEnvironmentBinding{}
+			createdBinding := &appstudiov1alpha1.ApplicationSnapshotEnvironmentBinding{}
 			Eventually(func() bool {
 				k8sClient.Get(context.Background(), bindingLookupKey, createdBinding)
 				return len(createdBinding.Status.GitOpsRepoConditions) > 0
@@ -769,7 +768,7 @@ var _ = Describe("ApplicationSnapshotEnvironmentBinding controller", func() {
 			// Make sure the devfile model was properly set in Component
 			Expect(hasComp2.Status.Devfile).Should(Not(Equal("")))
 
-			appSnapshot := &appstudioshared.ApplicationSnapshot{
+			appSnapshot := &appstudiov1alpha1.ApplicationSnapshot{
 				TypeMeta: metav1.TypeMeta{
 					APIVersion: "appstudio.redhat.com/v1alpha1",
 					Kind:       "ApplicationSnapshot",
@@ -778,11 +777,11 @@ var _ = Describe("ApplicationSnapshotEnvironmentBinding controller", func() {
 					Name:      snapshotName,
 					Namespace: HASAppNamespace,
 				},
-				Spec: appstudioshared.ApplicationSnapshotSpec{
+				Spec: appstudiov1alpha1.ApplicationSnapshotSpec{
 					Application:        applicationName,
 					DisplayName:        "My Snapshot",
 					DisplayDescription: "My Snapshot",
-					Components: []appstudioshared.ApplicationSnapshotComponent{
+					Components: []appstudiov1alpha1.ApplicationSnapshotComponent{
 						{
 							Name:           componentName,
 							ContainerImage: "image1",
@@ -793,13 +792,13 @@ var _ = Describe("ApplicationSnapshotEnvironmentBinding controller", func() {
 			Expect(k8sClient.Create(ctx, appSnapshot)).Should(Succeed())
 
 			appSnapshotLookupKey := types.NamespacedName{Name: snapshotName, Namespace: HASAppNamespace}
-			createdAppSnapshot := &appstudioshared.ApplicationSnapshot{}
+			createdAppSnapshot := &appstudiov1alpha1.ApplicationSnapshot{}
 			Eventually(func() bool {
 				k8sClient.Get(context.Background(), appSnapshotLookupKey, createdAppSnapshot)
 				return len(createdAppSnapshot.Spec.Components) > 0
 			}, timeout, interval).Should(BeTrue())
 
-			stagingEnv := &appstudioshared.Environment{
+			stagingEnv := &appstudiov1alpha1.Environment{
 				TypeMeta: metav1.TypeMeta{
 					APIVersion: "appstudio.redhat.com/v1alpha1",
 					Kind:       "Environment",
@@ -808,12 +807,12 @@ var _ = Describe("ApplicationSnapshotEnvironmentBinding controller", func() {
 					Name:      environmentName,
 					Namespace: HASAppNamespace,
 				},
-				Spec: appstudioshared.EnvironmentSpec{
+				Spec: appstudiov1alpha1.EnvironmentSpec{
 					Type:               "POC",
 					DisplayName:        DisplayName,
-					DeploymentStrategy: appstudioshared.DeploymentStrategy_AppStudioAutomated,
-					Configuration: appstudioshared.EnvironmentConfiguration{
-						Env: []appstudioshared.EnvVarPair{
+					DeploymentStrategy: appstudiov1alpha1.DeploymentStrategy_AppStudioAutomated,
+					Configuration: appstudiov1alpha1.EnvironmentConfiguration{
+						Env: []appstudiov1alpha1.EnvVarPair{
 							{
 								Name:  "FOO",
 								Value: "BAR",
@@ -824,7 +823,7 @@ var _ = Describe("ApplicationSnapshotEnvironmentBinding controller", func() {
 			}
 			Expect(k8sClient.Create(ctx, stagingEnv)).Should(Succeed())
 
-			appBinding := &appstudioshared.ApplicationSnapshotEnvironmentBinding{
+			appBinding := &appstudiov1alpha1.ApplicationSnapshotEnvironmentBinding{
 				TypeMeta: metav1.TypeMeta{
 					APIVersion: "appstudio.redhat.com/v1alpha1",
 					Kind:       "ApplicationSnapshotEnvironmentBinding",
@@ -833,16 +832,16 @@ var _ = Describe("ApplicationSnapshotEnvironmentBinding controller", func() {
 					Name:      bindingName,
 					Namespace: HASAppNamespace,
 				},
-				Spec: appstudioshared.ApplicationSnapshotEnvironmentBindingSpec{
+				Spec: appstudiov1alpha1.ApplicationSnapshotEnvironmentBindingSpec{
 					Application: applicationName,
 					Environment: environmentName,
 					Snapshot:    snapshotName,
-					Components: []appstudioshared.BindingComponent{
+					Components: []appstudiov1alpha1.BindingComponent{
 						{
 							Name: componentName,
-							Configuration: appstudioshared.BindingComponentConfiguration{
+							Configuration: appstudiov1alpha1.BindingComponentConfiguration{
 								Replicas: int(replicas),
-								Env: []appstudioshared.EnvVarPair{
+								Env: []appstudiov1alpha1.EnvVarPair{
 									{
 										Name:  "FOO",
 										Value: "BAR",
@@ -857,7 +856,7 @@ var _ = Describe("ApplicationSnapshotEnvironmentBinding controller", func() {
 						},
 						{
 							Name: componentName2,
-							Configuration: appstudioshared.BindingComponentConfiguration{
+							Configuration: appstudiov1alpha1.BindingComponentConfiguration{
 								Replicas: int(replicas),
 							},
 						},
@@ -868,7 +867,7 @@ var _ = Describe("ApplicationSnapshotEnvironmentBinding controller", func() {
 			Expect(k8sClient.Create(ctx, appBinding)).Should(Succeed())
 
 			bindingLookupKey := types.NamespacedName{Name: bindingName, Namespace: HASAppNamespace}
-			createdBinding := &appstudioshared.ApplicationSnapshotEnvironmentBinding{}
+			createdBinding := &appstudiov1alpha1.ApplicationSnapshotEnvironmentBinding{}
 			Eventually(func() bool {
 				k8sClient.Get(context.Background(), bindingLookupKey, createdBinding)
 				return len(createdBinding.Status.GitOpsRepoConditions) > 0
@@ -917,7 +916,7 @@ var _ = Describe("ApplicationSnapshotEnvironmentBinding controller", func() {
 			// Make sure the devfile model was properly set in Component
 			Expect(hasComp.Status.Devfile).Should(Not(Equal("")))
 
-			appSnapshot := &appstudioshared.ApplicationSnapshot{
+			appSnapshot := &appstudiov1alpha1.ApplicationSnapshot{
 				TypeMeta: metav1.TypeMeta{
 					APIVersion: "appstudio.redhat.com/v1alpha1",
 					Kind:       "ApplicationSnapshot",
@@ -926,11 +925,11 @@ var _ = Describe("ApplicationSnapshotEnvironmentBinding controller", func() {
 					Name:      snapshotName,
 					Namespace: HASAppNamespace,
 				},
-				Spec: appstudioshared.ApplicationSnapshotSpec{
+				Spec: appstudiov1alpha1.ApplicationSnapshotSpec{
 					Application:        applicationName,
 					DisplayName:        "My Snapshot",
 					DisplayDescription: "My Snapshot",
-					Components: []appstudioshared.ApplicationSnapshotComponent{
+					Components: []appstudiov1alpha1.ApplicationSnapshotComponent{
 						{
 							Name:           componentName,
 							ContainerImage: "image1",
@@ -941,13 +940,13 @@ var _ = Describe("ApplicationSnapshotEnvironmentBinding controller", func() {
 			Expect(k8sClient.Create(ctx, appSnapshot)).Should(Succeed())
 
 			appSnapshotLookupKey := types.NamespacedName{Name: snapshotName, Namespace: HASAppNamespace}
-			createdAppSnapshot := &appstudioshared.ApplicationSnapshot{}
+			createdAppSnapshot := &appstudiov1alpha1.ApplicationSnapshot{}
 			Eventually(func() bool {
 				k8sClient.Get(context.Background(), appSnapshotLookupKey, createdAppSnapshot)
 				return len(createdAppSnapshot.Spec.Components) > 0
 			}, timeout, interval).Should(BeTrue())
 
-			stagingEnv := &appstudioshared.Environment{
+			stagingEnv := &appstudiov1alpha1.Environment{
 				TypeMeta: metav1.TypeMeta{
 					APIVersion: "appstudio.redhat.com/v1alpha1",
 					Kind:       "Environment",
@@ -956,12 +955,12 @@ var _ = Describe("ApplicationSnapshotEnvironmentBinding controller", func() {
 					Name:      environmentName,
 					Namespace: HASAppNamespace,
 				},
-				Spec: appstudioshared.EnvironmentSpec{
+				Spec: appstudiov1alpha1.EnvironmentSpec{
 					Type:               "POC",
 					DisplayName:        DisplayName,
-					DeploymentStrategy: appstudioshared.DeploymentStrategy_AppStudioAutomated,
-					Configuration: appstudioshared.EnvironmentConfiguration{
-						Env: []appstudioshared.EnvVarPair{
+					DeploymentStrategy: appstudiov1alpha1.DeploymentStrategy_AppStudioAutomated,
+					Configuration: appstudiov1alpha1.EnvironmentConfiguration{
+						Env: []appstudiov1alpha1.EnvVarPair{
 							{
 								Name:  "FOO",
 								Value: "BAR",
@@ -972,7 +971,7 @@ var _ = Describe("ApplicationSnapshotEnvironmentBinding controller", func() {
 			}
 			Expect(k8sClient.Create(ctx, stagingEnv)).Should(Succeed())
 
-			appBinding := &appstudioshared.ApplicationSnapshotEnvironmentBinding{
+			appBinding := &appstudiov1alpha1.ApplicationSnapshotEnvironmentBinding{
 				TypeMeta: metav1.TypeMeta{
 					APIVersion: "appstudio.redhat.com/v1alpha1",
 					Kind:       "ApplicationSnapshotEnvironmentBinding",
@@ -981,16 +980,16 @@ var _ = Describe("ApplicationSnapshotEnvironmentBinding controller", func() {
 					Name:      bindingName,
 					Namespace: HASAppNamespace,
 				},
-				Spec: appstudioshared.ApplicationSnapshotEnvironmentBindingSpec{
+				Spec: appstudiov1alpha1.ApplicationSnapshotEnvironmentBindingSpec{
 					Application: applicationName,
 					Environment: environmentName,
 					Snapshot:    snapshotName,
-					Components: []appstudioshared.BindingComponent{
+					Components: []appstudiov1alpha1.BindingComponent{
 						{
 							Name: componentName,
-							Configuration: appstudioshared.BindingComponentConfiguration{
+							Configuration: appstudiov1alpha1.BindingComponentConfiguration{
 								Replicas: int(replicas),
-								Env: []appstudioshared.EnvVarPair{
+								Env: []appstudiov1alpha1.EnvVarPair{
 									{
 										Name:  "FOO",
 										Value: "BAR",
@@ -1010,7 +1009,7 @@ var _ = Describe("ApplicationSnapshotEnvironmentBinding controller", func() {
 			Expect(k8sClient.Create(ctx, appBinding)).Should(Succeed())
 
 			bindingLookupKey := types.NamespacedName{Name: bindingName, Namespace: HASAppNamespace}
-			createdBinding := &appstudioshared.ApplicationSnapshotEnvironmentBinding{}
+			createdBinding := &appstudiov1alpha1.ApplicationSnapshotEnvironmentBinding{}
 			Eventually(func() bool {
 				k8sClient.Get(context.Background(), bindingLookupKey, createdBinding)
 				return len(createdBinding.Status.GitOpsRepoConditions) == 1 && len(createdBinding.Status.Components) == 1
@@ -1092,7 +1091,7 @@ var _ = Describe("ApplicationSnapshotEnvironmentBinding controller", func() {
 			// Make sure the devfile model was properly set in Component
 			Expect(hasComp.Status.Devfile).Should(Not(Equal("")))
 
-			appSnapshot := &appstudioshared.ApplicationSnapshot{
+			appSnapshot := &appstudiov1alpha1.ApplicationSnapshot{
 				TypeMeta: metav1.TypeMeta{
 					APIVersion: "appstudio.redhat.com/v1alpha1",
 					Kind:       "ApplicationSnapshot",
@@ -1101,11 +1100,11 @@ var _ = Describe("ApplicationSnapshotEnvironmentBinding controller", func() {
 					Name:      snapshotName,
 					Namespace: HASAppNamespace,
 				},
-				Spec: appstudioshared.ApplicationSnapshotSpec{
+				Spec: appstudiov1alpha1.ApplicationSnapshotSpec{
 					Application:        applicationName,
 					DisplayName:        "My Snapshot",
 					DisplayDescription: "My Snapshot",
-					Components: []appstudioshared.ApplicationSnapshotComponent{
+					Components: []appstudiov1alpha1.ApplicationSnapshotComponent{
 						{
 							Name:           componentName,
 							ContainerImage: "image1",
@@ -1116,13 +1115,13 @@ var _ = Describe("ApplicationSnapshotEnvironmentBinding controller", func() {
 			Expect(k8sClient.Create(ctx, appSnapshot)).Should(Succeed())
 
 			appSnapshotLookupKey := types.NamespacedName{Name: snapshotName, Namespace: HASAppNamespace}
-			createdAppSnapshot := &appstudioshared.ApplicationSnapshot{}
+			createdAppSnapshot := &appstudiov1alpha1.ApplicationSnapshot{}
 			Eventually(func() bool {
 				k8sClient.Get(context.Background(), appSnapshotLookupKey, createdAppSnapshot)
 				return len(createdAppSnapshot.Spec.Components) > 0
 			}, timeout, interval).Should(BeTrue())
 
-			stagingEnv := &appstudioshared.Environment{
+			stagingEnv := &appstudiov1alpha1.Environment{
 				TypeMeta: metav1.TypeMeta{
 					APIVersion: "appstudio.redhat.com/v1alpha1",
 					Kind:       "Environment",
@@ -1131,12 +1130,12 @@ var _ = Describe("ApplicationSnapshotEnvironmentBinding controller", func() {
 					Name:      environmentName,
 					Namespace: HASAppNamespace,
 				},
-				Spec: appstudioshared.EnvironmentSpec{
+				Spec: appstudiov1alpha1.EnvironmentSpec{
 					Type:               "POC",
 					DisplayName:        DisplayName,
-					DeploymentStrategy: appstudioshared.DeploymentStrategy_AppStudioAutomated,
-					Configuration: appstudioshared.EnvironmentConfiguration{
-						Env: []appstudioshared.EnvVarPair{
+					DeploymentStrategy: appstudiov1alpha1.DeploymentStrategy_AppStudioAutomated,
+					Configuration: appstudiov1alpha1.EnvironmentConfiguration{
+						Env: []appstudiov1alpha1.EnvVarPair{
 							{
 								Name:  "FOO",
 								Value: "BAR",
@@ -1147,7 +1146,7 @@ var _ = Describe("ApplicationSnapshotEnvironmentBinding controller", func() {
 			}
 			Expect(k8sClient.Create(ctx, stagingEnv)).Should(Succeed())
 
-			appBinding := &appstudioshared.ApplicationSnapshotEnvironmentBinding{
+			appBinding := &appstudiov1alpha1.ApplicationSnapshotEnvironmentBinding{
 				TypeMeta: metav1.TypeMeta{
 					APIVersion: "appstudio.redhat.com/v1alpha1",
 					Kind:       "ApplicationSnapshotEnvironmentBinding",
@@ -1156,14 +1155,14 @@ var _ = Describe("ApplicationSnapshotEnvironmentBinding controller", func() {
 					Name:      bindingName,
 					Namespace: HASAppNamespace,
 				},
-				Spec: appstudioshared.ApplicationSnapshotEnvironmentBindingSpec{
+				Spec: appstudiov1alpha1.ApplicationSnapshotEnvironmentBindingSpec{
 					Application: applicationName,
 					Environment: environmentName,
 					Snapshot:    snapshotName,
-					Components: []appstudioshared.BindingComponent{
+					Components: []appstudiov1alpha1.BindingComponent{
 						{
 							Name: componentName,
-							Configuration: appstudioshared.BindingComponentConfiguration{
+							Configuration: appstudiov1alpha1.BindingComponentConfiguration{
 								Replicas: int(replicas),
 							},
 						},
@@ -1174,7 +1173,7 @@ var _ = Describe("ApplicationSnapshotEnvironmentBinding controller", func() {
 			Expect(k8sClient.Create(ctx, appBinding)).Should(Succeed())
 
 			bindingLookupKey := types.NamespacedName{Name: bindingName, Namespace: HASAppNamespace}
-			createdBinding := &appstudioshared.ApplicationSnapshotEnvironmentBinding{}
+			createdBinding := &appstudiov1alpha1.ApplicationSnapshotEnvironmentBinding{}
 			Eventually(func() bool {
 				k8sClient.Get(context.Background(), bindingLookupKey, createdBinding)
 				return len(createdBinding.Status.GitOpsRepoConditions) > 0
@@ -1219,7 +1218,7 @@ var _ = Describe("ApplicationSnapshotEnvironmentBinding controller", func() {
 			// Make sure the devfile model was properly set in Component
 			Expect(hasComp.Status.Devfile).Should(Not(Equal("")))
 
-			appSnapshot := &appstudioshared.ApplicationSnapshot{
+			appSnapshot := &appstudiov1alpha1.ApplicationSnapshot{
 				TypeMeta: metav1.TypeMeta{
 					APIVersion: "appstudio.redhat.com/v1alpha1",
 					Kind:       "ApplicationSnapshot",
@@ -1228,11 +1227,11 @@ var _ = Describe("ApplicationSnapshotEnvironmentBinding controller", func() {
 					Name:      snapshotName,
 					Namespace: HASAppNamespace,
 				},
-				Spec: appstudioshared.ApplicationSnapshotSpec{
+				Spec: appstudiov1alpha1.ApplicationSnapshotSpec{
 					Application:        applicationName,
 					DisplayName:        "My Snapshot",
 					DisplayDescription: "My Snapshot",
-					Components: []appstudioshared.ApplicationSnapshotComponent{
+					Components: []appstudiov1alpha1.ApplicationSnapshotComponent{
 						{
 							Name:           componentName,
 							ContainerImage: "image1",
@@ -1243,13 +1242,13 @@ var _ = Describe("ApplicationSnapshotEnvironmentBinding controller", func() {
 			Expect(k8sClient.Create(ctx, appSnapshot)).Should(Succeed())
 
 			appSnapshotLookupKey := types.NamespacedName{Name: snapshotName, Namespace: HASAppNamespace}
-			createdAppSnapshot := &appstudioshared.ApplicationSnapshot{}
+			createdAppSnapshot := &appstudiov1alpha1.ApplicationSnapshot{}
 			Eventually(func() bool {
 				k8sClient.Get(context.Background(), appSnapshotLookupKey, createdAppSnapshot)
 				return len(createdAppSnapshot.Spec.Components) > 0
 			}, timeout, interval).Should(BeTrue())
 
-			appBinding := &appstudioshared.ApplicationSnapshotEnvironmentBinding{
+			appBinding := &appstudiov1alpha1.ApplicationSnapshotEnvironmentBinding{
 				TypeMeta: metav1.TypeMeta{
 					APIVersion: "appstudio.redhat.com/v1alpha1",
 					Kind:       "ApplicationSnapshotEnvironmentBinding",
@@ -1258,16 +1257,16 @@ var _ = Describe("ApplicationSnapshotEnvironmentBinding controller", func() {
 					Name:      bindingName,
 					Namespace: HASAppNamespace,
 				},
-				Spec: appstudioshared.ApplicationSnapshotEnvironmentBindingSpec{
+				Spec: appstudiov1alpha1.ApplicationSnapshotEnvironmentBindingSpec{
 					Application: applicationName,
 					Environment: environmentName,
 					Snapshot:    snapshotName,
-					Components: []appstudioshared.BindingComponent{
+					Components: []appstudiov1alpha1.BindingComponent{
 						{
 							Name: componentName,
-							Configuration: appstudioshared.BindingComponentConfiguration{
+							Configuration: appstudiov1alpha1.BindingComponentConfiguration{
 								Replicas: int(replicas),
-								Env: []appstudioshared.EnvVarPair{
+								Env: []appstudiov1alpha1.EnvVarPair{
 									{
 										Name:  "FOO",
 										Value: "BAR",
@@ -1287,7 +1286,7 @@ var _ = Describe("ApplicationSnapshotEnvironmentBinding controller", func() {
 			Expect(k8sClient.Create(ctx, appBinding)).Should(Succeed())
 
 			bindingLookupKey := types.NamespacedName{Name: bindingName, Namespace: HASAppNamespace}
-			createdBinding := &appstudioshared.ApplicationSnapshotEnvironmentBinding{}
+			createdBinding := &appstudiov1alpha1.ApplicationSnapshotEnvironmentBinding{}
 			Eventually(func() bool {
 				k8sClient.Get(context.Background(), bindingLookupKey, createdBinding)
 				return len(createdBinding.Status.GitOpsRepoConditions) > 0
@@ -1339,7 +1338,7 @@ var _ = Describe("ApplicationSnapshotEnvironmentBinding controller", func() {
 			// Make sure the devfile model was properly set in Component
 			Expect(hasComp2.Status.Devfile).Should(Not(Equal("")))
 
-			appSnapshot := &appstudioshared.ApplicationSnapshot{
+			appSnapshot := &appstudiov1alpha1.ApplicationSnapshot{
 				TypeMeta: metav1.TypeMeta{
 					APIVersion: "appstudio.redhat.com/v1alpha1",
 					Kind:       "ApplicationSnapshot",
@@ -1348,11 +1347,11 @@ var _ = Describe("ApplicationSnapshotEnvironmentBinding controller", func() {
 					Name:      snapshotName,
 					Namespace: HASAppNamespace,
 				},
-				Spec: appstudioshared.ApplicationSnapshotSpec{
+				Spec: appstudiov1alpha1.ApplicationSnapshotSpec{
 					Application:        applicationName,
 					DisplayName:        "My Snapshot",
 					DisplayDescription: "My Snapshot",
-					Components: []appstudioshared.ApplicationSnapshotComponent{
+					Components: []appstudiov1alpha1.ApplicationSnapshotComponent{
 						{
 							Name:           componentName,
 							ContainerImage: "image1",
@@ -1363,13 +1362,13 @@ var _ = Describe("ApplicationSnapshotEnvironmentBinding controller", func() {
 			Expect(k8sClient.Create(ctx, appSnapshot)).Should(Succeed())
 
 			appSnapshotLookupKey := types.NamespacedName{Name: snapshotName, Namespace: HASAppNamespace}
-			createdAppSnapshot := &appstudioshared.ApplicationSnapshot{}
+			createdAppSnapshot := &appstudiov1alpha1.ApplicationSnapshot{}
 			Eventually(func() bool {
 				k8sClient.Get(context.Background(), appSnapshotLookupKey, createdAppSnapshot)
 				return len(createdAppSnapshot.Spec.Components) > 0
 			}, timeout, interval).Should(BeTrue())
 
-			appSnapshot2 := &appstudioshared.ApplicationSnapshot{
+			appSnapshot2 := &appstudiov1alpha1.ApplicationSnapshot{
 				TypeMeta: metav1.TypeMeta{
 					APIVersion: "appstudio.redhat.com/v1alpha1",
 					Kind:       "ApplicationSnapshot",
@@ -1378,11 +1377,11 @@ var _ = Describe("ApplicationSnapshotEnvironmentBinding controller", func() {
 					Name:      snapshotName2,
 					Namespace: HASAppNamespace,
 				},
-				Spec: appstudioshared.ApplicationSnapshotSpec{
+				Spec: appstudiov1alpha1.ApplicationSnapshotSpec{
 					Application:        applicationName2,
 					DisplayName:        "My Snapshot",
 					DisplayDescription: "My Snapshot",
-					Components: []appstudioshared.ApplicationSnapshotComponent{
+					Components: []appstudiov1alpha1.ApplicationSnapshotComponent{
 						{
 							Name:           componentName2,
 							ContainerImage: "image1",
@@ -1393,13 +1392,13 @@ var _ = Describe("ApplicationSnapshotEnvironmentBinding controller", func() {
 			Expect(k8sClient.Create(ctx, appSnapshot2)).Should(Succeed())
 
 			appSnapshotLookupKey2 := types.NamespacedName{Name: snapshotName2, Namespace: HASAppNamespace}
-			createdAppSnapshot2 := &appstudioshared.ApplicationSnapshot{}
+			createdAppSnapshot2 := &appstudiov1alpha1.ApplicationSnapshot{}
 			Eventually(func() bool {
 				k8sClient.Get(context.Background(), appSnapshotLookupKey2, createdAppSnapshot2)
 				return len(createdAppSnapshot2.Spec.Components) > 0
 			}, timeout, interval).Should(BeTrue())
 
-			stagingEnv := &appstudioshared.Environment{
+			stagingEnv := &appstudiov1alpha1.Environment{
 				TypeMeta: metav1.TypeMeta{
 					APIVersion: "appstudio.redhat.com/v1alpha1",
 					Kind:       "Environment",
@@ -1408,12 +1407,12 @@ var _ = Describe("ApplicationSnapshotEnvironmentBinding controller", func() {
 					Name:      environmentName,
 					Namespace: HASAppNamespace,
 				},
-				Spec: appstudioshared.EnvironmentSpec{
+				Spec: appstudiov1alpha1.EnvironmentSpec{
 					Type:               "POC",
 					DisplayName:        DisplayName,
-					DeploymentStrategy: appstudioshared.DeploymentStrategy_AppStudioAutomated,
-					Configuration: appstudioshared.EnvironmentConfiguration{
-						Env: []appstudioshared.EnvVarPair{
+					DeploymentStrategy: appstudiov1alpha1.DeploymentStrategy_AppStudioAutomated,
+					Configuration: appstudiov1alpha1.EnvironmentConfiguration{
+						Env: []appstudiov1alpha1.EnvVarPair{
 							{
 								Name:  "FOO",
 								Value: "BAR_ENV",
@@ -1424,7 +1423,7 @@ var _ = Describe("ApplicationSnapshotEnvironmentBinding controller", func() {
 			}
 			Expect(k8sClient.Create(ctx, stagingEnv)).Should(Succeed())
 
-			stagingEnv2 := &appstudioshared.Environment{
+			stagingEnv2 := &appstudiov1alpha1.Environment{
 				TypeMeta: metav1.TypeMeta{
 					APIVersion: "appstudio.redhat.com/v1alpha1",
 					Kind:       "Environment",
@@ -1433,12 +1432,12 @@ var _ = Describe("ApplicationSnapshotEnvironmentBinding controller", func() {
 					Name:      environmentName2,
 					Namespace: HASAppNamespace,
 				},
-				Spec: appstudioshared.EnvironmentSpec{
+				Spec: appstudiov1alpha1.EnvironmentSpec{
 					Type:               "POC",
 					DisplayName:        DisplayName,
-					DeploymentStrategy: appstudioshared.DeploymentStrategy_AppStudioAutomated,
-					Configuration: appstudioshared.EnvironmentConfiguration{
-						Env: []appstudioshared.EnvVarPair{
+					DeploymentStrategy: appstudiov1alpha1.DeploymentStrategy_AppStudioAutomated,
+					Configuration: appstudiov1alpha1.EnvironmentConfiguration{
+						Env: []appstudiov1alpha1.EnvVarPair{
 							{
 								Name:  "FOO2",
 								Value: "BAR2_ENV",
@@ -1449,7 +1448,7 @@ var _ = Describe("ApplicationSnapshotEnvironmentBinding controller", func() {
 			}
 			Expect(k8sClient.Create(ctx, stagingEnv2)).Should(Succeed())
 
-			appBinding := &appstudioshared.ApplicationSnapshotEnvironmentBinding{
+			appBinding := &appstudiov1alpha1.ApplicationSnapshotEnvironmentBinding{
 				TypeMeta: metav1.TypeMeta{
 					APIVersion: "appstudio.redhat.com/v1alpha1",
 					Kind:       "ApplicationSnapshotEnvironmentBinding",
@@ -1462,14 +1461,14 @@ var _ = Describe("ApplicationSnapshotEnvironmentBinding controller", func() {
 						"appstudio.application": applicationName,
 					},
 				},
-				Spec: appstudioshared.ApplicationSnapshotEnvironmentBindingSpec{
+				Spec: appstudiov1alpha1.ApplicationSnapshotEnvironmentBindingSpec{
 					Application: applicationName,
 					Environment: environmentName,
 					Snapshot:    snapshotName,
-					Components: []appstudioshared.BindingComponent{
+					Components: []appstudiov1alpha1.BindingComponent{
 						{
 							Name: componentName,
-							Configuration: appstudioshared.BindingComponentConfiguration{
+							Configuration: appstudiov1alpha1.BindingComponentConfiguration{
 								Replicas: int(replicas),
 							},
 						},
@@ -1480,13 +1479,13 @@ var _ = Describe("ApplicationSnapshotEnvironmentBinding controller", func() {
 			Expect(k8sClient.Create(ctx, appBinding)).Should(Succeed())
 
 			bindingLookupKey := types.NamespacedName{Name: bindingName, Namespace: HASAppNamespace}
-			createdBinding := &appstudioshared.ApplicationSnapshotEnvironmentBinding{}
+			createdBinding := &appstudiov1alpha1.ApplicationSnapshotEnvironmentBinding{}
 			Eventually(func() bool {
 				k8sClient.Get(context.Background(), bindingLookupKey, createdBinding)
 				return len(createdBinding.Status.GitOpsRepoConditions) == 1 && len(createdBinding.Status.Components) == 1
 			}, timeout, interval).Should(BeTrue())
 
-			appBinding2 := &appstudioshared.ApplicationSnapshotEnvironmentBinding{
+			appBinding2 := &appstudiov1alpha1.ApplicationSnapshotEnvironmentBinding{
 				TypeMeta: metav1.TypeMeta{
 					APIVersion: "appstudio.redhat.com/v1alpha1",
 					Kind:       "ApplicationSnapshotEnvironmentBinding",
@@ -1499,14 +1498,14 @@ var _ = Describe("ApplicationSnapshotEnvironmentBinding controller", func() {
 						"appstudio.application": applicationName2,
 					},
 				},
-				Spec: appstudioshared.ApplicationSnapshotEnvironmentBindingSpec{
+				Spec: appstudiov1alpha1.ApplicationSnapshotEnvironmentBindingSpec{
 					Application: applicationName2,
 					Environment: environmentName2,
 					Snapshot:    snapshotName2,
-					Components: []appstudioshared.BindingComponent{
+					Components: []appstudiov1alpha1.BindingComponent{
 						{
 							Name: componentName2,
-							Configuration: appstudioshared.BindingComponentConfiguration{
+							Configuration: appstudiov1alpha1.BindingComponentConfiguration{
 								Replicas: int(replicas),
 							},
 						},
@@ -1517,21 +1516,21 @@ var _ = Describe("ApplicationSnapshotEnvironmentBinding controller", func() {
 			Expect(k8sClient.Create(ctx, appBinding2)).Should(Succeed())
 
 			bindingLookupKey2 := types.NamespacedName{Name: bindingName2, Namespace: HASAppNamespace}
-			createdBinding2 := &appstudioshared.ApplicationSnapshotEnvironmentBinding{}
+			createdBinding2 := &appstudiov1alpha1.ApplicationSnapshotEnvironmentBinding{}
 			Eventually(func() bool {
 				k8sClient.Get(context.Background(), bindingLookupKey2, createdBinding2)
 				return len(createdBinding2.Status.GitOpsRepoConditions) == 1 && len(createdBinding2.Status.Components) == 1
 			}, timeout, interval).Should(BeTrue())
 
 			stagingEnvLookupKey := types.NamespacedName{Name: environmentName, Namespace: HASAppNamespace}
-			createdStagingEnv := &appstudioshared.Environment{}
+			createdStagingEnv := &appstudiov1alpha1.Environment{}
 			Eventually(func() bool {
 				k8sClient.Get(context.Background(), stagingEnvLookupKey, createdStagingEnv)
 				return len(createdStagingEnv.Spec.Configuration.Env) == 1
 			}, timeout, interval).Should(BeTrue())
 
 			// Update the Env CR
-			createdStagingEnv.Spec.Configuration.Env = append(createdStagingEnv.Spec.Configuration.Env, appstudioshared.EnvVarPair{Name: "FOO1", Value: "BAR1_ENV"})
+			createdStagingEnv.Spec.Configuration.Env = append(createdStagingEnv.Spec.Configuration.Env, appstudiov1alpha1.EnvVarPair{Name: "FOO1", Value: "BAR1_ENV"})
 			Expect(k8sClient.Update(ctx, createdStagingEnv)).Should(Succeed())
 
 			// Get the updated resource
@@ -1600,7 +1599,7 @@ var _ = Describe("ApplicationSnapshotEnvironmentBinding controller", func() {
 			Expect(hasComp.Status.Devfile).Should(Not(Equal("")))
 			Expect(secondComp.Status.Devfile).Should(Not(Equal("")))
 
-			appSnapshot := &appstudioshared.ApplicationSnapshot{
+			appSnapshot := &appstudiov1alpha1.ApplicationSnapshot{
 				TypeMeta: metav1.TypeMeta{
 					APIVersion: "appstudio.redhat.com/v1alpha1",
 					Kind:       "ApplicationSnapshot",
@@ -1609,11 +1608,11 @@ var _ = Describe("ApplicationSnapshotEnvironmentBinding controller", func() {
 					Name:      snapshotName,
 					Namespace: HASAppNamespace,
 				},
-				Spec: appstudioshared.ApplicationSnapshotSpec{
+				Spec: appstudiov1alpha1.ApplicationSnapshotSpec{
 					Application:        applicationName,
 					DisplayName:        "My Snapshot",
 					DisplayDescription: "My Snapshot",
-					Components: []appstudioshared.ApplicationSnapshotComponent{
+					Components: []appstudiov1alpha1.ApplicationSnapshotComponent{
 						{
 							Name:           componentName,
 							ContainerImage: "image1",
@@ -1628,13 +1627,13 @@ var _ = Describe("ApplicationSnapshotEnvironmentBinding controller", func() {
 			Expect(k8sClient.Create(ctx, appSnapshot)).Should(Succeed())
 
 			appSnapshotLookupKey := types.NamespacedName{Name: snapshotName, Namespace: HASAppNamespace}
-			createdAppSnapshot := &appstudioshared.ApplicationSnapshot{}
+			createdAppSnapshot := &appstudiov1alpha1.ApplicationSnapshot{}
 			Eventually(func() bool {
 				k8sClient.Get(context.Background(), appSnapshotLookupKey, createdAppSnapshot)
 				return len(createdAppSnapshot.Spec.Components) > 0
 			}, timeout, interval).Should(BeTrue())
 
-			stagingEnv := &appstudioshared.Environment{
+			stagingEnv := &appstudiov1alpha1.Environment{
 				TypeMeta: metav1.TypeMeta{
 					APIVersion: "appstudio.redhat.com/v1alpha1",
 					Kind:       "Environment",
@@ -1643,12 +1642,12 @@ var _ = Describe("ApplicationSnapshotEnvironmentBinding controller", func() {
 					Name:      environmentName,
 					Namespace: HASAppNamespace,
 				},
-				Spec: appstudioshared.EnvironmentSpec{
+				Spec: appstudiov1alpha1.EnvironmentSpec{
 					Type:               "POC",
 					DisplayName:        DisplayName,
-					DeploymentStrategy: appstudioshared.DeploymentStrategy_AppStudioAutomated,
-					Configuration: appstudioshared.EnvironmentConfiguration{
-						Env: []appstudioshared.EnvVarPair{
+					DeploymentStrategy: appstudiov1alpha1.DeploymentStrategy_AppStudioAutomated,
+					Configuration: appstudiov1alpha1.EnvironmentConfiguration{
+						Env: []appstudiov1alpha1.EnvVarPair{
 							{
 								Name:  "FOO",
 								Value: "BAR",
@@ -1659,7 +1658,7 @@ var _ = Describe("ApplicationSnapshotEnvironmentBinding controller", func() {
 			}
 			Expect(k8sClient.Create(ctx, stagingEnv)).Should(Succeed())
 
-			appBinding := &appstudioshared.ApplicationSnapshotEnvironmentBinding{
+			appBinding := &appstudiov1alpha1.ApplicationSnapshotEnvironmentBinding{
 				TypeMeta: metav1.TypeMeta{
 					APIVersion: "appstudio.redhat.com/v1alpha1",
 					Kind:       "ApplicationSnapshotEnvironmentBinding",
@@ -1668,16 +1667,16 @@ var _ = Describe("ApplicationSnapshotEnvironmentBinding controller", func() {
 					Name:      bindingName,
 					Namespace: HASAppNamespace,
 				},
-				Spec: appstudioshared.ApplicationSnapshotEnvironmentBindingSpec{
+				Spec: appstudiov1alpha1.ApplicationSnapshotEnvironmentBindingSpec{
 					Application: applicationName,
 					Environment: environmentName,
 					Snapshot:    snapshotName,
-					Components: []appstudioshared.BindingComponent{
+					Components: []appstudiov1alpha1.BindingComponent{
 						{
 							Name: componentName,
-							Configuration: appstudioshared.BindingComponentConfiguration{
+							Configuration: appstudiov1alpha1.BindingComponentConfiguration{
 								Replicas: int(replicas),
-								Env: []appstudioshared.EnvVarPair{
+								Env: []appstudiov1alpha1.EnvVarPair{
 									{
 										Name:  "FOO",
 										Value: "BAR",
@@ -1692,9 +1691,9 @@ var _ = Describe("ApplicationSnapshotEnvironmentBinding controller", func() {
 						},
 						{
 							Name: secondComponentName,
-							Configuration: appstudioshared.BindingComponentConfiguration{
+							Configuration: appstudiov1alpha1.BindingComponentConfiguration{
 								Replicas: int(replicas),
-								Env: []appstudioshared.EnvVarPair{
+								Env: []appstudiov1alpha1.EnvVarPair{
 									{
 										Name:  "FOO",
 										Value: "BAR",
@@ -1714,7 +1713,7 @@ var _ = Describe("ApplicationSnapshotEnvironmentBinding controller", func() {
 			Expect(k8sClient.Create(ctx, appBinding)).Should(Succeed())
 
 			bindingLookupKey := types.NamespacedName{Name: bindingName, Namespace: HASAppNamespace}
-			createdBinding := &appstudioshared.ApplicationSnapshotEnvironmentBinding{}
+			createdBinding := &appstudiov1alpha1.ApplicationSnapshotEnvironmentBinding{}
 			Eventually(func() bool {
 				k8sClient.Get(context.Background(), bindingLookupKey, createdBinding)
 				return len(createdBinding.Status.GitOpsRepoConditions) > 0 && len(createdBinding.Status.Components) == 1
@@ -1773,7 +1772,7 @@ var _ = Describe("ApplicationSnapshotEnvironmentBinding controller", func() {
 			// Make sure the devfile model was properly set in Component
 			Expect(hasComp.Status.Devfile).Should(Not(Equal("")))
 
-			appSnapshot := &appstudioshared.ApplicationSnapshot{
+			appSnapshot := &appstudiov1alpha1.ApplicationSnapshot{
 				TypeMeta: metav1.TypeMeta{
 					APIVersion: "appstudio.redhat.com/v1alpha1",
 					Kind:       "ApplicationSnapshot",
@@ -1782,11 +1781,11 @@ var _ = Describe("ApplicationSnapshotEnvironmentBinding controller", func() {
 					Name:      snapshotName,
 					Namespace: HASAppNamespace,
 				},
-				Spec: appstudioshared.ApplicationSnapshotSpec{
+				Spec: appstudiov1alpha1.ApplicationSnapshotSpec{
 					Application:        applicationName,
 					DisplayName:        "My Snapshot",
 					DisplayDescription: "My Snapshot",
-					Components: []appstudioshared.ApplicationSnapshotComponent{
+					Components: []appstudiov1alpha1.ApplicationSnapshotComponent{
 						{
 							Name:           componentName,
 							ContainerImage: "image1",
@@ -1797,13 +1796,13 @@ var _ = Describe("ApplicationSnapshotEnvironmentBinding controller", func() {
 			Expect(k8sClient.Create(ctx, appSnapshot)).Should(Succeed())
 
 			appSnapshotLookupKey := types.NamespacedName{Name: snapshotName, Namespace: HASAppNamespace}
-			createdAppSnapshot := &appstudioshared.ApplicationSnapshot{}
+			createdAppSnapshot := &appstudiov1alpha1.ApplicationSnapshot{}
 			Eventually(func() bool {
 				k8sClient.Get(context.Background(), appSnapshotLookupKey, createdAppSnapshot)
 				return len(createdAppSnapshot.Spec.Components) > 0
 			}, timeout, interval).Should(BeTrue())
 
-			stagingEnv := &appstudioshared.Environment{
+			stagingEnv := &appstudiov1alpha1.Environment{
 				TypeMeta: metav1.TypeMeta{
 					APIVersion: "appstudio.redhat.com/v1alpha1",
 					Kind:       "Environment",
@@ -1812,12 +1811,12 @@ var _ = Describe("ApplicationSnapshotEnvironmentBinding controller", func() {
 					Name:      environmentName,
 					Namespace: HASAppNamespace,
 				},
-				Spec: appstudioshared.EnvironmentSpec{
+				Spec: appstudiov1alpha1.EnvironmentSpec{
 					Type:               "POC",
 					DisplayName:        DisplayName,
-					DeploymentStrategy: appstudioshared.DeploymentStrategy_AppStudioAutomated,
-					Configuration: appstudioshared.EnvironmentConfiguration{
-						Env: []appstudioshared.EnvVarPair{
+					DeploymentStrategy: appstudiov1alpha1.DeploymentStrategy_AppStudioAutomated,
+					Configuration: appstudiov1alpha1.EnvironmentConfiguration{
+						Env: []appstudiov1alpha1.EnvVarPair{
 							{
 								Name:  "FOO",
 								Value: "BAR",
@@ -1828,7 +1827,7 @@ var _ = Describe("ApplicationSnapshotEnvironmentBinding controller", func() {
 			}
 			Expect(k8sClient.Create(ctx, stagingEnv)).Should(Succeed())
 
-			appBinding := &appstudioshared.ApplicationSnapshotEnvironmentBinding{
+			appBinding := &appstudiov1alpha1.ApplicationSnapshotEnvironmentBinding{
 				TypeMeta: metav1.TypeMeta{
 					APIVersion: "appstudio.redhat.com/v1alpha1",
 					Kind:       "ApplicationSnapshotEnvironmentBinding",
@@ -1837,16 +1836,16 @@ var _ = Describe("ApplicationSnapshotEnvironmentBinding controller", func() {
 					Name:      bindingName,
 					Namespace: HASAppNamespace,
 				},
-				Spec: appstudioshared.ApplicationSnapshotEnvironmentBindingSpec{
+				Spec: appstudiov1alpha1.ApplicationSnapshotEnvironmentBindingSpec{
 					Application: applicationName,
 					Environment: environmentName,
 					Snapshot:    snapshotName,
-					Components: []appstudioshared.BindingComponent{
+					Components: []appstudiov1alpha1.BindingComponent{
 						{
 							Name: componentName,
-							Configuration: appstudioshared.BindingComponentConfiguration{
+							Configuration: appstudiov1alpha1.BindingComponentConfiguration{
 								Replicas: int(replicas),
-								Env: []appstudioshared.EnvVarPair{
+								Env: []appstudiov1alpha1.EnvVarPair{
 									{
 										Name:  "FOO",
 										Value: "BAR",
@@ -1866,7 +1865,7 @@ var _ = Describe("ApplicationSnapshotEnvironmentBinding controller", func() {
 			Expect(k8sClient.Create(ctx, appBinding)).Should(Succeed())
 
 			bindingLookupKey := types.NamespacedName{Name: bindingName, Namespace: HASAppNamespace}
-			createdBinding := &appstudioshared.ApplicationSnapshotEnvironmentBinding{}
+			createdBinding := &appstudiov1alpha1.ApplicationSnapshotEnvironmentBinding{}
 			Eventually(func() bool {
 				k8sClient.Get(context.Background(), bindingLookupKey, createdBinding)
 				return len(createdBinding.Status.GitOpsRepoConditions) > 0
@@ -1904,14 +1903,14 @@ var _ = Describe("ApplicationSnapshotEnvironmentBinding controller", func() {
 func deleteBinding(bindingLookupKey types.NamespacedName) {
 	// Delete
 	Eventually(func() error {
-		f := &appstudioshared.ApplicationSnapshotEnvironmentBinding{}
+		f := &appstudiov1alpha1.ApplicationSnapshotEnvironmentBinding{}
 		k8sClient.Get(context.Background(), bindingLookupKey, f)
 		return k8sClient.Delete(context.Background(), f)
 	}, timeout, interval).Should(Succeed())
 
 	// Wait for delete to finish
 	Eventually(func() error {
-		f := &appstudioshared.ApplicationSnapshotEnvironmentBinding{}
+		f := &appstudiov1alpha1.ApplicationSnapshotEnvironmentBinding{}
 		return k8sClient.Get(context.Background(), bindingLookupKey, f)
 	}, timeout, interval).ShouldNot(Succeed())
 }
@@ -1920,14 +1919,14 @@ func deleteBinding(bindingLookupKey types.NamespacedName) {
 func deleteSnapshot(snapshotLookupKey types.NamespacedName) {
 	// Delete
 	Eventually(func() error {
-		f := &appstudioshared.ApplicationSnapshot{}
+		f := &appstudiov1alpha1.ApplicationSnapshot{}
 		k8sClient.Get(context.Background(), snapshotLookupKey, f)
 		return k8sClient.Delete(context.Background(), f)
 	}, timeout, interval).Should(Succeed())
 
 	// Wait for delete to finish
 	Eventually(func() error {
-		f := &appstudioshared.ApplicationSnapshot{}
+		f := &appstudiov1alpha1.ApplicationSnapshot{}
 		return k8sClient.Get(context.Background(), snapshotLookupKey, f)
 	}, timeout, interval).ShouldNot(Succeed())
 }
@@ -1936,14 +1935,14 @@ func deleteSnapshot(snapshotLookupKey types.NamespacedName) {
 func deleteEnvironment(environmentLookupKey types.NamespacedName) {
 	// Delete
 	Eventually(func() error {
-		f := &appstudioshared.Environment{}
+		f := &appstudiov1alpha1.Environment{}
 		k8sClient.Get(context.Background(), environmentLookupKey, f)
 		return k8sClient.Delete(context.Background(), f)
 	}, timeout, interval).Should(Succeed())
 
 	// Wait for delete to finish
 	Eventually(func() error {
-		f := &appstudioshared.Environment{}
+		f := &appstudiov1alpha1.Environment{}
 		return k8sClient.Get(context.Background(), environmentLookupKey, f)
 	}, timeout, interval).ShouldNot(Succeed())
 }

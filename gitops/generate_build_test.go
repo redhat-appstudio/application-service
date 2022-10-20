@@ -27,7 +27,7 @@ import (
 	data "github.com/devfile/library/pkg/devfile/parser/data"
 	"github.com/mitchellh/go-homedir"
 	pacv1alpha1 "github.com/openshift-pipelines/pipelines-as-code/pkg/apis/pipelinesascode/v1alpha1"
-	appstudiov1alpha1 "github.com/redhat-appstudio/application-service/api/v1alpha1"
+	appstudiov1alpha1 "github.com/redhat-appstudio/application-api/api/v1alpha1"
 	gitopsprepare "github.com/redhat-appstudio/application-service/gitops/prepare"
 	"github.com/redhat-appstudio/application-service/pkg/util/ioutils"
 	"github.com/redhat-developer/gitops-generator/pkg/testutils"

@@ -7,40 +7,20 @@ plugins:
 projectName: application-service
 repo: github.com/redhat-appstudio/application-service
 resources:
-- api:
-    crdVersion: v1
-    namespaced: true
-  controller: true
+- controller: true
   domain: redhat.com
   group: appstudio
   kind: Application
-  path: github.com/redhat-appstudio/application-service/api/v1alpha1
   version: v1alpha1
-  webhooks:
-    defaulting: true
-    validation: true
-    webhookVersion: v1
-- api:
-    crdVersion: v1
-    namespaced: true
-  controller: true
+- controller: true
   domain: redhat.com
   group: appstudio
   kind: Component
-  path: github.com/redhat-appstudio/application-service/api/v1alpha1
   version: v1alpha1
-  webhooks:
-    defaulting: true
-    validation: true
-    webhookVersion: v1
-- api:
-    crdVersion: v1
-    namespaced: true
-  controller: true
+- controller: true
   domain: redhat.com
   group: appstudio
   kind: ComponentDetectionQuery
-  path: github.com/redhat-appstudio/application-service/api/v1alpha1
   version: v1alpha1
 - controller: true
   domain: redhat.com

@@ -26,10 +26,9 @@ import (
 	"regexp"
 	"strings"
 
+	appstudiov1alpha1 "github.com/redhat-appstudio/application-service/api/v1alpha1"
 	gitopsgenv1alpha1 "github.com/redhat-developer/gitops-generator/api/v1alpha1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-
-	appstudiov1alpha1 "github.com/redhat-appstudio/application-service/api/v1alpha1"
 )
 
 func SanitizeName(name string) string {
@@ -153,9 +152,6 @@ func CloneRepo(clonePath, repoURL string, token string) error {
 	exist, err := IsExist(clonePath)
 	if !exist || err != nil {
 		os.MkdirAll(clonePath, 0755)
-		// if err != nil {
-		// 	return err
-		// }
 	}
 	cloneURL := repoURL
 	// Execute does an exec.Command on the specified command
