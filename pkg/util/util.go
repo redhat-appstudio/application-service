@@ -26,7 +26,7 @@ import (
 	"regexp"
 	"strings"
 
-	appstudiov1alpha1 "github.com/redhat-appstudio/application-service/api/v1alpha1"
+	appstudiov1alpha1 "github.com/redhat-appstudio/application-api/api/v1alpha1"
 	gitopsgenv1alpha1 "github.com/redhat-developer/gitops-generator/api/v1alpha1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
