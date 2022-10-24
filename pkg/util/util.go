@@ -22,15 +22,13 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"os/exec"
 	"regexp"
 	"strings"
 
+	appstudiov1alpha1 "github.com/redhat-appstudio/application-api/api/v1alpha1"
 	gitopsgenv1alpha1 "github.com/redhat-developer/gitops-generator/api/v1alpha1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-
-	"github.com/go-git/go-git/v5"
-	transportHttp "github.com/go-git/go-git/v5/plumbing/transport/http"
-	appstudiov1alpha1 "github.com/redhat-appstudio/application-api/api/v1alpha1"
 )
 
 func SanitizeName(name string) string {
@@ -151,22 +149,28 @@ func CurlEndpoint(endpoint string) ([]byte, error) {
 
 // CloneRepo clones the repoURL to clonePath
 func CloneRepo(clonePath, repoURL string, token string) error {
-	// Set up the Clone options
-	cloneOpts := &git.CloneOptions{
-		URL: repoURL,
+	exist, err := IsExist(clonePath)
+	if !exist || err != nil {
+		os.MkdirAll(clonePath, 0755)
 	}
-
-	// If a token was passed in, configure token auth for the git client
+	cloneURL := repoURL
+	// Execute does an exec.Command on the specified command
 	if token != "" {
-		cloneOpts.Auth = &transportHttp.BasicAuth{
-			Username: "token",
-			Password: token,
-		}
+		tempStr := strings.Split(repoURL, "https://")
+
+		// e.g. https://token:<token>@github.com/owner/repoName.git
+		cloneURL = fmt.Sprintf("https://token:%s@%s", token, tempStr[1])
 	}
-	// Clone the repo
-	_, err := git.PlainClone(clonePath, false, cloneOpts)
+	c := exec.Command("git", "clone", cloneURL, clonePath)
+	c.Dir = clonePath
+
+	// set env to skip authentication prompt and directly error out
+	c.Env = os.Environ()
+	c.Env = append(c.Env, "GIT_TERMINAL_PROMPT=0", "GIT_ASKPASS=/bin/echo")
+
+	_, err = c.CombinedOutput()
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to clone the repo: %v", err)
 	}
 
 	return nil
