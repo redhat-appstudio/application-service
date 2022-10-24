@@ -18,6 +18,7 @@ package github
 import (
 	"context"
 	"crypto/sha256"
+	"encoding/base64"
 	"fmt"
 	"strings"
 
@@ -34,7 +35,7 @@ func GenerateNewRepositoryName(displayName, namespace, clusterName string) strin
 	sanitizedName := util.SanitizeName(displayName)
 	h := sha256.New()
 	h.Write([]byte(clusterName + namespace))
-	namespaceClusterHash := string(h.Sum(nil))[0:5]
+	namespaceClusterHash := base64.URLEncoding.EncodeToString(h.Sum(nil))[0:5]
 	repoName := sanitizedName + "-" + namespaceClusterHash + "-" + util.SanitizeName(gofakeit.Verb()) + "-" + util.SanitizeName(gofakeit.Verb())
 	return repoName
 }

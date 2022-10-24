@@ -18,6 +18,7 @@ package github
 import (
 	"context"
 	"crypto/sha256"
+	"encoding/base64"
 	"strings"
 	"testing"
 
@@ -46,7 +47,7 @@ func TestGenerateNewRepositoryName(t *testing.T) {
 			sanitizedName := util.SanitizeName(tt.displayName)
 			h := sha256.New()
 			h.Write([]byte(tt.clusterName + tt.namespace))
-			namespaceClusterHash := string(h.Sum(nil))[0:5]
+			namespaceClusterHash := base64.URLEncoding.EncodeToString(h.Sum(nil))[0:5]
 			generatedRepo := GenerateNewRepositoryName(tt.displayName, tt.namespace, tt.clusterName)
 
 			if !strings.Contains(generatedRepo, sanitizedName) || !strings.Contains(generatedRepo, namespaceClusterHash) {
