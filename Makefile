@@ -171,11 +171,16 @@ deploy: manifests kustomize ## Deploy controller to the K8s cluster specified in
 undeploy: ## Undeploy controller from the K8s cluster specified in ~/.kube/config.
 	$(KUSTOMIZE) build config/default | kubectl delete -f -
 
-deploy-kcp: ensure-tmp manifests kustomize ##install ## Install CRDs and deploy HAS on KCP
+install-kcp: ## Installs the Application API for KCP
+	kubectl apply -f https://raw.githubusercontent.com/redhat-appstudio/application-api/main/config/kcp/apiresourceschema.yaml
+	kubectl apply -f https://raw.githubusercontent.com/redhat-appstudio/application-api/main/config/kcp/apiexport.yaml
+
+deploy-kcp: ensure-tmp manifests kustomize install-kcp ## Install APIs and deploy HAS on KCP
 	cd config/manager && $(KUSTOMIZE) edit set image controller=${IMG}
 	$(eval KCP_WORKSPACE?=$(shell kubectl kcp workspace . --short))
-	KCP_WORKSPACE=$(KCP_WORKSPACE) GITHUB_ORG=${GITHUB_ORG} DEVFILE_REGISTRY_URL=${DEVFILE_REGISTRY_URL} hack/replace_placeholders_and_deploy.sh "${KUSTOMIZE}" "kcp" "kcp"
-	kubectl apply -f .tmp/deployment_kcp/kcp/apibinding_has.yaml
+	KCP_WORKSPACE=$(KCP_WORKSPACE) GITHUB_ORG=${GITHUB_ORG} DEVFILE_REGISTRY_URL=${DEVFILE_REGISTRY_URL} hack/replace_placeholders_and_deploy.sh "${KUSTOMIZE}" "kcp" "kcp-manager"
+	$(eval IDENTITY_HASH?=$(shell kubectl get apiexport application-api -o=jsonpath='{.status.identityHash}' ))
+	${KUSTOMIZE} build config/kcp-dev | IDENTITY_HASH=${IDENTITY_HASH} envsubst | kubectl apply -f -
 
 CONTROLLER_GEN = $(shell pwd)/bin/controller-gen
 controller-gen: ## Download controller-gen locally if necessary.

@@ -1,0 +1,27 @@
+apiVersion: apis.kcp.dev/v1alpha1
+kind: APIExport
+metadata:
+  name: has
+spec:
+  permissionClaims:
+    - group: ""
+      resource: "secrets"
+    - group: ""
+      resource: "namespaces"
+    - group: ""
+      resource: "configmaps"
+    - identityHash: ${IDENTITY_HASH}
+      group: "appstudio.redhat.com"
+      resource: "applications"
+    - identityHash: ${IDENTITY_HASH}
+      group: "appstudio.redhat.com"
+      resource: "applicationsnapshotenvironmentbindings"
+    - identityHash: ${IDENTITY_HASH}
+      group: "appstudio.redhat.com"
+      resource: "components"
+    - identityHash: ${IDENTITY_HASH}
+      group: "appstudio.redhat.com"
+      resource: "componentdetectionqueries"
+    - identityHash: ${IDENTITY_HASH}
+      group: "appstudio.redhat.com"
+      resource: "environments"

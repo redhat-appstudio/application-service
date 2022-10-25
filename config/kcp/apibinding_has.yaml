@@ -6,7 +6,7 @@ spec:
   reference:
     workspace:
       path: ${KCP_WORKSPACE}
-      exportName: has
+      exportName: application-api
   acceptedPermissionClaims:
       - group: ""
         resource: "secrets"
