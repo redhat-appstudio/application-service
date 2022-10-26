@@ -7,7 +7,7 @@ spec:
     workspace:
       path: ${KCP_WORKSPACE}
       exportName: has
-  PermissionClaims:
+  permissionClaims:
     - group: ""
       resource: "secrets"
       state: Accepted
