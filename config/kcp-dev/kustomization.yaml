@@ -1,4 +1,3 @@
 resources:
-- bindrole.yaml
 - apiexport.yaml
 - apibinding.yaml
