@@ -123,7 +123,7 @@ func (r *ComponentReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 	// If the Application CR devfile status is empty, requeue
 	if hasApplication.Status.Devfile == "" && !containsString(component.GetFinalizers(), compFinalizerName) {
 		log.Error(err, fmt.Sprintf("Application devfile model is empty. Before creating a Component, an instance of Application should be created. Requeueing %v", req.NamespacedName))
-		err := fmt.Errorf("application devfile model is empty")
+		err := fmt.Errorf("application is either not ready or has failed to be created")
 		r.SetCreateConditionAndUpdateCR(ctx, req, &component, err)
 		return ctrl.Result{}, err
 	}
@@ -460,8 +460,8 @@ func (r *ComponentReconciler) generateGitops(ctx context.Context, req ctrl.Reque
 	// Create a temp folder to create the gitops resources in
 	tempDir, err := ioutils.CreateTempPath(component.Name, r.AppFS)
 	if err != nil {
-		log.Error(err, "unable to create temp directory for gitops resources due to error")
-		return fmt.Errorf("unable to create temp directory for gitops resources due to error: %v", err)
+		log.Error(err, "unable to create temp directory for GitOps resources due to error")
+		return fmt.Errorf("unable to create temp directory for GitOps resources due to error: %v", err)
 	}
 
 	// Generate and push the gitops resources
