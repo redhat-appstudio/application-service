@@ -217,22 +217,22 @@ func TestDownloadDevfile(t *testing.T) {
 	}{
 		{
 			name:               "Curl devfile.yaml",
-			url:                "https://raw.githubusercontent.com/devfile-samples/devfile-sample-java-springboot-basic/main",
+			url:                "https://raw.githubusercontent.com/maysunfaisal/devfilepriority/main/case1",
 			wantDevfileContext: "devfile.yaml",
 		},
 		{
 			name:               "Curl .devfile.yaml",
-			url:                "https://raw.githubusercontent.com/maysunfaisal/hiddendevfile/main",
+			url:                "https://raw.githubusercontent.com/maysunfaisal/devfilepriority/main/case2",
 			wantDevfileContext: ".devfile.yaml",
 		},
 		{
 			name:               "Curl .devfile/devfile.yaml",
-			url:                "https://raw.githubusercontent.com/maysunfaisal/hiddendirdevfile/main",
+			url:                "https://raw.githubusercontent.com/maysunfaisal/devfilepriority/main/case3",
 			wantDevfileContext: ".devfile/devfile.yaml",
 		},
 		{
 			name:               "Curl .devfile/.devfile.yaml",
-			url:                "https://raw.githubusercontent.com/maysunfaisal/hiddendirhiddendevfile/main",
+			url:                "https://raw.githubusercontent.com/maysunfaisal/devfilepriority/main/case4",
 			wantDevfileContext: ".devfile/.devfile.yaml",
 		},
 		{
