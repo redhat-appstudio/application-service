@@ -15,6 +15,9 @@ spec:
       resource: "applications"
     - identityHash: ${IDENTITY_HASH}
       group: "appstudio.redhat.com"
+      resource: "applicationsnapshots"
+    - identityHash: ${IDENTITY_HASH}
+      group: "appstudio.redhat.com"
       resource: "applicationsnapshotenvironmentbindings"
     - identityHash: ${IDENTITY_HASH}
       group: "appstudio.redhat.com"
