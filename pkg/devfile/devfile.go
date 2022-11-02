@@ -206,8 +206,8 @@ func CreateDevfileForDockerfileBuild(uri, context string) (data.DevfileData, err
 	return devfileData, nil
 }
 
-// DownloadDevfile downloads devfile from the various possible devfile locations in dir and returns the contents and its context
-func DownloadDevfile(dir string) ([]byte, string, error) {
+// FindAndDownloadDevfile downloads devfile from the various possible devfile locations in dir and returns the contents and its context
+func FindAndDownloadDevfile(dir string) ([]byte, string, error) {
 	var devfileBytes []byte
 	var err error
 	validDevfileLocations := []string{Devfile, HiddenDevfile, HiddenDirDevfile, HiddenDirHiddenDevfile}
@@ -234,7 +234,7 @@ func DownloadDevfileAndDockerfile(url string) ([]byte, string, []byte) {
 	var devfileBytes, dockerfileBytes []byte
 	var devfilePath string
 
-	devfileBytes, devfilePath, _ = DownloadDevfile(url)
+	devfileBytes, devfilePath, _ = FindAndDownloadDevfile(url)
 	dockerfileBytes, _ = DownloadFile(url + "/Dockerfile")
 
 	return devfileBytes, devfilePath, dockerfileBytes

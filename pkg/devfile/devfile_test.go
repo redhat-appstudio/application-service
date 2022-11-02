@@ -208,7 +208,7 @@ func TestConvertImageComponentToDevfile(t *testing.T) {
 	}
 }
 
-func TestDownloadDevfile(t *testing.T) {
+func TestFindAndDownloadDevfile(t *testing.T) {
 	tests := []struct {
 		name               string
 		url                string
@@ -244,7 +244,7 @@ func TestDownloadDevfile(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			contents, devfileContext, err := DownloadDevfile(tt.url)
+			contents, devfileContext, err := FindAndDownloadDevfile(tt.url)
 			if tt.wantErr && (err == nil) {
 				t.Error("wanted error but got nil")
 			} else if !tt.wantErr && err != nil {
