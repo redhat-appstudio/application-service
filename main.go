@@ -127,7 +127,7 @@ func main() {
 		// Local client is needed to access the workspace where operator deployment is
 		localClientScheme := runtime.NewScheme()
 		if err := clientgoscheme.AddToScheme(localClientScheme); err != nil {
-			setupLog.Error(err, "error adding standard types local client scheme")
+                        setupLog.Error(err, "error adding standard types to local client scheme")
 		}
 		localClient, err = client.New(ctrl.GetConfigOrDie(), client.Options{Scheme: localClientScheme})
 		if err != nil {
