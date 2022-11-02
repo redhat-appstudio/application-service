@@ -10,6 +10,8 @@ spec:
       resource: "namespaces"
     - group: ""
       resource: "configmaps"
+    - group: apis.kcp.dev
+      resource: apibindings
     - identityHash: application-api
       group: "appstudio.redhat.com"
       resource: "applications"
