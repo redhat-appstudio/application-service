@@ -1,0 +1,40 @@
+apiVersion: apis.kcp.dev/v1alpha1
+kind: APIBinding
+metadata:
+  name: has
+spec:
+  reference:
+    workspace:
+      path: ${KCP_WORKSPACE}
+      exportName: has
+  permissionClaims:
+    - group: ""
+      resource: "secrets"
+      state: Accepted
+    - group: ""
+      resource: "configmaps"
+      state: Accepted
+    - identityHash: ${IDENTITY_HASH}
+      group: "appstudio.redhat.com"
+      resource: "applications"
+      state: Accepted
+    - identityHash: ${IDENTITY_HASH}
+      group: "appstudio.redhat.com"
+      resource: "applicationsnapshots"
+      state: Accepted
+    - identityHash: ${IDENTITY_HASH}
+      group: "appstudio.redhat.com"
+      resource: "applicationsnapshotenvironmentbindings"
+      state: Accepted
+    - identityHash: ${IDENTITY_HASH}
+      group: "appstudio.redhat.com"
+      resource: "components"
+      state: Accepted
+    - identityHash: ${IDENTITY_HASH}
+      group: "appstudio.redhat.com"
+      resource: "componentdetectionqueries"
+      state: Accepted
+    - identityHash: ${IDENTITY_HASH}
+      group: "appstudio.redhat.com"
+      resource: "environments"
+      state: Accepted
