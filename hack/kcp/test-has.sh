@@ -50,6 +50,9 @@ function setupTests() {
 
 # Execute tests deploys HAS on KCP, validates it becomes ready, and that a CDQ resource successfully completes
 function executeTests() {
+    # Set the imagePullPolicy for HAS to Never, as we're using a locally built image
+    sed -i 's/Always/Never/g' config/manager/manager.yaml
+
     # Deploy HAS
     echo "[INFO] Deploying HAS on KCP"
     KUBECONFIG=$KCP_KUBECONFIG IMG=$HAS_IMAGE make deploy-kcp
