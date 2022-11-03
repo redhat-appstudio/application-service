@@ -19,6 +19,12 @@ jobs:
         uses: actions/checkout@v2
         with:
           fetch-depth: 0
+      - name: Install KCP
+        run: |
+          git clone https://github.com/kcp-dev/kcp -b v0.9.1 ~/kcp
+          cd ~/kcp
+          make install
+          cd ..
       - name: Setup Minikube
         uses: manusa/actions-setup-minikube@v2.4.2
         with:
@@ -27,11 +33,6 @@ jobs:
           driver: 'docker'
           github token: ${{ secrets.GITHUB_TOKEN }}
           start args: '--addons=ingress'
-      - name: Install KCP
-        run: |
-          git clone https://github.com/kcp-dev/kcp -b v0.9.1 ~/kcp
-          cd ~/kcp
-          make install
       - name: Build HAS container image
         run: |
           docker build -t application-service:latest .
