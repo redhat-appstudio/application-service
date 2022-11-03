@@ -9,3 +9,6 @@ tmp
 .idea/
 .vscode/
 .tmp/
+.kcp/
+output.log
+syncer.yaml
