@@ -1,4 +1,7 @@
 #!/bin/bash
+# Share docker env with Minikube
+eval $(minikube docker-env)
+
 set -e
 
 HAS_IMAGE=$1
