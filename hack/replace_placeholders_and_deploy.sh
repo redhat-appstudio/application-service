@@ -15,6 +15,10 @@ DEPL_NAME=$2
 # The name of the kustomize overlay directory to apply
 OVERLAY=$3
 
+# Whether or not to kubectl apply or delete the resources
+# can either be 'apply' or 'delete'
+COMMAND=$4
+
 THIS_DIR="$(dirname "$(realpath "$0")")"
 TEMP_DIR="${THIS_DIR}/../.tmp/deployment_${DEPL_NAME}"
 
@@ -35,6 +39,6 @@ CURDIR=$(pwd)
 
 cd "${OVERLAY_DIR}" || exit
 
-GITHUB_ORG=${GITHUB_ORG} DEVFILE_REGISTRY_URL=${DEVFILE_REGISTRY_URL} ${KUSTOMIZE} build . | kubectl apply -f -
+GITHUB_ORG=${GITHUB_ORG} DEVFILE_REGISTRY_URL=${DEVFILE_REGISTRY_URL} ${KUSTOMIZE} build . | kubectl ${COMMAND} -f -
 
 cd "${CURDIR}" || exit
