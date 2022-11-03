@@ -41,7 +41,7 @@ function setupTests() {
     kubectl create -f syncer.yaml
 
     # Wait for the SyncTarget to become ready
-    KUBECONFIG=~/test/application-service/.kcp/admin.kubeconfig kubectl wait synctargets minikube --for condition=Ready --timeout=120s
+    KUBECONFIG=$KCP_KUBECONFIG kubectl wait synctargets minikube --for condition=Ready --timeout=120s
 
     # Create namespace and stub github secret for HAS
     KUBECONFIG=$KCP_KUBECONFIG kubectl create ns application-service-system
