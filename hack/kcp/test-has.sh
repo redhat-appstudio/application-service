@@ -54,6 +54,7 @@ function setupTests() {
 function waitForHASDeployment() {
     counter=100
     KUBECONFIG=$KCP_KUBECONFIG kubectl describe deployment application-service-controller-manager -n application-service-system
+    kubectl get po --all-namespaces -o yaml
     while [ $counter -gt 0 ]
     do
         if [ "$(KUBECONFIG=$KCP_KUBECONFIG kubectl get deployments -n application-service-system application-service-controller-manager -o jsonpath='{.status.readyReplicas}')" != 1 ]; then
@@ -66,6 +67,8 @@ function waitForHASDeployment() {
         fi
         
     done
+    kubectl get po --all-namespaces -o yaml
+    return 1
 }
 
 # Execute tests deploys HAS on KCP, validates it becomes ready, and that a CDQ resource successfully completes
