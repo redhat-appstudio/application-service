@@ -53,12 +53,13 @@ function setupTests() {
 
 function waitForHASDeployment() {
     counter=100
-    KUBECONFIG=$KCP_KUBECONFIG kubectl describe deployment application-service-controller-manager -n application-service-system
-    kubectl get po --all-namespaces -o yaml
+    KUBECONFIG=$KCP_KUBECONFIG kubectl get deployment application-service-controller-manager -n application-service-system -o yaml
+    kubectl get deployments --all-namespaces -o yaml
+    kubectl get rs --all-namespaces -o yaml
     while [ $counter -gt 0 ]
     do
         if [ "$(KUBECONFIG=$KCP_KUBECONFIG kubectl get deployments -n application-service-system application-service-controller-manager -o jsonpath='{.status.readyReplicas}')" != 1 ]; then
-            KUBECONFIG=$KCP_KUBECONFIG kubectl describe deployment application-service-controller-manager -n application-service-system
+            KUBECONFIG=$KCP_KUBECONFIG kubectl get deployment application-service-controller-manager -n application-service-system -o yaml
             
             counter=$(( $counter - 1 ))
             sleep 5
@@ -67,7 +68,8 @@ function waitForHASDeployment() {
         fi
         
     done
-    kubectl get po --all-namespaces -o yaml
+    kubectl get deployments --all-namespaces -o yaml
+    kubectl get rs --all-namespaces -o yaml
     return 1
 }
 
