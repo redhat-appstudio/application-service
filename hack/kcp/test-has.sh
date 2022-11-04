@@ -51,6 +51,23 @@ function setupTests() {
     KUBECONFIG=$KCP_KUBECONFIG kubectl create secret generic has-github-token --from-literal=token=testvalue -n application-service-system
 }
 
+function waitForHASDeployment() {
+    counter=100
+    kubectl describe deployment application-service-controller-manager -n application-service-system
+    while [ $counter -gt 0 ]
+    do
+        if [ "$(KUBECONFIG=$KCP_KUBECONFIG kubectl get deployments -n application-service-system application-service-controller-manager -o jsonpath='{.status.readyReplicas}')" != 1 ]; then
+            kubectl describe deployment application-service-controller-manager -n application-service-system
+            
+            counter=$(( $counter - 1 ))
+            sleep 5
+        else
+            return 0
+        fi
+        
+    done
+}
+
 # Execute tests deploys HAS on KCP, validates it becomes ready, and that a CDQ resource successfully completes
 function executeTests() {
     # Set the imagePullPolicy for HAS to Never, as we're using a locally built image
@@ -62,7 +79,9 @@ function executeTests() {
 
     # Wait for HAS to become ready
     echo "[INFO] Waiting for HAS deployment rollout to succeed"
-    KUBECONFIG=$KCP_KUBECONFIG kubectl rollout status deployment application-service-controller-manager -n application-service-system --timeout=300s
+    sleep 10
+    waitForHASDeployment
+    #KUBECONFIG=$KCP_KUBECONFIG kubectl rollout status deployment application-service-controller-manager -n application-service-system --timeout=300s
 
     # Create a CDQ and validate it succeeds on KCP
     echo "[INFO] Creating a ComponentDetectionResource on KCP"
