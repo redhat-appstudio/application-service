@@ -1,8 +1,8 @@
 # API type definition is in github.com/redhat-appstudio/managed-gitops
 apiVersion: appstudio.redhat.com/v1alpha1
-kind: ApplicationSnapshot
+kind: Snapshot
 metadata:
-  name: applicationsnapshot-sample
+  name: snapshot-sample
 spec:
   application: application-sample
   displayName: my-snapshot

@@ -132,10 +132,10 @@ var _ = BeforeSuite(func() {
 	}).SetupWithManager(k8sManager)
 	Expect(err).ToNot(HaveOccurred())
 
-	err = (&ApplicationSnapshotEnvironmentBindingReconciler{
+	err = (&SnapshotEnvironmentBindingReconciler{
 		Client:   k8sManager.GetClient(),
 		Scheme:   k8sManager.GetScheme(),
-		Log:      ctrl.Log.WithName("controllers").WithName("ApplicationSnapshotEnvironmentBinding"),
+		Log:      ctrl.Log.WithName("controllers").WithName("SnapshotEnvironmentBinding"),
 		Executor: testutils.NewMockExecutor(),
 		AppFS:    ioutils.NewMemoryFilesystem(),
 	}).SetupWithManager(k8sManager)

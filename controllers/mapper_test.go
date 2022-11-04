@@ -62,10 +62,10 @@ func TestMapToBindingByBoundObject(t *testing.T) {
 	replicas := int32(3)
 
 	// given
-	binding1 := &appstudiov1alpha1.ApplicationSnapshotEnvironmentBinding{
+	binding1 := &appstudiov1alpha1.SnapshotEnvironmentBinding{
 		TypeMeta: metav1.TypeMeta{
 			APIVersion: "appstudio.redhat.com/v1alpha1",
-			Kind:       "ApplicationSnapshotEnvironmentBinding",
+			Kind:       "SnapshotEnvironmentBinding",
 		},
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      bindingName,
@@ -75,7 +75,7 @@ func TestMapToBindingByBoundObject(t *testing.T) {
 				"appstudio.application": applicationName,
 			},
 		},
-		Spec: appstudiov1alpha1.ApplicationSnapshotEnvironmentBindingSpec{
+		Spec: appstudiov1alpha1.SnapshotEnvironmentBindingSpec{
 			Application: applicationName,
 			Environment: staging,
 			Snapshot:    snapshotName,
@@ -90,10 +90,10 @@ func TestMapToBindingByBoundObject(t *testing.T) {
 		},
 	}
 
-	binding2 := &appstudiov1alpha1.ApplicationSnapshotEnvironmentBinding{
+	binding2 := &appstudiov1alpha1.SnapshotEnvironmentBinding{
 		TypeMeta: metav1.TypeMeta{
 			APIVersion: "appstudio.redhat.com/v1alpha1",
-			Kind:       "ApplicationSnapshotEnvironmentBinding",
+			Kind:       "SnapshotEnvironmentBinding",
 		},
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      bindingName2,
@@ -103,7 +103,7 @@ func TestMapToBindingByBoundObject(t *testing.T) {
 				"appstudio.application": applicationName2,
 			},
 		},
-		Spec: appstudiov1alpha1.ApplicationSnapshotEnvironmentBindingSpec{
+		Spec: appstudiov1alpha1.SnapshotEnvironmentBindingSpec{
 			Application: applicationName2,
 			Environment: dev,
 			Snapshot:    snapshotName2,
@@ -118,10 +118,10 @@ func TestMapToBindingByBoundObject(t *testing.T) {
 		},
 	}
 
-	binding3 := &appstudiov1alpha1.ApplicationSnapshotEnvironmentBinding{
+	binding3 := &appstudiov1alpha1.SnapshotEnvironmentBinding{
 		TypeMeta: metav1.TypeMeta{
 			APIVersion: "appstudio.redhat.com/v1alpha1",
-			Kind:       "ApplicationSnapshotEnvironmentBinding",
+			Kind:       "SnapshotEnvironmentBinding",
 		},
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      bindingName3,
@@ -131,7 +131,7 @@ func TestMapToBindingByBoundObject(t *testing.T) {
 				"appstudio.application": applicationName2,
 			},
 		},
-		Spec: appstudiov1alpha1.ApplicationSnapshotEnvironmentBindingSpec{
+		Spec: appstudiov1alpha1.SnapshotEnvironmentBindingSpec{
 			Application: applicationName2,
 			Environment: staging,
 			Snapshot:    snapshotName,
@@ -146,16 +146,16 @@ func TestMapToBindingByBoundObject(t *testing.T) {
 		},
 	}
 
-	binding4 := &appstudiov1alpha1.ApplicationSnapshotEnvironmentBinding{
+	binding4 := &appstudiov1alpha1.SnapshotEnvironmentBinding{
 		TypeMeta: metav1.TypeMeta{
 			APIVersion: "appstudio.redhat.com/v1alpha1",
-			Kind:       "ApplicationSnapshotEnvironmentBinding",
+			Kind:       "SnapshotEnvironmentBinding",
 		},
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      bindingName4,
 			Namespace: Namespace,
 		},
-		Spec: appstudiov1alpha1.ApplicationSnapshotEnvironmentBindingSpec{
+		Spec: appstudiov1alpha1.SnapshotEnvironmentBindingSpec{
 			Application: applicationName,
 			Environment: staging,
 			Snapshot:    snapshotName,

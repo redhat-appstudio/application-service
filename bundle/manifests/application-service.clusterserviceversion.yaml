@@ -105,7 +105,7 @@ spec:
         - apiGroups:
           - appstudio.redhat.com
           resources:
-          - applicationsnapshotenvironmentbindings
+          - snapshotenvironmentbindings
           verbs:
           - create
           - delete
@@ -117,13 +117,13 @@ spec:
         - apiGroups:
           - appstudio.redhat.com
           resources:
-          - applicationsnapshotenvironmentbindings/finalizers
+          - snapshotenvironmentbindings/finalizers
           verbs:
           - update
         - apiGroups:
           - appstudio.redhat.com
           resources:
-          - applicationsnapshotenvironmentbindings/status
+          - snapshotenvironmentbindings/status
           verbs:
           - get
           - patch
@@ -131,7 +131,7 @@ spec:
         - apiGroups:
           - appstudio.redhat.com
           resources:
-          - applicationsnapshots
+          - snapshots
           verbs:
           - get
           - list

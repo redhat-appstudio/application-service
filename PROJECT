@@ -25,6 +25,6 @@ resources:
 - controller: true
   domain: redhat.com
   group: appstudio
-  kind: ApplicationSnapshotEnvironmentBinding
+  kind: SnapshotEnvironmentBinding
   version: v1alpha1
 version: "3"

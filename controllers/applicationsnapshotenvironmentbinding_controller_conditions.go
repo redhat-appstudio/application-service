@@ -26,8 +26,8 @@ import (
 	ctrl "sigs.k8s.io/controller-runtime"
 )
 
-func (r *ApplicationSnapshotEnvironmentBindingReconciler) SetConditionAndUpdateCR(ctx context.Context, req ctrl.Request, appSnapshotEnvBinding *appstudiov1alpha1.ApplicationSnapshotEnvironmentBinding, createError error) {
-	log := r.Log.WithValues("ApplicationSnapshotEnvironmentBinding", req.NamespacedName).WithValues("clusterName", req.ClusterName)
+func (r *SnapshotEnvironmentBindingReconciler) SetConditionAndUpdateCR(ctx context.Context, req ctrl.Request, appSnapshotEnvBinding *appstudiov1alpha1.SnapshotEnvironmentBinding, createError error) {
+	log := r.Log.WithValues("SnapshotEnvironmentBinding", req.NamespacedName).WithValues("clusterName", req.ClusterName)
 
 	if createError == nil {
 		meta.SetStatusCondition(&appSnapshotEnvBinding.Status.GitOpsRepoConditions, metav1.Condition{
@@ -43,7 +43,7 @@ func (r *ApplicationSnapshotEnvironmentBindingReconciler) SetConditionAndUpdateC
 			Reason:  "GenerateError",
 			Message: fmt.Sprintf("GitOps repository sync failed: %v", createError),
 		})
-		logutil.LogAPIResourceChangeEvent(log, appSnapshotEnvBinding.Name, "ApplicationSnapshotEnvironmentBinding", logutil.ResourceCreate, createError)
+		logutil.LogAPIResourceChangeEvent(log, appSnapshotEnvBinding.Name, "SnapshotEnvironmentBinding", logutil.ResourceCreate, createError)
 	}
 
 	err := r.Client.Status().Update(ctx, appSnapshotEnvBinding)

@@ -20,11 +20,11 @@ spec:
       state: Accepted
     - identityHash: ${IDENTITY_HASH}
       group: "appstudio.redhat.com"
-      resource: "applicationsnapshots"
+      resource: "snapshots"
       state: Accepted
     - identityHash: ${IDENTITY_HASH}
       group: "appstudio.redhat.com"
-      resource: "applicationsnapshotenvironmentbindings"
+      resource: "snapshotenvironmentbindings"
       state: Accepted
     - identityHash: ${IDENTITY_HASH}
       group: "appstudio.redhat.com"
