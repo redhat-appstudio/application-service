@@ -36,7 +36,3 @@ jobs:
       - name: Run KCP Tests
         run: |
           ./hack/kcp/test-has.sh application-service:latest $PWD
-      - name: Check if Manager Kustomize has the right image
-        run: |
-          ./check-manager-kustomize.sh
-          exit $?
