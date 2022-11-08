@@ -18,7 +18,9 @@ package prepare
 import (
 	"context"
 
+	kcpv1alpha1 "github.com/kcp-dev/kcp/pkg/apis/apis/v1alpha1"
 	appstudiov1alpha1 "github.com/redhat-appstudio/application-api/api/v1alpha1"
+
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -47,6 +49,8 @@ const (
 	// Note: HACBS detection by configmap is temporary solution, will be changed to detection based
 	// on APIBinding API in KCP environment.
 	HACBSConfigMapName = "hacbs"
+	// APIBinding name for detection hacbs workflow in KCP environment
+	HACBSAPIBindingName = "integration-service"
 )
 
 // Holds data that needs to be queried from the cluster in order for the gitops generation function to work
@@ -108,10 +112,15 @@ func ResolveBuildBundle(ctx context.Context, localClient, cli client.Client, nam
 	return AppStudioFallbackBuildBundle
 }
 
-// Return true when hacbs configmap exists in the namespace
+// Return true when integration-service APIBinding exists or hacbs configmap exists in the namespace
 func IsHACBS(ctx context.Context, cli client.Client, namespace string) bool {
+	var apiBinding = kcpv1alpha1.APIBinding{}
+	err := cli.Get(ctx, types.NamespacedName{Name: HACBSAPIBindingName}, &apiBinding)
+	if err == nil {
+		return true
+	}
 	var configMap = corev1.ConfigMap{}
-	err := cli.Get(ctx, types.NamespacedName{Name: HACBSConfigMapName, Namespace: namespace}, &configMap)
+	err = cli.Get(ctx, types.NamespacedName{Name: HACBSConfigMapName, Namespace: namespace}, &configMap)
 	return err == nil
 }
 
