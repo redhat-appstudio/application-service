@@ -220,7 +220,7 @@ func (r *ComponentReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 						return ctrl.Result{}, err
 					}
 
-					devfileBytes, err = devfile.DownloadDevfile(gitURL)
+					devfileBytes, _, err = devfile.FindAndDownloadDevfile(gitURL)
 					if err != nil {
 						log.Error(err, fmt.Sprintf("Unable to read the devfile from dir %s %v", gitURL, req.NamespacedName))
 						r.SetCreateConditionAndUpdateCR(ctx, req, &component, err)

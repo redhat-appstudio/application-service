@@ -117,8 +117,7 @@ func (r *ComponentDetectionQueryReconciler) Reconcile(ctx context.Context, req c
 
 		source := componentDetectionQuery.Spec.GitSource
 		var devfileBytes, dockerfileBytes []byte
-		var clonePath string
-		var componentPath string
+		var clonePath, componentPath, devfilePath string
 		devfilesMap := make(map[string][]byte)
 		devfilesURLMap := make(map[string]string)
 		dockerfileContextMap := make(map[string]string)
@@ -142,7 +141,7 @@ func (r *ComponentDetectionQueryReconciler) Reconcile(ctx context.Context, req c
 					r.SetCompleteConditionAndUpdateCR(ctx, req, &componentDetectionQuery, copiedCDQ, err)
 					return ctrl.Result{}, nil
 				}
-				devfileBytes, dockerfileBytes = devfile.DownloadDevfileAndDockerfile(gitURL)
+				devfileBytes, devfilePath, dockerfileBytes = devfile.DownloadDevfileAndDockerfile(gitURL)
 			} else {
 				// Use SPI to retrieve the devfile from the private repository
 				// TODO - maysunfaisal also search for Dockerfile
@@ -218,13 +217,11 @@ func (r *ComponentDetectionQueryReconciler) Reconcile(ctx context.Context, req c
 				}
 			} else {
 				log.Info(fmt.Sprintf("Since this is not a multi-component, attempt will be made to read devfile at the root dir... %v", req.NamespacedName))
-				if !isDockerfilePresent {
-					err := devfile.AnalyzePath(r.AlizerClient, componentPath, context, r.DevfileRegistryURL, devfilesMap, devfilesURLMap, dockerfileContextMap, isDevfilePresent, isDockerfilePresent)
-					if err != nil {
-						log.Error(err, fmt.Sprintf("Unable to analyze path %s for a dockerfile/devfile %v", componentPath, req.NamespacedName))
-						r.SetCompleteConditionAndUpdateCR(ctx, req, &componentDetectionQuery, copiedCDQ, err)
-						return ctrl.Result{}, nil
-					}
+				err := devfile.AnalyzePath(r.AlizerClient, componentPath, context, r.DevfileRegistryURL, devfilesMap, devfilesURLMap, dockerfileContextMap, isDevfilePresent, isDockerfilePresent)
+				if err != nil {
+					log.Error(err, fmt.Sprintf("Unable to analyze path %s for a dockerfile/devfile %v", componentPath, req.NamespacedName))
+					r.SetCompleteConditionAndUpdateCR(ctx, req, &componentDetectionQuery, copiedCDQ, err)
+					return ctrl.Result{}, nil
 				}
 			}
 		} else {
@@ -250,13 +247,25 @@ func (r *ComponentDetectionQueryReconciler) Reconcile(ctx context.Context, req c
 		}
 
 		for context, link := range dockerfileContextMap {
-			updatedLink, err := devfile.UpdateDockerfileLink(source.URL, source.Revision, link)
+			updatedLink, err := devfile.UpdateGitLink(source.URL, source.Revision, link)
 			if err != nil {
 				log.Error(err, fmt.Sprintf("Unable to update the dockerfile link %v", req.NamespacedName))
 				r.SetCompleteConditionAndUpdateCR(ctx, req, &componentDetectionQuery, copiedCDQ, err)
 				return ctrl.Result{}, nil
 			}
 			dockerfileContextMap[context] = updatedLink
+		}
+
+		for context := range devfilesMap {
+			if _, ok := devfilesURLMap[context]; !ok {
+				updatedLink, err := devfile.UpdateGitLink(source.URL, source.Revision, path.Join(context, devfilePath))
+				if err != nil {
+					log.Error(err, fmt.Sprintf("Unable to update the devfile link %v", req.NamespacedName))
+					r.SetCompleteConditionAndUpdateCR(ctx, req, &componentDetectionQuery, copiedCDQ, err)
+					return ctrl.Result{}, nil
+				}
+				devfilesURLMap[context] = updatedLink
+			}
 		}
 
 		err = r.updateComponentStub(req, &componentDetectionQuery, devfilesMap, devfilesURLMap, dockerfileContextMap)
