@@ -213,12 +213,6 @@ func (r *ApplicationSnapshotEnvironmentBindingReconciler) Reconcile(ctx context.
 				Value: env.Value,
 			})
 		}
-		gitopsgenBinding := gitopsgenv1alpha1.BindingComponentConfiguration{
-			Name:      component.Name,
-			Replicas:  component.Configuration.Replicas,
-			Resources: component.Configuration.Resources,
-			Env:       envVars,
-		}
 
 		environmentConfigEnvVars := make([]corev1.EnvVar, 0)
 		for _, env := range environment.Spec.Configuration.Env {
@@ -227,15 +221,27 @@ func (r *ApplicationSnapshotEnvironmentBindingReconciler) Reconcile(ctx context.
 				Value: env.Value,
 			})
 		}
-
-		gitopsgenEnv := gitopsgenv1alpha1.Environment{
-			Spec: gitopsgenv1alpha1.EnvironmentSpec{
-				Configuration: gitopsgenv1alpha1.EnvironmentConfiguration{
-					Env: environmentConfigEnvVars,
-				},
-			},
+		componentResources := corev1.ResourceRequirements{}
+		if component.Configuration.Resources != nil {
+			componentResources = *component.Configuration.Resources
 		}
-		err = gitopsgen.GenerateOverlaysAndPush(tempDir, clone, gitOpsRemoteURL, gitopsgenBinding, gitopsgenEnv, applicationName, environmentName, imageName, appSnapshotEnvBinding.Namespace, r.Executor, r.AppFS, gitOpsBranch, gitOpsContext, true, componentGeneratedResources)
+
+		kubeLabels := map[string]string{
+			"app.kubernetes.io/name":       componentName,
+			"app.kubernetes.io/instance":   component.Name,
+			"app.kubernetes.io/part-of":    applicationName,
+			"app.kubernetes.io/managed-by": "kustomize",
+			"app.kubernetes.io/created-by": "application-service",
+		}
+		genOptions := gitopsgenv1alpha1.GeneratorOptions{
+			Name:          component.Name,
+			Replicas:      component.Configuration.Replicas,
+			Resources:     componentResources,
+			BaseEnvVar:    envVars,
+			OverlayEnvVar: environmentConfigEnvVars,
+			K8sLabels:     kubeLabels,
+		}
+		err = gitopsgen.GenerateOverlaysAndPush(tempDir, clone, gitOpsRemoteURL, genOptions, applicationName, environmentName, imageName, appSnapshotEnvBinding.Namespace, r.Executor, r.AppFS, gitOpsBranch, gitOpsContext, true, componentGeneratedResources)
 		if err != nil {
 			gitOpsErr := util.SanitizeErrorMessage(err)
 			log.Error(gitOpsErr, fmt.Sprintf("unable to get generate gitops resources for %s %v", componentName, req.NamespacedName))
