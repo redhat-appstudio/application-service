@@ -52,7 +52,7 @@ function setupTests() {
 }
 
 function waitForHASDeployment() {
-    counter=100
+    counter=200
     KUBECONFIG=$KCP_KUBECONFIG kubectl get deployment application-service-controller-manager -n application-service-system -o yaml
     kubectl get deployments --all-namespaces -o yaml
     kubectl get rs --all-namespaces -o yaml
