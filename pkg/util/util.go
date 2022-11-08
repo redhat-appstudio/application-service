@@ -28,7 +28,6 @@ import (
 
 	appstudiov1alpha1 "github.com/redhat-appstudio/application-api/api/v1alpha1"
 	gitopsgenv1alpha1 "github.com/redhat-developer/gitops-generator/api/v1alpha1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 func SanitizeName(name string) string {
@@ -210,37 +209,33 @@ func GetRandomString(n int, lower bool) string {
 	return randomString
 }
 
-func GetMappedGitOpsComponent(component appstudiov1alpha1.Component) gitopsgenv1alpha1.Component {
-	gitopsMapComponent := gitopsgenv1alpha1.Component{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      component.ObjectMeta.Name,
-			Namespace: component.ObjectMeta.Namespace,
-		},
-		Spec: gitopsgenv1alpha1.ComponentSpec{
-			ComponentName:                component.Spec.ComponentName,
-			Application:                  component.Spec.Application,
-			Secret:                       component.Spec.Secret,
-			Resources:                    component.Spec.Resources,
-			Replicas:                     component.Spec.Replicas,
-			TargetPort:                   component.Spec.TargetPort,
-			Route:                        component.Spec.Route,
-			Env:                          component.Spec.Env,
-			ContainerImage:               component.Spec.ContainerImage,
-			SkipGitOpsResourceGeneration: component.Spec.SkipGitOpsResourceGeneration,
-		},
+func GetMappedGitOpsComponent(component appstudiov1alpha1.Component) gitopsgenv1alpha1.GeneratorOptions {
+	customK8sLabels := map[string]string{
+		"app.kubernetes.io/name":       component.Spec.ComponentName,
+		"app.kubernetes.io/instance":   component.Name,
+		"app.kubernetes.io/part-of":    component.Spec.Application,
+		"app.kubernetes.io/managed-by": "kustomize",
+		"app.kubernetes.io/created-by": "application-service",
+	}
+	gitopsMapComponent := gitopsgenv1alpha1.GeneratorOptions{
+		Name:           component.ObjectMeta.Name,
+		Namespace:      component.ObjectMeta.Namespace,
+		Application:    component.Spec.Application,
+		Secret:         component.Spec.Secret,
+		Resources:      component.Spec.Resources,
+		Replicas:       component.Spec.Replicas,
+		TargetPort:     component.Spec.TargetPort,
+		Route:          component.Spec.Route,
+		BaseEnvVar:     component.Spec.Env,
+		ContainerImage: component.Spec.ContainerImage,
+		K8sLabels:      customK8sLabels,
 	}
 	if component.Spec.Source.ComponentSourceUnion.GitSource != nil {
-		gitopsMapComponent.Spec.Source = gitopsgenv1alpha1.ComponentSource{
-			ComponentSourceUnion: gitopsgenv1alpha1.ComponentSourceUnion{
-				GitSource: &gitopsgenv1alpha1.GitSource{
-					URL:           component.Spec.Source.ComponentSourceUnion.GitSource.URL,
-					Revision:      component.Spec.Source.ComponentSourceUnion.GitSource.Revision,
-					Context:       component.Spec.Source.ComponentSourceUnion.GitSource.Context,
-					DevfileURL:    component.Spec.Source.ComponentSourceUnion.GitSource.DevfileURL,
-					DockerfileURL: component.Spec.Source.ComponentSourceUnion.GitSource.DockerfileURL,
-				},
-			},
+		gitopsMapComponent.GitSource = &gitopsgenv1alpha1.GitSource{
+			URL: component.Spec.Source.ComponentSourceUnion.GitSource.URL,
 		}
+	} else {
+		gitopsMapComponent.GitSource = &gitopsgenv1alpha1.GitSource{}
 	}
 	return gitopsMapComponent
 }
