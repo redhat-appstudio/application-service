@@ -67,7 +67,7 @@ var _ = BeforeSuite(func() {
 	logf.SetLogger(zap.New(zap.WriteTo(GinkgoWriter), zap.UseDevMode(true)))
 
 	ctx, cancel = context.WithCancel(context.TODO())
-	applicationAPIDepVersion := "v0.0.0-20221005164756-847094032024"
+	applicationAPIDepVersion := "v0.0.0-20221108172336-c9e003808d1f"
 
 	By("bootstrapping test environment")
 	testEnv = &envtest.Environment{
@@ -132,10 +132,10 @@ var _ = BeforeSuite(func() {
 	}).SetupWithManager(k8sManager)
 	Expect(err).ToNot(HaveOccurred())
 
-	err = (&ApplicationSnapshotEnvironmentBindingReconciler{
+	err = (&SnapshotEnvironmentBindingReconciler{
 		Client:   k8sManager.GetClient(),
 		Scheme:   k8sManager.GetScheme(),
-		Log:      ctrl.Log.WithName("controllers").WithName("ApplicationSnapshotEnvironmentBinding"),
+		Log:      ctrl.Log.WithName("controllers").WithName("SnapshotEnvironmentBinding"),
 		Executor: testutils.NewMockExecutor(),
 		AppFS:    ioutils.NewMemoryFilesystem(),
 	}).SetupWithManager(k8sManager)

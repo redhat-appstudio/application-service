@@ -226,15 +226,15 @@ func main() {
 		}
 	}
 
-	if err = (&controllers.ApplicationSnapshotEnvironmentBindingReconciler{
+	if err = (&controllers.SnapshotEnvironmentBindingReconciler{
 		Client:   mgr.GetClient(),
 		Scheme:   mgr.GetScheme(),
-		Log:      ctrl.Log.WithName("controllers").WithName("ApplicationSnapshotEnvironmentBinding").WithValues("appstudio-component", "HAS"),
+		Log:      ctrl.Log.WithName("controllers").WithName("SnapshotEnvironmentBinding").WithValues("appstudio-component", "HAS"),
 		Executor: gitopsgen.NewCmdExecutor(),
 		AppFS:    ioutils.NewFilesystem(),
 		GitToken: ghToken,
 	}).SetupWithManager(mgr); err != nil {
-		setupLog.Error(err, "unable to create controller", "controller", "ApplicationSnapshotEnvironmentBinding")
+		setupLog.Error(err, "unable to create controller", "controller", "SnapshotEnvironmentBinding")
 		os.Exit(1)
 	}
 	//+kubebuilder:scaffold:builder

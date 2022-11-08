@@ -39,20 +39,20 @@ func MapToBindingByBoundObjectName(cl client.Client, objectType, label string) f
 		log := mapperLog.WithValues("object-name", obj.GetName(), "object-kind", obj.GetObjectKind()).WithValues("clusterName", clusterName)
 		ctx := logicalcluster.WithCluster(context.TODO(), logicalcluster.New(clusterName))
 
-		bindingList := &appstudiov1alpha1.ApplicationSnapshotEnvironmentBindingList{}
+		bindingList := &appstudiov1alpha1.SnapshotEnvironmentBindingList{}
 		err := cl.List(ctx, bindingList,
 			client.InNamespace(obj.GetNamespace()),
 			client.MatchingLabels{label: obj.GetName()})
 		if err != nil {
-			log.Error(err, fmt.Sprintf("unable to list ApplicationSnapshotEnvironmentBinding for a %s object %s", objectType, obj.GetName()))
+			log.Error(err, fmt.Sprintf("unable to list SnapshotEnvironmentBinding for a %s object %s", objectType, obj.GetName()))
 			return []reconcile.Request{}
 		}
 		if len(bindingList.Items) == 0 {
-			log.Info(fmt.Sprintf("no ApplicationSnapshotEnvironmentBinding found for a %s object %s", objectType, obj.GetName()))
+			log.Info(fmt.Sprintf("no SnapshotEnvironmentBinding found for a %s object %s", objectType, obj.GetName()))
 			return []reconcile.Request{}
 		}
 
-		log.Info(fmt.Sprintf("Found %d ApplicationSnapshotEnvironmentBindings for a %s object %s", len(bindingList.Items), objectType, obj.GetName()))
+		log.Info(fmt.Sprintf("Found %d SnapshotEnvironmentBindings for a %s object %s", len(bindingList.Items), objectType, obj.GetName()))
 
 		req := make([]reconcile.Request, len(bindingList.Items))
 		for i, item := range bindingList.Items {
@@ -63,7 +63,7 @@ func MapToBindingByBoundObjectName(cl client.Client, objectType, label string) f
 				},
 				ClusterName: clusterName,
 			}
-			log.Info(fmt.Sprintf("The corresponding ApplicationSnapshotEnvironmentBinding %s will be reconciled", item.Name))
+			log.Info(fmt.Sprintf("The corresponding SnapshotEnvironmentBinding %s will be reconciled", item.Name))
 		}
 		return req
 	}

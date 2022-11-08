@@ -46,8 +46,8 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/source"
 )
 
-// ApplicationSnapshotEnvironmentBindingReconciler reconciles a ApplicationSnapshotEnvironmentBinding object
-type ApplicationSnapshotEnvironmentBindingReconciler struct {
+// SnapshotEnvironmentBindingReconciler reconciles a SnapshotEnvironmentBinding object
+type SnapshotEnvironmentBindingReconciler struct {
 	client.Client
 	Scheme   *runtime.Scheme
 	Log      logr.Logger
@@ -56,31 +56,31 @@ type ApplicationSnapshotEnvironmentBindingReconciler struct {
 	GitToken string
 }
 
-//+kubebuilder:rbac:groups=appstudio.redhat.com,resources=applicationsnapshotenvironmentbindings,verbs=get;list;watch;create;update;patch;delete
-//+kubebuilder:rbac:groups=appstudio.redhat.com,resources=applicationsnapshotenvironmentbindings/status,verbs=get;update;patch
-//+kubebuilder:rbac:groups=appstudio.redhat.com,resources=applicationsnapshotenvironmentbindings/finalizers,verbs=update
-//+kubebuilder:rbac:groups=appstudio.redhat.com,resources=applicationsnapshots,verbs=get;list;watch
+//+kubebuilder:rbac:groups=appstudio.redhat.com,resources=snapshotenvironmentbindings,verbs=get;list;watch;create;update;patch;delete
+//+kubebuilder:rbac:groups=appstudio.redhat.com,resources=snapshotenvironmentbindings/status,verbs=get;update;patch
+//+kubebuilder:rbac:groups=appstudio.redhat.com,resources=snapshotenvironmentbindings/finalizers,verbs=update
+//+kubebuilder:rbac:groups=appstudio.redhat.com,resources=snapshots,verbs=get;list;watch
 //+kubebuilder:rbac:groups=appstudio.redhat.com,resources=environments,verbs=get;list;watch
 
 // Reconcile is part of the main kubernetes reconciliation loop which aims to
 // move the current state of the cluster closer to the desired state.
 // TODO(user): Modify the Reconcile function to compare the state specified by
-// the ApplicationSnapshotEnvironmentBinding object against the actual cluster state, and then
+// the SnapshotEnvironmentBinding object against the actual cluster state, and then
 // perform operations to make the cluster state reflect the state specified by
 // the user.
 //
 // For more details, check Reconcile and its Result here:
 // - https://pkg.go.dev/sigs.k8s.io/controller-runtime@v0.9.2/pkg/reconcile
-func (r *ApplicationSnapshotEnvironmentBindingReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
-	log := r.Log.WithValues("ApplicationSnapshotEnvironmentBinding", req.NamespacedName).WithValues("clusterName", req.ClusterName)
+func (r *SnapshotEnvironmentBindingReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
+	log := r.Log.WithValues("SnapshotEnvironmentBinding", req.NamespacedName).WithValues("clusterName", req.ClusterName)
 
 	// if we're running on kcp, we need to include workspace in context
 	if req.ClusterName != "" {
 		ctx = logicalcluster.WithCluster(ctx, logicalcluster.New(req.ClusterName))
 	}
 
-	// Fetch the ApplicationSnapshotEnvironmentBinding instance
-	var appSnapshotEnvBinding appstudiov1alpha1.ApplicationSnapshotEnvironmentBinding
+	// Fetch the SnapshotEnvironmentBinding instance
+	var appSnapshotEnvBinding appstudiov1alpha1.SnapshotEnvironmentBinding
 	err := r.Get(ctx, req.NamespacedName, &appSnapshotEnvBinding)
 	if err != nil {
 		if errors.IsNotFound(err) {
@@ -123,7 +123,7 @@ func (r *ApplicationSnapshotEnvironmentBindingReconciler) Reconcile(ctx context.
 	}
 
 	// Get the Snapshot CR
-	appSnapshot := appstudiov1alpha1.ApplicationSnapshot{}
+	appSnapshot := appstudiov1alpha1.Snapshot{}
 	err = r.Get(ctx, types.NamespacedName{Name: snapshotName, Namespace: appSnapshotEnvBinding.Namespace}, &appSnapshot)
 	if err != nil {
 		log.Error(err, fmt.Sprintf("unable to get the Application Snapshot %s %v", snapshotName, req.NamespacedName))
@@ -297,14 +297,14 @@ func (r *ApplicationSnapshotEnvironmentBindingReconciler) Reconcile(ctx context.
 }
 
 // SetupWithManager sets up the controller with the Manager.
-func (r *ApplicationSnapshotEnvironmentBindingReconciler) SetupWithManager(mgr ctrl.Manager) error {
+func (r *SnapshotEnvironmentBindingReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	opts := zap.Options{
 		TimeEncoder: zapcore.ISO8601TimeEncoder,
 	}
 	ctrl.SetLogger(zap.New(zap.UseFlagOptions(&opts)))
 	log := ctrl.Log.WithName("controllers").WithName("Environment").WithValues("appstudio-component", "HAS")
 	return ctrl.NewControllerManagedBy(mgr).
-		For(&appstudiov1alpha1.ApplicationSnapshotEnvironmentBinding{}, builder.WithPredicates(predicate.GenerationChangedPredicate{})).
+		For(&appstudiov1alpha1.SnapshotEnvironmentBinding{}, builder.WithPredicates(predicate.GenerationChangedPredicate{})).
 		// Watch for Environment CR updates and reconcile all the Bindings that reference the Environment
 		Watches(&source.Kind{Type: &appstudiov1alpha1.Environment{}},
 			handler.EnqueueRequestsFromMapFunc(MapToBindingByBoundObjectName(r.Client, "Environment", "appstudio.environment")), builder.WithPredicates(predicate.Funcs{
@@ -329,17 +329,17 @@ func (r *ApplicationSnapshotEnvironmentBindingReconciler) SetupWithManager(mgr c
 			})).WithEventFilter(predicate.Funcs{
 		CreateFunc: func(e event.CreateEvent) bool {
 			log = log.WithValues("Namespace", e.Object.GetNamespace()).WithValues("clusterName", logicalcluster.From(e.Object).String())
-			logutil.LogAPIResourceChangeEvent(log, e.Object.GetName(), "ApplicationSnapshotEnvironmentBinding", logutil.ResourceCreate, nil)
+			logutil.LogAPIResourceChangeEvent(log, e.Object.GetName(), "SnapshotEnvironmentBinding", logutil.ResourceCreate, nil)
 			return true
 		},
 		UpdateFunc: func(e event.UpdateEvent) bool {
 			log = log.WithValues("Namespace", e.ObjectNew.GetNamespace()).WithValues("clusterName", logicalcluster.From(e.ObjectNew).String())
-			logutil.LogAPIResourceChangeEvent(log, e.ObjectNew.GetName(), "ApplicationSnapshotEnvironmentBinding", logutil.ResourceUpdate, nil)
+			logutil.LogAPIResourceChangeEvent(log, e.ObjectNew.GetName(), "SnapshotEnvironmentBinding", logutil.ResourceUpdate, nil)
 			return true
 		},
 		DeleteFunc: func(e event.DeleteEvent) bool {
 			log = log.WithValues("Namespace", e.Object.GetNamespace()).WithValues("clusterName", logicalcluster.From(e.Object).String())
-			logutil.LogAPIResourceChangeEvent(log, e.Object.GetName(), "ApplicationSnapshotEnvironmentBinding", logutil.ResourceDelete, nil)
+			logutil.LogAPIResourceChangeEvent(log, e.Object.GetName(), "SnapshotEnvironmentBinding", logutil.ResourceDelete, nil)
 			return false
 		},
 	}).
