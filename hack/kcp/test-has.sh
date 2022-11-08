@@ -96,7 +96,7 @@ function executeTests() {
     KUBECONFIG=$KCP_KUBECONFIG kubectl wait hcdq componentdetectionquery-sample --for condition=Completed --timeout=120s
 }
 
-docker build -t application-service:latest .
+docker build -t $HAS_IMAGE .
 
 # Start KCP
 kcp start > output.log 2>&1 &
