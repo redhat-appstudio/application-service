@@ -87,14 +87,16 @@ function executeTests() {
     # Wait for HAS to become ready
     echo "[INFO] Waiting for HAS deployment rollout to succeed"
     sleep 10
-    waitForHASDeployment
-    #KUBECONFIG=$KCP_KUBECONFIG kubectl rollout status deployment application-service-controller-manager -n application-service-system --timeout=300s
+    #waitForHASDeployment
+    KUBECONFIG=$KCP_KUBECONFIG kubectl rollout status deployment application-service-controller-manager -n application-service-system --timeout=300s
 
     # Create a CDQ and validate it succeeds on KCP
     echo "[INFO] Creating a ComponentDetectionResource on KCP"
     KUBECONFIG=$KCP_KUBECONFIG kubectl create -f $TESTPATH/config/samples/componentdetectionquery/componentdetectionquery-basic.yaml
     KUBECONFIG=$KCP_KUBECONFIG kubectl wait hcdq componentdetectionquery-sample --for condition=Completed --timeout=120s
 }
+
+docker build -t application-service:latest .
 
 # Start KCP
 kcp start > output.log 2>&1 &

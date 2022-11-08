@@ -33,9 +33,6 @@ jobs:
           driver: 'docker'
           github token: ${{ secrets.GITHUB_TOKEN }}
           start args: '--addons=ingress'
-      - name: Build HAS container image
-        run: |
-          docker build -t application-service:latest .
       - name: Run KCP Tests
         run: |
           ./hack/kcp/test-has.sh application-service:latest $PWD
