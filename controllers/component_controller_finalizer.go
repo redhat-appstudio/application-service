@@ -20,8 +20,6 @@ import (
 	"context"
 	"fmt"
 
-	gitopsgen "github.com/redhat-developer/gitops-generator/pkg"
-
 	appstudiov1alpha1 "github.com/redhat-appstudio/application-api/api/v1alpha1"
 	devfile "github.com/redhat-appstudio/application-service/pkg/devfile"
 	"github.com/redhat-appstudio/application-service/pkg/util"
@@ -81,7 +79,7 @@ func (r *ComponentReconciler) Finalize(ctx context.Context, component *appstudio
 		return fmt.Errorf("unable to create temp directory for gitops resources due to error: %v", err)
 	}
 
-	err = gitopsgen.GitRemoveComponent(tempDir, gitOpsURL, component.Name, r.Executor, gitOpsBranch, gitOpsContext)
+	err = r.Generator.GitRemoveComponent(tempDir, gitOpsURL, component.Name, gitOpsBranch, gitOpsContext)
 	if err != nil {
 		gitOpsErr := util.SanitizeErrorMessage(err)
 		return gitOpsErr

@@ -49,11 +49,11 @@ import (
 // SnapshotEnvironmentBindingReconciler reconciles a SnapshotEnvironmentBinding object
 type SnapshotEnvironmentBindingReconciler struct {
 	client.Client
-	Scheme   *runtime.Scheme
-	Log      logr.Logger
-	AppFS    afero.Afero
-	Executor gitopsgen.Executor
-	GitToken string
+	Scheme    *runtime.Scheme
+	Log       logr.Logger
+	AppFS     afero.Afero
+	Generator gitopsgen.Generator
+	GitToken  string
 }
 
 //+kubebuilder:rbac:groups=appstudio.redhat.com,resources=snapshotenvironmentbindings,verbs=get;list;watch;create;update;patch;delete
@@ -241,7 +241,7 @@ func (r *SnapshotEnvironmentBindingReconciler) Reconcile(ctx context.Context, re
 			OverlayEnvVar: environmentConfigEnvVars,
 			K8sLabels:     kubeLabels,
 		}
-		err = gitopsgen.GenerateOverlaysAndPush(tempDir, clone, gitOpsRemoteURL, genOptions, applicationName, environmentName, imageName, appSnapshotEnvBinding.Namespace, r.Executor, r.AppFS, gitOpsBranch, gitOpsContext, true, componentGeneratedResources)
+		err = r.Generator.GenerateOverlaysAndPush(tempDir, clone, gitOpsRemoteURL, genOptions, applicationName, environmentName, imageName, appSnapshotEnvBinding.Namespace, r.AppFS, gitOpsBranch, gitOpsContext, true, componentGeneratedResources)
 		if err != nil {
 			gitOpsErr := util.SanitizeErrorMessage(err)
 			log.Error(gitOpsErr, fmt.Sprintf("unable to get generate gitops resources for %s %v", componentName, req.NamespacedName))
@@ -253,7 +253,7 @@ func (r *SnapshotEnvironmentBindingReconciler) Reconcile(ctx context.Context, re
 		// Retrieve the commit ID
 		var commitID string
 		repoPath := filepath.Join(tempDir, applicationName)
-		if commitID, err = gitopsgen.GetCommitIDFromRepo(r.AppFS, r.Executor, repoPath); err != nil {
+		if commitID, err = r.Generator.GetCommitIDFromRepo(r.AppFS, repoPath); err != nil {
 			gitOpsErr := util.SanitizeErrorMessage(err)
 			log.Error(gitOpsErr, "unable to retrieve gitops repository commit id due to error")
 			r.SetConditionAndUpdateCR(ctx, req, &appSnapshotEnvBinding, gitOpsErr)

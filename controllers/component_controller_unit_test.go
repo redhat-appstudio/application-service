@@ -21,6 +21,8 @@ import (
 	"reflect"
 	"testing"
 
+	"github.com/redhat-appstudio/application-service/gitops"
+
 	"github.com/devfile/api/v2/pkg/apis/workspaces/v1alpha2"
 	"github.com/devfile/api/v2/pkg/attributes"
 	data "github.com/devfile/library/pkg/devfile/parser/data"
@@ -28,7 +30,6 @@ import (
 	appstudiov1alpha1 "github.com/redhat-appstudio/application-api/api/v1alpha1"
 	"github.com/redhat-appstudio/application-service/pkg/github"
 	"github.com/redhat-appstudio/application-service/pkg/util/ioutils"
-	"github.com/redhat-developer/gitops-generator/pkg/testutils"
 	"github.com/spf13/afero"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
@@ -148,7 +149,6 @@ func TestSetGitOpsStatus(t *testing.T) {
 }
 
 func TestGenerateGitops(t *testing.T) {
-	executor := testutils.NewMockExecutor()
 	appFS := ioutils.NewMemoryFilesystem()
 	readOnlyFs := ioutils.NewReadOnlyFs()
 
@@ -158,18 +158,18 @@ func TestGenerateGitops(t *testing.T) {
 		Log:       ctrl.Log.WithName("controllers").WithName("Component"),
 		GitHubOrg: github.AppStudioAppDataOrg,
 		GitToken:  "fake-token",
-		Executor:  executor,
+		Generator: gitops.NewMockGenerator(),
 		Client:    fakeClient,
 	}
 
 	// Create a second reconciler for testing error scenarios
-	errExec := testutils.NewMockExecutor()
-	errExec.Errors.Push(errors.New("Fatal error"))
+	errGen := gitops.NewMockGenerator()
+	errGen.Errors.Push(errors.New("Fatal error"))
 	errReconciler := &ComponentReconciler{
 		Log:       ctrl.Log.WithName("controllers").WithName("Component"),
 		GitHubOrg: github.AppStudioAppDataOrg,
 		GitToken:  "fake-token",
-		Executor:  errExec,
+		Generator: errGen,
 		Client:    fakeClient,
 	}
 
@@ -297,7 +297,7 @@ func TestGenerateGitops(t *testing.T) {
 			wantErr: false,
 		},
 		{
-			name:       "Gitops generarion fails",
+			name:       "Gitops generation fails",
 			reconciler: errReconciler,
 			fs:         appFS,
 			component: &appstudiov1alpha1.Component{
