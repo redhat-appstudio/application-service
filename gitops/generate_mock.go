@@ -114,5 +114,5 @@ func execute(baseDir string, cmd gitops.CommandType, args ...string) ([]byte, er
 		}
 	}
 
-	return []byte(""), fmt.Errorf("Unsupported command \"%s\" ", string(cmd))
+	return []byte(""), fmt.Errorf("unsupported command \"%s\" ", string(cmd))
 }
