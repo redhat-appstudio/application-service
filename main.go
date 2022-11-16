@@ -20,6 +20,7 @@ import (
 	"context"
 	"flag"
 	"fmt"
+	gitopsgen "github.com/redhat-developer/gitops-generator/pkg"
 	"log"
 	"os"
 
@@ -51,8 +52,6 @@ import (
 	"github.com/redhat-appstudio/application-service/pkg/devfile"
 	"github.com/redhat-appstudio/application-service/pkg/spi"
 	"github.com/redhat-appstudio/application-service/pkg/util/ioutils"
-	gitopsgen "github.com/redhat-developer/gitops-generator/pkg"
-
 	//+kubebuilder:scaffold:imports
 	apisv1alpha1 "github.com/kcp-dev/kcp/pkg/apis/apis/v1alpha1"
 )
@@ -192,7 +191,7 @@ func main() {
 		LocalClient:     localClient,
 		Scheme:          mgr.GetScheme(),
 		Log:             ctrl.Log.WithName("controllers").WithName("Component").WithValues("appstudio-component", "HAS"),
-		Executor:        gitopsgen.NewCmdExecutor(),
+		Generator:       gitopsgen.NewGitopsGen(),
 		AppFS:           ioutils.NewFilesystem(),
 		GitToken:        ghToken,
 		ImageRepository: imageRepository,
@@ -227,12 +226,12 @@ func main() {
 	}
 
 	if err = (&controllers.SnapshotEnvironmentBindingReconciler{
-		Client:   mgr.GetClient(),
-		Scheme:   mgr.GetScheme(),
-		Log:      ctrl.Log.WithName("controllers").WithName("SnapshotEnvironmentBinding").WithValues("appstudio-component", "HAS"),
-		Executor: gitopsgen.NewCmdExecutor(),
-		AppFS:    ioutils.NewFilesystem(),
-		GitToken: ghToken,
+		Client:    mgr.GetClient(),
+		Scheme:    mgr.GetScheme(),
+		Log:       ctrl.Log.WithName("controllers").WithName("SnapshotEnvironmentBinding").WithValues("appstudio-component", "HAS"),
+		Generator: gitopsgen.NewGitopsGen(),
+		AppFS:     ioutils.NewFilesystem(),
+		GitToken:  ghToken,
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "SnapshotEnvironmentBinding")
 		os.Exit(1)
