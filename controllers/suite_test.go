@@ -18,10 +18,11 @@ package controllers
 
 import (
 	"context"
-	"github.com/redhat-appstudio/application-service/gitops"
 	"go/build"
 	"path/filepath"
 	"testing"
+
+	"github.com/redhat-appstudio/application-service/gitops"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"

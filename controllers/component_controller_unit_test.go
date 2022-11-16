@@ -18,9 +18,10 @@ package controllers
 
 import (
 	"errors"
-	"github.com/redhat-appstudio/application-service/gitops"
 	"reflect"
 	"testing"
+
+	"github.com/redhat-appstudio/application-service/gitops"
 
 	"github.com/devfile/api/v2/pkg/apis/workspaces/v1alpha2"
 	"github.com/devfile/api/v2/pkg/attributes"
