@@ -17,12 +17,13 @@ package gitops
 
 import (
 	"fmt"
+	"path/filepath"
+	"strings"
+
 	gitopsv1alpha1 "github.com/redhat-developer/gitops-generator/api/v1alpha1"
 	gitops "github.com/redhat-developer/gitops-generator/pkg"
 	"github.com/redhat-developer/gitops-generator/pkg/testutils"
 	"github.com/spf13/afero"
-	"path/filepath"
-	"strings"
 )
 
 type MockGenerator struct {
