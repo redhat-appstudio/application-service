@@ -16,6 +16,8 @@
 package util
 
 import (
+	"crypto/sha256"
+	"encoding/base64"
 	"fmt"
 	"io/ioutil"
 	"math/rand"
@@ -259,4 +261,12 @@ func GetMappedGitOpsComponent(component appstudiov1alpha1.Component, kubernetesR
 	}
 
 	return gitopsMapComponent
+}
+
+// GenerateUniqueHashForWorkloadImageTag generates a unique hash from the combination of cluster name and the namespace
+// in order to not expose user's username via namespace of a particular resource potentially.
+func GenerateUniqueHashForWorkloadImageTag(clusterName string, namespace string) string {
+	h := sha256.New()
+	h.Write([]byte(clusterName + namespace))
+	return base64.URLEncoding.EncodeToString(h.Sum(nil))[0:5]
 }
