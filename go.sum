@@ -1425,8 +1425,8 @@ github.com/redhat-appstudio/service-provider-integration-scm-file-retriever v0.6
 github.com/redhat-appstudio/service-provider-integration-scm-file-retriever v0.6.10/go.mod h1:/id8d2MdgW1X5kKO3IMXiSQ/hrXv20iIopuIv/kmrzc=
 github.com/redhat-developer/alizer/go v0.0.0-20220704150640-ef50ead0b279 h1:+S8l0Q94mtvZjvYUICUltPEpH/8AEhzhcD+WqtdaDB8=
 github.com/redhat-developer/alizer/go v0.0.0-20220704150640-ef50ead0b279/go.mod h1:jzZFFoqYo3vQfo6dNNEv1biEZ1g55GPvvNPeP2gu43c=
-github.com/redhat-developer/gitops-generator v0.0.0-20221115203712-d718cb88a957 h1:JsC/hvvepnzi84kOYdoczBnYMKbe8ABgzbuGmHZCVvs=
-github.com/redhat-developer/gitops-generator v0.0.0-20221115203712-d718cb88a957/go.mod h1:oRmoPfhkSvjOCncDigpalGvU2AaZeaivDpf9H7DxDuU=
+github.com/redhat-developer/gitops-generator v0.0.0-20221117222854-240399c18bc0 h1:5QyWRHPco6Kz62CiHG4XuRI3HAECIRwvr+A/njWnnZs=
+github.com/redhat-developer/gitops-generator v0.0.0-20221117222854-240399c18bc0/go.mod h1:oRmoPfhkSvjOCncDigpalGvU2AaZeaivDpf9H7DxDuU=
 github.com/rickb777/date v1.13.0/go.mod h1:GZf3LoGnxPWjX+/1TXOuzHefZFDovTyNLHDMd3qH70k=
 github.com/rickb777/plural v1.2.1/go.mod h1:j058+3M5QQFgcZZ2oKIOekcygoZUL8gKW5yRO14BuAw=
 github.com/robfig/cron/v3 v3.0.1/go.mod h1:eQICP3HwyT7UooqI/z+Ov+PtYAWygg1TEWWzGIFLtro=
