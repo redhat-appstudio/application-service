@@ -66,26 +66,23 @@ type GitopsConfig struct {
 	IsHACBS bool
 }
 
-func PrepareGitopsConfig(ctx context.Context, localCli, cli client.Client, component appstudiov1alpha1.Component) GitopsConfig {
+func PrepareGitopsConfig(ctx context.Context, cli client.Client, component appstudiov1alpha1.Component) GitopsConfig {
 	data := GitopsConfig{}
 
 	data.AppStudioRegistrySecretPresent = resolveRegistrySecretPresence(ctx, cli, component)
 	data.IsHACBS = IsHACBS(ctx, cli, component.Namespace)
-	data.BuildBundle = ResolveBuildBundle(ctx, localCli, cli, component.Namespace, data.IsHACBS)
+	data.BuildBundle = ResolveBuildBundle(ctx, cli, component.Namespace, data.IsHACBS)
 	data.PipelinesAsCodeCredentials = getPipelinesAsCodeConfigurationSecretData(ctx, cli, component)
 
 	return data
 }
 
 // ResolveBuildBundle detects build bundle to use.
-// localClient is the client that operates in the workspace where the operator's APIExport defined.
 // The following priority is used:
-// 1. User's workspace, Component's namespace, build-pipelines-defaults ConfigMap
-// 2. The workspace where the operator's APIExport defined, build-templates namespace, build-pipelines-defaults ConfigMap
+// 1. Component's namespace, build-pipelines-defaults ConfigMap
+// 2. build-templates namespace, build-pipelines-defaults ConfigMap
 // 3. Fallback bundle
-// For non-KCP deployments, workspace is ignored.
-// In case of HACBS the ConfigMap key and fallback bundle are different.
-func ResolveBuildBundle(ctx context.Context, localClient, cli client.Client, namespace string, isHACBS bool) string {
+func ResolveBuildBundle(ctx context.Context, cli client.Client, namespace string, isHACBS bool) string {
 	bundleConfigMapKey := BuildBundleConfigMapKey
 	if isHACBS {
 		bundleConfigMapKey = HACBSBundleConfigMapKey
@@ -100,7 +97,7 @@ func ResolveBuildBundle(ctx context.Context, localClient, cli client.Client, nam
 	}
 	// There is no build bundle configuration in the component namespace
 	// Try global build bundle configuration
-	if err := localClient.Get(ctx, types.NamespacedName{Name: BuildBundleConfigMapName, Namespace: BuildBundleDefaultNamespace}, &configMap); err == nil {
+	if err := cli.Get(ctx, types.NamespacedName{Name: BuildBundleConfigMapName, Namespace: BuildBundleDefaultNamespace}, &configMap); err == nil {
 		if value, isPresent := configMap.Data[bundleConfigMapKey]; isPresent && value != "" {
 			return value
 		}
