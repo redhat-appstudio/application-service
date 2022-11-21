@@ -22,6 +22,8 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/redhat-appstudio/application-service/gitops"
+
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"k8s.io/client-go/kubernetes/scheme"
@@ -41,7 +43,6 @@ import (
 	github "github.com/redhat-appstudio/application-service/pkg/github"
 	"github.com/redhat-appstudio/application-service/pkg/spi"
 	"github.com/redhat-appstudio/application-service/pkg/util/ioutils"
-	"github.com/redhat-developer/gitops-generator/pkg/testutils"
 	//+kubebuilder:scaffold:imports
 )
 
@@ -113,7 +114,7 @@ var _ = BeforeSuite(func() {
 		Client:          k8sManager.GetClient(),
 		Scheme:          k8sManager.GetScheme(),
 		Log:             ctrl.Log.WithName("controllers").WithName("Component"),
-		Executor:        testutils.NewMockExecutor(),
+		Generator:       gitops.NewMockGenerator(),
 		AppFS:           ioutils.NewMemoryFilesystem(),
 		ImageRepository: "docker.io/foo/customized",
 		SPIClient:       spi.MockSPIClient{},
@@ -132,11 +133,11 @@ var _ = BeforeSuite(func() {
 	Expect(err).ToNot(HaveOccurred())
 
 	err = (&SnapshotEnvironmentBindingReconciler{
-		Client:   k8sManager.GetClient(),
-		Scheme:   k8sManager.GetScheme(),
-		Log:      ctrl.Log.WithName("controllers").WithName("SnapshotEnvironmentBinding"),
-		Executor: testutils.NewMockExecutor(),
-		AppFS:    ioutils.NewMemoryFilesystem(),
+		Client:    k8sManager.GetClient(),
+		Scheme:    k8sManager.GetScheme(),
+		Log:       ctrl.Log.WithName("controllers").WithName("SnapshotEnvironmentBinding"),
+		Generator: gitops.NewMockGenerator(),
+		AppFS:     ioutils.NewMemoryFilesystem(),
 	}).SetupWithManager(k8sManager)
 	Expect(err).ToNot(HaveOccurred())
 

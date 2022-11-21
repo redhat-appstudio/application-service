@@ -67,7 +67,7 @@ type ComponentReconciler struct {
 	GitToken        string
 	GitHubOrg       string
 	ImageRepository string
-	Executor        gitopsgen.Executor
+	Generator       gitopsgen.Generator
 	AppFS           afero.Afero
 	SPIClient       spi.SPI
 }
@@ -467,7 +467,7 @@ func (r *ComponentReconciler) generateGitops(ctx context.Context, req ctrl.Reque
 	// Generate and push the gitops resources
 	gitopsConfig := prepare.PrepareGitopsConfig(ctx, r.Client, *component)
 	mappedGitOpsComponent := util.GetMappedGitOpsComponent(*component)
-	err = gitopsgen.CloneGenerateAndPush(tempDir, gitOpsURL, mappedGitOpsComponent, r.Executor, r.AppFS, gitOpsBranch, gitOpsContext, false)
+	err = r.Generator.CloneGenerateAndPush(tempDir, gitOpsURL, mappedGitOpsComponent, r.AppFS, gitOpsBranch, gitOpsContext, false)
 	if err != nil {
 		gitOpsErr := util.SanitizeErrorMessage(err)
 		log.Error(gitOpsErr, "unable to generate gitops resources due to error")
@@ -480,7 +480,7 @@ func (r *ComponentReconciler) generateGitops(ctx context.Context, req ctrl.Reque
 		log.Error(gitOpsErr, "unable to generate gitops build resources due to error")
 		return gitOpsErr
 	}
-	err = gitopsgen.CommitAndPush(tempDir, "", gitOpsURL, mappedGitOpsComponent.Name, r.Executor, gitOpsBranch, "Generating Tekton resources")
+	err = r.Generator.CommitAndPush(tempDir, "", gitOpsURL, mappedGitOpsComponent.Name, gitOpsBranch, "Generating Tekton resources")
 	if err != nil {
 		gitOpsErr := util.SanitizeErrorMessage(err)
 		log.Error(gitOpsErr, "unable to commit and push gitops resources due to error")
@@ -490,7 +490,7 @@ func (r *ComponentReconciler) generateGitops(ctx context.Context, req ctrl.Reque
 	// Get the commit ID for the gitops repository
 	var commitID string
 	repoPath := filepath.Join(tempDir, component.Name)
-	if commitID, err = gitopsgen.GetCommitIDFromRepo(r.AppFS, r.Executor, repoPath); err != nil {
+	if commitID, err = r.Generator.GetCommitIDFromRepo(r.AppFS, repoPath); err != nil {
 		gitOpsErr := util.SanitizeErrorMessage(err)
 		log.Error(gitOpsErr, "unable to retrieve gitops repository commit id due to error")
 		return gitOpsErr
