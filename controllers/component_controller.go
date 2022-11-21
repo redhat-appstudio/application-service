@@ -438,7 +438,10 @@ func (r *ComponentReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 			// Get the ingress url from the status of the route, if it exists
 			if len(createdWebhook.Status.Ingress) != 0 {
 				component.Status.Webhook = createdWebhook.Status.Ingress[0].Host
-				r.Client.Status().Update(ctx, &component)
+				err := r.Client.Status().Update(ctx, &component)
+				if err != nil {
+					return ctrl.Result{}, err
+				}
 			}
 		}
 	}
