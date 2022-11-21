@@ -97,7 +97,6 @@ func main() {
 	setupLog = setupLog.WithValues("api-export-name", apiExportName).WithValues("appstudio-component", "HAS")
 
 	var mgr ctrl.Manager
-	var localClient client.Client
 	var err error
 	options := ctrl.Options{
 		Scheme:                 scheme,
@@ -123,16 +122,6 @@ func main() {
 			setupLog.Error(err, "unable to start cluster aware manager")
 			os.Exit(1)
 		}
-
-		// Local client is needed to access the workspace where operator deployment is
-		localClientScheme := runtime.NewScheme()
-		if err := clientgoscheme.AddToScheme(localClientScheme); err != nil {
-			setupLog.Error(err, "error adding standard types to local client scheme")
-		}
-		localClient, err = client.New(ctrl.GetConfigOrDie(), client.Options{Scheme: localClientScheme})
-		if err != nil {
-			setupLog.Error(err, "error creating local client")
-		}
 	} else {
 		setupLog.Info("The apis.kcp.dev group is not present - creating standard manager")
 		mgr, err = ctrl.NewManager(restConfig, options)
@@ -140,8 +129,6 @@ func main() {
 			setupLog.Error(err, "unable to start manager")
 			os.Exit(1)
 		}
-
-		localClient = mgr.GetClient()
 	}
 
 	if err := routev1.AddToScheme(mgr.GetScheme()); err != nil {
@@ -189,7 +176,6 @@ func main() {
 	}
 	if err = (&controllers.ComponentReconciler{
 		Client:          mgr.GetClient(),
-		LocalClient:     localClient,
 		Scheme:          mgr.GetScheme(),
 		Log:             ctrl.Log.WithName("controllers").WithName("Component").WithValues("appstudio-component", "HAS"),
 		Executor:        gitopsgen.NewCmdExecutor(),

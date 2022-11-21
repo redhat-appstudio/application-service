@@ -62,7 +62,6 @@ import (
 // ComponentReconciler reconciles a Component object
 type ComponentReconciler struct {
 	client.Client
-	LocalClient     client.Client
 	Scheme          *runtime.Scheme
 	Log             logr.Logger
 	GitToken        string
@@ -466,7 +465,7 @@ func (r *ComponentReconciler) generateGitops(ctx context.Context, req ctrl.Reque
 	}
 
 	// Generate and push the gitops resources
-	gitopsConfig := prepare.PrepareGitopsConfig(ctx, r.LocalClient, r.Client, *component)
+	gitopsConfig := prepare.PrepareGitopsConfig(ctx, r.Client, *component)
 	mappedGitOpsComponent := util.GetMappedGitOpsComponent(*component)
 	err = gitopsgen.CloneGenerateAndPush(tempDir, gitOpsURL, mappedGitOpsComponent, r.Executor, r.AppFS, gitOpsBranch, gitOpsContext, false)
 	if err != nil {

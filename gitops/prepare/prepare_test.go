@@ -85,7 +85,7 @@ func TestPrepareGitopsConfig(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			client := fake.NewClientBuilder().WithRuntimeObjects(&tt.buildBundleConfigMap, &tt.pacSecret).Build()
-			if got := PrepareGitopsConfig(context.TODO(), client, client, component); !reflect.DeepEqual(got, tt.want) {
+			if got := PrepareGitopsConfig(context.TODO(), client, component); !reflect.DeepEqual(got, tt.want) {
 				t.Errorf("PrepareGitopsConfig() = %v, want %v", got, tt.want)
 			}
 		})
@@ -230,7 +230,7 @@ func TestResolveBuildBundle(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			client := fake.NewClientBuilder().WithRuntimeObjects(&tt.data).Build()
 
-			if got := ResolveBuildBundle(ctx, client, client, component.Namespace, tt.isHACBS); got != tt.want {
+			if got := ResolveBuildBundle(ctx, client, component.Namespace, tt.isHACBS); got != tt.want {
 				t.Errorf("ResolveBuildBundle() = %v, want %v", got, tt.want)
 			}
 		})
