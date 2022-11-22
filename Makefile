@@ -302,3 +302,10 @@ debug-stop:
 
 ensure-tmp:
 	mkdir -p $(TEMP_DIR)
+
+### gosec - runs the gosec scanner for non-test files in this repo
+.PHONY: gosec
+gosec:
+	# Run this command to install gosec, if not installed:
+	# go install github.com/securego/gosec/v2/cmd/gosec@latest
+	gosec -no-fail -fmt=sarif -out=gosec.sarif  ./...

@@ -150,7 +150,10 @@ func CurlEndpoint(endpoint string) ([]byte, error) {
 func CloneRepo(clonePath, repoURL string, token string) error {
 	exist, err := IsExist(clonePath)
 	if !exist || err != nil {
-		os.MkdirAll(clonePath, 0755)
+		err = os.MkdirAll(clonePath, 0750)
+		if err != nil {
+			return err
+		}
 	}
 	cloneURL := repoURL
 	// Execute does an exec.Command on the specified command
@@ -160,6 +163,7 @@ func CloneRepo(clonePath, repoURL string, token string) error {
 		// e.g. https://token:<token>@github.com/owner/repoName.git
 		cloneURL = fmt.Sprintf("https://token:%s@%s", token, tempStr[1])
 	}
+	/* #nosec G204 -- user input is processed into an expected format for the git clone command */
 	c := exec.Command("git", "clone", cloneURL, clonePath)
 	c.Dir = clonePath
 
@@ -200,6 +204,7 @@ const schemaBytes = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456
 func GetRandomString(n int, lower bool) string {
 	b := make([]byte, n)
 	for i := range b {
+		/* #nosec G404 -- not used for cryptographic purposes*/
 		b[i] = schemaBytes[rand.Intn(len(schemaBytes)-1)]
 	}
 	randomString := string(b)

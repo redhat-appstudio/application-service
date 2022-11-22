@@ -53,6 +53,7 @@ func GetMockedClient() *github.Client {
 						"github went belly up or something",
 					)
 				} else {
+					/* #nosec G104 -- test code */
 					w.Write(mock.MustMarshal(github.Repository{
 						Name: github.String("test-repo-1"),
 					}))
@@ -62,6 +63,7 @@ func GetMockedClient() *github.Client {
 		mock.WithRequestMatchHandler(
 			mock.DeleteReposByOwnerByRepo,
 			http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+				/* #nosec G104 -- test code */
 				w.Write(mock.MustMarshal(github.Repository{
 					Name: github.String("test-repo-1"),
 				}))
