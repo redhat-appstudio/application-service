@@ -74,7 +74,5 @@ spec:
               name: devfile-registry-config
               key: DEVFILE_REGISTRY_URL
               optional: true
-        - name: GOPPROF
-          value: http,block
       serviceAccountName: controller-manager
       terminationGracePeriodSeconds: 10
