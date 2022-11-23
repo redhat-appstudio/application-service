@@ -56,6 +56,7 @@ import (
 	"github.com/redhat-appstudio/application-service/pkg/util/ioutils"
 
 	// Enable pprof for profiling
+	/* #nosec G108 -- debug code */
 	_ "net/http/pprof"
 
 	//+kubebuilder:scaffold:imports
@@ -104,6 +105,7 @@ func main() {
 	// Set up pprof if needed
 	if os.Getenv("ENABLE_PPROF") == "true" {
 		go func() {
+			/* #nosec G118 -- debug code */
 			log.Println(http.ListenAndServe("localhost:6060", nil))
 		}()
 	}
