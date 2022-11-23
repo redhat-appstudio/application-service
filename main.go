@@ -105,7 +105,7 @@ func main() {
 	// Set up pprof if needed
 	if os.Getenv("ENABLE_PPROF") == "true" {
 		go func() {
-			/* #nosec G118 -- debug code */
+			/* #nosec G114 -- debug code */
 			log.Println(http.ListenAndServe("localhost:6060", nil))
 		}()
 	}
