@@ -54,6 +54,9 @@ import (
 	"github.com/redhat-appstudio/application-service/pkg/spi"
 	"github.com/redhat-appstudio/application-service/pkg/util/ioutils"
 
+	// Enable pprof for profiling
+	_ "github.com/anacrolix/envpprof"
+
 	//+kubebuilder:scaffold:imports
 	apisv1alpha1 "github.com/kcp-dev/kcp/pkg/apis/apis/v1alpha1"
 )

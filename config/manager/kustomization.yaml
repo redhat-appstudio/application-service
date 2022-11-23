@@ -10,6 +10,7 @@ namePrefix: application-service-
 
 resources:
 - manager.yaml
+- pprof_service.yaml
 
 generatorOptions:
   disableNameSuffixHash: true

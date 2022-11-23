@@ -124,11 +124,13 @@ check_fmt:
 vet: ## Run go vet against code.
 	go vet ./...
 
-gosec: 
-	# Run this command, to install gosec, if not installed:
-	# go get -u github.com/securego/gosec/v2/cmd/gosec
-	gosec ./...
-
+### gosec - runs the gosec scanner for non-test files in this repo
+.PHONY: gosec
+gosec:
+	# Run this command to install gosec, if not installed:
+	# go install github.com/securego/gosec/v2/cmd/gosec@latest
+	gosec -no-fail -fmt=sarif -out=gosec.sarif  ./...
+	
 lint:
 	golangci-lint --version
 	GOMAXPROCS=2 golangci-lint run --fix --verbose --timeout 300s
@@ -303,9 +305,3 @@ debug-stop:
 ensure-tmp:
 	mkdir -p $(TEMP_DIR)
 
-### gosec - runs the gosec scanner for non-test files in this repo
-.PHONY: gosec
-gosec:
-	# Run this command to install gosec, if not installed:
-	# go install github.com/securego/gosec/v2/cmd/gosec@latest
-	gosec -no-fail -fmt=sarif -out=gosec.sarif  ./...

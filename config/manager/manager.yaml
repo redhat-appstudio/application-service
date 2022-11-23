@@ -32,6 +32,8 @@ spec:
         image: controller:latest
         imagePullPolicy: Always
         name: manager
+        ports:
+        - containerPort: 6060
         securityContext:
           allowPrivilegeEscalation: false
         livenessProbe:
