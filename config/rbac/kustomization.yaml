@@ -31,6 +31,3 @@ resources:
 
 ## SPI Roles
 - role_spi.yaml
-
-## Pprof Service
-- pprof_service.yaml

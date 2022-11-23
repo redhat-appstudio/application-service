@@ -21,6 +21,7 @@ import (
 	"flag"
 	"fmt"
 	"log"
+	"net/http"
 	"os"
 
 	gitopsgen "github.com/redhat-developer/gitops-generator/pkg"
@@ -55,7 +56,7 @@ import (
 	"github.com/redhat-appstudio/application-service/pkg/util/ioutils"
 
 	// Enable pprof for profiling
-	_ "github.com/anacrolix/envpprof"
+	_ "net/http/pprof"
 
 	//+kubebuilder:scaffold:imports
 	apisv1alpha1 "github.com/kcp-dev/kcp/pkg/apis/apis/v1alpha1"
@@ -99,6 +100,13 @@ func main() {
 
 	restConfig := ctrl.GetConfigOrDie()
 	setupLog = setupLog.WithValues("api-export-name", apiExportName).WithValues("appstudio-component", "HAS")
+
+	// Set up pprof if needed
+	if os.Getenv("ENABLE_PPROF") == "true" {
+		go func() {
+			log.Println(http.ListenAndServe("localhost:6060", nil))
+		}()
+	}
 
 	var mgr ctrl.Manager
 	var err error
