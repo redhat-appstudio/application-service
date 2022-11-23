@@ -33,7 +33,7 @@ spec:
         imagePullPolicy: Always
         name: manager
         ports:
-        - containerPort: 6060
+        - containerPort: 6061
         securityContext:
           allowPrivilegeEscalation: false
         livenessProbe:

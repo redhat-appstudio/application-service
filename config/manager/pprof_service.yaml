@@ -8,7 +8,7 @@ metadata:
 spec:
   ports:
   - name: https
-    port: 6060
+    port: 6061
     protocol: TCP
     targetPort: https
   selector:

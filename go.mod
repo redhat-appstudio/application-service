@@ -3,6 +3,7 @@ module github.com/redhat-appstudio/application-service
 go 1.18
 
 require (
+	github.com/anacrolix/envpprof v1.2.1
 	github.com/brianvoe/gofakeit/v6 v6.9.0
 	github.com/devfile/api/v2 v2.0.0-20211021164004-dabee4e633ed
 	github.com/devfile/library v1.2.1-0.20211104222135-49d635cb492f
@@ -49,7 +50,6 @@ require (
 	github.com/Azure/go-autorest/tracing v0.6.0 // indirect
 	github.com/PuerkitoBio/purell v1.1.1 // indirect
 	github.com/PuerkitoBio/urlesc v0.0.0-20170810143723-de5bf2ad4578 // indirect
-	github.com/anacrolix/envpprof v1.2.1 // indirect
 	github.com/anacrolix/log v0.3.0 // indirect
 	github.com/anacrolix/missinggo v1.2.1 // indirect
 	github.com/antlr/antlr4/runtime/Go/antlr v0.0.0-20211221011931-643d94fcab96 // indirect
