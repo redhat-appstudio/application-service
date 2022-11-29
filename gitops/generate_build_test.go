@@ -1183,7 +1183,7 @@ func TestGeneratePACRepository(t *testing.T) {
 		},
 		{
 			name:    "should create PaC repository for GitLab webhook even if GitHub application configured",
-			repoUrl: "https://gitlab.com/user/test-component-repository",
+			repoUrl: "https://gitlab.com/user/test-component-repository.git",
 			pacConfig: map[string][]byte{
 				PipelinesAsCode_githubAppIdKey:   []byte("12345"),
 				PipelinesAsCode_githubPrivateKey: []byte("private-key"),
@@ -1226,7 +1226,7 @@ func TestGeneratePACRepository(t *testing.T) {
 				t.Errorf("Generated PaC repository must have component annotation")
 			}
 
-			if pacRepo.Spec.URL != tt.repoUrl {
+			if pacRepo.Spec.URL != strings.TrimRight(tt.repoUrl, ".git") {
 				t.Errorf("Wrong git repository URL in PaC repository: %s, want %s", pacRepo.Spec.URL, tt.repoUrl)
 			}
 			if !reflect.DeepEqual(pacRepo.Spec.GitProvider, tt.expectedGitProviderConfig) {
