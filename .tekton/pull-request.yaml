@@ -19,6 +19,10 @@ spec:
     bundle: quay.io/redhat-appstudio/hacbs-core-service-templates-bundle:latest
   workspaces:
     - name: workspace
-      persistentVolumeClaim:
-        claimName: app-studio-default-workspace
-      subPath: application-service-check-{{ revision }}
+      volumeClaimTemplate:
+        spec:
+          accessModes:
+            - ReadWriteOnce
+          resources:
+            requests:
+              storage: 1Gi
