@@ -115,6 +115,7 @@ Webhooks require self-signed certificates to validate the resources. To disable 
 
 ### Useful links:
 * [HAS Project information page](https://docs.google.com/document/d/1axzNOhRBSkly3M2Y32Pxr1MBpBif2ljb-ufj0_aEt74/edit?usp=sharing)
+* [Profiling HAS](https://docs.google.com/document/d/1LqLeDEhYXDK07lz_p582c1LRVwxwFCdqFLk1fh33Dn8/edit#)
 
 ## Contributions
 
