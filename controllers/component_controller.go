@@ -19,7 +19,6 @@ package controllers
 import (
 	"context"
 	"fmt"
-	"path/filepath"
 	"reflect"
 	"time"
 
@@ -43,6 +42,7 @@ import (
 	"github.com/devfile/api/v2/pkg/attributes"
 	data "github.com/devfile/library/pkg/devfile/parser/data"
 	"github.com/go-logr/logr"
+	gh "github.com/google/go-github/v41/github"
 	logicalcluster "github.com/kcp-dev/logicalcluster/v2"
 	routev1 "github.com/openshift/api/route/v1"
 
@@ -50,6 +50,7 @@ import (
 	appservicegitops "github.com/redhat-appstudio/application-service/gitops"
 	"github.com/redhat-appstudio/application-service/gitops/prepare"
 	devfile "github.com/redhat-appstudio/application-service/pkg/devfile"
+	"github.com/redhat-appstudio/application-service/pkg/github"
 	logutil "github.com/redhat-appstudio/application-service/pkg/log"
 	"github.com/redhat-appstudio/application-service/pkg/spi"
 	"github.com/redhat-appstudio/application-service/pkg/util"
@@ -70,6 +71,7 @@ type ComponentReconciler struct {
 	Generator       gitopsgen.Generator
 	AppFS           afero.Afero
 	SPIClient       spi.SPI
+	GitHubClient    *gh.Client
 }
 
 //+kubebuilder:rbac:groups=appstudio.redhat.com,resources=components,verbs=get;list;watch;create;update;patch;delete
@@ -492,11 +494,15 @@ func (r *ComponentReconciler) generateGitops(ctx context.Context, req ctrl.Reque
 
 	// Get the commit ID for the gitops repository
 	var commitID string
-	repoPath := filepath.Join(tempDir, component.Name)
-	if commitID, err = r.Generator.GetCommitIDFromRepo(r.AppFS, repoPath); err != nil {
-		gitOpsErr := util.SanitizeErrorMessage(err)
-		log.Error(gitOpsErr, "unable to retrieve gitops repository commit id due to error")
-		return gitOpsErr
+	repoName, orgName, err := github.GetRepoAndOrgFromURL(gitOpsURL)
+	if err != nil {
+		log.Error(err, "unable to retrieve org and repository name from URL")
+		return err
+	}
+	commitID, err = github.GetLatestCommitSHAFromRepository(r.GitHubClient, ctx, repoName, orgName, gitOpsBranch)
+	if err != nil {
+		log.Error(err, "unable to retrieve gitops repository commit id due to error")
+		return err
 	}
 	component.Status.GitOps.CommitID = commitID
 

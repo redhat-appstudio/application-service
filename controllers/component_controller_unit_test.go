@@ -17,6 +17,7 @@ limitations under the License.
 package controllers
 
 import (
+	"context"
 	"errors"
 	"reflect"
 	"testing"
@@ -151,26 +152,29 @@ func TestSetGitOpsStatus(t *testing.T) {
 func TestGenerateGitops(t *testing.T) {
 	appFS := ioutils.NewMemoryFilesystem()
 	readOnlyFs := ioutils.NewReadOnlyFs()
+	ctx := context.Background()
 
 	fakeClient := fake.NewClientBuilder().Build()
 
 	r := &ComponentReconciler{
-		Log:       ctrl.Log.WithName("controllers").WithName("Component"),
-		GitHubOrg: github.AppStudioAppDataOrg,
-		GitToken:  "fake-token",
-		Generator: gitops.NewMockGenerator(),
-		Client:    fakeClient,
+		Log:          ctrl.Log.WithName("controllers").WithName("Component"),
+		GitHubOrg:    github.AppStudioAppDataOrg,
+		GitToken:     "fake-token",
+		Generator:    gitops.NewMockGenerator(),
+		Client:       fakeClient,
+		GitHubClient: github.GetMockedClient(),
 	}
 
 	// Create a second reconciler for testing error scenarios
 	errGen := gitops.NewMockGenerator()
 	errGen.Errors.Push(errors.New("Fatal error"))
 	errReconciler := &ComponentReconciler{
-		Log:       ctrl.Log.WithName("controllers").WithName("Component"),
-		GitHubOrg: github.AppStudioAppDataOrg,
-		GitToken:  "fake-token",
-		Generator: errGen,
-		Client:    fakeClient,
+		Log:          ctrl.Log.WithName("controllers").WithName("Component"),
+		GitHubOrg:    github.AppStudioAppDataOrg,
+		GitToken:     "fake-token",
+		Generator:    errGen,
+		Client:       fakeClient,
+		GitHubClient: github.GetMockedClient(),
 	}
 
 	componentSpec := appstudiov1alpha1.ComponentSpec{
@@ -356,7 +360,7 @@ func TestGenerateGitops(t *testing.T) {
 				Spec: componentSpec,
 				Status: appstudiov1alpha1.ComponentStatus{
 					GitOps: appstudiov1alpha1.GitOpsStatus{
-						RepositoryURL: "https://github.com/test/repo",
+						RepositoryURL: "https://github.com/test/test-error-response",
 					},
 				},
 			},

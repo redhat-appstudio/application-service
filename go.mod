@@ -12,7 +12,7 @@ require (
 	github.com/google/go-github/v41 v41.0.0
 	github.com/kcp-dev/kcp/pkg/apis v0.7.0
 	github.com/kcp-dev/logicalcluster/v2 v2.0.0-alpha.1
-	github.com/migueleliasweb/go-github-mock v0.0.10
+	github.com/migueleliasweb/go-github-mock v0.0.13
 	github.com/mitchellh/go-homedir v1.1.0
 	github.com/onsi/ginkgo v1.16.5
 	github.com/onsi/gomega v1.20.1
