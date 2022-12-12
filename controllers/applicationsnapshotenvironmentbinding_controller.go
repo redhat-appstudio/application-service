@@ -257,13 +257,17 @@ func (r *SnapshotEnvironmentBindingReconciler) Reconcile(ctx context.Context, re
 		var commitID string
 		repoName, orgName, err := github.GetRepoAndOrgFromURL(gitOpsRemoteURL)
 		if err != nil {
-			log.Error(err, "unable to retrieve org and repository name from URL")
-			return ctrl.Result{}, err
+			gitOpsErr := util.SanitizeErrorMessage(fmt.Errorf("unable to parse gitops repository %s due to error: %v", gitOpsRemoteURL, err))
+			log.Error(gitOpsErr, "")
+			r.SetConditionAndUpdateCR(ctx, req, &appSnapshotEnvBinding, gitOpsErr)
+			return ctrl.Result{}, gitOpsErr
 		}
 		commitID, err = github.GetLatestCommitSHAFromRepository(r.GitHubClient, ctx, repoName, orgName, gitOpsBranch)
 		if err != nil {
-			log.Error(err, "unable to retrieve gitops repository commit id due to error")
-			return ctrl.Result{}, err
+			gitOpsErr := util.SanitizeErrorMessage(fmt.Errorf("unable to retrieve gitops repository commit id due to error: %v", err))
+			log.Error(gitOpsErr, "")
+			r.SetConditionAndUpdateCR(ctx, req, &appSnapshotEnvBinding, gitOpsErr)
+			return ctrl.Result{}, gitOpsErr
 		}
 
 		if !isStatusUpdated {
