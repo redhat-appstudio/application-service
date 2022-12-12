@@ -496,14 +496,14 @@ func (r *ComponentReconciler) generateGitops(ctx context.Context, req ctrl.Reque
 	var commitID string
 	repoName, orgName, err := github.GetRepoAndOrgFromURL(gitOpsURL)
 	if err != nil {
-		gitOpsErr := util.SanitizeErrorMessage(err)
-		log.Error(gitOpsErr, "unable to retrieve org and repository name from URL")
+		gitOpsErr := util.SanitizeErrorMessage(fmt.Errorf("unable to parse gitops repository %s due to error: %v", gitOpsURL, err))
+		log.Error(gitOpsErr, "")
 		return gitOpsErr
 	}
 	commitID, err = github.GetLatestCommitSHAFromRepository(r.GitHubClient, ctx, repoName, orgName, gitOpsBranch)
 	if err != nil {
-		gitOpsErr := util.SanitizeErrorMessage(err)
-		log.Error(err, "unable to retrieve gitops repository commit id due to error")
+		gitOpsErr := util.SanitizeErrorMessage(fmt.Errorf("unable to retrieve gitops repository commit id due to error: %v", err))
+		log.Error(gitOpsErr, "")
 		return gitOpsErr
 	}
 	component.Status.GitOps.CommitID = commitID
