@@ -21,6 +21,7 @@ import (
 	"fmt"
 	"path/filepath"
 
+	gh "github.com/google/go-github/v41/github"
 	gitopsgenv1alpha1 "github.com/redhat-developer/gitops-generator/api/v1alpha1"
 	gitopsgen "github.com/redhat-developer/gitops-generator/pkg"
 	"go.uber.org/zap/zapcore"
@@ -29,6 +30,7 @@ import (
 	"github.com/go-logr/logr"
 	logicalcluster "github.com/kcp-dev/logicalcluster/v2"
 	appstudiov1alpha1 "github.com/redhat-appstudio/application-api/api/v1alpha1"
+	github "github.com/redhat-appstudio/application-service/pkg/github"
 	logutil "github.com/redhat-appstudio/application-service/pkg/log"
 	"github.com/redhat-appstudio/application-service/pkg/util"
 	"github.com/redhat-appstudio/application-service/pkg/util/ioutils"
@@ -49,11 +51,12 @@ import (
 // SnapshotEnvironmentBindingReconciler reconciles a SnapshotEnvironmentBinding object
 type SnapshotEnvironmentBindingReconciler struct {
 	client.Client
-	Scheme    *runtime.Scheme
-	Log       logr.Logger
-	AppFS     afero.Afero
-	Generator gitopsgen.Generator
-	GitToken  string
+	Scheme       *runtime.Scheme
+	Log          logr.Logger
+	AppFS        afero.Afero
+	Generator    gitopsgen.Generator
+	GitHubClient *gh.Client
+	GitToken     string
 }
 
 //+kubebuilder:rbac:groups=appstudio.redhat.com,resources=snapshotenvironmentbindings,verbs=get;list;watch;create;update;patch;delete
@@ -252,10 +255,17 @@ func (r *SnapshotEnvironmentBindingReconciler) Reconcile(ctx context.Context, re
 
 		// Retrieve the commit ID
 		var commitID string
-		repoPath := filepath.Join(tempDir, applicationName)
-		if commitID, err = r.Generator.GetCommitIDFromRepo(r.AppFS, repoPath); err != nil {
-			gitOpsErr := util.SanitizeErrorMessage(err)
-			log.Error(gitOpsErr, "unable to retrieve gitops repository commit id due to error")
+		repoName, orgName, err := github.GetRepoAndOrgFromURL(gitOpsRemoteURL)
+		if err != nil {
+			gitOpsErr := util.SanitizeErrorMessage(fmt.Errorf("unable to parse gitops repository %s due to error: %v", gitOpsRemoteURL, err))
+			log.Error(gitOpsErr, "")
+			r.SetConditionAndUpdateCR(ctx, req, &appSnapshotEnvBinding, gitOpsErr)
+			return ctrl.Result{}, gitOpsErr
+		}
+		commitID, err = github.GetLatestCommitSHAFromRepository(r.GitHubClient, ctx, repoName, orgName, gitOpsBranch)
+		if err != nil {
+			gitOpsErr := util.SanitizeErrorMessage(fmt.Errorf("unable to retrieve gitops repository commit id due to error: %v", err))
+			log.Error(gitOpsErr, "")
 			r.SetConditionAndUpdateCR(ctx, req, &appSnapshotEnvBinding, gitOpsErr)
 			return ctrl.Result{}, gitOpsErr
 		}

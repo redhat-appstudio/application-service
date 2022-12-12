@@ -197,6 +197,7 @@ func main() {
 		GitToken:        ghToken,
 		ImageRepository: imageRepository,
 		SPIClient:       spi.SPIClient{},
+		GitHubClient:    client,
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "Component")
 		os.Exit(1)
@@ -227,12 +228,13 @@ func main() {
 	}
 
 	if err = (&controllers.SnapshotEnvironmentBindingReconciler{
-		Client:    mgr.GetClient(),
-		Scheme:    mgr.GetScheme(),
-		Log:       ctrl.Log.WithName("controllers").WithName("SnapshotEnvironmentBinding").WithValues("appstudio-component", "HAS"),
-		Generator: gitopsgen.NewGitopsGen(),
-		AppFS:     ioutils.NewFilesystem(),
-		GitToken:  ghToken,
+		Client:       mgr.GetClient(),
+		Scheme:       mgr.GetScheme(),
+		Log:          ctrl.Log.WithName("controllers").WithName("SnapshotEnvironmentBinding").WithValues("appstudio-component", "HAS"),
+		Generator:    gitopsgen.NewGitopsGen(),
+		AppFS:        ioutils.NewFilesystem(),
+		GitToken:     ghToken,
+		GitHubClient: client,
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "SnapshotEnvironmentBinding")
 		os.Exit(1)

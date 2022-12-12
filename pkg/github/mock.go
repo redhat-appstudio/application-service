@@ -69,6 +69,20 @@ func GetMockedClient() *github.Client {
 				}))
 			}),
 		),
+		mock.WithRequestMatchHandler(
+			mock.GetReposCommitsByOwnerByRepoByRef,
+			http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
+				if strings.Contains(req.RequestURI, "test-error-response") {
+					mock.WriteError(w,
+						http.StatusInternalServerError,
+						"github went belly up or something",
+					)
+				} else {
+					/* #nosec G104 -- test code */
+					w.Write([]byte("ca82a6dff817ec66f44342007202690a93763949"))
+				}
+			}),
+		),
 	)
 
 	return github.NewClient(mockedHTTPClient)
