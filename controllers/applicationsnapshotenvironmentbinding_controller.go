@@ -244,27 +244,27 @@ func (r *SnapshotEnvironmentBindingReconciler) Reconcile(ctx context.Context, re
 			OverlayEnvVar: environmentConfigEnvVars,
 			K8sLabels:     kubeLabels,
 		}
+		//Gitops functions return sanitized error messages
 		err = r.Generator.GenerateOverlaysAndPush(tempDir, clone, gitOpsRemoteURL, genOptions, applicationName, environmentName, imageName, appSnapshotEnvBinding.Namespace, r.AppFS, gitOpsBranch, gitOpsContext, true, componentGeneratedResources)
 		if err != nil {
-			gitOpsErr := util.SanitizeErrorMessage(err)
-			log.Error(gitOpsErr, fmt.Sprintf("unable to get generate gitops resources for %s %v", componentName, req.NamespacedName))
+			log.Error(err, fmt.Sprintf("unable to get generate gitops resources for %s %v", componentName, req.NamespacedName))
 			_ = r.AppFS.RemoveAll(tempDir) // not worried with an err, its a best case attempt to delete the temp clone dir
-			r.SetConditionAndUpdateCR(ctx, req, &appSnapshotEnvBinding, gitOpsErr)
-			return ctrl.Result{}, gitOpsErr
+			r.SetConditionAndUpdateCR(ctx, req, &appSnapshotEnvBinding, err)
+			return ctrl.Result{}, err
 		}
 
 		// Retrieve the commit ID
 		var commitID string
 		repoName, orgName, err := github.GetRepoAndOrgFromURL(gitOpsRemoteURL)
 		if err != nil {
-			gitOpsErr := util.SanitizeErrorMessage(fmt.Errorf("unable to parse gitops repository %s due to error: %v", gitOpsRemoteURL, err))
+			gitOpsErr := &GitOpsParseRepoError{gitOpsRemoteURL, err}
 			log.Error(gitOpsErr, "")
 			r.SetConditionAndUpdateCR(ctx, req, &appSnapshotEnvBinding, gitOpsErr)
 			return ctrl.Result{}, gitOpsErr
 		}
 		commitID, err = github.GetLatestCommitSHAFromRepository(r.GitHubClient, ctx, repoName, orgName, gitOpsBranch)
 		if err != nil {
-			gitOpsErr := util.SanitizeErrorMessage(fmt.Errorf("unable to retrieve gitops repository commit id due to error: %v", err))
+			gitOpsErr := &GitOpsCommitIdError{err}
 			log.Error(gitOpsErr, "")
 			r.SetConditionAndUpdateCR(ctx, req, &appSnapshotEnvBinding, gitOpsErr)
 			return ctrl.Result{}, gitOpsErr

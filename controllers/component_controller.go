@@ -56,7 +56,6 @@ import (
 	"github.com/redhat-appstudio/application-service/pkg/util"
 	"github.com/redhat-appstudio/application-service/pkg/util/ioutils"
 	gitopsgen "github.com/redhat-developer/gitops-generator/pkg"
-
 	"github.com/spf13/afero"
 )
 
@@ -472,37 +471,37 @@ func (r *ComponentReconciler) generateGitops(ctx context.Context, req ctrl.Reque
 	// Generate and push the gitops resources
 	gitopsConfig := prepare.PrepareGitopsConfig(ctx, r.Client, *component)
 	mappedGitOpsComponent := util.GetMappedGitOpsComponent(*component)
+	//Gitops functions return sanitized error messages
 	err = r.Generator.CloneGenerateAndPush(tempDir, gitOpsURL, mappedGitOpsComponent, r.AppFS, gitOpsBranch, gitOpsContext, false)
 	if err != nil {
-		gitOpsErr := util.SanitizeErrorMessage(err)
-		log.Error(gitOpsErr, "unable to generate gitops resources due to error")
-		return gitOpsErr
+		log.Error(err, "unable to generate gitops resources due to error")
+		return err
 	}
 
+	// GenerateTektonBuild returns a sanitized error message
 	err = appservicegitops.GenerateTektonBuild(tempDir, *component, r.AppFS, gitOpsContext, gitopsConfig)
 	if err != nil {
-		gitOpsErr := util.SanitizeErrorMessage(err)
-		log.Error(gitOpsErr, "unable to generate gitops build resources due to error")
-		return gitOpsErr
+		log.Error(err, "unable to generate gitops build resources due to error")
+		return err
 	}
+	//Gitops functions return sanitized error messages
 	err = r.Generator.CommitAndPush(tempDir, "", gitOpsURL, mappedGitOpsComponent.Name, gitOpsBranch, "Generating Tekton resources")
 	if err != nil {
-		gitOpsErr := util.SanitizeErrorMessage(err)
-		log.Error(gitOpsErr, "unable to commit and push gitops resources due to error")
-		return gitOpsErr
+		log.Error(err, "unable to commit and push gitops resources due to error")
+		return err
 	}
 
 	// Get the commit ID for the gitops repository
 	var commitID string
 	repoName, orgName, err := github.GetRepoAndOrgFromURL(gitOpsURL)
 	if err != nil {
-		gitOpsErr := util.SanitizeErrorMessage(fmt.Errorf("unable to parse gitops repository %s due to error: %v", gitOpsURL, err))
+		gitOpsErr := &GitOpsParseRepoError{gitOpsURL, err}
 		log.Error(gitOpsErr, "")
 		return gitOpsErr
 	}
 	commitID, err = github.GetLatestCommitSHAFromRepository(r.GitHubClient, ctx, repoName, orgName, gitOpsBranch)
 	if err != nil {
-		gitOpsErr := util.SanitizeErrorMessage(fmt.Errorf("unable to retrieve gitops repository commit id due to error: %v", err))
+		gitOpsErr := &GitOpsCommitIdError{err}
 		log.Error(gitOpsErr, "")
 		return gitOpsErr
 	}

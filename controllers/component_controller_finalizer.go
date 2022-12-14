@@ -79,10 +79,10 @@ func (r *ComponentReconciler) Finalize(ctx context.Context, component *appstudio
 		return fmt.Errorf("unable to create temp directory for gitops resources due to error: %v", err)
 	}
 
+	//Gitops functions return sanitized error messages
 	err = r.Generator.GitRemoveComponent(tempDir, gitOpsURL, component.Name, gitOpsBranch, gitOpsContext)
 	if err != nil {
-		gitOpsErr := util.SanitizeErrorMessage(err)
-		return gitOpsErr
+		return err
 	}
 
 	err = r.AppFS.RemoveAll(tempDir)

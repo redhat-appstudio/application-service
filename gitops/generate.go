@@ -22,6 +22,7 @@ import (
 	appstudiov1alpha1 "github.com/redhat-appstudio/application-api/api/v1alpha1"
 	"github.com/redhat-appstudio/application-service/gitops/prepare"
 	gitopsgen "github.com/redhat-developer/gitops-generator/pkg"
+	"github.com/redhat-developer/gitops-generator/pkg/util"
 	"github.com/spf13/afero"
 )
 
@@ -39,11 +40,11 @@ func GenerateTektonBuild(outputPath string, component appstudiov1alpha1.Componen
 		tektonResourcesDirName := ".tekton"
 
 		if err := GenerateBuild(appFs, filepath.Join(componentPath, tektonResourcesDirName), component, gitopsConfig); err != nil {
-			return fmt.Errorf("failed to generate tekton build in %q for component %q: %s", componentPath, componentName, err)
+			return util.SanitizeErrorMessage(fmt.Errorf("failed to generate tekton build in %q for component %q: %s", componentPath, componentName, err))
 		}
 		// Update the kustomize file and return
 		if err := gitopsgen.UpdateExistingKustomize(appFs, componentPath); err != nil {
-			return fmt.Errorf("failed to update kustomize file for tekton build in %q for component %q: %s", componentPath, componentName, err)
+			return util.SanitizeErrorMessage(fmt.Errorf("failed to update kustomize file for tekton build in %q for component %q: %s", componentPath, componentName, err))
 		}
 	}
 	return nil

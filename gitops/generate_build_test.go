@@ -33,6 +33,7 @@ import (
 	"github.com/redhat-developer/gitops-generator/pkg/testutils"
 	"github.com/spf13/afero"
 	"github.com/stretchr/testify/assert"
+	"github.com/tektoncd/pipeline/pkg/apis/pipeline/pod"
 	tektonapi "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
@@ -410,7 +411,7 @@ func TestGenerateInitialBuildPipelineRun(t *testing.T) {
 							},
 						},
 					},
-					PodTemplate: &tektonapi.PodTemplate{
+					PodTemplate: &pod.PodTemplate{
 						ImagePullSecrets: []corev1.LocalObjectReference{
 							{
 								Name: "redhat-appstudio-registry-pull-secret",
@@ -568,7 +569,7 @@ func TestDetermineBuildExecution(t *testing.T) {
 						},
 					},
 				},
-				PodTemplate: &tektonapi.PodTemplate{
+				PodTemplate: &pod.PodTemplate{
 					ImagePullSecrets: []corev1.LocalObjectReference{
 						{
 							Name: "redhat-appstudio-registry-pull-secret",
@@ -617,7 +618,7 @@ func TestDetermineBuildExecution(t *testing.T) {
 						},
 					},
 				},
-				PodTemplate: &tektonapi.PodTemplate{
+				PodTemplate: &pod.PodTemplate{
 					ImagePullSecrets: []corev1.LocalObjectReference{
 						{
 							Name: "redhat-appstudio-registry-pull-secret",
