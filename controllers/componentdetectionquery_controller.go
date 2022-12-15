@@ -18,10 +18,13 @@ package controllers
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"path"
 
 	"go.uber.org/zap/zapcore"
+	"golang.org/x/exp/maps"
+	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -40,8 +43,10 @@ import (
 	logutil "github.com/redhat-appstudio/application-service/pkg/log"
 	"github.com/redhat-appstudio/application-service/pkg/spi"
 	"github.com/redhat-appstudio/application-service/pkg/util"
-	"github.com/redhat-appstudio/application-service/pkg/util/ioutils"
 	"github.com/spf13/afero"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/client-go/kubernetes"
+	"k8s.io/client-go/rest"
 )
 
 // ComponentDetectionQueryReconciler reconciles a ComponentDetectionQuery object
@@ -58,6 +63,8 @@ type ComponentDetectionQueryReconciler struct {
 //+kubebuilder:rbac:groups=appstudio.redhat.com,resources=componentdetectionqueries,verbs=get;list;watch;create;update;patch;delete
 //+kubebuilder:rbac:groups=appstudio.redhat.com,resources=componentdetectionqueries/status,verbs=get;update;patch
 //+kubebuilder:rbac:groups=appstudio.redhat.com,resources=componentdetectionqueries/finalizers,verbs=update
+//+kubebuilder:rbac:groups=core,resources=configmaps,verbs=get;list;watch;create;update;delete
+//+kubebuilder:rbac:groups=batch,resources=jobs,verbs=get;list;watch;create;update;delete
 
 // Reconcile is part of the main kubernetes reconciliation loop which aims to
 // move the current state of the cluster closer to the desired state.
@@ -70,7 +77,6 @@ type ComponentDetectionQueryReconciler struct {
 // - https://pkg.go.dev/sigs.k8s.io/controller-runtime@v0.9.2/pkg/reconcile
 func (r *ComponentDetectionQueryReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
 	log := r.Log.WithValues("ComponentDetectionQuery", req.NamespacedName).WithValues("clusterName", req.ClusterName)
-
 	// if we're running on kcp, we need to include workspace in context
 	if req.ClusterName != "" {
 		ctx = logicalcluster.WithCluster(ctx, logicalcluster.New(req.ClusterName))
@@ -117,7 +123,7 @@ func (r *ComponentDetectionQueryReconciler) Reconcile(ctx context.Context, req c
 
 		source := componentDetectionQuery.Spec.GitSource
 		var devfileBytes, dockerfileBytes []byte
-		var clonePath, componentPath, devfilePath string
+		var devfilePath string
 		devfilesMap := make(map[string][]byte)
 		devfilesURLMap := make(map[string]string)
 		dockerfileContextMap := make(map[string]string)
@@ -128,7 +134,6 @@ func (r *ComponentDetectionQueryReconciler) Reconcile(ctx context.Context, req c
 		}
 
 		if source.DevfileURL == "" {
-			isMultiComponent := false
 			isDockerfilePresent := false
 			isDevfilePresent := false
 			log.Info(fmt.Sprintf("Attempting to read a devfile from the URL %s... %v", source.URL, req.NamespacedName))
@@ -162,68 +167,67 @@ func (r *ComponentDetectionQueryReconciler) Reconcile(ctx context.Context, req c
 				dockerfileContextMap[context] = "./Dockerfile"
 			}
 
-			// Clone the repo if no dockerfile present
-			if !isDockerfilePresent {
-				log.Info(fmt.Sprintf("Unable to find devfile or Dockerfile under root directory, run Alizer to detect components... %v", req.NamespacedName))
+			// perfume cdq job that requires repo cloning and azlier analysis
+			config, err := rest.InClusterConfig()
+			if err != nil {
+				log.Error(err, fmt.Sprintf("**********Error creating InClusterConfig"))
+			}
+			clientset, err := kubernetes.NewForConfig(config)
+			if err != nil {
+				log.Error(err, fmt.Sprintf("**********Error creating clientset with config %v", config))
+			}
+			jobs := clientset.BatchV1().Jobs(req.Namespace)
 
-				clonePath, err = ioutils.CreateTempPath(componentDetectionQuery.Name, r.AppFS)
-				if err != nil {
-					log.Error(err, fmt.Sprintf("Unable to create a temp path %s for cloning %v", clonePath, req.NamespacedName))
-					r.SetCompleteConditionAndUpdateCR(ctx, req, &componentDetectionQuery, copiedCDQ, err)
-					return ctrl.Result{}, nil
-				}
-
-				err = util.CloneRepo(clonePath, source.URL, gitToken)
-				if err != nil {
-					log.Error(err, fmt.Sprintf("Unable to clone repo %s to path %s, exiting reconcile loop %v", source.URL, clonePath, req.NamespacedName))
-					r.SetCompleteConditionAndUpdateCR(ctx, req, &componentDetectionQuery, copiedCDQ, err)
-					return ctrl.Result{}, nil
-				}
-				log.Info(fmt.Sprintf("cloned from %s to path %s... %v", source.URL, clonePath, req.NamespacedName))
-				componentPath = clonePath
-				if context != "" {
-					componentPath = path.Join(clonePath, context)
-				}
-
-				if !isDevfilePresent {
-					components, err := r.AlizerClient.DetectComponents(componentPath)
-					if err != nil {
-						log.Error(err, fmt.Sprintf("Unable to detect components using Alizer for repo %v, under path %v... %v ", source.URL, componentPath, req.NamespacedName))
-						r.SetCompleteConditionAndUpdateCR(ctx, req, &componentDetectionQuery, copiedCDQ, err)
-						return ctrl.Result{}, nil
-					}
-					log.Info(fmt.Sprintf("components detected %v... %v", components, req.NamespacedName))
-					// If no devfile and no dockerfile present in the root
-					// case 1: no components been detected by Alizer, might still has subfolders contains dockerfile. Need to scan repo
-					// case 2: more than 1 components been detected by Alizer, is certain a multi-component project. Need to scan repo
-					// case 3: one or more than 1 compinents been detected by Alizer, and the first one in the list is under sub-folder. Need to scan repo.
-					if len(components) != 1 || (len(components) != 0 && path.Clean(components[0].Path) != path.Clean(componentPath)) {
-						isMultiComponent = true
-					}
-				}
+			var backOffLimit int32 = 0
+			jobSpec := &batchv1.Job{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      req.Name + "-job",
+					Namespace: req.Namespace,
+				},
+				Spec: batchv1.JobSpec{
+					Template: corev1.PodTemplateSpec{
+						Spec: corev1.PodSpec{
+							ServiceAccountName: "application-service-controller-manager",
+							Containers: []corev1.Container{
+								{
+									Name:    req.Name + "-job",
+									Image:   "yangcao77/cdq-image:latest",
+									Command: []string{"/app/main", gitToken, req.Namespace, req.Name, context, devfilePath, source.URL, source.Revision, r.DevfileRegistryURL, fmt.Sprintf("%s", isDevfilePresent), fmt.Sprintf("%s", isDockerfilePresent)},
+								},
+							},
+							RestartPolicy: corev1.RestartPolicyNever,
+						},
+					},
+					BackoffLimit: &backOffLimit,
+				},
 			}
 
-			// Logic to read multiple components in from git
-			if isMultiComponent {
-				log.Info(fmt.Sprintf("Since this is a multi-component, attempt will be made to read only level 1 dir for devfiles... %v", req.NamespacedName))
+			_, err = jobs.Create(ctx, jobSpec, metav1.CreateOptions{})
+			if err != nil {
+				log.Error(err, fmt.Sprintf("**********Error creating job %v", err))
+			}
 
-				devfilesMap, devfilesURLMap, dockerfileContextMap, err = devfile.ScanRepo(log, r.AlizerClient, componentPath, r.DevfileRegistryURL)
-				if err != nil {
-					if _, ok := err.(*devfile.NoDevfileFound); !ok {
-						log.Error(err, fmt.Sprintf("Unable to find devfile(s) in repo %s due to an error %s, exiting reconcile loop %v", source.URL, err.Error(), req.NamespacedName))
-						r.SetCompleteConditionAndUpdateCR(ctx, req, &componentDetectionQuery, copiedCDQ, err)
-						return ctrl.Result{}, nil
-					}
-				}
+			//print job details
+			log.Info(fmt.Sprintf("**********Successfully run job"))
+
+			cm, err := waitForConfigMap(clientset, ctx, req.Name, req.Namespace)
+			if err != nil {
+				log.Error(err, fmt.Sprintf("**********Error waiting for configmap %v", err))
 			} else {
-				log.Info(fmt.Sprintf("Since this is not a multi-component, attempt will be made to read devfile at the root dir... %v", req.NamespacedName))
-				err := devfile.AnalyzePath(r.AlizerClient, componentPath, context, r.DevfileRegistryURL, devfilesMap, devfilesURLMap, dockerfileContextMap, isDevfilePresent, isDockerfilePresent)
-				if err != nil {
-					log.Error(err, fmt.Sprintf("Unable to analyze path %s for a dockerfile/devfile %v", componentPath, req.NamespacedName))
-					r.SetCompleteConditionAndUpdateCR(ctx, req, &componentDetectionQuery, copiedCDQ, err)
-					return ctrl.Result{}, nil
-				}
+				log.Info(fmt.Sprintf("**********Found config map %v", cm))
 			}
+			var devfileTest map[string][]byte
+			var devfilesURLtest map[string]string
+			var dockerfileContexttest map[string]string
+			var retErr error
+			json.Unmarshal(cm.BinaryData["devfilesMaptest"], &devfileTest)
+			json.Unmarshal(cm.BinaryData["dockerfileContextMaptest"], &dockerfileContexttest)
+			json.Unmarshal(cm.BinaryData["devfilesURLMaptest"], &devfilesURLtest)
+			json.Unmarshal(cm.BinaryData["error"], &retErr)
+			log.Info(fmt.Sprintf("**********GET!!!  devfilesMaptest is %v, dockerfileContextMaptest is %v, devfilesURLMaptest is %v, error is %v", devfileTest, dockerfileContexttest, devfilesURLtest, retErr))
+			maps.Copy(devfilesMap, devfileTest)
+			maps.Copy(dockerfileContexttest, dockerfileContexttest)
+			maps.Copy(devfilesURLMap, devfilesURLtest)
 		} else {
 			log.Info(fmt.Sprintf("devfile was explicitly specified at %s %v", source.DevfileURL, req.NamespacedName))
 			devfileBytes, err = util.CurlEndpoint(source.DevfileURL)
@@ -236,15 +240,89 @@ func (r *ComponentDetectionQueryReconciler) Reconcile(ctx context.Context, req c
 			}
 			devfilesMap[context] = devfileBytes
 		}
+		// 	// Clone the repo if no dockerfile present
+		// 	if !isDockerfilePresent {
+		// 		log.Info(fmt.Sprintf("Unable to find devfile or Dockerfile under root directory, run Alizer to detect components... %v", req.NamespacedName))
 
-		// Remove the cloned path if present
-		if isExist, _ := ioutils.IsExisting(r.AppFS, clonePath); isExist {
-			if err := r.AppFS.RemoveAll(clonePath); err != nil {
-				log.Error(err, fmt.Sprintf("Unable to remove the clonepath %s %v", clonePath, req.NamespacedName))
-				r.SetCompleteConditionAndUpdateCR(ctx, req, &componentDetectionQuery, copiedCDQ, err)
-				return ctrl.Result{}, nil
-			}
-		}
+		// 		clonePath, err = ioutils.CreateTempPath(componentDetectionQuery.Name, r.AppFS)
+		// 		if err != nil {
+		// 			log.Error(err, fmt.Sprintf("Unable to create a temp path %s for cloning %v", clonePath, req.NamespacedName))
+		// 			r.SetCompleteConditionAndUpdateCR(ctx, req, &componentDetectionQuery, copiedCDQ, err)
+		// 			return ctrl.Result{}, nil
+		// 		}
+
+		// 		err = util.CloneRepo(clonePath, source.URL, gitToken)
+		// 		if err != nil {
+		// 			log.Error(err, fmt.Sprintf("Unable to clone repo %s to path %s, exiting reconcile loop %v", source.URL, clonePath, req.NamespacedName))
+		// 			r.SetCompleteConditionAndUpdateCR(ctx, req, &componentDetectionQuery, copiedCDQ, err)
+		// 			return ctrl.Result{}, nil
+		// 		}
+		// 		log.Info(fmt.Sprintf("cloned from %s to path %s... %v", source.URL, clonePath, req.NamespacedName))
+		// 		componentPath = clonePath
+		// 		if context != "" {
+		// 			componentPath = path.Join(clonePath, context)
+		// 		}
+
+		// 		if !isDevfilePresent {
+		// 			components, err := r.AlizerClient.DetectComponents(componentPath)
+		// 			if err != nil {
+		// 				log.Error(err, fmt.Sprintf("Unable to detect components using Alizer for repo %v, under path %v... %v ", source.URL, componentPath, req.NamespacedName))
+		// 				r.SetCompleteConditionAndUpdateCR(ctx, req, &componentDetectionQuery, copiedCDQ, err)
+		// 				return ctrl.Result{}, nil
+		// 			}
+		// 			log.Info(fmt.Sprintf("components detected %v... %v", components, req.NamespacedName))
+		// 			// If no devfile and no dockerfile present in the root
+		// 			// case 1: no components been detected by Alizer, might still has subfolders contains dockerfile. Need to scan repo
+		// 			// case 2: more than 1 components been detected by Alizer, is certain a multi-component project. Need to scan repo
+		// 			// case 3: one or more than 1 compinents been detected by Alizer, and the first one in the list is under sub-folder. Need to scan repo.
+		// 			if len(components) != 1 || (len(components) != 0 && path.Clean(components[0].Path) != path.Clean(componentPath)) {
+		// 				isMultiComponent = true
+		// 			}
+		// 		}
+		// 	}
+
+		// 	// Logic to read multiple components in from git
+		// 	if isMultiComponent {
+		// 		log.Info(fmt.Sprintf("Since this is a multi-component, attempt will be made to read only level 1 dir for devfiles... %v", req.NamespacedName))
+
+		// 		devfilesMap, devfilesURLMap, dockerfileContextMap, err = devfile.ScanRepo(log, r.AlizerClient, componentPath, r.DevfileRegistryURL)
+		// 		if err != nil {
+		// 			if _, ok := err.(*devfile.NoDevfileFound); !ok {
+		// 				log.Error(err, fmt.Sprintf("Unable to find devfile(s) in repo %s due to an error %s, exiting reconcile loop %v", source.URL, err.Error(), req.NamespacedName))
+		// 				r.SetCompleteConditionAndUpdateCR(ctx, req, &componentDetectionQuery, copiedCDQ, err)
+		// 				return ctrl.Result{}, nil
+		// 			}
+		// 		}
+		// 	} else {
+		// 		log.Info(fmt.Sprintf("Since this is not a multi-component, attempt will be made to read devfile at the root dir... %v", req.NamespacedName))
+		// 		err := devfile.AnalyzePath(r.AlizerClient, componentPath, context, r.DevfileRegistryURL, devfilesMap, devfilesURLMap, dockerfileContextMap, isDevfilePresent, isDockerfilePresent)
+		// 		if err != nil {
+		// 			log.Error(err, fmt.Sprintf("Unable to analyze path %s for a dockerfile/devfile %v", componentPath, req.NamespacedName))
+		// 			r.SetCompleteConditionAndUpdateCR(ctx, req, &componentDetectionQuery, copiedCDQ, err)
+		// 			return ctrl.Result{}, nil
+		// 		}
+		// 	}
+		// } else {
+		// 	log.Info(fmt.Sprintf("devfile was explicitly specified at %s %v", source.DevfileURL, req.NamespacedName))
+		// 	devfileBytes, err = util.CurlEndpoint(source.DevfileURL)
+		// 	if err != nil {
+		// 		// if a direct devfileURL is provided and errors out, we dont do an alizer detection
+		// 		log.Error(err, fmt.Sprintf("Unable to GET %s, exiting reconcile loop %v", source.DevfileURL, req.NamespacedName))
+		// 		err := fmt.Errorf("unable to GET from %s", source.DevfileURL)
+		// 		r.SetCompleteConditionAndUpdateCR(ctx, req, &componentDetectionQuery, copiedCDQ, err)
+		// 		return ctrl.Result{}, nil
+		// 	}
+		// 	devfilesMap[context] = devfileBytes
+		// }
+
+		// // Remove the cloned path if present
+		// if isExist, _ := ioutils.IsExisting(r.AppFS, clonePath); isExist {
+		// 	if err := r.AppFS.RemoveAll(clonePath); err != nil {
+		// 		log.Error(err, fmt.Sprintf("Unable to remove the clonepath %s %v", clonePath, req.NamespacedName))
+		// 		r.SetCompleteConditionAndUpdateCR(ctx, req, &componentDetectionQuery, copiedCDQ, err)
+		// 		return ctrl.Result{}, nil
+		// 	}
+		// }
 
 		for context, link := range dockerfileContextMap {
 			updatedLink, err := devfile.UpdateGitLink(source.URL, source.Revision, link)
@@ -316,4 +394,30 @@ func (r *ComponentDetectionQueryReconciler) SetupWithManager(mgr ctrl.Manager) e
 		},
 	}).
 		Complete(r)
+}
+
+func waitForConfigMap(clientset *kubernetes.Clientset, ctx context.Context, name string, namespace string) (*corev1.ConfigMap, error) {
+	opts := metav1.ListOptions{
+		TypeMeta:      metav1.TypeMeta{},
+		FieldSelector: fmt.Sprintf("metadata.name=%s", name),
+	}
+	watcher, err := clientset.CoreV1().ConfigMaps(namespace).Watch(ctx, opts)
+	if err != nil {
+		return nil, err
+	}
+	defer watcher.Stop()
+
+	for {
+		select {
+		case event := <-watcher.ResultChan():
+			configMap := event.Object.(*corev1.ConfigMap)
+
+			// log.Info(fmt.Sprintf("**********Found config map %v", configMap))
+			return configMap, nil
+
+		case <-ctx.Done():
+			// k.logger.Debugf("Exit from waitPodDeleted for POD \"%s\" because the context is done", resName)
+			return nil, nil
+		}
+	}
 }
