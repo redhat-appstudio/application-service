@@ -34,6 +34,7 @@ import (
 	gitopsprepare "github.com/redhat-appstudio/application-service/gitops/prepare"
 	"github.com/redhat-appstudio/application-service/pkg/devfile"
 	"github.com/spf13/afero"
+	"github.com/tektoncd/pipeline/pkg/apis/pipeline/pod"
 	tektonapi "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	triggersapi "github.com/tektoncd/triggers/pkg/apis/triggers/v1alpha1"
 	corev1 "k8s.io/api/core/v1"
@@ -172,7 +173,7 @@ func DetermineBuildExecution(component appstudiov1alpha1.Component, params []tek
 			},
 		)
 		// imagePullSecret to be set in the podTemplate used by chains
-		pipelineRunSpec.PodTemplate = &tektonapi.PodTemplate{
+		pipelineRunSpec.PodTemplate = &pod.PodTemplate{
 			ImagePullSecrets: []corev1.LocalObjectReference{
 				{
 					Name: gitopsprepare.RegistrySecret,

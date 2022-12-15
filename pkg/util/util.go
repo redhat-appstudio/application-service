@@ -179,13 +179,6 @@ func CloneRepo(clonePath, repoURL string, token string) error {
 	return nil
 }
 
-// SanitizeErrorMessage takes in a given error message and returns a new, santized error with things like tokens, removed
-func SanitizeErrorMessage(err error) error {
-	reg := regexp.MustCompile(`ghp_[a-zA-Z0-9]*`)
-	newErrMsg := reg.ReplaceAllString(err.Error(), "<TOKEN>")
-	return fmt.Errorf(newErrMsg)
-}
-
 // CheckWithRegex checks if a name matches the pattern.
 // If a pattern fails to compile, it returns false
 func CheckWithRegex(pattern, name string) bool {
