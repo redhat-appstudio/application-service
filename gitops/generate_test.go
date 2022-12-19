@@ -45,32 +45,6 @@ func TestGenerateTektonBuild(t *testing.T) {
 		testMessageToDisplay string
 	}{
 		{
-			name:       "Check trigger based resources",
-			fs:         fs,
-			testFolder: "test1",
-			component: appstudiov1alpha1.Component{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "testcomponent",
-					Namespace: "workspace-name",
-				},
-				Spec: appstudiov1alpha1.ComponentSpec{
-					Source: appstudiov1alpha1.ComponentSource{
-						ComponentSourceUnion: appstudiov1alpha1.ComponentSourceUnion{
-							GitSource: &appstudiov1alpha1.GitSource{
-								URL: "https://host/git-repo.git",
-							},
-						},
-					},
-				},
-			},
-			want: []string{
-				kustomizeFileName,
-				buildTriggerTemplateFileName,
-				buildEventListenerFileName,
-				buildWebhookRouteFileName,
-			},
-		},
-		{
 			name:       "Check pipeline as code resources",
 			fs:         fs,
 			testFolder: "test2",
