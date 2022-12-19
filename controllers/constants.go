@@ -16,33 +16,33 @@
 package controllers
 
 const (
-	// routeKey is the key to reference route
-	routeKey = "deployment/route"
+	// RouteKey is the key to reference route
+	RouteKey = "deployment/route"
 
-	// replicaKey is the key to reference replica
-	replicaKey = "deployment/replicas"
+	// ReplicaKey is the key to reference replica
+	ReplicaKey = "deployment/replicas"
 
-	// storageLimitKey is the key to reference storage limit
-	storageLimitKey = "deployment/storageLimit"
+	// StorageLimitKey is the key to reference storage limit
+	StorageLimitKey = "deployment/storageLimit"
 
-	// storageRequestKey is the key to reference storage request
-	storageRequestKey = "deployment/storageRequest"
+	// StorageRequestKey is the key to reference storage request
+	StorageRequestKey = "deployment/storageRequest"
 
-	// cpuLimitKey is the key to reference cpu limit
-	cpuLimitKey = "deployment/cpuLimit"
+	// CpuLimitKey is the key to reference cpu limit
+	CpuLimitKey = "deployment/cpuLimit"
 
-	// cpuRequestKey is the key to reference cpu request
-	cpuRequestKey = "deployment/cpuRequest"
+	// CpuRequestKey is the key to reference cpu request
+	CpuRequestKey = "deployment/cpuRequest"
 
-	// memoryLimitKey is the key to reference memory limit
-	memoryLimitKey = "deployment/memoryLimit"
+	// MemoryLimitKey is the key to reference memory limit
+	MemoryLimitKey = "deployment/memoryLimit"
 
-	// memoryRequestKey is the key to reference memory request
-	memoryRequestKey = "deployment/memoryRequest"
+	// MemoryRequestKey is the key to reference memory request
+	MemoryRequestKey = "deployment/memoryRequest"
 
-	// containerImagePortKey is the key to reference container image port
-	containerImagePortKey = "deployment/container-port"
+	// ContainerImagePortKey is the key to reference container image port
+	ContainerImagePortKey = "deployment/container-port"
 
-	// containerENVKey is the key to reference container environment variables
-	containerENVKey = "deployment/containerENV"
+	// ContainerENVKey is the key to reference container environment variables
+	ContainerENVKey = "deployment/containerENV"
 )

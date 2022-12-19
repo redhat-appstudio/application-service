@@ -19,6 +19,7 @@ package controllers
 import (
 	"context"
 	"fmt"
+	"os"
 	"reflect"
 	"time"
 
@@ -40,7 +41,8 @@ import (
 	"sigs.k8s.io/yaml"
 
 	"github.com/devfile/api/v2/pkg/attributes"
-	data "github.com/devfile/library/pkg/devfile/parser/data"
+	devfileParser "github.com/devfile/library/v2/pkg/devfile/parser"
+	data "github.com/devfile/library/v2/pkg/devfile/parser/data"
 	"github.com/go-logr/logr"
 	gh "github.com/google/go-github/v41/github"
 	logicalcluster "github.com/kcp-dev/logicalcluster/v2"
@@ -187,6 +189,9 @@ func (r *ComponentReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 		source := component.Spec.Source
 
 		var compDevfileData data.DevfileData
+		var devfileLocation string
+		var devfileBytes []byte
+
 		if source.GitSource != nil && source.GitSource.URL != "" {
 			context := source.GitSource.Context
 			// If a Git secret was passed in, retrieve it for use in our Git operations
@@ -208,7 +213,6 @@ func (r *ComponentReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 				gitToken = string(gitSecret.Data["password"])
 			}
 
-			var devfileBytes []byte
 			var gitURL string
 			if source.GitSource.DevfileURL == "" && source.GitSource.DockerfileURL == "" {
 				if gitToken == "" {
@@ -219,12 +223,14 @@ func (r *ComponentReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 						return ctrl.Result{}, err
 					}
 
-					devfileBytes, _, err = devfile.FindAndDownloadDevfile(gitURL)
+					devfileBytes, devfileLocation, err = devfile.FindAndDownloadDevfile(gitURL)
 					if err != nil {
 						log.Error(err, fmt.Sprintf("Unable to read the devfile from dir %s %v", gitURL, req.NamespacedName))
 						r.SetCreateConditionAndUpdateCR(ctx, req, &component, err)
 						return ctrl.Result{}, err
 					}
+
+					devfileLocation = gitURL + string(os.PathSeparator) + devfileLocation
 				} else {
 					// Use SPI to retrieve the devfile from the private repository
 					devfileBytes, err = spi.DownloadDevfileUsingSPI(r.SPIClient, ctx, component.Namespace, source.GitSource.URL, "main", context)
@@ -236,6 +242,7 @@ func (r *ComponentReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 				}
 
 			} else if source.GitSource.DevfileURL != "" {
+				devfileLocation = source.GitSource.DevfileURL
 				devfileBytes, err = util.CurlEndpoint(source.GitSource.DevfileURL)
 				if err != nil {
 					log.Error(err, fmt.Sprintf("Unable to GET %s, exiting reconcile loop %v", source.GitSource.DevfileURL, req.NamespacedName))
@@ -244,7 +251,7 @@ func (r *ComponentReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 					return ctrl.Result{}, err
 				}
 			} else if source.GitSource.DockerfileURL != "" {
-				devfileData, err := devfile.CreateDevfileForDockerfileBuild(source.GitSource.DockerfileURL, context)
+				devfileData, err := devfile.CreateDevfileForDockerfileBuild(source.GitSource.DockerfileURL, context, component.Name, component.Spec.Application, component.Namespace)
 				if err != nil {
 					log.Error(err, fmt.Sprintf("Unable to create devfile for dockerfile build %v", req.NamespacedName))
 					r.SetCreateConditionAndUpdateCR(ctx, req, &component, err)
@@ -253,12 +260,39 @@ func (r *ComponentReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 
 				devfileBytes, err = yaml.Marshal(devfileData)
 				if err != nil {
-					log.Error(err, fmt.Sprintf("Unable to marshall devfile, exiting reconcile loop %v", req.NamespacedName))
+					log.Error(err, fmt.Sprintf("Unable to marshal devfile, exiting reconcile loop %v", req.NamespacedName))
 					r.SetCreateConditionAndUpdateCR(ctx, req, &component, err)
 					return ctrl.Result{}, nil
 				}
 			}
+		} else {
+			// An image component was specified
+			// Generate a stub devfile for the component
+			devfileData, err := devfile.ConvertImageComponentToDevfile(component)
+			if err != nil {
+				log.Error(err, fmt.Sprintf("Unable to convert the Image Component to a devfile %v", req.NamespacedName))
+				r.SetCreateConditionAndUpdateCR(ctx, req, &component, err)
+				return ctrl.Result{}, err
+			}
+			component.Status.ContainerImage = component.Spec.ContainerImage
 
+			devfileBytes, err = yaml.Marshal(devfileData)
+			if err != nil {
+				log.Error(err, fmt.Sprintf("Unable to marshal devfile, exiting reconcile loop %v", req.NamespacedName))
+				r.SetCreateConditionAndUpdateCR(ctx, req, &component, err)
+				return ctrl.Result{}, nil
+			}
+		}
+
+		if devfileLocation != "" {
+			// Parse the Component Devfile
+			compDevfileData, err = devfile.ParseDevfile(devfileLocation)
+			if err != nil {
+				log.Error(err, fmt.Sprintf("Unable to parse the devfile from Component devfile location, exiting reconcile loop %v", req.NamespacedName))
+				r.SetCreateConditionAndUpdateCR(ctx, req, &component, err)
+				return ctrl.Result{}, err
+			}
+		} else {
 			// Parse the Component Devfile
 			compDevfileData, err = devfile.ParseDevfileModel(string(devfileBytes))
 			if err != nil {
@@ -266,16 +300,6 @@ func (r *ComponentReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 				r.SetCreateConditionAndUpdateCR(ctx, req, &component, err)
 				return ctrl.Result{}, err
 			}
-		} else {
-			// An image component was specified
-			// Generate a stub devfile for the component
-			compDevfileData, err = devfile.ConvertImageComponentToDevfile(component)
-			if err != nil {
-				log.Error(err, fmt.Sprintf("Unable to convert the Image Component to a devfile %v", req.NamespacedName))
-				r.SetCreateConditionAndUpdateCR(ctx, req, &component, err)
-				return ctrl.Result{}, err
-			}
-			component.Status.ContainerImage = component.Spec.ContainerImage
 		}
 
 		err = r.updateComponentDevfileModel(req, compDevfileData, component)
@@ -340,7 +364,7 @@ func (r *ComponentReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 
 			// Generate and push the gitops resources
 			if !component.Spec.SkipGitOpsResourceGeneration {
-				if err := r.generateGitops(ctx, req, &component); err != nil {
+				if err := r.generateGitops(ctx, req, &component, compDevfileData); err != nil {
 					errMsg := fmt.Sprintf("Unable to generate gitops resources for component %v", req.NamespacedName)
 					log.Error(err, errMsg)
 					r.SetGitOpsGeneratedConditionAndUpdateCR(ctx, &component, fmt.Errorf("%v: %v", errMsg, err))
@@ -398,7 +422,7 @@ func (r *ComponentReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 			// Generate and push the gitops resources, if necessary.
 			component.Status.ContainerImage = component.Spec.ContainerImage
 			if !component.Spec.SkipGitOpsResourceGeneration {
-				if err := r.generateGitops(ctx, req, &component); err != nil {
+				if err := r.generateGitops(ctx, req, &component, hasCompDevfileData); err != nil {
 					errMsg := fmt.Sprintf("Unable to generate gitops resources for component %v", req.NamespacedName)
 					log.Error(err, errMsg)
 					r.SetGitOpsGeneratedConditionAndUpdateCR(ctx, &component, fmt.Errorf("%v: %v", errMsg, err))
@@ -423,7 +447,7 @@ func (r *ComponentReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 
 // generateGitops retrieves the necessary information about a Component's gitops repository (URL, branch, context)
 // and attempts to use the GitOps package to generate gitops resources based on that component
-func (r *ComponentReconciler) generateGitops(ctx context.Context, req ctrl.Request, component *appstudiov1alpha1.Component) error {
+func (r *ComponentReconciler) generateGitops(ctx context.Context, req ctrl.Request, component *appstudiov1alpha1.Component, compDevfileData data.DevfileData) error {
 	log := r.Log.WithValues("Component", req.NamespacedName).WithValues("clusterName", req.ClusterName)
 
 	gitOpsURL, gitOpsBranch, gitOpsContext, err := util.ProcessGitOpsStatus(component.Status.GitOps, r.GitToken)
@@ -438,11 +462,40 @@ func (r *ComponentReconciler) generateGitops(ctx context.Context, req ctrl.Reque
 		return fmt.Errorf("unable to create temp directory for GitOps resources due to error: %v", err)
 	}
 
+	deployAssociatedComponents, err := devfileParser.GetDeployComponents(compDevfileData)
+	if err != nil {
+		log.Error(err, "unable to get deploy components")
+		return err
+	}
+
+	kubernetesResources, err := devfile.GetResourceFromDevfile(log, compDevfileData, deployAssociatedComponents, component.Name)
+	if err != nil {
+		log.Error(err, "unable to get kubernetes resources from the devfile outerloop components")
+		return err
+	}
+
+	log.Info(fmt.Sprintf(">>> len of deploy %v", len(kubernetesResources.Deployments)))
+	log.Info(fmt.Sprintf(">>> len of svc %v", len(kubernetesResources.Services)))
+	log.Info(fmt.Sprintf(">>> len of routes %v", len(kubernetesResources.Routes)))
+	log.Info(fmt.Sprintf(">>> len of ingress %v", len(kubernetesResources.Ingresses)))
+	log.Info(fmt.Sprintf(">>> len of others %v", len(kubernetesResources.Others)))
+
+	log.Info(fmt.Sprintf(">>> route name & port %v, %v", kubernetesResources.Routes[0].Name, kubernetesResources.Routes[0].Spec.Port.TargetPort))
+
+	// Parse the Component Devfile Outerloop resources
+	// compDevfileData.
+
 	// Generate and push the gitops resources
 	gitopsConfig := prepare.PrepareGitopsConfig(ctx, r.Client, *component)
 	mappedGitOpsComponent := util.GetMappedGitOpsComponent(*component)
-	//Gitops functions return sanitized error messages
-	err = r.Generator.CloneGenerateAndPush(tempDir, gitOpsURL, mappedGitOpsComponent, r.AppFS, gitOpsBranch, gitOpsContext, false)
+	if !reflect.DeepEqual(kubernetesResources, devfileParser.KubernetesResources{}) {
+		mappedGitOpsComponent.KubernetesResources.Deployments = append(mappedGitOpsComponent.KubernetesResources.Deployments, kubernetesResources.Deployments...)
+		mappedGitOpsComponent.KubernetesResources.Services = append(mappedGitOpsComponent.KubernetesResources.Services, kubernetesResources.Services...)
+		mappedGitOpsComponent.KubernetesResources.Routes = append(mappedGitOpsComponent.KubernetesResources.Routes, kubernetesResources.Routes...)
+		mappedGitOpsComponent.KubernetesResources.Ingresses = append(mappedGitOpsComponent.KubernetesResources.Ingresses, kubernetesResources.Ingresses...)
+		mappedGitOpsComponent.KubernetesResources.Others = append(mappedGitOpsComponent.KubernetesResources.Others, kubernetesResources.Others...)
+	}
+	err = gitopsgen.CloneGenerateAndPush(log, tempDir, gitOpsURL, mappedGitOpsComponent, r.AppFS, gitOpsBranch, gitOpsContext, false)
 	if err != nil {
 		log.Error(err, "unable to generate gitops resources due to error")
 		return err

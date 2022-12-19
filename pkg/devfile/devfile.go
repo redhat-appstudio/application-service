@@ -16,18 +16,31 @@
 package devfile
 
 import (
+	"fmt"
+
 	"github.com/devfile/api/v2/pkg/apis/workspaces/v1alpha2"
 	"github.com/devfile/api/v2/pkg/attributes"
 	"github.com/devfile/api/v2/pkg/devfile"
-	devfilePkg "github.com/devfile/library/pkg/devfile"
-	parser "github.com/devfile/library/pkg/devfile/parser"
-	data "github.com/devfile/library/pkg/devfile/parser/data"
-	"github.com/devfile/library/pkg/devfile/parser/data/v2/common"
+	devfilePkg "github.com/devfile/library/v2/pkg/devfile"
+	"github.com/devfile/library/v2/pkg/devfile/generator"
+	parser "github.com/devfile/library/v2/pkg/devfile/parser"
+	data "github.com/devfile/library/v2/pkg/devfile/parser/data"
+	"github.com/devfile/library/v2/pkg/devfile/parser/data/v2/common"
 
 	appstudiov1alpha1 "github.com/redhat-appstudio/application-api/api/v1alpha1"
 	"github.com/redhat-appstudio/application-service/pkg/util"
 
 	"github.com/go-logr/logr"
+
+	routev1 "github.com/openshift/api/route/v1"
+	appsv1 "k8s.io/api/apps/v1"
+	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/resource"
+	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+
+	"k8s.io/apimachinery/pkg/util/intstr"
+	"k8s.io/klog"
+	"sigs.k8s.io/yaml"
 )
 
 const (
@@ -48,12 +61,333 @@ const (
 	DevfileStageRegistryEndpoint = "https://registry.stage.devfile.io"
 )
 
+func GetResourceFromDevfile(log logr.Logger, devfileData data.DevfileData, deployAssociatedComponents map[string]string, name string) (parser.KubernetesResources, error) {
+	kubernetesComponentFilter := common.DevfileOptions{
+		ComponentOptions: common.ComponentOptions{
+			ComponentType: v1alpha2.KubernetesComponentType,
+		},
+	}
+	kubernetesComponents, err := devfileData.GetComponents(kubernetesComponentFilter)
+	if err != nil {
+		errMsg := fmt.Sprintf("Failed to get the kubernetes components from devfile: %v", err)
+		klog.Error(errMsg)
+		return parser.KubernetesResources{}, err
+	}
+
+	log.Info(fmt.Sprintf(">>> no of kube comp %v", len(kubernetesComponents)))
+
+	var appendedResources parser.KubernetesResources
+	// var deployment *appsv1.Deployment
+	// var service *corev1.Service
+	// var route *routev1.Route
+
+	for _, component := range kubernetesComponents {
+		log.Info(fmt.Sprintf(">>> comp name %v", component.Name))
+		if _, ok := deployAssociatedComponents[component.Name]; ok && component.Kubernetes != nil {
+			log.Info(fmt.Sprintf(">>> comp name %v MATCHED", component.Name))
+			if component.Kubernetes.Inlined != "" {
+				log.Info(fmt.Sprintf(">>> comp name %v INLINE PRESENT", component.Name))
+				src := parser.YamlSrc{
+					Data: []byte(component.Kubernetes.Inlined),
+				}
+				values, err := parser.ReadKubernetesYaml(src, nil)
+				if err != nil {
+					errMsg := fmt.Sprintf("Failed to read the Kubernetes yaml from devfile: %v", err)
+					klog.Error(errMsg)
+					return parser.KubernetesResources{}, err
+				}
+
+				resources, err := parser.ParseKubernetesYaml(values)
+				if err != nil {
+					errMsg := fmt.Sprintf("Failed to parse the Kubernetes yaml data from devfile: %v", err)
+					klog.Error(errMsg)
+					return parser.KubernetesResources{}, err
+				}
+
+				log.Info(fmt.Sprintf(">>> len of resources deploy %v", len(resources.Deployments)))
+				log.Info(fmt.Sprintf(">>> len of resources svc %v", len(resources.Services)))
+				log.Info(fmt.Sprintf(">>> len of resources routes %v", len(resources.Routes)))
+				log.Info(fmt.Sprintf(">>> len of resources ingress %v", len(resources.Ingresses)))
+				log.Info(fmt.Sprintf(">>> len of resources others %v", len(resources.Others)))
+
+				var endpointRoutes []routev1.Route
+				for _, endpoint := range component.Kubernetes.Endpoints {
+					if endpoint.Exposure != v1alpha2.NoneEndpointExposure && endpoint.Exposure != v1alpha2.InternalEndpointExposure {
+						var isSecure bool
+						if endpoint.Secure != nil {
+							isSecure = *endpoint.Secure
+						}
+
+						endpointRoutes = append(endpointRoutes, GetRouteFromEndpoint(endpoint.Name, name, fmt.Sprintf("%d", endpoint.TargetPort), endpoint.Path, isSecure, endpoint.Annotations))
+					}
+				}
+				resources.Routes = append(endpointRoutes, resources.Routes...) // attempt to always merge the devfile endpoints to the list first as it has priority
+
+				// update for port
+				currentPort := int(component.Attributes.GetNumber("deployment/container-port", &err))
+				if err != nil {
+					if _, ok := err.(*attributes.KeyNotFoundError); !ok {
+						return parser.KubernetesResources{}, err
+					}
+				}
+				log.Info(fmt.Sprintf(">>> MJF currentPort %v", currentPort))
+
+				// update for ENV
+				currentENV := []corev1.EnvVar{}
+				err = component.Attributes.GetInto("deployment/containerENV", &currentENV)
+				if err != nil {
+					if _, ok := err.(*attributes.KeyNotFoundError); !ok {
+						return parser.KubernetesResources{}, err
+					}
+				}
+
+				if len(resources.Deployments) > 0 {
+					// update for replica
+					currentReplica := int32(component.Attributes.GetNumber("deployment/replicas", &err))
+					if err != nil {
+						if _, ok := err.(*attributes.KeyNotFoundError); !ok {
+							return parser.KubernetesResources{}, err
+						}
+					}
+					log.Info(fmt.Sprintf(">>> MJF currentReplica %v", currentReplica))
+					resources.Deployments[0].Spec.Replicas = &currentReplica
+
+					if len(resources.Deployments[0].Spec.Template.Spec.Containers) > 0 {
+						resources.Deployments[0].Spec.Template.Spec.Containers[0].Ports = append(resources.Deployments[0].Spec.Template.Spec.Containers[0].Ports, corev1.ContainerPort{ContainerPort: int32(currentPort)})
+
+						if resources.Deployments[0].Spec.Template.Spec.Containers[0].ReadinessProbe != nil && resources.Deployments[0].Spec.Template.Spec.Containers[0].ReadinessProbe.ProbeHandler.TCPSocket != nil {
+							resources.Deployments[0].Spec.Template.Spec.Containers[0].ReadinessProbe.ProbeHandler.TCPSocket.Port.IntVal = int32(currentPort)
+						}
+
+						if resources.Deployments[0].Spec.Template.Spec.Containers[0].LivenessProbe != nil && resources.Deployments[0].Spec.Template.Spec.Containers[0].LivenessProbe.ProbeHandler.HTTPGet != nil {
+							resources.Deployments[0].Spec.Template.Spec.Containers[0].LivenessProbe.ProbeHandler.HTTPGet.Port.IntVal = int32(currentPort)
+						}
+
+						for _, devfileEnv := range currentENV {
+							isPresent := false
+							for i, containerEnv := range resources.Deployments[0].Spec.Template.Spec.Containers[0].Env {
+								if containerEnv.Name == devfileEnv.Name {
+									isPresent = true
+									resources.Deployments[0].Spec.Template.Spec.Containers[0].Env[i].Value = devfileEnv.Value
+								}
+							}
+
+							if !isPresent {
+								resources.Deployments[0].Spec.Template.Spec.Containers[0].Env = append(resources.Deployments[0].Spec.Template.Spec.Containers[0].Env, devfileEnv)
+							}
+						}
+
+						// Update for limits
+						cpuLimit := component.Attributes.GetString("deployment/cpuLimit", &err)
+						if err != nil {
+							if _, ok := err.(*attributes.KeyNotFoundError); !ok {
+								return parser.KubernetesResources{}, err
+							}
+						}
+
+						memoryLimit := component.Attributes.GetString("deployment/memoryLimit", &err)
+						if err != nil {
+							if _, ok := err.(*attributes.KeyNotFoundError); !ok {
+								return parser.KubernetesResources{}, err
+							}
+						}
+
+						storageLimit := component.Attributes.GetString("deployment/storageLimit", &err)
+						if err != nil {
+							if _, ok := err.(*attributes.KeyNotFoundError); !ok {
+								return parser.KubernetesResources{}, err
+							}
+						}
+
+						containerLimits := resources.Deployments[0].Spec.Template.Spec.Containers[0].Resources.Limits
+						if len(containerLimits) == 0 {
+							containerLimits = make(corev1.ResourceList)
+						}
+
+						if cpuLimit != "" {
+							cpuLimitQuantity, err := resource.ParseQuantity(cpuLimit)
+							if err != nil {
+								return parser.KubernetesResources{}, err
+							}
+							containerLimits[corev1.ResourceCPU] = cpuLimitQuantity
+						}
+
+						if memoryLimit != "" {
+							memoryLimitQuantity, err := resource.ParseQuantity(memoryLimit)
+							if err != nil {
+								return parser.KubernetesResources{}, err
+							}
+							containerLimits[corev1.ResourceMemory] = memoryLimitQuantity
+						}
+
+						if storageLimit != "" {
+							storageLimitQuantity, err := resource.ParseQuantity(storageLimit)
+							if err != nil {
+								return parser.KubernetesResources{}, err
+							}
+							containerLimits[corev1.ResourceStorage] = storageLimitQuantity
+						}
+
+						// Update for requests
+						cpuRequest := component.Attributes.GetString("deployment/cpuRequest", &err)
+						if err != nil {
+							if _, ok := err.(*attributes.KeyNotFoundError); !ok {
+								return parser.KubernetesResources{}, err
+							}
+						}
+
+						memoryRequest := component.Attributes.GetString("deployment/memoryRequest", &err)
+						if err != nil {
+							if _, ok := err.(*attributes.KeyNotFoundError); !ok {
+								return parser.KubernetesResources{}, err
+							}
+						}
+
+						storageRequest := component.Attributes.GetString("deployment/storageRequest", &err)
+						if err != nil {
+							if _, ok := err.(*attributes.KeyNotFoundError); !ok {
+								return parser.KubernetesResources{}, err
+							}
+						}
+
+						containerRequests := resources.Deployments[0].Spec.Template.Spec.Containers[0].Resources.Requests
+						if len(containerRequests) == 0 {
+							containerRequests = make(corev1.ResourceList)
+						}
+
+						if cpuRequest != "" {
+							cpuRequestQuantity, err := resource.ParseQuantity(cpuRequest)
+							if err != nil {
+								return parser.KubernetesResources{}, err
+							}
+							containerRequests[corev1.ResourceCPU] = cpuRequestQuantity
+						}
+
+						if memoryRequest != "" {
+							memoryRequestQuantity, err := resource.ParseQuantity(memoryRequest)
+							if err != nil {
+								return parser.KubernetesResources{}, err
+							}
+							containerRequests[corev1.ResourceMemory] = memoryRequestQuantity
+						}
+
+						if storageRequest != "" {
+							storageRequestQuantity, err := resource.ParseQuantity(storageRequest)
+							if err != nil {
+								return parser.KubernetesResources{}, err
+							}
+							containerRequests[corev1.ResourceStorage] = storageRequestQuantity
+						}
+
+					}
+
+				}
+				if len(resources.Services) > 0 {
+					// if len(resources.Services[0].Spec.Ports) > 0 {
+					// 	resources.Services[0].Spec.Ports[0].Port = int32(currentPort)
+					// 	resources.Services[0].Spec.Ports[0].TargetPort = intstr.FromInt(currentPort)
+					// } else {
+					resources.Services[0].Spec.Ports = append(resources.Services[0].Spec.Ports, corev1.ServicePort{
+						Port:       int32(currentPort),
+						TargetPort: intstr.FromInt(currentPort),
+					})
+					// }
+				}
+				if len(resources.Routes) > 0 {
+					log.Info(fmt.Sprintf(">>> MJF route name %v", resources.Routes[0].Name))
+					log.Info(fmt.Sprintf(">>> MJF intstr.FromInt(currentPort) %v", intstr.FromInt(currentPort)))
+					resources.Routes[0].Spec.Port.TargetPort = intstr.FromInt(currentPort)
+					log.Info(fmt.Sprintf(">>> MJF resources.Routes[0].Spec.Port.TargetPort %v", resources.Routes[0].Spec.Port.TargetPort))
+
+					// Update for route
+					route := component.Attributes.GetString("deployment/route", &err)
+					if err != nil {
+						if _, ok := err.(*attributes.KeyNotFoundError); !ok {
+							return parser.KubernetesResources{}, err
+						}
+					}
+
+					if route != "" {
+						resources.Routes[0].Spec.Host = route
+					}
+				}
+
+				appendedResources.Deployments = append(appendedResources.Deployments, resources.Deployments...)
+				appendedResources.Services = append(appendedResources.Services, resources.Services...)
+				appendedResources.Routes = append(appendedResources.Routes, resources.Routes...)
+				appendedResources.Ingresses = append(appendedResources.Ingresses, resources.Ingresses...)
+				appendedResources.Others = append(appendedResources.Others, resources.Others...)
+			} else {
+				return parser.KubernetesResources{}, fmt.Errorf("kubernetes component inline was empty")
+			}
+		}
+	}
+
+	// if len(appendedResources.Deployments) > 0 {
+	// 	deployment = &appendedResources.Deployments[0]
+	// 	// appendedResources.Deployments[0].Spec.
+
+	// } else {
+	// 	err = fmt.Errorf("no deployment definition was found in the devfile sample")
+	// }
+
+	// if len(appendedResources.Services) > 0 {
+	// 	service = &appendedResources.Services[0]
+	// }
+
+	// if len(appendedResources.Routes) > 0 {
+	// 	route = &appendedResources.Routes[0]
+	// }
+
+	return appendedResources, err
+}
+
+// GetRouteFromEndpoint gets the route resource
+func GetRouteFromEndpoint(name, serviceName string, port, path string, secure bool, annotations map[string]string) routev1.Route {
+
+	if path == "" {
+		path = "/"
+	}
+
+	routeParams := generator.RouteParams{
+		ObjectMeta: generator.GetObjectMeta(name, "", nil, nil),
+		TypeMeta:   generator.GetTypeMeta("Route", "route.openshift.io/v1"),
+		RouteSpecParams: generator.RouteSpecParams{
+			ServiceName: serviceName,
+			PortNumber:  intstr.FromString(port),
+			Path:        path,
+			Secure:      secure,
+		},
+	}
+
+	return *generator.GetRoute(v1alpha2.Endpoint{Annotations: annotations}, routeParams)
+}
+
+// ParseDevfileModel calls the devfile library's parse and returns the devfile data
+func ParseDevfile(devfileLocation string) (data.DevfileData, error) {
+	// Retrieve the devfile from the body of the resource
+	// devfileBytes := []byte(devfileModel)
+	httpTimeout := 10
+	convert := true
+	parserArgs := parser.ParserArgs{
+		URL:                           devfileLocation,
+		HTTPTimeout:                   &httpTimeout,
+		ConvertKubernetesContentInUri: &convert,
+	}
+	devfileObj, _, err := devfilePkg.ParseDevfileAndValidate(parserArgs)
+	return devfileObj.Data, err
+}
+
 // ParseDevfileModel calls the devfile library's parse and returns the devfile data
 func ParseDevfileModel(devfileModel string) (data.DevfileData, error) {
 	// Retrieve the devfile from the body of the resource
 	devfileBytes := []byte(devfileModel)
+	httpTimeout := 10
+	convert := true
 	parserArgs := parser.ParserArgs{
-		Data: devfileBytes,
+		Data:                          devfileBytes,
+		HTTPTimeout:                   &httpTimeout,
+		ConvertKubernetesContentInUri: &convert,
 	}
 	devfileObj, _, err := devfilePkg.ParseDevfileAndValidate(parserArgs)
 	return devfileObj.Data, err
@@ -111,16 +445,21 @@ func ConvertImageComponentToDevfile(comp appstudiov1alpha1.Component) (data.Devf
 		Name: comp.Spec.ComponentName,
 	})
 
+	deploymentTemplate := generateDeploymentTemplate(comp.Name, comp.Spec.Application, comp.Namespace, comp.Spec.ContainerImage)
+	deploymentTemplateBytes, err := yaml.Marshal(deploymentTemplate)
+	if err != nil {
+		return nil, err
+	}
+
 	// Generate a stub container component for the devfile
-	// ToDo: devfile library should provide a kubernetes component writer to allow writing the inlined deployment spec
 	components := []v1alpha2.Component{
 		{
-			Name: "kubernetes",
+			Name: "kubernetes-deploy",
 			ComponentUnion: v1alpha2.ComponentUnion{
 				Kubernetes: &v1alpha2.KubernetesComponent{
 					K8sLikeComponent: v1alpha2.K8sLikeComponent{
 						K8sLikeComponentLocation: v1alpha2.K8sLikeComponentLocation{
-							Inlined: "placeholder",
+							Inlined: string(deploymentTemplateBytes),
 						},
 					},
 				},
@@ -136,7 +475,8 @@ func ConvertImageComponentToDevfile(comp appstudiov1alpha1.Component) (data.Devf
 	return devfileData, nil
 }
 
-func CreateDevfileForDockerfileBuild(uri, context string) (data.DevfileData, error) {
+// CreateDevfileForDockerfileBuild creates a devfile with the dockerfile uri and build context
+func CreateDevfileForDockerfileBuild(dockerfileUri, buildContext, name, application, namespace string) (data.DevfileData, error) {
 	devfileVersion := string(data.APISchemaVersion220)
 	devfileData, err := data.NewDevfileData(devfileVersion)
 	if err != nil {
@@ -150,6 +490,12 @@ func CreateDevfileForDockerfileBuild(uri, context string) (data.DevfileData, err
 		Description: "Basic Devfile for a Dockerfile Component",
 	})
 
+	deploymentTemplate := generateDeploymentTemplate(name, application, namespace, "")
+	deploymentTemplateBytes, err := yaml.Marshal(deploymentTemplate)
+	if err != nil {
+		return nil, err
+	}
+
 	components := []v1alpha2.Component{
 		{
 			Name: "dockerfile-build",
@@ -159,10 +505,10 @@ func CreateDevfileForDockerfileBuild(uri, context string) (data.DevfileData, err
 						ImageUnion: v1alpha2.ImageUnion{
 							Dockerfile: &v1alpha2.DockerfileImage{
 								DockerfileSrc: v1alpha2.DockerfileSrc{
-									Uri: uri,
+									Uri: dockerfileUri,
 								},
 								Dockerfile: v1alpha2.Dockerfile{
-									BuildContext: context,
+									BuildContext: buildContext,
 								},
 							},
 						},
@@ -170,14 +516,13 @@ func CreateDevfileForDockerfileBuild(uri, context string) (data.DevfileData, err
 				},
 			},
 		},
-		// ToDo: devfile library should provide a kubernetes component writer to allow writing the inlined deployment spec
 		{
-			Name: "kubernetes",
+			Name: "kubernetes-deploy",
 			ComponentUnion: v1alpha2.ComponentUnion{
 				Kubernetes: &v1alpha2.KubernetesComponent{
 					K8sLikeComponent: v1alpha2.K8sLikeComponent{
 						K8sLikeComponentLocation: v1alpha2.K8sLikeComponentLocation{
-							Inlined: "placeholder",
+							Inlined: string(deploymentTemplateBytes),
 						},
 					},
 				},
@@ -205,6 +550,74 @@ func CreateDevfileForDockerfileBuild(uri, context string) (data.DevfileData, err
 	}
 
 	return devfileData, nil
+}
+
+func generateDeploymentTemplate(name, application, namespace, image string) appsv1.Deployment {
+
+	k8sLabels := generateK8sLabels(name, application)
+	matchLabels := getMatchLabel(name)
+
+	containerImage := "image"
+	if image != "" {
+		containerImage = image
+	}
+
+	deployment := appsv1.Deployment{
+		TypeMeta: v1.TypeMeta{
+			Kind:       "Deployment",
+			APIVersion: "apps/v1",
+		},
+		ObjectMeta: v1.ObjectMeta{
+			Name:      name,
+			Namespace: namespace,
+			Labels:    k8sLabels,
+		},
+		Spec: appsv1.DeploymentSpec{
+			Selector: &v1.LabelSelector{
+				MatchLabels: matchLabels,
+			},
+			Template: corev1.PodTemplateSpec{
+				ObjectMeta: v1.ObjectMeta{
+					Labels: matchLabels,
+				},
+				Spec: corev1.PodSpec{
+					Containers: []corev1.Container{
+						{
+							Name:            "container-image",
+							Image:           containerImage,
+							ImagePullPolicy: corev1.PullAlways,
+						},
+					},
+				},
+			},
+		},
+	}
+
+	return deployment
+
+}
+
+func generateK8sLabels(name, application string) map[string]string {
+	return map[string]string{
+		"app.kubernetes.io/name":       name,
+		"app.kubernetes.io/instance":   name,
+		"app.kubernetes.io/part-of":    application,
+		"app.kubernetes.io/managed-by": "kustomize",
+		"app.kubernetes.io/created-by": "application-service",
+	}
+}
+
+// GetMatchLabel returns the label selector that will be used to tie deployments, services, and pods together
+// For cleanliness, using just one unique label from the generateK8sLabels function
+func getMatchLabel(name string) map[string]string {
+	return map[string]string{
+		"app.kubernetes.io/instance": name,
+	}
+}
+
+func generateServiceTemplate() *corev1.Service {
+
+	return &corev1.Service{}
 }
 
 // FindAndDownloadDevfile downloads devfile from the various possible devfile locations in dir and returns the contents and its context

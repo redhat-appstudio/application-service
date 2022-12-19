@@ -24,8 +24,8 @@ import (
 
 	"github.com/devfile/api/v2/pkg/apis/workspaces/v1alpha2"
 	"github.com/devfile/api/v2/pkg/attributes"
-	data "github.com/devfile/library/pkg/devfile/parser/data"
-	"github.com/devfile/library/pkg/devfile/parser/data/v2/common"
+	data "github.com/devfile/library/v2/pkg/devfile/parser/data"
+	"github.com/devfile/library/v2/pkg/devfile/parser/data/v2/common"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	appstudiov1alpha1 "github.com/redhat-appstudio/application-api/api/v1alpha1"
@@ -1716,7 +1716,7 @@ func verifyHASComponentUpdates(devfile data.DevfileData, checklist updateCheckli
 
 		// Check the route
 		if checklist.route != "" {
-			route := componentAttributes.Get(routeKey, &err)
+			route := componentAttributes.Get(RouteKey, &err)
 			if goPkgTest == nil {
 				Expect(err).Should(Not(HaveOccurred()))
 				Expect(route).Should(Equal(checklist.route))
@@ -1729,7 +1729,7 @@ func verifyHASComponentUpdates(devfile data.DevfileData, checklist updateCheckli
 
 		// Check the replica
 		if checklist.replica != 0 {
-			replicas := componentAttributes.Get(replicaKey, &err)
+			replicas := componentAttributes.Get(ReplicaKey, &err)
 			if goPkgTest == nil {
 				Expect(err).Should(Not(HaveOccurred()))
 				Expect(replicas).Should(Equal(float64(checklist.replica)))
@@ -1743,7 +1743,7 @@ func verifyHASComponentUpdates(devfile data.DevfileData, checklist updateCheckli
 		// Check the storage limit
 		if _, ok := limits[corev1.ResourceStorage]; ok {
 			storageLimitChecklist := limits[corev1.ResourceStorage]
-			storageLimit := componentAttributes.Get(storageLimitKey, &err)
+			storageLimit := componentAttributes.Get(StorageLimitKey, &err)
 			if goPkgTest == nil {
 				Expect(err).Should(Not(HaveOccurred()))
 				Expect(storageLimit).Should(Equal(storageLimitChecklist.String()))
@@ -1757,7 +1757,7 @@ func verifyHASComponentUpdates(devfile data.DevfileData, checklist updateCheckli
 		// Check the storage request
 		if _, ok := requests[corev1.ResourceStorage]; ok {
 			storageRequestChecklist := requests[corev1.ResourceStorage]
-			storageRequest := componentAttributes.Get(storageRequestKey, &err)
+			storageRequest := componentAttributes.Get(StorageRequestKey, &err)
 			if goPkgTest == nil {
 				Expect(err).Should(Not(HaveOccurred()))
 				Expect(storageRequest).Should(Equal(storageRequestChecklist.String()))
@@ -1771,7 +1771,7 @@ func verifyHASComponentUpdates(devfile data.DevfileData, checklist updateCheckli
 		// Check the memory limit
 		if _, ok := limits[corev1.ResourceMemory]; ok {
 			memoryLimitChecklist := limits[corev1.ResourceMemory]
-			memoryLimit := componentAttributes.Get(memoryLimitKey, &err)
+			memoryLimit := componentAttributes.Get(MemoryLimitKey, &err)
 			if goPkgTest == nil {
 				Expect(err).Should(Not(HaveOccurred()))
 				Expect(memoryLimit.(string)).Should(Equal(memoryLimitChecklist.String()))
@@ -1785,7 +1785,7 @@ func verifyHASComponentUpdates(devfile data.DevfileData, checklist updateCheckli
 		// Check the memory request
 		if _, ok := requests[corev1.ResourceMemory]; ok {
 			memoryRequestChecklist := requests[corev1.ResourceMemory]
-			memoryRequest := componentAttributes.Get(memoryRequestKey, &err)
+			memoryRequest := componentAttributes.Get(MemoryRequestKey, &err)
 			if goPkgTest == nil {
 				Expect(err).Should(Not(HaveOccurred()))
 				Expect(memoryRequest).Should(Equal(memoryRequestChecklist.String()))
@@ -1799,7 +1799,7 @@ func verifyHASComponentUpdates(devfile data.DevfileData, checklist updateCheckli
 		// Check the cpu limit
 		if _, ok := limits[corev1.ResourceCPU]; ok {
 			cpuLimitChecklist := limits[corev1.ResourceCPU]
-			cpuLimit := componentAttributes.Get(cpuLimitKey, &err)
+			cpuLimit := componentAttributes.Get(CpuLimitKey, &err)
 			if goPkgTest == nil {
 				Expect(err).Should(Not(HaveOccurred()))
 				Expect(cpuLimit).Should(Equal(cpuLimitChecklist.String()))
@@ -1813,7 +1813,7 @@ func verifyHASComponentUpdates(devfile data.DevfileData, checklist updateCheckli
 		// Check the cpu request
 		if _, ok := requests[corev1.ResourceCPU]; ok {
 			cpuRequestChecklist := requests[corev1.ResourceCPU]
-			cpuRequest := componentAttributes.Get(cpuRequestKey, &err)
+			cpuRequest := componentAttributes.Get(CpuRequestKey, &err)
 			if goPkgTest == nil {
 				Expect(err).Should(Not(HaveOccurred()))
 				Expect(cpuRequest).Should(Equal(cpuRequestChecklist.String()))
@@ -1826,7 +1826,7 @@ func verifyHASComponentUpdates(devfile data.DevfileData, checklist updateCheckli
 
 		// Check for container port
 		if checklist.port != 0 {
-			containerPort := componentAttributes.Get(containerImagePortKey, &err)
+			containerPort := componentAttributes.Get(ContainerImagePortKey, &err)
 			if goPkgTest == nil {
 				Expect(err).Should(Not(HaveOccurred()))
 				Expect(containerPort).Should(Equal(float64(checklist.port)))
@@ -1840,7 +1840,7 @@ func verifyHASComponentUpdates(devfile data.DevfileData, checklist updateCheckli
 		for _, checklistEnv := range checklist.env {
 			isMatched := false
 			var containerENVs []corev1.EnvVar
-			err := componentAttributes.GetInto(containerENVKey, &containerENVs)
+			err := componentAttributes.GetInto(ContainerENVKey, &containerENVs)
 			for _, containerEnv := range containerENVs {
 				if containerEnv.Name == checklistEnv.Name && containerEnv.Value == checklistEnv.Value {
 					isMatched = true

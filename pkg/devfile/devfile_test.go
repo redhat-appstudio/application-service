@@ -23,9 +23,9 @@ import (
 	"github.com/devfile/api/v2/pkg/apis/workspaces/v1alpha2"
 	"github.com/devfile/api/v2/pkg/attributes"
 	"github.com/devfile/api/v2/pkg/devfile"
-	data "github.com/devfile/library/pkg/devfile/parser/data"
-	v2 "github.com/devfile/library/pkg/devfile/parser/data/v2"
-	"github.com/devfile/library/pkg/devfile/parser/data/v2/common"
+	data "github.com/devfile/library/v2/pkg/devfile/parser/data"
+	v2 "github.com/devfile/library/v2/pkg/devfile/parser/data/v2"
+	"github.com/devfile/library/v2/pkg/devfile/parser/data/v2/common"
 	"github.com/go-logr/logr"
 	appstudiov1alpha1 "github.com/redhat-appstudio/application-api/api/v1alpha1"
 	"github.com/redhat-appstudio/application-service/pkg/util"
@@ -274,7 +274,7 @@ func TestCreateDevfileForDockerfileBuild(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			gotDevfile, err := CreateDevfileForDockerfileBuild(tt.uri, tt.context)
+			gotDevfile, err := CreateDevfileForDockerfileBuild(tt.uri, tt.context, "", "", "")
 			if tt.wantErr && (err == nil) {
 				t.Error("wanted error but got nil")
 			} else if !tt.wantErr && err != nil {

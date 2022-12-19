@@ -1,7 +1,7 @@
 apiVersion: appstudio.redhat.com/v1alpha1
 kind: Application
 metadata:
-  name: application-sample
+  name: application-sample-dec6-1
 spec:
   displayName: "petclinic"
   description: "application definition for petclinic-app"
