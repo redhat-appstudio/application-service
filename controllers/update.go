@@ -22,6 +22,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/brianvoe/gofakeit/v6"
 	devfileAPIV1 "github.com/devfile/api/v2/pkg/apis/workspaces/v1alpha2"
 	"github.com/devfile/api/v2/pkg/attributes"
 	data "github.com/devfile/library/pkg/devfile/parser/data"
@@ -496,6 +497,10 @@ func (r *ComponentDetectionQueryReconciler) updateComponentStub(req ctrl.Request
 
 func getComponentName(gitSource *appstudiov1alpha1.GitSource) string {
 	repoUrl := gitSource.URL
+	// If the repository URL ends in a forward slash, remove it to avoid issues with parsing the repository name
+	if string(repoUrl[len(repoUrl)-1]) == "/" {
+		repoUrl = repoUrl[0 : len(repoUrl)-1]
+	}
 	lastElement := repoUrl[strings.LastIndex(repoUrl, "/")+1:]
 	repoName := strings.Split(lastElement, ".git")[0]
 	componentName := repoName
@@ -516,7 +521,10 @@ func sanitizeComponentName(name string) string {
 	exclusive := regexp.MustCompile(`[^a-zA-Z0-9-]`)
 	// filter out invalid characters
 	name = exclusive.ReplaceAllString(name, "")
-
+	// Fallback: A proper Component name should never be an empty string, but in case it is, generate a random name for it.
+	if name == "" {
+		name = gofakeit.Noun()
+	}
 	_, err := strconv.ParseFloat(name, 64)
 	if err != nil {
 		// convert all Uppercase chars to lowercase
