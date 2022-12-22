@@ -29,8 +29,6 @@ import (
 	appstudiov1alpha1 "github.com/redhat-appstudio/application-api/api/v1alpha1"
 	gitopsprepare "github.com/redhat-appstudio/application-service/gitops/prepare"
 	"github.com/spf13/afero"
-	corev1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -82,22 +80,6 @@ func GenerateBuild(fs afero.Fs, outputFolder string, component appstudiov1alpha1
 		return err
 	}
 	return nil
-}
-
-// Generate volumeClaimTemplate for pipeline runs that requires their own PVC during run.
-func GenerateVolumeClaimTemplate() *corev1.PersistentVolumeClaim {
-	return &corev1.PersistentVolumeClaim{
-		Spec: corev1.PersistentVolumeClaimSpec{
-			AccessModes: []corev1.PersistentVolumeAccessMode{
-				"ReadWriteOnce",
-			},
-			Resources: corev1.ResourceRequirements{
-				Requests: corev1.ResourceList{
-					"storage": resource.MustParse("1Gi"),
-				},
-			},
-		},
-	}
 }
 
 func getBuildCommonLabelsForComponent(component *appstudiov1alpha1.Component) map[string]string {
