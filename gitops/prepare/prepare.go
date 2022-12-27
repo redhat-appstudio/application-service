@@ -27,20 +27,6 @@ import (
 )
 
 const (
-	// namespace where the bundle configuration will be searched in case it is not found in the component's namespace
-	BuildBundleDefaultNamespace = "build-templates"
-	// name for a configMap that holds the URL to a build bundle
-	BuildBundleConfigMapName = "build-pipelines-defaults"
-	// data key within a configMap that holds the URL to a build bundle
-	BuildBundleConfigMapKey = "default_build_bundle"
-	HACBSBundleConfigMapKey = "hacbs_build_bundle"
-
-	// Fallback bundle that will be used in case the bundle resolution fails
-	// List of AppStudio bundle tags: https://quay.io/repository/redhat-appstudio/build-templates-bundle?tab=tags
-	AppStudioFallbackBuildBundle = "quay.io/redhat-appstudio/build-templates-bundle:9f5d549dd64aacf10e3baac90972dfd5df788324"
-	// List of HACBS bundle tags: https://quay.io/repository/redhat-appstudio/hacbs-templates-bundle?tab=tags
-	HACBSFallbackBuildBundle = "quay.io/redhat-appstudio/hacbs-templates-bundle:9f5d549dd64aacf10e3baac90972dfd5df788324"
-
 	// default secret for app studio registry
 	RegistrySecret = "redhat-appstudio-registry-pull-secret"
 	// Pipelines as Code global configuration secret name
@@ -56,8 +42,6 @@ const (
 // Holds data that needs to be queried from the cluster in order for the gitops generation function to work
 // This struct is left here so more data can be added as needed
 type GitopsConfig struct {
-	BuildBundle string
-
 	AppStudioRegistrySecretPresent bool
 
 	// Contains data from Pipelies as Code configuration k8s secret
@@ -71,42 +55,9 @@ func PrepareGitopsConfig(ctx context.Context, cli client.Client, component appst
 
 	data.AppStudioRegistrySecretPresent = resolveRegistrySecretPresence(ctx, cli, component)
 	data.IsHACBS = IsHACBS(ctx, cli, component.Namespace)
-	data.BuildBundle = ResolveBuildBundle(ctx, cli, component.Namespace, data.IsHACBS)
 	data.PipelinesAsCodeCredentials = getPipelinesAsCodeConfigurationSecretData(ctx, cli, component)
 
 	return data
-}
-
-// ResolveBuildBundle detects build bundle to use.
-// The following priority is used:
-// 1. Component's namespace, build-pipelines-defaults ConfigMap
-// 2. build-templates namespace, build-pipelines-defaults ConfigMap
-// 3. Fallback bundle
-func ResolveBuildBundle(ctx context.Context, cli client.Client, namespace string, isHACBS bool) string {
-	bundleConfigMapKey := BuildBundleConfigMapKey
-	if isHACBS {
-		bundleConfigMapKey = HACBSBundleConfigMapKey
-	}
-
-	// All errors during the loading of the ConfigMaps should be treated as non-fatal
-	configMap := corev1.ConfigMap{}
-	if err := cli.Get(ctx, types.NamespacedName{Name: BuildBundleConfigMapName, Namespace: namespace}, &configMap); err == nil {
-		if value, isPresent := configMap.Data[bundleConfigMapKey]; isPresent && value != "" {
-			return value
-		}
-	}
-	// There is no build bundle configuration in the component namespace
-	// Try global build bundle configuration
-	if err := cli.Get(ctx, types.NamespacedName{Name: BuildBundleConfigMapName, Namespace: BuildBundleDefaultNamespace}, &configMap); err == nil {
-		if value, isPresent := configMap.Data[bundleConfigMapKey]; isPresent && value != "" {
-			return value
-		}
-	}
-	// Use fallback bundle
-	if isHACBS {
-		return HACBSFallbackBuildBundle
-	}
-	return AppStudioFallbackBuildBundle
 }
 
 // Return true when integration-service APIBinding exists or hacbs configmap exists in the namespace
