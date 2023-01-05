@@ -61,7 +61,7 @@ const (
 	DevfileStageRegistryEndpoint = "https://registry.stage.devfile.io"
 )
 
-func GetResourceFromDevfile(log logr.Logger, devfileData data.DevfileData, deployAssociatedComponents map[string]string, name string) (parser.KubernetesResources, error) {
+func GetResourceFromDevfile(log logr.Logger, devfileData data.DevfileData, deployAssociatedComponents map[string]string, name, image string) (parser.KubernetesResources, error) {
 	kubernetesComponentFilter := common.DevfileOptions{
 		ComponentOptions: common.ComponentOptions{
 			ComponentType: v1alpha2.KubernetesComponentType,
@@ -74,41 +74,28 @@ func GetResourceFromDevfile(log logr.Logger, devfileData data.DevfileData, deplo
 		return parser.KubernetesResources{}, err
 	}
 
-	log.Info(fmt.Sprintf(">>> no of kube comp %v", len(kubernetesComponents)))
-
 	var appendedResources parser.KubernetesResources
-	// var deployment *appsv1.Deployment
-	// var service *corev1.Service
-	// var route *routev1.Route
 
 	for _, component := range kubernetesComponents {
-		log.Info(fmt.Sprintf(">>> comp name %v", component.Name))
 		if _, ok := deployAssociatedComponents[component.Name]; ok && component.Kubernetes != nil {
-			log.Info(fmt.Sprintf(">>> comp name %v MATCHED", component.Name))
 			if component.Kubernetes.Inlined != "" {
-				log.Info(fmt.Sprintf(">>> comp name %v INLINE PRESENT", component.Name))
+				log.Info(fmt.Sprintf("reading the kubernetes inline from component %s", component.Name))
 				src := parser.YamlSrc{
 					Data: []byte(component.Kubernetes.Inlined),
 				}
 				values, err := parser.ReadKubernetesYaml(src, nil)
 				if err != nil {
-					errMsg := fmt.Sprintf("Failed to read the Kubernetes yaml from devfile: %v", err)
+					errMsg := fmt.Sprintf("failed to read the Kubernetes yaml from devfile: %v", err)
 					klog.Error(errMsg)
 					return parser.KubernetesResources{}, err
 				}
 
 				resources, err := parser.ParseKubernetesYaml(values)
 				if err != nil {
-					errMsg := fmt.Sprintf("Failed to parse the Kubernetes yaml data from devfile: %v", err)
+					errMsg := fmt.Sprintf("failed to parse the Kubernetes yaml data from devfile: %v", err)
 					klog.Error(errMsg)
 					return parser.KubernetesResources{}, err
 				}
-
-				log.Info(fmt.Sprintf(">>> len of resources deploy %v", len(resources.Deployments)))
-				log.Info(fmt.Sprintf(">>> len of resources svc %v", len(resources.Services)))
-				log.Info(fmt.Sprintf(">>> len of resources routes %v", len(resources.Routes)))
-				log.Info(fmt.Sprintf(">>> len of resources ingress %v", len(resources.Ingresses)))
-				log.Info(fmt.Sprintf(">>> len of resources others %v", len(resources.Others)))
 
 				var endpointRoutes []routev1.Route
 				for _, endpoint := range component.Kubernetes.Endpoints {
@@ -130,7 +117,6 @@ func GetResourceFromDevfile(log logr.Logger, devfileData data.DevfileData, deplo
 						return parser.KubernetesResources{}, err
 					}
 				}
-				log.Info(fmt.Sprintf(">>> MJF currentPort %v", currentPort))
 
 				// update for ENV
 				currentENV := []corev1.EnvVar{}
@@ -149,10 +135,13 @@ func GetResourceFromDevfile(log logr.Logger, devfileData data.DevfileData, deplo
 							return parser.KubernetesResources{}, err
 						}
 					}
-					log.Info(fmt.Sprintf(">>> MJF currentReplica %v", currentReplica))
 					resources.Deployments[0].Spec.Replicas = &currentReplica
 
 					if len(resources.Deployments[0].Spec.Template.Spec.Containers) > 0 {
+						if image != "" {
+							resources.Deployments[0].Spec.Template.Spec.Containers[0].Image = image
+						}
+
 						resources.Deployments[0].Spec.Template.Spec.Containers[0].Ports = append(resources.Deployments[0].Spec.Template.Spec.Containers[0].Ports, corev1.ContainerPort{ContainerPort: int32(currentPort)})
 
 						if resources.Deployments[0].Spec.Template.Spec.Containers[0].ReadinessProbe != nil && resources.Deployments[0].Spec.Template.Spec.Containers[0].ReadinessProbe.ProbeHandler.TCPSocket != nil {
@@ -228,6 +217,8 @@ func GetResourceFromDevfile(log logr.Logger, devfileData data.DevfileData, deplo
 							containerLimits[corev1.ResourceStorage] = storageLimitQuantity
 						}
 
+						resources.Deployments[0].Spec.Template.Spec.Containers[0].Resources.Limits = containerLimits
+
 						// Update for requests
 						cpuRequest := component.Attributes.GetString("deployment/cpuRequest", &err)
 						if err != nil {
@@ -279,9 +270,10 @@ func GetResourceFromDevfile(log logr.Logger, devfileData data.DevfileData, deplo
 							containerRequests[corev1.ResourceStorage] = storageRequestQuantity
 						}
 
+						resources.Deployments[0].Spec.Template.Spec.Containers[0].Resources.Requests = containerRequests
 					}
-
 				}
+
 				if len(resources.Services) > 0 {
 					// if len(resources.Services[0].Spec.Ports) > 0 {
 					// 	resources.Services[0].Spec.Ports[0].Port = int32(currentPort)
@@ -318,26 +310,11 @@ func GetResourceFromDevfile(log logr.Logger, devfileData data.DevfileData, deplo
 				appendedResources.Ingresses = append(appendedResources.Ingresses, resources.Ingresses...)
 				appendedResources.Others = append(appendedResources.Others, resources.Others...)
 			} else {
-				return parser.KubernetesResources{}, fmt.Errorf("kubernetes component inline was empty")
+				// return parser.KubernetesResources{}, fmt.Errorf("kubernetes component inline was empty")
+				log.Info(fmt.Sprintf(">>> !!! MJF NO INLINE, WILL AUTO GEN"))
 			}
 		}
 	}
-
-	// if len(appendedResources.Deployments) > 0 {
-	// 	deployment = &appendedResources.Deployments[0]
-	// 	// appendedResources.Deployments[0].Spec.
-
-	// } else {
-	// 	err = fmt.Errorf("no deployment definition was found in the devfile sample")
-	// }
-
-	// if len(appendedResources.Services) > 0 {
-	// 	service = &appendedResources.Services[0]
-	// }
-
-	// if len(appendedResources.Routes) > 0 {
-	// 	route = &appendedResources.Routes[0]
-	// }
 
 	return appendedResources, err
 }
@@ -363,10 +340,9 @@ func GetRouteFromEndpoint(name, serviceName string, port, path string, secure bo
 	return *generator.GetRoute(v1alpha2.Endpoint{Annotations: annotations}, routeParams)
 }
 
-// ParseDevfileModel calls the devfile library's parse and returns the devfile data
+// ParseDevfile calls the devfile library's parse and returns the devfile data
 func ParseDevfile(devfileLocation string) (data.DevfileData, error) {
-	// Retrieve the devfile from the body of the resource
-	// devfileBytes := []byte(devfileModel)
+	// Retrieve the devfile from the location
 	httpTimeout := 10
 	convert := true
 	parserArgs := parser.ParserArgs{

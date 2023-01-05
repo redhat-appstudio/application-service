@@ -468,34 +468,17 @@ func (r *ComponentReconciler) generateGitops(ctx context.Context, req ctrl.Reque
 		return err
 	}
 
-	kubernetesResources, err := devfile.GetResourceFromDevfile(log, compDevfileData, deployAssociatedComponents, component.Name)
+	kubernetesResources, err := devfile.GetResourceFromDevfile(log, compDevfileData, deployAssociatedComponents, component.Name, component.Spec.ContainerImage)
 	if err != nil {
 		log.Error(err, "unable to get kubernetes resources from the devfile outerloop components")
 		return err
 	}
 
-	log.Info(fmt.Sprintf(">>> len of deploy %v", len(kubernetesResources.Deployments)))
-	log.Info(fmt.Sprintf(">>> len of svc %v", len(kubernetesResources.Services)))
-	log.Info(fmt.Sprintf(">>> len of routes %v", len(kubernetesResources.Routes)))
-	log.Info(fmt.Sprintf(">>> len of ingress %v", len(kubernetesResources.Ingresses)))
-	log.Info(fmt.Sprintf(">>> len of others %v", len(kubernetesResources.Others)))
-
-	log.Info(fmt.Sprintf(">>> route name & port %v, %v", kubernetesResources.Routes[0].Name, kubernetesResources.Routes[0].Spec.Port.TargetPort))
-
-	// Parse the Component Devfile Outerloop resources
-	// compDevfileData.
-
 	// Generate and push the gitops resources
 	gitopsConfig := prepare.PrepareGitopsConfig(ctx, r.Client, *component)
-	mappedGitOpsComponent := util.GetMappedGitOpsComponent(*component)
-	if !reflect.DeepEqual(kubernetesResources, devfileParser.KubernetesResources{}) {
-		mappedGitOpsComponent.KubernetesResources.Deployments = append(mappedGitOpsComponent.KubernetesResources.Deployments, kubernetesResources.Deployments...)
-		mappedGitOpsComponent.KubernetesResources.Services = append(mappedGitOpsComponent.KubernetesResources.Services, kubernetesResources.Services...)
-		mappedGitOpsComponent.KubernetesResources.Routes = append(mappedGitOpsComponent.KubernetesResources.Routes, kubernetesResources.Routes...)
-		mappedGitOpsComponent.KubernetesResources.Ingresses = append(mappedGitOpsComponent.KubernetesResources.Ingresses, kubernetesResources.Ingresses...)
-		mappedGitOpsComponent.KubernetesResources.Others = append(mappedGitOpsComponent.KubernetesResources.Others, kubernetesResources.Others...)
-	}
-	err = gitopsgen.CloneGenerateAndPush(log, tempDir, gitOpsURL, mappedGitOpsComponent, r.AppFS, gitOpsBranch, gitOpsContext, false)
+	mappedGitOpsComponent := util.GetMappedGitOpsComponent(*component, kubernetesResources)
+
+	err = r.Generator.CloneGenerateAndPush(tempDir, gitOpsURL, mappedGitOpsComponent, r.AppFS, gitOpsBranch, gitOpsContext, false)
 	if err != nil {
 		log.Error(err, "unable to generate gitops resources due to error")
 		return err
