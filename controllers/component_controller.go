@@ -236,6 +236,14 @@ func (r *ComponentReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 					}
 				}
 
+			} else if source.GitSource.DevfileURL != "" {
+				devfileBytes, err = util.CurlEndpoint(source.GitSource.DevfileURL)
+				if err != nil {
+					log.Error(err, fmt.Sprintf("Unable to GET %s, exiting reconcile loop %v", source.GitSource.DevfileURL, req.NamespacedName))
+					err := fmt.Errorf("unable to GET from %s", source.GitSource.DevfileURL)
+					r.SetCreateConditionAndUpdateCR(ctx, req, &component, err)
+					return ctrl.Result{}, err
+				}
 			} else if source.GitSource.DockerfileURL != "" {
 				devfileData, err := devfile.CreateDevfileForDockerfileBuild(source.GitSource.DockerfileURL, context)
 				if err != nil {
@@ -249,14 +257,6 @@ func (r *ComponentReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 					log.Error(err, fmt.Sprintf("Unable to marshall devfile, exiting reconcile loop %v", req.NamespacedName))
 					r.SetCreateConditionAndUpdateCR(ctx, req, &component, err)
 					return ctrl.Result{}, nil
-				}
-			} else if source.GitSource.DevfileURL != "" {
-				devfileBytes, err = util.CurlEndpoint(source.GitSource.DevfileURL)
-				if err != nil {
-					log.Error(err, fmt.Sprintf("Unable to GET %s, exiting reconcile loop %v", source.GitSource.DevfileURL, req.NamespacedName))
-					err := fmt.Errorf("unable to GET from %s", source.GitSource.DevfileURL)
-					r.SetCreateConditionAndUpdateCR(ctx, req, &component, err)
-					return ctrl.Result{}, err
 				}
 			}
 
