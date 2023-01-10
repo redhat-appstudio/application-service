@@ -496,18 +496,25 @@ func (r *ComponentDetectionQueryReconciler) updateComponentStub(req ctrl.Request
 }
 
 func getComponentName(gitSource *appstudiov1alpha1.GitSource) string {
+	var componentName string
 	repoUrl := gitSource.URL
-	// If the repository URL ends in a forward slash, remove it to avoid issues with parsing the repository name
-	if string(repoUrl[len(repoUrl)-1]) == "/" {
-		repoUrl = repoUrl[0 : len(repoUrl)-1]
+
+	if len(repoUrl) != 0 {
+		// If the repository URL ends in a forward slash, remove it to avoid issues with parsing the repository name
+		if string(repoUrl[len(repoUrl)-1]) == "/" {
+			repoUrl = repoUrl[0 : len(repoUrl)-1]
+		}
+		lastElement := repoUrl[strings.LastIndex(repoUrl, "/")+1:]
+		repoName := strings.Split(lastElement, ".git")[0]
+		componentName = repoName
+		context := gitSource.Context
+		if context != "" && context != "./" && context != "." {
+			componentName = fmt.Sprintf("%s-%s", context, repoName)
+		}
 	}
-	lastElement := repoUrl[strings.LastIndex(repoUrl, "/")+1:]
-	repoName := strings.Split(lastElement, ".git")[0]
-	componentName := repoName
-	context := gitSource.Context
-	if context != "" && context != "./" && context != "." {
-		componentName = fmt.Sprintf("%s-%s", context, repoName)
-	}
+
+	// Return a sanitized version of the component name
+	// If len(componentName) is 0, then it will also handle generating a random name for it.
 	return sanitizeComponentName(componentName)
 }
 
