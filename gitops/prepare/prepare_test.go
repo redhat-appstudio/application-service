@@ -67,7 +67,7 @@ func TestPrepareGitopsConfig(t *testing.T) {
 				},
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      PipelinesAsCodeSecretName,
-					Namespace: component.Namespace,
+					Namespace: buildServiceNamespaceName,
 				},
 				Data: map[string][]byte{
 					"github.token": []byte("ghp_token"),
@@ -311,7 +311,7 @@ func TestGetPipelinesAsCodeConfigurationSecretData(t *testing.T) {
 			name: "secret exists",
 			data: &corev1.Secret{
 				ObjectMeta: metav1.ObjectMeta{
-					Namespace: component.Namespace,
+					Namespace: buildServiceNamespaceName,
 					Name:      PipelinesAsCodeSecretName,
 				},
 				Data: map[string][]byte{

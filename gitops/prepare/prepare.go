@@ -45,6 +45,8 @@ const (
 	RegistrySecret = "redhat-appstudio-registry-pull-secret"
 	// Pipelines as Code global configuration secret name
 	PipelinesAsCodeSecretName = "pipelines-as-code-secret"
+	// Pipelines as Code global configuration secret namespace
+	buildServiceNamespaceName = "build-service"
 	// ConfigMap name for detection hacbs workflow
 	// Note: HACBS detection by configmap is temporary solution, will be changed to detection based
 	// on APIBinding API in KCP environment.
@@ -131,7 +133,7 @@ func resolveRegistrySecretPresence(ctx context.Context, cli client.Client, compo
 
 func getPipelinesAsCodeConfigurationSecretData(ctx context.Context, cli client.Client, component appstudiov1alpha1.Component) map[string][]byte {
 	pacSecret := &corev1.Secret{}
-	err := cli.Get(ctx, types.NamespacedName{Name: PipelinesAsCodeSecretName, Namespace: component.Namespace}, pacSecret)
+	err := cli.Get(ctx, types.NamespacedName{Name: PipelinesAsCodeSecretName, Namespace: buildServiceNamespaceName}, pacSecret)
 	if err != nil {
 		return make(map[string][]byte)
 	}
