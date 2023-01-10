@@ -17,6 +17,7 @@ package controllers
 
 import (
 	"context"
+	"strings"
 	"testing"
 
 	devfileAPIV1 "github.com/devfile/api/v2/pkg/apis/workspaces/v1alpha2"
@@ -1347,6 +1348,21 @@ func TestGetComponentName(t *testing.T) {
 			},
 			expectedName: "nodejs-devfile-multi-component",
 		},
+		{
+			name: "repo URL with forward slash at the end",
+			gitSource: &appstudiov1alpha1.GitSource{
+				URL: "https://github.com/devfile-samples/devfile-multi-component/",
+			},
+			expectedName: "devfile-multi-component",
+		},
+		{
+			name: "repo URL with forward slash and context",
+			gitSource: &appstudiov1alpha1.GitSource{
+				URL:     "https://github.com/devfile-samples/devfile-multi-component/",
+				Context: "nodejs",
+			},
+			expectedName: "nodejs-devfile-multi-component",
+		},
 	}
 
 	for _, tt := range tests {
@@ -1357,6 +1373,59 @@ func TestGetComponentName(t *testing.T) {
 			gotComponentName2 := getComponentName(tt.gitSource)
 			assert.Contains(t, gotComponentName2, tt.expectedName, "the component name should contain repo name")
 			assert.NotEqual(t, gotComponentName, gotComponentName2, "the two generated component names should not equal")
+		})
+	}
+
+}
+
+func TestSanitizeComponentName(t *testing.T) {
+
+	tests := []struct {
+		name          string
+		componentName string
+		want          string
+	}{
+		{
+			name:          "simple component name",
+			componentName: "devfile-sample-go-basic",
+			want:          "devfile-sample-go-basic",
+		},
+		{
+			name:          "simple component name, all numbers",
+			componentName: "123412341234",
+			want:          "comp-123412341234",
+		},
+		{
+			name:          "Empty string, should have a name generated for it",
+			componentName: "",
+		},
+		{
+			name:          "component name with uppercase",
+			componentName: "devfile-SAMPLE-gO-BASIC",
+			want:          "devfile-sample-go-basic",
+		},
+		{
+			name:          "component name with greater than 58 characters",
+			componentName: "devfile-sample-go-basic-devfile-sample-go-basic-devfile-sample",
+			want:          "devfile-sample-go-basic-devfile-sample-go-basic-devfile-sa-",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			sanitizedName := sanitizeComponentName(tt.componentName)
+
+			if tt.componentName == "" {
+				splitString := strings.Split(sanitizedName, "-")
+				if len(splitString) != 2 || splitString[0] == "" || splitString[1] == "" {
+					t.Errorf("TestSanitizeComponentName(): expected generated name for empty component name, got %v", sanitizedName)
+				}
+			} else {
+				if !strings.Contains(sanitizedName, tt.want) {
+					t.Errorf("TestSanitizeComponentName(): want %v, got %v", tt.want, sanitizedName)
+				}
+			}
+
 		})
 	}
 

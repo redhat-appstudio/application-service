@@ -72,6 +72,21 @@ func (r *ComponentDetectionQueryReconciler) SetCompleteConditionAndUpdateCR(ctx 
 	}
 	err := r.Client.Status().Patch(ctx, componentDetectionQuery, patch)
 	if err != nil {
-		log.Error(err, "Unable to update ComponentDetectionQuery")
+		// Error attempting to update the CDQ status. Since some CDQ status fields have specific validation rules (specifically the detected components), a bug could cause
+		// an invalid field to be present in the status. _If_ the status update fails, still attempt to update only the status conditions
+		log.Error(err, "Unable to update ComponentDetectionQuery. Will attempt to update only the status condition")
+
+		copiedCDQ := originalCDQ.DeepCopy()
+		meta.SetStatusCondition(&copiedCDQ.Status.Conditions, metav1.Condition{
+			Type:    "Completed",
+			Status:  metav1.ConditionFalse,
+			Reason:  "Error",
+			Message: fmt.Sprintf("ComponentDetectionQuery failed: %v", completeError),
+		})
+		err := r.Client.Status().Patch(ctx, componentDetectionQuery, patch)
+		if err != nil {
+			log.Error(err, "Unable to update ComponentDetectionQuery status conditions")
+		}
+
 	}
 }
