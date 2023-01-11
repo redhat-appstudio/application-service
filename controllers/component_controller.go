@@ -286,7 +286,10 @@ func (r *ComponentReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 
 		if devfileLocation != "" {
 			// Parse the Component Devfile
-			compDevfileData, err = devfile.ParseDevfile(devfileLocation)
+			devfileSrc := devfile.DevfileSrc{
+				URL: devfileLocation,
+			}
+			compDevfileData, err = devfile.ParseDevfile(devfileSrc)
 			if err != nil {
 				log.Error(err, fmt.Sprintf("Unable to parse the devfile from Component devfile location, exiting reconcile loop %v", req.NamespacedName))
 				r.SetCreateConditionAndUpdateCR(ctx, req, &component, err)
@@ -294,7 +297,10 @@ func (r *ComponentReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 			}
 		} else {
 			// Parse the Component Devfile
-			compDevfileData, err = devfile.ParseDevfileModel(string(devfileBytes))
+			devfileSrc := devfile.DevfileSrc{
+				Data: string(devfileBytes),
+			}
+			compDevfileData, err = devfile.ParseDevfile(devfileSrc)
 			if err != nil {
 				log.Error(err, fmt.Sprintf("Unable to parse the devfile from Component, exiting reconcile loop %v", req.NamespacedName))
 				r.SetCreateConditionAndUpdateCR(ctx, req, &component, err)
@@ -311,7 +317,10 @@ func (r *ComponentReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 
 		if hasApplication.Status.Devfile != "" {
 			// Get the devfile of the hasApp CR
-			hasAppDevfileData, err := devfile.ParseDevfileModel(hasApplication.Status.Devfile)
+			devfileSrc := devfile.DevfileSrc{
+				Data: hasApplication.Status.Devfile,
+			}
+			hasAppDevfileData, err := devfile.ParseDevfile(devfileSrc)
 			if err != nil {
 				log.Error(err, fmt.Sprintf("Unable to parse the devfile from Application, exiting reconcile loop %v", req.NamespacedName))
 				r.SetCreateConditionAndUpdateCR(ctx, req, &component, err)
@@ -384,7 +393,10 @@ func (r *ComponentReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 		log.Info(fmt.Sprintf("Checking if the Component has been updated %v", req.NamespacedName))
 
 		// Parse the Component Devfile
-		hasCompDevfileData, err := devfile.ParseDevfileModel(component.Status.Devfile)
+		devfileSrc := devfile.DevfileSrc{
+			Data: component.Status.Devfile,
+		}
+		hasCompDevfileData, err := devfile.ParseDevfile(devfileSrc)
 		if err != nil {
 			log.Error(err, fmt.Sprintf("Unable to parse the devfile from Component status, exiting reconcile loop %v", req.NamespacedName))
 			r.SetUpdateConditionAndUpdateCR(ctx, req, &component, err)
@@ -399,7 +411,10 @@ func (r *ComponentReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 		}
 
 		// Read the devfile again to compare it with any updates
-		oldCompDevfileData, err := devfile.ParseDevfileModel(component.Status.Devfile)
+		devfileSrc = devfile.DevfileSrc{
+			Data: component.Status.Devfile,
+		}
+		oldCompDevfileData, err := devfile.ParseDevfile(devfileSrc)
 		if err != nil {
 			log.Error(err, fmt.Sprintf("Unable to parse the devfile from Component status, exiting reconcile loop %v", req.NamespacedName))
 			r.SetUpdateConditionAndUpdateCR(ctx, req, &component, err)

@@ -39,7 +39,6 @@ import (
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	"k8s.io/apimachinery/pkg/util/intstr"
-	"k8s.io/klog"
 	"sigs.k8s.io/yaml"
 )
 
@@ -69,8 +68,6 @@ func GetResourceFromDevfile(log logr.Logger, devfileData data.DevfileData, deplo
 	}
 	kubernetesComponents, err := devfileData.GetComponents(kubernetesComponentFilter)
 	if err != nil {
-		errMsg := fmt.Sprintf("Failed to get the kubernetes components from devfile: %v", err)
-		klog.Error(errMsg)
 		return parser.KubernetesResources{}, err
 	}
 
@@ -85,15 +82,11 @@ func GetResourceFromDevfile(log logr.Logger, devfileData data.DevfileData, deplo
 				}
 				values, err := parser.ReadKubernetesYaml(src, nil)
 				if err != nil {
-					errMsg := fmt.Sprintf("failed to read the Kubernetes yaml from devfile: %v", err)
-					klog.Error(errMsg)
 					return parser.KubernetesResources{}, err
 				}
 
 				resources, err := parser.ParseKubernetesYaml(values)
 				if err != nil {
-					errMsg := fmt.Sprintf("failed to parse the Kubernetes yaml data from devfile: %v", err)
-					klog.Error(errMsg)
 					return parser.KubernetesResources{}, err
 				}
 
@@ -111,7 +104,7 @@ func GetResourceFromDevfile(log logr.Logger, devfileData data.DevfileData, deplo
 				resources.Routes = append(endpointRoutes, resources.Routes...) // attempt to always merge the devfile endpoints to the list first as it has priority
 
 				// update for port
-				currentPort := int(component.Attributes.GetNumber("deployment/container-port", &err))
+				currentPort := int(component.Attributes.GetNumber(ContainerImagePortKey, &err))
 				if err != nil {
 					if _, ok := err.(*attributes.KeyNotFoundError); !ok {
 						return parser.KubernetesResources{}, err
@@ -120,7 +113,7 @@ func GetResourceFromDevfile(log logr.Logger, devfileData data.DevfileData, deplo
 
 				// update for ENV
 				currentENV := []corev1.EnvVar{}
-				err = component.Attributes.GetInto("deployment/containerENV", &currentENV)
+				err = component.Attributes.GetInto(ContainerENVKey, &currentENV)
 				if err != nil {
 					if _, ok := err.(*attributes.KeyNotFoundError); !ok {
 						return parser.KubernetesResources{}, err
@@ -129,7 +122,7 @@ func GetResourceFromDevfile(log logr.Logger, devfileData data.DevfileData, deplo
 
 				if len(resources.Deployments) > 0 {
 					// update for replica
-					currentReplica := int32(component.Attributes.GetNumber("deployment/replicas", &err))
+					currentReplica := int32(component.Attributes.GetNumber(ReplicaKey, &err))
 					if err != nil {
 						if _, ok := err.(*attributes.KeyNotFoundError); !ok {
 							return parser.KubernetesResources{}, err
@@ -167,21 +160,21 @@ func GetResourceFromDevfile(log logr.Logger, devfileData data.DevfileData, deplo
 						}
 
 						// Update for limits
-						cpuLimit := component.Attributes.GetString("deployment/cpuLimit", &err)
+						cpuLimit := component.Attributes.GetString(CpuLimitKey, &err)
 						if err != nil {
 							if _, ok := err.(*attributes.KeyNotFoundError); !ok {
 								return parser.KubernetesResources{}, err
 							}
 						}
 
-						memoryLimit := component.Attributes.GetString("deployment/memoryLimit", &err)
+						memoryLimit := component.Attributes.GetString(MemoryLimitKey, &err)
 						if err != nil {
 							if _, ok := err.(*attributes.KeyNotFoundError); !ok {
 								return parser.KubernetesResources{}, err
 							}
 						}
 
-						storageLimit := component.Attributes.GetString("deployment/storageLimit", &err)
+						storageLimit := component.Attributes.GetString(StorageLimitKey, &err)
 						if err != nil {
 							if _, ok := err.(*attributes.KeyNotFoundError); !ok {
 								return parser.KubernetesResources{}, err
@@ -220,21 +213,21 @@ func GetResourceFromDevfile(log logr.Logger, devfileData data.DevfileData, deplo
 						resources.Deployments[0].Spec.Template.Spec.Containers[0].Resources.Limits = containerLimits
 
 						// Update for requests
-						cpuRequest := component.Attributes.GetString("deployment/cpuRequest", &err)
+						cpuRequest := component.Attributes.GetString(CpuRequestKey, &err)
 						if err != nil {
 							if _, ok := err.(*attributes.KeyNotFoundError); !ok {
 								return parser.KubernetesResources{}, err
 							}
 						}
 
-						memoryRequest := component.Attributes.GetString("deployment/memoryRequest", &err)
+						memoryRequest := component.Attributes.GetString(MemoryRequestKey, &err)
 						if err != nil {
 							if _, ok := err.(*attributes.KeyNotFoundError); !ok {
 								return parser.KubernetesResources{}, err
 							}
 						}
 
-						storageRequest := component.Attributes.GetString("deployment/storageRequest", &err)
+						storageRequest := component.Attributes.GetString(StorageRequestKey, &err)
 						if err != nil {
 							if _, ok := err.(*attributes.KeyNotFoundError); !ok {
 								return parser.KubernetesResources{}, err
@@ -275,24 +268,15 @@ func GetResourceFromDevfile(log logr.Logger, devfileData data.DevfileData, deplo
 				}
 
 				if len(resources.Services) > 0 {
-					// if len(resources.Services[0].Spec.Ports) > 0 {
-					// 	resources.Services[0].Spec.Ports[0].Port = int32(currentPort)
-					// 	resources.Services[0].Spec.Ports[0].TargetPort = intstr.FromInt(currentPort)
-					// } else {
 					resources.Services[0].Spec.Ports = append(resources.Services[0].Spec.Ports, corev1.ServicePort{
 						Port:       int32(currentPort),
 						TargetPort: intstr.FromInt(currentPort),
 					})
-					// }
 				}
 				if len(resources.Routes) > 0 {
-					log.Info(fmt.Sprintf(">>> MJF route name %v", resources.Routes[0].Name))
-					log.Info(fmt.Sprintf(">>> MJF intstr.FromInt(currentPort) %v", intstr.FromInt(currentPort)))
 					resources.Routes[0].Spec.Port.TargetPort = intstr.FromInt(currentPort)
-					log.Info(fmt.Sprintf(">>> MJF resources.Routes[0].Spec.Port.TargetPort %v", resources.Routes[0].Spec.Port.TargetPort))
-
 					// Update for route
-					route := component.Attributes.GetString("deployment/route", &err)
+					route := component.Attributes.GetString(RouteKey, &err)
 					if err != nil {
 						if _, ok := err.(*attributes.KeyNotFoundError); !ok {
 							return parser.KubernetesResources{}, err
@@ -310,8 +294,7 @@ func GetResourceFromDevfile(log logr.Logger, devfileData data.DevfileData, deplo
 				appendedResources.Ingresses = append(appendedResources.Ingresses, resources.Ingresses...)
 				appendedResources.Others = append(appendedResources.Others, resources.Others...)
 			} else {
-				// return parser.KubernetesResources{}, fmt.Errorf("kubernetes component inline was empty")
-				log.Info(fmt.Sprintf(">>> !!! MJF NO INLINE, WILL AUTO GEN"))
+				log.Info(fmt.Sprintf("Kubernetes Component %s did not have an inline content, gitOps resources may be auto generated", component.Name))
 			}
 		}
 	}
@@ -320,7 +303,7 @@ func GetResourceFromDevfile(log logr.Logger, devfileData data.DevfileData, deplo
 }
 
 // GetRouteFromEndpoint gets the route resource
-func GetRouteFromEndpoint(name, serviceName string, port, path string, secure bool, annotations map[string]string) routev1.Route {
+func GetRouteFromEndpoint(name, serviceName, port, path string, secure bool, annotations map[string]string) routev1.Route {
 
 	if path == "" {
 		path = "/"
@@ -340,31 +323,29 @@ func GetRouteFromEndpoint(name, serviceName string, port, path string, secure bo
 	return *generator.GetRoute(v1alpha2.Endpoint{Annotations: annotations}, routeParams)
 }
 
-// ParseDevfile calls the devfile library's parse and returns the devfile data
-func ParseDevfile(devfileLocation string) (data.DevfileData, error) {
-	// Retrieve the devfile from the location
-	httpTimeout := 10
-	convert := true
-	parserArgs := parser.ParserArgs{
-		URL:                           devfileLocation,
-		HTTPTimeout:                   &httpTimeout,
-		ConvertKubernetesContentInUri: &convert,
-	}
-	devfileObj, _, err := devfilePkg.ParseDevfileAndValidate(parserArgs)
-	return devfileObj.Data, err
+// DevfileSrc specifies the src of the Devfile
+type DevfileSrc struct {
+	Data string
+	URL  string
 }
 
-// ParseDevfileModel calls the devfile library's parse and returns the devfile data
-func ParseDevfileModel(devfileModel string) (data.DevfileData, error) {
-	// Retrieve the devfile from the body of the resource
-	devfileBytes := []byte(devfileModel)
+// ParseDevfile calls the devfile library's parse and returns the devfile data.
+// Provide either a Data src or the URL src
+func ParseDevfile(src DevfileSrc) (data.DevfileData, error) {
+
 	httpTimeout := 10
 	convert := true
 	parserArgs := parser.ParserArgs{
-		Data:                          devfileBytes,
 		HTTPTimeout:                   &httpTimeout,
 		ConvertKubernetesContentInUri: &convert,
 	}
+
+	if src.Data != "" {
+		parserArgs.Data = []byte(src.Data)
+	} else if src.URL != "" {
+		parserArgs.URL = src.URL
+	}
+
 	devfileObj, _, err := devfilePkg.ParseDevfileAndValidate(parserArgs)
 	return devfileObj.Data, err
 }
@@ -372,7 +353,7 @@ func ParseDevfileModel(devfileModel string) (data.DevfileData, error) {
 // ConvertApplicationToDevfile takes in a given Application CR and converts it to
 // a devfile object
 func ConvertApplicationToDevfile(hasApp appstudiov1alpha1.Application, gitOpsRepo string, appModelRepo string) (data.DevfileData, error) {
-	devfileVersion := string(data.APISchemaVersion210)
+	devfileVersion := string(data.APISchemaVersion220)
 	devfileData, err := data.NewDevfileData(devfileVersion)
 	if err != nil {
 		return nil, err
@@ -410,7 +391,7 @@ func ConvertApplicationToDevfile(hasApp appstudiov1alpha1.Application, gitOpsRep
 }
 
 func ConvertImageComponentToDevfile(comp appstudiov1alpha1.Component) (data.DevfileData, error) {
-	devfileVersion := string(data.APISchemaVersion210)
+	devfileVersion := string(data.APISchemaVersion220)
 	devfileData, err := data.NewDevfileData(devfileVersion)
 	if err != nil {
 		return nil, err
@@ -589,11 +570,6 @@ func getMatchLabel(name string) map[string]string {
 	return map[string]string{
 		"app.kubernetes.io/instance": name,
 	}
-}
-
-func generateServiceTemplate() *corev1.Service {
-
-	return &corev1.Service{}
 }
 
 // FindAndDownloadDevfile downloads devfile from the various possible devfile locations in dir and returns the contents and its context

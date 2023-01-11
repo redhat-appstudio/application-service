@@ -40,7 +40,10 @@ func (r *ComponentReconciler) AddFinalizer(ctx context.Context, component *appst
 // & updates the parent kustomize for the given Component CR.
 func (r *ComponentReconciler) Finalize(ctx context.Context, component *appstudiov1alpha1.Component, application *appstudiov1alpha1.Application) error {
 	// Get the Application CR devfile
-	devfileObj, err := devfile.ParseDevfileModel(application.Status.Devfile)
+	devfileSrc := devfile.DevfileSrc{
+		Data: application.Status.Devfile,
+	}
+	devfileObj, err := devfile.ParseDevfile(devfileSrc)
 	if err != nil {
 		return err
 	}
