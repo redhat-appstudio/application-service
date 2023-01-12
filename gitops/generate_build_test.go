@@ -88,7 +88,7 @@ func TestGenerateBuild(t *testing.T) {
 					},
 				},
 			},
-			gitopsConfig: gitopsprepare.GitopsConfig{IsHACBS: true},
+			gitopsConfig: emptyGitopsConfig,
 			want: []string{
 				kustomizeFileName,
 				buildRepositoryFileName,
