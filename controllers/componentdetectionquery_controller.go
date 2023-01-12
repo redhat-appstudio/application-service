@@ -195,7 +195,7 @@ func (r *ComponentDetectionQueryReconciler) Reconcile(ctx context.Context, req c
 							Containers: []corev1.Container{
 								{
 									Name:    jobName,
-									Image:   "yangcao77/cdq-image:latest",
+									Image:   "quay.io/redhat-appstudio/cdq-analysis:latest",
 									Command: []string{"/app/main", gitToken, req.Namespace, req.Name, context, devfilePath, source.URL, source.Revision, r.DevfileRegistryURL, fmt.Sprintf("%s", isDevfilePresent), fmt.Sprintf("%s", isDockerfilePresent)},
 								},
 							},
