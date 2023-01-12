@@ -19,7 +19,6 @@ package controllers
 import (
 	"context"
 	"fmt"
-	"path/filepath"
 	"reflect"
 	"time"
 
@@ -43,6 +42,7 @@ import (
 	"github.com/devfile/api/v2/pkg/attributes"
 	data "github.com/devfile/library/pkg/devfile/parser/data"
 	"github.com/go-logr/logr"
+	gh "github.com/google/go-github/v41/github"
 	logicalcluster "github.com/kcp-dev/logicalcluster/v2"
 	routev1 "github.com/openshift/api/route/v1"
 
@@ -50,12 +50,12 @@ import (
 	appservicegitops "github.com/redhat-appstudio/application-service/gitops"
 	"github.com/redhat-appstudio/application-service/gitops/prepare"
 	devfile "github.com/redhat-appstudio/application-service/pkg/devfile"
+	"github.com/redhat-appstudio/application-service/pkg/github"
 	logutil "github.com/redhat-appstudio/application-service/pkg/log"
 	"github.com/redhat-appstudio/application-service/pkg/spi"
 	"github.com/redhat-appstudio/application-service/pkg/util"
 	"github.com/redhat-appstudio/application-service/pkg/util/ioutils"
 	gitopsgen "github.com/redhat-developer/gitops-generator/pkg"
-
 	"github.com/spf13/afero"
 )
 
@@ -70,6 +70,7 @@ type ComponentReconciler struct {
 	Generator       gitopsgen.Generator
 	AppFS           afero.Afero
 	SPIClient       spi.SPI
+	GitHubClient    *gh.Client
 }
 
 //+kubebuilder:rbac:groups=appstudio.redhat.com,resources=components,verbs=get;list;watch;create;update;patch;delete
@@ -235,6 +236,14 @@ func (r *ComponentReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 					}
 				}
 
+			} else if source.GitSource.DevfileURL != "" {
+				devfileBytes, err = util.CurlEndpoint(source.GitSource.DevfileURL)
+				if err != nil {
+					log.Error(err, fmt.Sprintf("Unable to GET %s, exiting reconcile loop %v", source.GitSource.DevfileURL, req.NamespacedName))
+					err := fmt.Errorf("unable to GET from %s", source.GitSource.DevfileURL)
+					r.SetCreateConditionAndUpdateCR(ctx, req, &component, err)
+					return ctrl.Result{}, err
+				}
 			} else if source.GitSource.DockerfileURL != "" {
 				devfileData, err := devfile.CreateDevfileForDockerfileBuild(source.GitSource.DockerfileURL, context)
 				if err != nil {
@@ -248,14 +257,6 @@ func (r *ComponentReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 					log.Error(err, fmt.Sprintf("Unable to marshall devfile, exiting reconcile loop %v", req.NamespacedName))
 					r.SetCreateConditionAndUpdateCR(ctx, req, &component, err)
 					return ctrl.Result{}, nil
-				}
-			} else if source.GitSource.DevfileURL != "" {
-				devfileBytes, err = util.CurlEndpoint(source.GitSource.DevfileURL)
-				if err != nil {
-					log.Error(err, fmt.Sprintf("Unable to GET %s, exiting reconcile loop %v", source.GitSource.DevfileURL, req.NamespacedName))
-					err := fmt.Errorf("unable to GET from %s", source.GitSource.DevfileURL)
-					r.SetCreateConditionAndUpdateCR(ctx, req, &component, err)
-					return ctrl.Result{}, err
 				}
 			}
 
@@ -470,32 +471,38 @@ func (r *ComponentReconciler) generateGitops(ctx context.Context, req ctrl.Reque
 	// Generate and push the gitops resources
 	gitopsConfig := prepare.PrepareGitopsConfig(ctx, r.Client, *component)
 	mappedGitOpsComponent := util.GetMappedGitOpsComponent(*component)
+	//Gitops functions return sanitized error messages
 	err = r.Generator.CloneGenerateAndPush(tempDir, gitOpsURL, mappedGitOpsComponent, r.AppFS, gitOpsBranch, gitOpsContext, false)
 	if err != nil {
-		gitOpsErr := util.SanitizeErrorMessage(err)
-		log.Error(gitOpsErr, "unable to generate gitops resources due to error")
-		return gitOpsErr
+		log.Error(err, "unable to generate gitops resources due to error")
+		return err
 	}
 
+	// GenerateTektonBuild returns a sanitized error message
 	err = appservicegitops.GenerateTektonBuild(tempDir, *component, r.AppFS, gitOpsContext, gitopsConfig)
 	if err != nil {
-		gitOpsErr := util.SanitizeErrorMessage(err)
-		log.Error(gitOpsErr, "unable to generate gitops build resources due to error")
-		return gitOpsErr
+		log.Error(err, "unable to generate gitops build resources due to error")
+		return err
 	}
+	//Gitops functions return sanitized error messages
 	err = r.Generator.CommitAndPush(tempDir, "", gitOpsURL, mappedGitOpsComponent.Name, gitOpsBranch, "Generating Tekton resources")
 	if err != nil {
-		gitOpsErr := util.SanitizeErrorMessage(err)
-		log.Error(gitOpsErr, "unable to commit and push gitops resources due to error")
-		return gitOpsErr
+		log.Error(err, "unable to commit and push gitops resources due to error")
+		return err
 	}
 
 	// Get the commit ID for the gitops repository
 	var commitID string
-	repoPath := filepath.Join(tempDir, component.Name)
-	if commitID, err = r.Generator.GetCommitIDFromRepo(r.AppFS, repoPath); err != nil {
-		gitOpsErr := util.SanitizeErrorMessage(err)
-		log.Error(gitOpsErr, "unable to retrieve gitops repository commit id due to error")
+	repoName, orgName, err := github.GetRepoAndOrgFromURL(gitOpsURL)
+	if err != nil {
+		gitOpsErr := &GitOpsParseRepoError{gitOpsURL, err}
+		log.Error(gitOpsErr, "")
+		return gitOpsErr
+	}
+	commitID, err = github.GetLatestCommitSHAFromRepository(r.GitHubClient, ctx, repoName, orgName, gitOpsBranch)
+	if err != nil {
+		gitOpsErr := &GitOpsCommitIdError{err}
+		log.Error(gitOpsErr, "")
 		return gitOpsErr
 	}
 	component.Status.GitOps.CommitID = commitID

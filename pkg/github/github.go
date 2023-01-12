@@ -20,6 +20,7 @@ import (
 	"crypto/sha256"
 	"encoding/base64"
 	"fmt"
+	"net/url"
 	"strings"
 
 	"github.com/brianvoe/gofakeit/v6"
@@ -60,6 +61,39 @@ func GetRepoNameFromURL(repoURL string, orgName string) (string, error) {
 		return "", fmt.Errorf("error: unable to parse Git repository URL: %v", repoURL)
 	}
 	return parts[1], nil
+}
+
+// GetRepoAndOrgFromURL returns both the github org and repository name from a given github URL
+// Format must be of the form: <github-domain>/owner/repository(.git)
+// If .git is appended to the end, it will be removed from the returned repo name
+func GetRepoAndOrgFromURL(repoURL string) (string, string, error) {
+	parsedURL, err := url.Parse(repoURL)
+	if err != nil {
+		return "", "", fmt.Errorf("error: invalid URL: %v", repoURL)
+	}
+
+	// The URL Path should contain the org and repo name in the form: orgname/reponame.
+	parts := strings.Split(parsedURL.Path, "/")
+	if len(parts) != 3 {
+		return "", "", fmt.Errorf("error: unable to parse Git repository URL: %v", repoURL)
+	}
+	orgName := parts[1]
+	if orgName == "" {
+		return "", "", fmt.Errorf("error: unable to retrieve organization name from URL: %v", repoURL)
+	}
+	repoName := strings.Split(parts[2], ".git")[0]
+	if repoName == "" {
+		return "", "", fmt.Errorf("error: unable to retrieve repository name from URL: %v", repoURL)
+	}
+	return repoName, orgName, nil
+}
+
+func GetLatestCommitSHAFromRepository(client *github.Client, ctx context.Context, repoName string, orgName string, branch string) (string, error) {
+	commitSHA, _, err := client.Repositories.GetCommitSHA1(ctx, orgName, repoName, branch, "")
+	if err != nil {
+		return "", err
+	}
+	return commitSHA, nil
 }
 
 // Delete Repository takes in the given repository URL and attempts to delete it

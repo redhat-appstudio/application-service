@@ -118,6 +118,7 @@ var _ = BeforeSuite(func() {
 		AppFS:           ioutils.NewMemoryFilesystem(),
 		ImageRepository: "docker.io/foo/customized",
 		SPIClient:       spi.MockSPIClient{},
+		GitHubClient:    github.GetMockedClient(),
 	}).SetupWithManager(k8sManager)
 	Expect(err).ToNot(HaveOccurred())
 
@@ -133,11 +134,12 @@ var _ = BeforeSuite(func() {
 	Expect(err).ToNot(HaveOccurred())
 
 	err = (&SnapshotEnvironmentBindingReconciler{
-		Client:    k8sManager.GetClient(),
-		Scheme:    k8sManager.GetScheme(),
-		Log:       ctrl.Log.WithName("controllers").WithName("SnapshotEnvironmentBinding"),
-		Generator: gitops.NewMockGenerator(),
-		AppFS:     ioutils.NewMemoryFilesystem(),
+		Client:       k8sManager.GetClient(),
+		Scheme:       k8sManager.GetScheme(),
+		Log:          ctrl.Log.WithName("controllers").WithName("SnapshotEnvironmentBinding"),
+		Generator:    gitops.NewMockGenerator(),
+		AppFS:        ioutils.NewMemoryFilesystem(),
+		GitHubClient: github.GetMockedClient(),
 	}).SetupWithManager(k8sManager)
 	Expect(err).ToNot(HaveOccurred())
 
