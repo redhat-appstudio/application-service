@@ -9,9 +9,7 @@ require (
 	github.com/devfile/registry-support/index/generator v0.0.0-20220222194908-7a90a4214f3e
 	github.com/devfile/registry-support/registry-library v0.0.0-20220222194908-7a90a4214f3e
 	github.com/go-logr/logr v1.2.3
-	github.com/redhat-appstudio/application-api v0.0.0-20221114151952-77cba9006505
 	github.com/redhat-developer/alizer/go v0.0.0-20220704150640-ef50ead0b279
-	github.com/redhat-developer/gitops-generator v0.0.0-20221026163641-76ad94f921b3
 	github.com/spf13/afero v1.8.0
 	github.com/stretchr/testify v1.8.0
 	go.uber.org/zap v1.21.0
@@ -66,6 +64,7 @@ require (
 	github.com/modern-go/concurrent v0.0.0-20180306012644-bacd9c7ef1dd // indirect
 	github.com/modern-go/reflect2 v1.0.2 // indirect
 	github.com/munnerz/goautoneg v0.0.0-20191010083416-a7dc8b61c822 // indirect
+	github.com/onsi/gomega v1.20.1 // indirect
 	github.com/opencontainers/go-digest v1.0.0 // indirect
 	github.com/opencontainers/image-spec v1.0.3-0.20220114050600-8b9d41f48198 // indirect
 	github.com/peterbourgon/diskv v2.0.1+incompatible // indirect

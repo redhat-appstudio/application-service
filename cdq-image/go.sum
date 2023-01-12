@@ -1067,6 +1067,7 @@ github.com/onsi/gomega v1.16.0/go.mod h1:HnhC7FXeEQY45zxNK3PPoIUhzk/80Xly9PcubAl
 github.com/onsi/gomega v1.17.0/go.mod h1:HnhC7FXeEQY45zxNK3PPoIUhzk/80Xly9PcubAlGdZY=
 github.com/onsi/gomega v1.18.1/go.mod h1:0q+aL8jAiMXy9hbwj2mr5GziHiwhAIQpFmmtT5hitRs=
 github.com/onsi/gomega v1.20.1 h1:PA/3qinGoukvymdIDV8pii6tiZgC8kbmJO6Z5+b002Q=
+github.com/onsi/gomega v1.20.1/go.mod h1:DtrZpjmvpn2mPm4YWQa0/ALMDj9v4YxLgojwPeREyVo=
 github.com/op/go-logging v0.0.0-20160315200505-970db520ece7/go.mod h1:HzydrMdWErDVzsI23lYNej1Htcns9BCg93Dk0bBINWk=
 github.com/opencontainers/go-digest v0.0.0-20170106003457-a6d0ee40d420/go.mod h1:cMLVZDEM3+U2I4VmLI6N8jQYUd2OVphdqWwCJHrFt2s=
 github.com/opencontainers/go-digest v0.0.0-20180430190053-c9281466c8b2/go.mod h1:cMLVZDEM3+U2I4VmLI6N8jQYUd2OVphdqWwCJHrFt2s=
@@ -1203,12 +1204,8 @@ github.com/quasilyte/go-ruleguard/rules v0.0.0-20201231183845-9e62ed36efe1/go.mo
 github.com/quasilyte/go-ruleguard/rules v0.0.0-20210428214800-545e0d2e0bf7/go.mod h1:4cgAphtvu7Ftv7vOT2ZOYhC6CvBxZixcasr8qIOTA50=
 github.com/quasilyte/regex/syntax v0.0.0-20200407221936-30656e2c4a95/go.mod h1:rlzQ04UMyJXu/aOvhd8qT+hvDrFpiwqp8MRXDY9szc0=
 github.com/rcrowley/go-metrics v0.0.0-20181016184325-3113b8401b8a/go.mod h1:bCqnVzQkZxMG4s8nGwiZ5l3QUCyqpo9Y+/ZMZ9VjZe4=
-github.com/redhat-appstudio/application-api v0.0.0-20221114151952-77cba9006505 h1:8x+HtXDPJ9xmQbtWMdV5ntb0T+uEXjsmzzLgxpKFR1M=
-github.com/redhat-appstudio/application-api v0.0.0-20221114151952-77cba9006505/go.mod h1:LpcTNLCDMf1CUNTw2bgTiz8M49sUsN2F9T7bOSKcJEo=
 github.com/redhat-developer/alizer/go v0.0.0-20220704150640-ef50ead0b279 h1:+S8l0Q94mtvZjvYUICUltPEpH/8AEhzhcD+WqtdaDB8=
 github.com/redhat-developer/alizer/go v0.0.0-20220704150640-ef50ead0b279/go.mod h1:jzZFFoqYo3vQfo6dNNEv1biEZ1g55GPvvNPeP2gu43c=
-github.com/redhat-developer/gitops-generator v0.0.0-20221026163641-76ad94f921b3 h1:7cV5AGUCN6ro6Ggysg5nT6c4rldYFU1zYZ4MZ6HMQV4=
-github.com/redhat-developer/gitops-generator v0.0.0-20221026163641-76ad94f921b3/go.mod h1:oRmoPfhkSvjOCncDigpalGvU2AaZeaivDpf9H7DxDuU=
 github.com/rivo/uniseg v0.1.0/go.mod h1:J6wj4VEh+S6ZtnVlnTBMWIodfgj8LQOQFoIToxlJtxc=
 github.com/rivo/uniseg v0.2.0/go.mod h1:J6wj4VEh+S6ZtnVlnTBMWIodfgj8LQOQFoIToxlJtxc=
 github.com/rogpeppe/fastuuid v0.0.0-20150106093220-6724a57986af/go.mod h1:XWv6SoW27p1b0cqNHllgS5HIMJraePCO15w5zCzIWYg=

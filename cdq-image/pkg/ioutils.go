@@ -25,8 +25,19 @@ import (
 	"github.com/spf13/afero"
 )
 
+// NewFilesystem returns a local filesystem based afero FS implementation.
 func NewFilesystem() afero.Afero {
 	return afero.Afero{Fs: afero.NewOsFs()}
+}
+
+// NewMemoryFilesystem returns an in-memory afero FS implementation.
+func NewMemoryFilesystem() afero.Afero {
+	return afero.Afero{Fs: afero.NewMemMapFs()}
+}
+
+// NewReadOnlyFs returns a read-only file system
+func NewReadOnlyFs() afero.Afero {
+	return afero.Afero{Fs: afero.NewReadOnlyFs(afero.NewOsFs())}
 }
 
 // IsExisting returns bool whether path exists

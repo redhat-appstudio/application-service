@@ -20,7 +20,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"log"
 	"path"
 
 	"go.uber.org/zap/zapcore"
@@ -171,14 +170,18 @@ func (r *ComponentDetectionQueryReconciler) Reconcile(ctx context.Context, req c
 			// perfume cdq job that requires repo cloning and azlier analysis
 			config, err := rest.InClusterConfig()
 			if err != nil {
-				log.Error(err, fmt.Sprintf("**********Error creating InClusterConfig"))
+				log.Error(err, fmt.Sprintf("Error creating InClusterConfig... %v", req.NamespacedName))
+				r.SetCompleteConditionAndUpdateCR(ctx, req, &componentDetectionQuery, copiedCDQ, err)
+				return ctrl.Result{}, nil
 			}
 			clientset, err := kubernetes.NewForConfig(config)
 			if err != nil {
-				log.Error(err, fmt.Sprintf("**********Error creating clientset with config %v", config))
+				log.Error(err, fmt.Sprintf("Error creating clientset with config... %v", req.NamespacedName))
+				r.SetCompleteConditionAndUpdateCR(ctx, req, &componentDetectionQuery, copiedCDQ, err)
+				return ctrl.Result{}, nil
 			}
 			jobs := clientset.BatchV1().Jobs(req.Namespace)
-
+			jobName := req.Name + "-job"
 			var backOffLimit int32 = 0
 			jobSpec := &batchv1.Job{
 				ObjectMeta: metav1.ObjectMeta{
@@ -191,7 +194,7 @@ func (r *ComponentDetectionQueryReconciler) Reconcile(ctx context.Context, req c
 							ServiceAccountName: "application-service-controller-manager",
 							Containers: []corev1.Container{
 								{
-									Name:    req.Name + "-job",
+									Name:    jobName,
 									Image:   "yangcao77/cdq-image:latest",
 									Command: []string{"/app/main", gitToken, req.Namespace, req.Name, context, devfilePath, source.URL, source.Revision, r.DevfileRegistryURL, fmt.Sprintf("%s", isDevfilePresent), fmt.Sprintf("%s", isDockerfilePresent)},
 								},
@@ -205,17 +208,20 @@ func (r *ComponentDetectionQueryReconciler) Reconcile(ctx context.Context, req c
 
 			_, err = jobs.Create(ctx, jobSpec, metav1.CreateOptions{})
 			if err != nil {
-				log.Error(err, fmt.Sprintf("**********Error creating job %v", err))
+				log.Error(err, fmt.Sprintf("Error creating cdq analysis job %s... %v", jobName, req.NamespacedName))
+				r.SetCompleteConditionAndUpdateCR(ctx, req, &componentDetectionQuery, copiedCDQ, err)
+				return ctrl.Result{}, nil
 			} else {
 				//print job details
-				log.Info(fmt.Sprintf("**********Successfully run job"))
+				log.Info(fmt.Sprintf("Successfully created cdq analysis job %v, waiting for config map to be created... %v", jobName, req.NamespacedName))
 			}
 
 			cm, err := waitForConfigMap(clientset, ctx, req.Name, req.Namespace)
 			if err != nil {
-				log.Error(err, fmt.Sprintf("**********Error waiting for configmap %v", err))
-			} else {
-				log.Info(fmt.Sprintf("**********Found config map %v", cm))
+				log.Error(err, fmt.Sprintf("Error waiting for configmap creation ...%v", req.NamespacedName))
+				r.SetCompleteConditionAndUpdateCR(ctx, req, &componentDetectionQuery, copiedCDQ, err)
+				cleanupK8sResources(log, clientset, ctx, fmt.Sprintf("%s-job", req.Name), req.Name, req.Namespace)
+				return ctrl.Result{}, nil
 			}
 			var devfileMapReturned map[string][]byte
 			var devfilesURLMapReturned map[string]string
@@ -225,8 +231,7 @@ func (r *ComponentDetectionQueryReconciler) Reconcile(ctx context.Context, req c
 			json.Unmarshal(cm.BinaryData["dockerfileContextMap"], &dockerfileContextMapReturned)
 			json.Unmarshal(cm.BinaryData["devfilesURLMap"], &devfilesURLMapReturned)
 			json.Unmarshal(cm.BinaryData["error"], &retErr)
-			log.Info(fmt.Sprintf("**********GET!!!  devfileMapReturned is %v, dockerfileContextMapReturned is %v, devfilesURLMapReturned is %v, error is %v", devfileMapReturned, dockerfileContextMapReturned, devfilesURLMapReturned, retErr))
-			cleanupK8sResources(clientset, ctx, fmt.Sprintf("%s-job", req.Name), req.Name, req.Namespace)
+			cleanupK8sResources(log, clientset, ctx, fmt.Sprintf("%s-job", req.Name), req.Name, req.Namespace)
 			if retErr != nil {
 				log.Error(retErr, fmt.Sprintf("Unable to analyze the repo via kubernetes job"))
 				r.SetCompleteConditionAndUpdateCR(ctx, req, &componentDetectionQuery, copiedCDQ, retErr)
@@ -338,19 +343,17 @@ func waitForConfigMap(clientset *kubernetes.Clientset, ctx context.Context, name
 		select {
 		case event := <-watcher.ResultChan():
 			configMap := event.Object.(*corev1.ConfigMap)
-
-			// log.Info(fmt.Sprintf("**********Found config map %v", configMap))
 			return configMap, nil
 
 		case <-ctx.Done():
-			// k.logger.Debugf("Exit from waitPodDeleted for POD \"%s\" because the context is done", resName)
 			return nil, nil
 		}
 	}
 }
 
-func cleanupK8sResources(clientset *kubernetes.Clientset, ctx context.Context, jobName, configMapName, namespace string) {
-	fmt.Println("deleting job", jobName)
+func cleanupK8sResources(log logr.Logger, clientset *kubernetes.Clientset, ctx context.Context, jobName, configMapName, namespace string) {
+	log.Info(fmt.Sprintf("Attempting to cleanup k8s resources for cdq analysis... %s", namespace))
+	log.Info(fmt.Sprintf("Deleting job %s... %s", jobName, namespace))
 
 	jobsClient := clientset.BatchV1().Jobs(namespace)
 
@@ -359,16 +362,17 @@ func cleanupK8sResources(clientset *kubernetes.Clientset, ctx context.Context, j
 	err := jobsClient.Delete(context.Background(), jobName, metav1.DeleteOptions{PropagationPolicy: &pp})
 
 	if err != nil {
-		log.Fatal("failed to delete job", err)
+		log.Error(err, fmt.Sprintf("Failed to delete job %s... %s", jobName, namespace))
 	} else {
-		fmt.Println("deleted job successfully")
+		log.Info(fmt.Sprintf("Successfully deleted job %s... %s", jobName, namespace))
 	}
 
+	log.Info(fmt.Sprintf("Deleting config map %s... %s", configMapName, namespace))
 	configMapClient := clientset.CoreV1().ConfigMaps(namespace)
 	err = configMapClient.Delete(context.Background(), configMapName, metav1.DeleteOptions{PropagationPolicy: &pp})
 	if err != nil {
-		log.Fatal("failed to delete configMap", err)
+		log.Error(err, fmt.Sprintf("Failed to delete config map %s... %s", configMapName, namespace))
 	} else {
-		fmt.Println("deleted configMap successfully")
+		log.Info(fmt.Sprintf("Successfully deleted config map %s... %s", configMapName, namespace))
 	}
 }
