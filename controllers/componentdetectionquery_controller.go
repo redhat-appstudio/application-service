@@ -152,7 +152,7 @@ func (r *ComponentDetectionQueryReconciler) Reconcile(ctx context.Context, req c
 				// TODO - maysunfaisal also search for Dockerfile
 				devfileBytes, err = spi.DownloadDevfileUsingSPI(r.SPIClient, ctx, componentDetectionQuery.Namespace, source.URL, "main", context)
 				if err != nil {
-					log.Error(err, fmt.Sprintf("Unable to curl for any known devfile locations from %s %v", source.URL, req.NamespacedName))
+					log.Error(err, fmt.Sprintf("Unable to curl for any known devfile locations from %s... %v", source.URL, req.NamespacedName))
 				}
 			}
 
@@ -196,7 +196,7 @@ func (r *ComponentDetectionQueryReconciler) Reconcile(ctx context.Context, req c
 								{
 									Name:    jobName,
 									Image:   "quay.io/redhat-appstudio/cdq-analysis:latest",
-									Command: []string{"/app/main", gitToken, req.Namespace, req.Name, context, devfilePath, source.URL, source.Revision, r.DevfileRegistryURL, fmt.Sprintf("%s", isDevfilePresent), fmt.Sprintf("%s", isDockerfilePresent)},
+									Command: []string{"/app/main", gitToken, req.Namespace, req.Name, context, devfilePath, source.URL, source.Revision, r.DevfileRegistryURL, fmt.Sprintf("%v", isDevfilePresent), fmt.Sprintf("%v", isDockerfilePresent)},
 								},
 							},
 							RestartPolicy: corev1.RestartPolicyNever,
@@ -233,7 +233,7 @@ func (r *ComponentDetectionQueryReconciler) Reconcile(ctx context.Context, req c
 			json.Unmarshal(cm.BinaryData["error"], &retErr)
 			cleanupK8sResources(log, clientset, ctx, fmt.Sprintf("%s-job", req.Name), req.Name, req.Namespace)
 			if retErr != nil {
-				log.Error(retErr, fmt.Sprintf("Unable to analyze the repo via kubernetes job"))
+				log.Error(retErr, fmt.Sprintf("Unable to analyze the repo via kubernetes job... %v", req.NamespacedName))
 				r.SetCompleteConditionAndUpdateCR(ctx, req, &componentDetectionQuery, copiedCDQ, retErr)
 				return ctrl.Result{}, nil
 			}
@@ -256,7 +256,7 @@ func (r *ComponentDetectionQueryReconciler) Reconcile(ctx context.Context, req c
 		for context, link := range dockerfileContextMap {
 			updatedLink, err := devfile.UpdateGitLink(source.URL, source.Revision, link)
 			if err != nil {
-				log.Error(err, fmt.Sprintf("Unable to update the dockerfile link %v", req.NamespacedName))
+				log.Error(err, fmt.Sprintf("Unable to update the dockerfile link... %v", req.NamespacedName))
 				r.SetCompleteConditionAndUpdateCR(ctx, req, &componentDetectionQuery, copiedCDQ, err)
 				return ctrl.Result{}, nil
 			}
@@ -267,7 +267,7 @@ func (r *ComponentDetectionQueryReconciler) Reconcile(ctx context.Context, req c
 			if _, ok := devfilesURLMap[context]; !ok {
 				updatedLink, err := devfile.UpdateGitLink(source.URL, source.Revision, path.Join(context, devfilePath))
 				if err != nil {
-					log.Error(err, fmt.Sprintf("Unable to update the devfile link %v", req.NamespacedName))
+					log.Error(err, fmt.Sprintf("Unable to update the devfile link... %v", req.NamespacedName))
 					r.SetCompleteConditionAndUpdateCR(ctx, req, &componentDetectionQuery, copiedCDQ, err)
 					return ctrl.Result{}, nil
 				}
@@ -277,7 +277,7 @@ func (r *ComponentDetectionQueryReconciler) Reconcile(ctx context.Context, req c
 
 		err = r.updateComponentStub(req, &componentDetectionQuery, devfilesMap, devfilesURLMap, dockerfileContextMap)
 		if err != nil {
-			log.Error(err, fmt.Sprintf("Unable to update the component stub %v", req.NamespacedName))
+			log.Error(err, fmt.Sprintf("Unable to update the component stub... %v", req.NamespacedName))
 			r.SetCompleteConditionAndUpdateCR(ctx, req, &componentDetectionQuery, copiedCDQ, err)
 			return ctrl.Result{}, nil
 		}
@@ -286,7 +286,7 @@ func (r *ComponentDetectionQueryReconciler) Reconcile(ctx context.Context, req c
 	} else {
 		// CDQ resource has been requeued after it originally ran
 		// Delete the resource as it's no longer needed and can be cleaned up
-		log.Info(fmt.Sprintf("Deleting finished ComponentDetectionQuery resource %v", req.NamespacedName))
+		log.Info(fmt.Sprintf("Deleting finished ComponentDetectionQuery resource... %v", req.NamespacedName))
 		if err = r.Delete(ctx, &componentDetectionQuery); err != nil {
 			// Delete failed. Log the error but don't bother modifying the resource's status
 			logutil.LogAPIResourceChangeEvent(log, componentDetectionQuery.Name, "ComponentDetectionQuery", logutil.ResourceDelete, err)
