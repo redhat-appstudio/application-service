@@ -999,7 +999,7 @@ var _ = Describe("Component Detection Query controller", func() {
 				for _, componentDesc := range createdHasCompDetectionQuery.Status.ComponentDetected {
 					Expect(componentDesc.ComponentStub.Source.GitSource).ShouldNot(BeNil())
 					Expect(componentDesc.ComponentStub.Source.GitSource.DockerfileURL).ShouldNot(BeEmpty())
-					Expect(componentDesc.ComponentStub.Source.GitSource.DockerfileURL).Should(Equal("https://raw.githubusercontent.com/maysunfaisal/python-src-docker/main/./Dockerfile"))
+					Expect(componentDesc.ComponentStub.Source.GitSource.DockerfileURL).Should(Equal("https://raw.githubusercontent.com/maysunfaisal/python-src-docker/main/Dockerfile"))
 				}
 
 				// Delete the specified Detection Query resource

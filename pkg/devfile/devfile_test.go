@@ -383,25 +383,34 @@ func TestScanRepo(t *testing.T) {
 		token                        string
 		wantErr                      bool
 		expectedDevfileContext       []string
-		expectedDevfileURLContext    []string
+		expectedDevfileURLContextMap map[string]string
 		expectedDockerfileContextMap map[string]string
 	}{
 		{
-			name:                      "Should return 1 devfiles as this is a multi comp devfile",
-			clonePath:                 "/tmp/testclone",
-			repo:                      "https://github.com/maysunfaisal/multi-components-deep",
-			expectedDevfileContext:    []string{"devfile-sample-java-springboot-basic", "python"},
-			expectedDevfileURLContext: []string{"python"},
+			name:                   "Should return 1 devfiles as this is a multi comp devfile",
+			clonePath:              "/tmp/testclone",
+			repo:                   "https://github.com/maysunfaisal/multi-components-deep",
+			expectedDevfileContext: []string{"devfile-sample-java-springboot-basic", "python"},
+			expectedDevfileURLContextMap: map[string]string{
+				"devfile-sample-java-springboot-basic": "https://raw.githubusercontent.com/maysunfaisal/multi-components-deep/main/devfile-sample-java-springboot-basic/.devfile/.devfile.yaml",
+				"python":                               "https://registry.stage.devfile.io/devfiles/python-basic",
+			},
 			expectedDockerfileContextMap: map[string]string{
 				"devfile-sample-java-springboot-basic": "devfile-sample-java-springboot-basic/docker/Dockerfile",
 				"python":                               "https://raw.githubusercontent.com/devfile-samples/devfile-sample-python-basic/main/docker/Dockerfile"},
 		},
 		{
-			name:                      "Should return 4 devfiles, 1 devfile url and 5 dockerfile uri as this is a multi comp devfile",
-			clonePath:                 "/tmp/testclone",
-			repo:                      "https://github.com/maysunfaisal/multi-components-dockerfile",
-			expectedDevfileContext:    []string{"devfile-sample-java-springboot-basic", "devfile-sample-nodejs-basic", "devfile-sample-python-basic", "python-src-none"},
-			expectedDevfileURLContext: []string{"python-src-none"},
+			name:                   "Should return 4 devfiles, 5 devfile url and 5 dockerfile uri as this is a multi comp devfile",
+			clonePath:              "/tmp/testclone",
+			repo:                   "https://github.com/maysunfaisal/multi-components-dockerfile",
+			expectedDevfileContext: []string{"devfile-sample-java-springboot-basic", "devfile-sample-nodejs-basic", "devfile-sample-python-basic", "python-src-none"},
+			expectedDevfileURLContextMap: map[string]string{
+				"devfile-sample-java-springboot-basic": "https://raw.githubusercontent.com/maysunfaisal/multi-components-dockerfile/main/devfile-sample-java-springboot-basic/.devfile/.devfile.yaml",
+				"devfile-sample-nodejs-basic":          "https://raw.githubusercontent.com/maysunfaisal/multi-components-dockerfile/main/devfile-sample-nodejs-basic/devfile.yaml",
+				"devfile-sample-python-basic":          "https://raw.githubusercontent.com/maysunfaisal/multi-components-dockerfile/main/devfile-sample-python-basic/.devfile.yaml",
+				"python-src-none":                      "https://registry.stage.devfile.io/devfiles/python-basic",
+				"python-src-docker":                    "https://registry.stage.devfile.io/devfiles/python-basic",
+			},
 			expectedDockerfileContextMap: map[string]string{
 				"python-src-docker":                    "python-src-docker/Dockerfile",
 				"devfile-sample-nodejs-basic":          "https://raw.githubusercontent.com/nodeshift-starters/devfile-sample/main/Dockerfile",
@@ -441,18 +450,11 @@ func TestScanRepo(t *testing.T) {
 						}
 					}
 
-					for actualContext := range devfileURLMap {
-						matched := false
-						for _, expectedContext := range tt.expectedDevfileURLContext {
-							if expectedContext == actualContext {
-								matched = true
-								break
-							}
+					for actualContext := range devfileMap {
+						if devfileURLMap[actualContext] != tt.expectedDevfileURLContextMap[actualContext] {
+							t.Errorf("expected devfile URL %v but got %v", tt.expectedDevfileURLContextMap[actualContext], devfileURLMap[actualContext])
 						}
 
-						if !matched {
-							t.Errorf("found devfile URL at context %v:%v but expected none", actualContext, devfileURLMap[actualContext])
-						}
 					}
 
 					for actualContext := range dockerfileMap {
