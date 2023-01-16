@@ -9,6 +9,7 @@ require (
 	github.com/devfile/registry-support/index/generator v0.0.0-20221018203505-df96d34d4273
 	github.com/devfile/registry-support/registry-library v0.0.0-20221018213054-47b3ffaeadba
 	github.com/go-logr/logr v1.2.3
+	github.com/golang/mock v1.6.0
 	github.com/google/go-github/v41 v41.0.0
 	github.com/kcp-dev/kcp/pkg/apis v0.7.0
 	github.com/kcp-dev/logicalcluster/v2 v2.0.0-alpha.1
@@ -81,7 +82,6 @@ require (
 	github.com/gogo/protobuf v1.3.2 // indirect
 	github.com/golang-jwt/jwt/v4 v4.4.3 // indirect
 	github.com/golang/groupcache v0.0.0-20210331224755-41bb18bfe9da // indirect
-	github.com/golang/mock v1.6.0 // indirect
 	github.com/golang/protobuf v1.5.2 // indirect
 	github.com/google/btree v1.0.1 // indirect
 	github.com/google/gnostic v0.5.7-v3refs // indirect
