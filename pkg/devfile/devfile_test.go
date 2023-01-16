@@ -415,10 +415,13 @@ func TestScanRepo(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			logger = ctrl.Log.WithName("TestScanRepo")
 			err := util.CloneRepo(tt.clonePath, tt.repo, tt.token)
+			source := appstudiov1alpha1.GitSource{
+				URL: tt.repo,
+			}
 			if err != nil {
 				t.Errorf("got unexpected error %v", err)
 			} else {
-				devfileMap, devfileURLMap, dockerfileMap, err := ScanRepo(logger, alizerClient, tt.clonePath, DevfileStageRegistryEndpoint)
+				devfileMap, devfileURLMap, dockerfileMap, err := ScanRepo(logger, alizerClient, tt.clonePath, DevfileStageRegistryEndpoint, source)
 				if tt.wantErr && (err == nil) {
 					t.Error("wanted error but got nil")
 				} else if !tt.wantErr && err != nil {
