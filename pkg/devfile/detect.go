@@ -44,15 +44,16 @@ type AlizerClient struct {
 // Map 1 returns a context to the devfile bytes if present.
 // Map 2 returns a context to the matched devfileURL from the devfile registry if no devfile is present in the context.
 // Map 3 returns a context to the dockerfile uri or a matched dockerfileURL from the devfile registry if no dockerfile is present in the context
-func search(log logr.Logger, a Alizer, localpath string, devfileRegistryURL string) (map[string][]byte, map[string]string, map[string]string, error) {
+func search(log logr.Logger, a Alizer, localpath string, devfileRegistryURL string) (map[string][]byte, map[string]string, map[string]string, map[string]string, error) {
 
 	devfileMapFromRepo := make(map[string][]byte)
 	devfilesURLMapFromRepo := make(map[string]string)
 	dockerfileContextMapFromRepo := make(map[string]string)
+	devfileContextMapFromRepo := make(map[string]string)
 
 	files, err := ioutil.ReadDir(localpath)
 	if err != nil {
-		return nil, nil, nil, err
+		return nil, nil, nil, nil, err
 	}
 
 	for _, f := range files {
@@ -63,7 +64,7 @@ func search(log logr.Logger, a Alizer, localpath string, devfileRegistryURL stri
 			context := f.Name()
 			files, err := ioutil.ReadDir(curPath)
 			if err != nil {
-				return nil, nil, nil, err
+				return nil, nil, nil, nil, err
 			}
 			for _, f := range files {
 				if f.Name() == DevfileName || f.Name() == HiddenDevfileName {
@@ -71,10 +72,11 @@ func search(log logr.Logger, a Alizer, localpath string, devfileRegistryURL stri
 					/* #nosec G304 -- false positive, filename is not based on user input*/
 					devfileBytes, err := ioutil.ReadFile(path.Join(curPath, f.Name()))
 					if err != nil {
-						return nil, nil, nil, err
+						return nil, nil, nil, nil, err
 					}
 
 					devfileMapFromRepo[context] = devfileBytes
+					devfileContextMapFromRepo[context] = path.Join(context, f.Name())
 					isDevfilePresent = true
 				} else if f.IsDir() && f.Name() == HiddenDevfileDir {
 					// Check for .devfile/devfile.yaml or .devfile/.devfile.yaml
@@ -83,7 +85,7 @@ func search(log logr.Logger, a Alizer, localpath string, devfileRegistryURL stri
 					hiddenDirPath := path.Join(curPath, HiddenDevfileDir)
 					hiddenfiles, err := ioutil.ReadDir(hiddenDirPath)
 					if err != nil {
-						return nil, nil, nil, err
+						return nil, nil, nil, nil, err
 					}
 					for _, f := range hiddenfiles {
 						if f.Name() == DevfileName || f.Name() == HiddenDevfileName {
@@ -91,10 +93,12 @@ func search(log logr.Logger, a Alizer, localpath string, devfileRegistryURL stri
 							/* #nosec G304 -- false positive, filename is not based on user input*/
 							devfileBytes, err := ioutil.ReadFile(path.Join(hiddenDirPath, f.Name()))
 							if err != nil {
-								return nil, nil, nil, err
+								return nil, nil, nil, nil, err
 							}
 
 							devfileMapFromRepo[context] = devfileBytes
+							devfileContextMapFromRepo[context] = path.Join(context, HiddenDevfileDir, f.Name())
+
 							isDevfilePresent = true
 						}
 					}
@@ -117,10 +121,11 @@ func search(log logr.Logger, a Alizer, localpath string, devfileRegistryURL stri
 				isDockerfilePresent = false
 			}
 
+			// If the devfile is present locally, add its local path to the devfile repo context map
 			if (!isDevfilePresent && !isDockerfilePresent) || (isDevfilePresent && !isDockerfilePresent) {
 				err := AnalyzePath(a, curPath, context, devfileRegistryURL, devfileMapFromRepo, devfilesURLMapFromRepo, dockerfileContextMapFromRepo, isDevfilePresent, isDockerfilePresent)
 				if err != nil {
-					return nil, nil, nil, err
+					return nil, nil, nil, nil, err
 				}
 			}
 		}
@@ -131,7 +136,7 @@ func search(log logr.Logger, a Alizer, localpath string, devfileRegistryURL stri
 		err = &NoDevfileFound{Location: localpath}
 	}
 
-	return devfileMapFromRepo, devfilesURLMapFromRepo, dockerfileContextMapFromRepo, err
+	return devfileMapFromRepo, devfilesURLMapFromRepo, dockerfileContextMapFromRepo, devfileContextMapFromRepo, err
 }
 
 // AnalyzePath checks if a devfile or a dockerfile can be found in the localpath for the given context, this is a helper func used by the CDQ controller
@@ -153,6 +158,7 @@ func AnalyzePath(a Alizer, localpath, context, devfileRegistryURL string, devfil
 			}
 			isDockerfilePresent = true
 		}
+
 	}
 
 	if !isDockerfilePresent {

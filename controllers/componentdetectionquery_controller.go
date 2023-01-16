@@ -121,7 +121,7 @@ func (r *ComponentDetectionQueryReconciler) Reconcile(ctx context.Context, req c
 		devfilesMap := make(map[string][]byte)
 		devfilesURLMap := make(map[string]string)
 		dockerfileContextMap := make(map[string]string)
-
+		devfileContextMap := make(map[string]string)
 		context := source.Context
 		if context == "" {
 			context = "./"
@@ -207,7 +207,7 @@ func (r *ComponentDetectionQueryReconciler) Reconcile(ctx context.Context, req c
 			if isMultiComponent {
 				log.Info(fmt.Sprintf("Since this is a multi-component, attempt will be made to read only level 1 dir for devfiles... %v", req.NamespacedName))
 
-				devfilesMap, devfilesURLMap, dockerfileContextMap, err = devfile.ScanRepo(log, r.AlizerClient, componentPath, r.DevfileRegistryURL)
+				devfilesMap, devfilesURLMap, dockerfileContextMap, devfileContextMap, err = devfile.ScanRepo(log, r.AlizerClient, componentPath, r.DevfileRegistryURL)
 				if err != nil {
 					if _, ok := err.(*devfile.NoDevfileFound); !ok {
 						log.Error(err, fmt.Sprintf("Unable to find devfile(s) in repo %s due to an error %s, exiting reconcile loop %v", source.URL, err.Error(), req.NamespacedName))
@@ -256,15 +256,27 @@ func (r *ComponentDetectionQueryReconciler) Reconcile(ctx context.Context, req c
 			dockerfileContextMap[context] = updatedLink
 		}
 
+		for context, link := range devfileContextMap {
+			updatedLink, err := devfile.UpdateGitLink(source.URL, source.Revision, link)
+			if err != nil {
+				log.Error(err, fmt.Sprintf("Unable to update the devfile link %v", req.NamespacedName))
+				r.SetCompleteConditionAndUpdateCR(ctx, req, &componentDetectionQuery, copiedCDQ, err)
+				return ctrl.Result{}, nil
+			}
+			devfilesURLMap[context] = updatedLink
+		}
+
 		for context := range devfilesMap {
 			if _, ok := devfilesURLMap[context]; !ok {
-				updatedLink, err := devfile.UpdateGitLink(source.URL, source.Revision, path.Join(context, devfilePath))
-				if err != nil {
-					log.Error(err, fmt.Sprintf("Unable to update the devfile link %v", req.NamespacedName))
-					r.SetCompleteConditionAndUpdateCR(ctx, req, &componentDetectionQuery, copiedCDQ, err)
-					return ctrl.Result{}, nil
+				if _, ok := devfileContextMap[context]; !ok {
+					updatedLink, err := devfile.UpdateGitLink(source.URL, source.Revision, path.Join(context, devfilePath))
+					if err != nil {
+						log.Error(err, fmt.Sprintf("Unable to update the devfile link %v", req.NamespacedName))
+						r.SetCompleteConditionAndUpdateCR(ctx, req, &componentDetectionQuery, copiedCDQ, err)
+						return ctrl.Result{}, nil
+					}
+					devfilesURLMap[context] = updatedLink
 				}
-				devfilesURLMap[context] = updatedLink
 			}
 		}
 
