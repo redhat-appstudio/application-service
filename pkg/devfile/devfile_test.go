@@ -116,7 +116,6 @@ schemaVersion: 2.2.0`
 					URL: tt.devfileURL,
 				}
 			}
-
 			devfile, err := ParseDevfile(devfileSrc)
 			if err != nil {
 				t.Errorf("TestParseDevfileModel() unexpected error: %v", err)
@@ -217,7 +216,7 @@ func TestConvertImageComponentToDevfile(t *testing.T) {
 	namespace := "namespace"
 	image := "image"
 
-	deploymentTemplate := generateDeploymentTemplate(compName, applicationName, namespace, image)
+	deploymentTemplate := GenerateDeploymentTemplate(compName, applicationName, namespace, image)
 	deploymentTemplateBytes, err := yaml.Marshal(deploymentTemplate)
 	if err != nil {
 		t.Errorf("TestConvertImageComponentToDevfile() unexpected error: %v", err)
@@ -584,7 +583,7 @@ func TestGenerateDeploymentTemplate(t *testing.T) {
 		image       = "image1"
 	)
 	t.Run(name, func(t *testing.T) {
-		actualDeployment := generateDeploymentTemplate(name, application, namespace, image)
+		actualDeployment := GenerateDeploymentTemplate(name, application, namespace, image)
 		assert.Equal(t, "Deployment", actualDeployment.Kind, "Kind did not match")
 		assert.Equal(t, name, actualDeployment.Name, "Name did not match")
 		assert.Equal(t, namespace, actualDeployment.Namespace, "Namespace did not match")

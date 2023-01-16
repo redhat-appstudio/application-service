@@ -344,6 +344,8 @@ func ParseDevfile(src DevfileSrc) (data.DevfileData, error) {
 		parserArgs.Data = []byte(src.Data)
 	} else if src.URL != "" {
 		parserArgs.URL = src.URL
+	} else {
+		return nil, fmt.Errorf("cannot parse devfile without a src")
 	}
 
 	devfileObj, _, err := devfilePkg.ParseDevfileAndValidate(parserArgs)
@@ -402,7 +404,7 @@ func ConvertImageComponentToDevfile(comp appstudiov1alpha1.Component) (data.Devf
 		Name: comp.Spec.ComponentName,
 	})
 
-	deploymentTemplate := generateDeploymentTemplate(comp.Name, comp.Spec.Application, comp.Namespace, comp.Spec.ContainerImage)
+	deploymentTemplate := GenerateDeploymentTemplate(comp.Name, comp.Spec.Application, comp.Namespace, comp.Spec.ContainerImage)
 	deploymentTemplateBytes, err := yaml.Marshal(deploymentTemplate)
 	if err != nil {
 		return nil, err
@@ -447,7 +449,7 @@ func CreateDevfileForDockerfileBuild(dockerfileUri, buildContext, name, applicat
 		Description: "Basic Devfile for a Dockerfile Component",
 	})
 
-	deploymentTemplate := generateDeploymentTemplate(name, application, namespace, "")
+	deploymentTemplate := GenerateDeploymentTemplate(name, application, namespace, "")
 	deploymentTemplateBytes, err := yaml.Marshal(deploymentTemplate)
 	if err != nil {
 		return nil, err
@@ -509,7 +511,8 @@ func CreateDevfileForDockerfileBuild(dockerfileUri, buildContext, name, applicat
 	return devfileData, nil
 }
 
-func generateDeploymentTemplate(name, application, namespace, image string) appsv1.Deployment {
+// GenerateDeploymentTemplate generates a deployment template with the information passed
+func GenerateDeploymentTemplate(name, application, namespace, image string) appsv1.Deployment {
 
 	k8sLabels := generateK8sLabels(name, application)
 	matchLabels := getMatchLabel(name)

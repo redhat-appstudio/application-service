@@ -1086,7 +1086,7 @@ var _ = Describe("Component controller", func() {
 			// Make sure the devfile model was properly set in Component
 			errCondition := createdHasComp.Status.Conditions[len(createdHasComp.Status.Conditions)-1]
 			Expect(errCondition.Status).Should(Equal(metav1.ConditionFalse))
-			Expect(errCondition.Message).Should(ContainSubstring("Component create failed: schemaVersion not present in devfile"))
+			Expect(errCondition.Message).Should(ContainSubstring("schemaVersion not present in devfile"))
 
 			hasAppLookupKey := types.NamespacedName{Name: applicationName, Namespace: HASAppNamespace}
 
@@ -1487,12 +1487,12 @@ var _ = Describe("Component controller", func() {
 			Expect(len(dockerfileComponents)).Should(Equal(2))
 
 			for _, component := range dockerfileComponents {
-				Expect(component.Name).Should(BeElementOf([]string{"dockerfile-build", "kubernetes"}))
+				Expect(component.Name).Should(BeElementOf([]string{"dockerfile-build", "kubernetes-deploy"}))
 				if component.Image != nil && component.Image.Dockerfile != nil {
 					Expect(component.Image.Dockerfile.Uri).Should(Equal(hasComp.Spec.Source.GitSource.DockerfileURL))
 					Expect(component.Image.Dockerfile.BuildContext).Should(Equal(hasComp.Spec.Source.GitSource.Context))
 				} else if component.Kubernetes != nil {
-					Expect(component.Kubernetes.Inlined).Should(Equal("placeholder"))
+					Expect(component.Kubernetes.Inlined).Should(ContainSubstring("Deployment"))
 				}
 			}
 
