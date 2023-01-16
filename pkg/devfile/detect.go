@@ -1,5 +1,5 @@
 //
-// Copyright 2022 Red Hat, Inc.
+// Copyright 2022-2023 Red Hat, Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -133,7 +133,6 @@ func search(log logr.Logger, a Alizer, localpath string, devfileRegistryURL stri
 				isDockerfilePresent = false
 			}
 
-			// If the devfile is present locally, add its local path to the devfile repo context map
 			if (!isDevfilePresent && !isDockerfilePresent) || (isDevfilePresent && !isDockerfilePresent) {
 				err := AnalyzePath(a, curPath, context, devfileRegistryURL, devfileMapFromRepo, devfilesURLMapFromRepo, dockerfileContextMapFromRepo, isDevfilePresent, isDockerfilePresent)
 				if err != nil {
