@@ -20,6 +20,7 @@ import (
 	"context"
 	"fmt"
 	"path"
+	"strings"
 
 	"go.uber.org/zap/zapcore"
 	corev1 "k8s.io/api/core/v1"
@@ -246,7 +247,11 @@ func (r *ComponentDetectionQueryReconciler) Reconcile(ctx context.Context, req c
 		}
 
 		for context, link := range dockerfileContextMap {
-			updatedLink, err := devfile.UpdateGitLink(source.URL, source.Revision, path.Join(context, link))
+			updatedContext := context
+			if !strings.HasPrefix(link, "http") {
+				updatedContext = path.Join(context, link)
+			}
+			updatedLink, err := devfile.UpdateGitLink(source.URL, source.Revision, updatedContext)
 			if err != nil {
 				log.Error(err, fmt.Sprintf("Unable to update the dockerfile link %v", req.NamespacedName))
 				r.SetCompleteConditionAndUpdateCR(ctx, req, &componentDetectionQuery, copiedCDQ, err)
