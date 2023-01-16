@@ -387,10 +387,10 @@ func TestScanRepo(t *testing.T) {
 		expectedDockerfileContextMap map[string]string
 	}{
 		{
-			name:                   "Should return 1 devfiles as this is a multi comp devfile",
+			name:                   "Should return 2 devfile contexts, and 2 devfileURLs as this is a multi comp devfile",
 			clonePath:              "/tmp/testclone",
 			repo:                   "https://github.com/maysunfaisal/multi-components-deep",
-			expectedDevfileContext: []string{"devfile-sample-java-springboot-basic", "python"},
+			expectedDevfileContext: []string{"python", "devfile-sample-java-springboot-basic"},
 			expectedDevfileURLContextMap: map[string]string{
 				"devfile-sample-java-springboot-basic": "https://raw.githubusercontent.com/maysunfaisal/multi-components-deep/main/devfile-sample-java-springboot-basic/.devfile/.devfile.yaml",
 				"python":                               "https://registry.stage.devfile.io/devfiles/python-basic",
@@ -450,7 +450,7 @@ func TestScanRepo(t *testing.T) {
 						}
 					}
 
-					for actualContext := range devfileMap {
+					for actualContext := range devfileURLMap {
 						if devfileURLMap[actualContext] != tt.expectedDevfileURLContextMap[actualContext] {
 							t.Errorf("expected devfile URL %v but got %v", tt.expectedDevfileURLContextMap[actualContext], devfileURLMap[actualContext])
 						}

@@ -43,7 +43,7 @@ type AlizerClient struct {
 // If no devfile(s) or dockerfile(s) are found, then the Alizer tool is used to detect and match a devfile/dockerfile from the devfile registry
 // search returns 3 maps and an error:
 // Map 1 returns a context to the devfile bytes if present.
-// Map 2 returns a context to the matched devfileURL from the devfile registry if no devfile is present in the context.
+// Map 2 returns a context to the matched devfileURL from the github repository. If no devfile was present, then a link to a matching devfile in the devfile registry will be used instead.
 // Map 3 returns a context to the dockerfile uri or a matched dockerfileURL from the devfile registry if no dockerfile is present in the context
 func search(log logr.Logger, a Alizer, localpath string, devfileRegistryURL string, source appstudiov1alpha1.GitSource) (map[string][]byte, map[string]string, map[string]string, error) {
 
