@@ -47,6 +47,8 @@ import (
 
 func TestParseDevfileModel(t *testing.T) {
 
+	testServerURL := "127.0.0.1:9080"
+
 	simpleDevfile := `
 metadata:
   attributes:
@@ -62,7 +64,7 @@ schemaVersion: 2.2.0`
 		}
 	}))
 	// create a listener with the desired port.
-	l, err := net.Listen("tcp", "127.0.0.1:8080")
+	l, err := net.Listen("tcp", testServerURL)
 	if err != nil {
 		t.Errorf("TestParseDevfileModel() unexpected error while creating listener: %v", err)
 		return
@@ -95,7 +97,7 @@ schemaVersion: 2.2.0`
 		},
 		{
 			name:       "Simple devfile from URL",
-			devfileURL: "http://127.0.0.1:8080",
+			devfileURL: "http://" + testServerURL,
 			wantMetadata: devfile.DevfileMetadata{
 				Name:       "petclinic",
 				Attributes: attributes.Attributes{}.PutString("gitOpsRepository.url", "https://github.com/testorg/petclinic-gitops").PutString("appModelRepository.url", "https://github.com/testorg/petclinic-app"),
