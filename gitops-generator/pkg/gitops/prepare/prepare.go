@@ -32,12 +32,6 @@ const (
 	PipelinesAsCodeSecretName = "pipelines-as-code-secret"
 	// Pipelines as Code global configuration secret namespace
 	buildServiceNamespaceName = "build-service"
-	// ConfigMap name for detection hacbs workflow
-	// Note: HACBS detection by configmap is temporary solution, will be changed to detection based
-	// on APIBinding API in KCP environment.
-	HACBSConfigMapName = "hacbs"
-	// APIBinding name for detection hacbs workflow in KCP environment
-	HACBSAPIBindingName = "integration-service"
 )
 
 // Holds data that needs to be queried from the cluster in order for the gitops generation function to work
@@ -47,8 +41,6 @@ type GitopsConfig struct {
 
 	// Contains data from Pipelies as Code configuration k8s secret
 	PipelinesAsCodeCredentials map[string][]byte
-
-	IsHACBS bool
 }
 
 func PrepareGitopsConfig(ctx context.Context, cli client.Client, component appstudiov1alpha1.Component) GitopsConfig {
