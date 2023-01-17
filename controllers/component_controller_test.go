@@ -29,7 +29,6 @@ import (
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	appstudiov1alpha1 "github.com/redhat-appstudio/application-api/api/v1alpha1"
-	devfile "github.com/redhat-appstudio/application-service/pkg/devfile"
 	devfilePkg "github.com/redhat-appstudio/application-service/pkg/devfile"
 	"sigs.k8s.io/yaml"
 
@@ -115,17 +114,17 @@ var _ = Describe("Component controller", func() {
 			Expect(createdHasApp.Status.Devfile).Should(Not(Equal("")))
 
 			// Check the Component devfile
-			devfileSrc := devfile.DevfileSrc{
+			devfileSrc := devfilePkg.DevfileSrc{
 				Data: createdHasComp.Status.Devfile,
 			}
-			_, err := devfile.ParseDevfile(devfileSrc)
+			_, err := devfilePkg.ParseDevfile(devfileSrc)
 			Expect(err).Should(Not(HaveOccurred()))
 
 			// Check the HAS Application devfile
-			devfileSrc = devfile.DevfileSrc{
+			devfileSrc = devfilePkg.DevfileSrc{
 				Data: createdHasApp.Status.Devfile,
 			}
-			hasAppDevfile, err := devfile.ParseDevfile(devfileSrc)
+			hasAppDevfile, err := devfilePkg.ParseDevfile(devfileSrc)
 			Expect(err).Should(Not(HaveOccurred()))
 
 			// gitOpsRepo and appModelRepo should both be set
@@ -221,20 +220,20 @@ var _ = Describe("Component controller", func() {
 			Expect(createdHasApp.Status.Devfile).Should(Not(Equal("")))
 
 			// Check the Component devfile
-			devfileSrc := devfile.DevfileSrc{
+			devfileSrc := devfilePkg.DevfileSrc{
 				Data: createdHasComp.Status.Devfile,
 			}
-			hasCompDevfile, err := devfile.ParseDevfile(devfileSrc)
+			hasCompDevfile, err := devfilePkg.ParseDevfile(devfileSrc)
 			Expect(err).Should(Not(HaveOccurred()))
 
 			// Check if its Liberty
 			Expect(string(hasCompDevfile.GetMetadata().DisplayName)).Should(ContainSubstring("Liberty"))
 
 			// Check the HAS Application devfile
-			devfileSrc = devfile.DevfileSrc{
+			devfileSrc = devfilePkg.DevfileSrc{
 				Data: createdHasApp.Status.Devfile,
 			}
-			hasAppDevfile, err := devfile.ParseDevfile(devfileSrc)
+			hasAppDevfile, err := devfilePkg.ParseDevfile(devfileSrc)
 			Expect(err).Should(Not(HaveOccurred()))
 
 			// gitOpsRepo and appModelRepo should both be set
@@ -515,10 +514,10 @@ var _ = Describe("Component controller", func() {
 			Expect(createdHasApp.Status.Devfile).Should(Not(Equal("")))
 
 			// Check the Component devfile
-			devfileSrc := devfile.DevfileSrc{
+			devfileSrc := devfilePkg.DevfileSrc{
 				Data: createdHasComp.Status.Devfile,
 			}
-			hasCompDevfile, err := devfile.ParseDevfile(devfileSrc)
+			hasCompDevfile, err := devfilePkg.ParseDevfile(devfileSrc)
 			Expect(err).Should(Not(HaveOccurred()))
 
 			checklist := updateChecklist{
@@ -532,10 +531,10 @@ var _ = Describe("Component controller", func() {
 			verifyHASComponentUpdates(hasCompDevfile, checklist, nil)
 
 			// Check the HAS Application devfile
-			devfileSrc = devfile.DevfileSrc{
+			devfileSrc = devfilePkg.DevfileSrc{
 				Data: createdHasApp.Status.Devfile,
 			}
-			hasAppDevfile, err := devfile.ParseDevfile(devfileSrc)
+			hasAppDevfile, err := devfilePkg.ParseDevfile(devfileSrc)
 			Expect(err).Should(Not(HaveOccurred()))
 
 			// gitOpsRepo and appModelRepo should both be set
@@ -583,10 +582,10 @@ var _ = Describe("Component controller", func() {
 			Expect(updatedHasComp.Status.Devfile).Should(Not(Equal("")))
 
 			// Check the Component updated devfile
-			devfileSrc = devfile.DevfileSrc{
+			devfileSrc = devfilePkg.DevfileSrc{
 				Data: updatedHasComp.Status.Devfile,
 			}
-			hasCompUpdatedDevfile, err := devfile.ParseDevfile(devfileSrc)
+			hasCompUpdatedDevfile, err := devfilePkg.ParseDevfile(devfileSrc)
 			Expect(err).Should(Not(HaveOccurred()))
 
 			checklist = updateChecklist{
@@ -663,10 +662,10 @@ var _ = Describe("Component controller", func() {
 			Expect(createdHasApp.Status.Devfile).Should(Not(Equal("")))
 
 			// Check the Component devfile
-			devfileSrc := devfile.DevfileSrc{
+			devfileSrc := devfilePkg.DevfileSrc{
 				Data: createdHasComp.Status.Devfile,
 			}
-			_, err := devfile.ParseDevfile(devfileSrc)
+			_, err := devfilePkg.ParseDevfile(devfileSrc)
 			Expect(err).Should(Not(HaveOccurred()))
 
 			// Make sure the component's built image is included in the status
@@ -917,10 +916,10 @@ var _ = Describe("Component controller", func() {
 			componentName := HASCompName + "10"
 
 			hasApp := createAndFetchSimpleApp(applicationName, HASAppNamespace, DisplayName, Description)
-			devfileSrc := devfile.DevfileSrc{
+			devfileSrc := devfilePkg.DevfileSrc{
 				Data: hasApp.Status.Devfile,
 			}
-			curDevfile, err := devfile.ParseDevfile(devfileSrc)
+			curDevfile, err := devfilePkg.ParseDevfile(devfileSrc)
 			Expect(err).ToNot(HaveOccurred())
 
 			// Remove the gitops URL and update the status of the resource
@@ -1476,10 +1475,10 @@ var _ = Describe("Component controller", func() {
 			Expect(createdHasApp.Status.Devfile).Should(Not(Equal("")))
 
 			// Check the Component devfile
-			devfileSrc := devfile.DevfileSrc{
+			devfileSrc := devfilePkg.DevfileSrc{
 				Data: createdHasComp.Status.Devfile,
 			}
-			hasCompDevfile, err := devfile.ParseDevfile(devfileSrc)
+			hasCompDevfile, err := devfilePkg.ParseDevfile(devfileSrc)
 			Expect(err).Should(Not(HaveOccurred()))
 
 			dockerfileComponents, err := hasCompDevfile.GetComponents(common.DevfileOptions{})
@@ -1497,10 +1496,10 @@ var _ = Describe("Component controller", func() {
 			}
 
 			// Check the HAS Application devfile
-			devfileSrc = devfile.DevfileSrc{
+			devfileSrc = devfilePkg.DevfileSrc{
 				Data: createdHasApp.Status.Devfile,
 			}
-			hasAppDevfile, err := devfile.ParseDevfile(devfileSrc)
+			hasAppDevfile, err := devfilePkg.ParseDevfile(devfileSrc)
 			Expect(err).Should(Not(HaveOccurred()))
 
 			// gitOpsRepo and appModelRepo should both be set
