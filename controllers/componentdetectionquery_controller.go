@@ -1,5 +1,5 @@
 /*
-Copyright 2021 Red Hat, Inc.
+Copyright 2021-2023 Red Hat, Inc.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -20,6 +20,7 @@ import (
 	"context"
 	"fmt"
 	"path"
+	"strings"
 
 	"go.uber.org/zap/zapcore"
 	corev1 "k8s.io/api/core/v1"
@@ -121,7 +122,6 @@ func (r *ComponentDetectionQueryReconciler) Reconcile(ctx context.Context, req c
 		devfilesMap := make(map[string][]byte)
 		devfilesURLMap := make(map[string]string)
 		dockerfileContextMap := make(map[string]string)
-
 		context := source.Context
 		if context == "" {
 			context = "./"
@@ -207,7 +207,7 @@ func (r *ComponentDetectionQueryReconciler) Reconcile(ctx context.Context, req c
 			if isMultiComponent {
 				log.Info(fmt.Sprintf("Since this is a multi-component, attempt will be made to read only level 1 dir for devfiles... %v", req.NamespacedName))
 
-				devfilesMap, devfilesURLMap, dockerfileContextMap, err = devfile.ScanRepo(log, r.AlizerClient, componentPath, r.DevfileRegistryURL)
+				devfilesMap, devfilesURLMap, dockerfileContextMap, err = devfile.ScanRepo(log, r.AlizerClient, componentPath, r.DevfileRegistryURL, source)
 				if err != nil {
 					if _, ok := err.(*devfile.NoDevfileFound); !ok {
 						log.Error(err, fmt.Sprintf("Unable to find devfile(s) in repo %s due to an error %s, exiting reconcile loop %v", source.URL, err.Error(), req.NamespacedName))
@@ -247,7 +247,11 @@ func (r *ComponentDetectionQueryReconciler) Reconcile(ctx context.Context, req c
 		}
 
 		for context, link := range dockerfileContextMap {
-			updatedLink, err := devfile.UpdateGitLink(source.URL, source.Revision, link)
+			updatedContext := context
+			if !strings.HasPrefix(link, "http") {
+				updatedContext = path.Join(context, link)
+			}
+			updatedLink, err := devfile.UpdateGitLink(source.URL, source.Revision, updatedContext)
 			if err != nil {
 				log.Error(err, fmt.Sprintf("Unable to update the dockerfile link %v", req.NamespacedName))
 				r.SetCompleteConditionAndUpdateCR(ctx, req, &componentDetectionQuery, copiedCDQ, err)

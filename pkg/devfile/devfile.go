@@ -1,5 +1,5 @@
 //
-// Copyright 2021 Red Hat, Inc.
+// Copyright 2021-2023 Red Hat, Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -247,6 +247,6 @@ func DownloadDevfileAndDockerfile(url string) ([]byte, string, []byte) {
 // Map 1 returns a context to the devfile bytes if present.
 // Map 2 returns a context to the matched devfileURL from the devfile registry if no devfile is present in the context.
 // Map 3 returns a context to the dockerfile uri or a matched dockerfileURL from the devfile registry if no dockerfile is present in the context
-func ScanRepo(log logr.Logger, a Alizer, localpath string, devfileRegistryURL string) (map[string][]byte, map[string]string, map[string]string, error) {
-	return search(log, a, localpath, devfileRegistryURL)
+func ScanRepo(log logr.Logger, a Alizer, localpath string, devfileRegistryURL string, source appstudiov1alpha1.GitSource) (map[string][]byte, map[string]string, map[string]string, error) {
+	return search(log, a, localpath, devfileRegistryURL, source)
 }

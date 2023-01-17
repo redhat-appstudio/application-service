@@ -1,5 +1,5 @@
 //
-// Copyright 2022 Red Hat, Inc.
+// Copyright 2022-2023 Red Hat, Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -25,6 +25,7 @@ import (
 	"github.com/devfile/api/v2/pkg/apis/workspaces/v1alpha2"
 	"github.com/devfile/library/pkg/devfile/parser/data/v2/common"
 	"github.com/go-logr/logr"
+	appstudiov1alpha1 "github.com/redhat-appstudio/application-api/api/v1alpha1"
 	"github.com/redhat-appstudio/application-service/pkg/util"
 	"github.com/redhat-developer/alizer/go/pkg/apis/language"
 	"github.com/redhat-developer/alizer/go/pkg/apis/recognizer"
@@ -42,9 +43,9 @@ type AlizerClient struct {
 // If no devfile(s) or dockerfile(s) are found, then the Alizer tool is used to detect and match a devfile/dockerfile from the devfile registry
 // search returns 3 maps and an error:
 // Map 1 returns a context to the devfile bytes if present.
-// Map 2 returns a context to the matched devfileURL from the devfile registry if no devfile is present in the context.
+// Map 2 returns a context to the matched devfileURL from the github repository. If no devfile was present, then a link to a matching devfile in the devfile registry will be used instead.
 // Map 3 returns a context to the dockerfile uri or a matched dockerfileURL from the devfile registry if no dockerfile is present in the context
-func search(log logr.Logger, a Alizer, localpath string, devfileRegistryURL string) (map[string][]byte, map[string]string, map[string]string, error) {
+func search(log logr.Logger, a Alizer, localpath string, devfileRegistryURL string, source appstudiov1alpha1.GitSource) (map[string][]byte, map[string]string, map[string]string, error) {
 
 	devfileMapFromRepo := make(map[string][]byte)
 	devfilesURLMapFromRepo := make(map[string]string)
@@ -75,6 +76,13 @@ func search(log logr.Logger, a Alizer, localpath string, devfileRegistryURL stri
 					}
 
 					devfileMapFromRepo[context] = devfileBytes
+
+					// Set the proper devfile URL for the detected devfile
+					updatedLink, err := UpdateGitLink(source.URL, source.Revision, path.Join(source.Context, path.Join(context, f.Name())))
+					if err != nil {
+						return nil, nil, nil, err
+					}
+					devfilesURLMapFromRepo[context] = updatedLink
 					isDevfilePresent = true
 				} else if f.IsDir() && f.Name() == HiddenDevfileDir {
 					// Check for .devfile/devfile.yaml or .devfile/.devfile.yaml
@@ -95,6 +103,14 @@ func search(log logr.Logger, a Alizer, localpath string, devfileRegistryURL stri
 							}
 
 							devfileMapFromRepo[context] = devfileBytes
+
+							// Set the proper devfile URL for the detected devfile
+							updatedLink, err := UpdateGitLink(source.URL, source.Revision, path.Join(source.Context, path.Join(context, HiddenDevfileDir, f.Name())))
+							if err != nil {
+								return nil, nil, nil, err
+							}
+							devfilesURLMapFromRepo[context] = updatedLink
+
 							isDevfilePresent = true
 						}
 					}
@@ -153,6 +169,7 @@ func AnalyzePath(a Alizer, localpath, context, devfileRegistryURL string, devfil
 			}
 			isDockerfilePresent = true
 		}
+
 	}
 
 	if !isDockerfilePresent {
