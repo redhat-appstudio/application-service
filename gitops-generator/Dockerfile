@@ -27,6 +27,9 @@ COPY --from=builder /workspace/gitops-generator .
 COPY entrypoint.sh .
 RUN chgrp -R 0 /workspace && chmod -R g=u /workspace
 
+COPY appdata.gitconfig /.gitconfig
+RUN chgrp -R 0 /.gitconfig && chmod -R g=u /.gitconfig
+
 USER 1001
 
 ENTRYPOINT ["/workspace/entrypoint.sh"]
