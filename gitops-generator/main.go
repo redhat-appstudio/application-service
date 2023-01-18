@@ -87,7 +87,7 @@ func main() {
 			Context:   path,
 		}
 		err = generate.GenerateGitopsBase(context.Background(), kubeClient, component, appFs, gitopsParams)
-		if err == nil {
+		if err != nil {
 			log.Fatal(err)
 		}
 	} else {
@@ -101,7 +101,7 @@ func main() {
 			RemoteURL: remoteURL,
 		}
 		err = generate.GenerateGitopsOverlays(context.Background(), kubeClient, snapshotEnvironmentBinding, appFs, gitopsParams)
-		if err == nil {
+		if err != nil {
 			log.Fatal(err)
 		}
 	}
