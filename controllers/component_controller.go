@@ -46,14 +46,12 @@ import (
 	logicalcluster "github.com/kcp-dev/logicalcluster/v2"
 
 	appstudiov1alpha1 "github.com/redhat-appstudio/application-api/api/v1alpha1"
-	appservicegitops "github.com/redhat-appstudio/application-service/gitops"
-	"github.com/redhat-appstudio/application-service/gitops/prepare"
 	devfile "github.com/redhat-appstudio/application-service/pkg/devfile"
-	"github.com/redhat-appstudio/application-service/pkg/github"
+	github "github.com/redhat-appstudio/application-service/pkg/github"
+	gitopsjob "github.com/redhat-appstudio/application-service/pkg/gitopsjob"
 	logutil "github.com/redhat-appstudio/application-service/pkg/log"
 	"github.com/redhat-appstudio/application-service/pkg/spi"
 	"github.com/redhat-appstudio/application-service/pkg/util"
-	"github.com/redhat-appstudio/application-service/pkg/util/ioutils"
 	gitopsgen "github.com/redhat-developer/gitops-generator/pkg"
 	"github.com/spf13/afero"
 )
@@ -76,6 +74,7 @@ type ComponentReconciler struct {
 //+kubebuilder:rbac:groups=appstudio.redhat.com,resources=components/status,verbs=get;update;patch
 //+kubebuilder:rbac:groups=appstudio.redhat.com,resources=components/finalizers,verbs=update
 //+kubebuilder:rbac:groups=core,resources=configmaps,verbs=get;list;watch
+//+kubebuilder:rbac:groups=batch,resources=jobs,verbs=get;list;watch;create;delete
 //+kubebuilder:rbac:groups=core,resources=secrets,verbs=get;list;watch
 //+kubebuilder:rbac:groups=apis.kcp.dev,resources=apibindings,verbs=get;list;watch
 
@@ -431,33 +430,24 @@ func (r *ComponentReconciler) generateGitops(ctx context.Context, req ctrl.Reque
 		return err
 	}
 
-	// Create a temp folder to create the gitops resources in
-	tempDir, err := ioutils.CreateTempPath(component.Name, r.AppFS)
-	if err != nil {
-		log.Error(err, "unable to create temp directory for GitOps resources due to error")
-		return fmt.Errorf("unable to create temp directory for GitOps resources due to error: %v", err)
+	gitopsJobConfig := gitopsjob.GitOpsJobConfig{
+		OperationType: gitopsjob.GenerateBase,
+		RepositoryURL: component.Status.GitOps.RepositoryURL,
+		ResourceName:  component.GetName(),
+		Branch:        gitOpsBranch,
+		Context:       gitOpsContext,
 	}
 
-	// Generate and push the gitops resources
-	gitopsConfig := prepare.PrepareGitopsConfig(ctx, r.Client, *component)
-	mappedGitOpsComponent := util.GetMappedGitOpsComponent(*component)
-	//Gitops functions return sanitized error messages
-	err = r.Generator.CloneGenerateAndPush(tempDir, gitOpsURL, mappedGitOpsComponent, r.AppFS, gitOpsBranch, gitOpsContext, false)
+	// Create a Kubernetes job (with random string appended to name to ensure uniqueness) to generate the GitOps resources
+	jobName := component.GetName()[0:56] + util.GetRandomString(5, true)
+	err = gitopsjob.CreateGitOpsJob(ctx, r.Client, r.GitToken, jobName, component.Namespace, gitopsJobConfig)
 	if err != nil {
-		log.Error(err, "unable to generate gitops resources due to error")
 		return err
 	}
 
-	// GenerateTektonBuild returns a sanitized error message
-	err = appservicegitops.GenerateTektonBuild(tempDir, *component, r.AppFS, gitOpsContext, gitopsConfig)
+	// Wait for the job to succeed, error out if the 5 min timeout is reached
+	err = gitopsjob.WaitForJob(ctx, r.Client, jobName, 5*time.Minute)
 	if err != nil {
-		log.Error(err, "unable to generate gitops build resources due to error")
-		return err
-	}
-	//Gitops functions return sanitized error messages
-	err = r.Generator.CommitAndPush(tempDir, "", gitOpsURL, mappedGitOpsComponent.Name, gitOpsBranch, "Generating Tekton resources")
-	if err != nil {
-		log.Error(err, "unable to commit and push gitops resources due to error")
 		return err
 	}
 
@@ -477,8 +467,7 @@ func (r *ComponentReconciler) generateGitops(ctx context.Context, req ctrl.Reque
 	}
 	component.Status.GitOps.CommitID = commitID
 
-	// Remove the temp folder that was created
-	return r.AppFS.RemoveAll(tempDir)
+	return nil
 }
 
 // setGitopsStatus adds the necessary gitops info (url, branch, context) to the component CR status
