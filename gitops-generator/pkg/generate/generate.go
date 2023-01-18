@@ -60,7 +60,7 @@ func GenerateGitopsBase(ctx context.Context, client client.Client, component app
 	if err != nil {
 		return err
 	}
-	err = gitopsParams.Generator.CommitAndPush(tempDir, "", gitopsParams.RemoteURL, mappedGitOpsComponent.Name, gitopsParams.Branch, "Generating Tekton resources")
+	err = gitopsParams.Generator.CommitAndPush(tempDir, "", gitopsParams.RemoteURL, mappedGitOpsComponent.Name, gitopsParams.Branch, "Generating GitOps resources")
 	if err != nil {
 		return err
 	}
