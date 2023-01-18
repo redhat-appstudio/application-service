@@ -55,6 +55,8 @@ func CreateGitOpsJob(ctx context.Context, client client.Client, gitToken string,
 		Spec: batchv1.JobSpec{
 			Template: corev1.PodTemplateSpec{
 				Spec: corev1.PodSpec{
+					ServiceAccountName: "application-service-controller-manager",
+					RestartPolicy:      corev1.RestartPolicyNever,
 					Containers: []corev1.Container{
 						{
 							Name:            "gitops-generator",
@@ -85,12 +87,14 @@ func CreateGitOpsJob(ctx context.Context, client client.Client, gitToken string,
 									Name:  "NAMESPACE",
 									Value: namespace,
 								},
-							},
-							EnvFrom: []corev1.EnvFromSource{
 								{
-									SecretRef: &corev1.SecretEnvSource{
-										LocalObjectReference: corev1.LocalObjectReference{
-											Name: "has-github-token",
+									Name: "GITHUB_TOKEN",
+									ValueFrom: &corev1.EnvVarSource{
+										SecretKeyRef: &corev1.SecretKeySelector{
+											LocalObjectReference: corev1.LocalObjectReference{
+												Name: "has-github-token",
+											},
+											Key: "token",
 										},
 									},
 								},
@@ -111,7 +115,8 @@ func CreateGitOpsJob(ctx context.Context, client client.Client, gitToken string,
 func WaitForJob(ctx context.Context, client client.Client, jobName string, timeout time.Duration) error {
 	var job batchv1.Job
 	var err error
-	for stay, timeout := true, time.After(timeout*time.Second); stay; {
+	for stay, timeout := true, time.After(timeout); stay; {
+		fmt.Println("DEBUG: FOR LOOP ITERATION")
 		err = client.Get(ctx, types.NamespacedName{Namespace: gitopsJobNamespace, Name: jobName}, &job)
 		if err != nil {
 			// If the error is anything but a isnotfound error, return the error
@@ -125,6 +130,7 @@ func WaitForJob(ctx context.Context, client client.Client, jobName string, timeo
 		if job.Status.CompletionTime != nil {
 			return nil
 		}
+		time.Sleep(1 * time.Second)
 		select {
 		case <-timeout:
 			stay = false
