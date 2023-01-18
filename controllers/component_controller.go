@@ -439,7 +439,11 @@ func (r *ComponentReconciler) generateGitops(ctx context.Context, req ctrl.Reque
 	}
 
 	// Create a Kubernetes job (with random string appended to name to ensure uniqueness) to generate the GitOps resources
-	jobName := component.GetName()[0:56] + util.GetRandomString(5, true)
+	jobName := component.GetName()
+	if len(jobName) > 57 {
+		jobName = component.GetName()[0:56]
+	}
+	jobName = jobName + util.GetRandomString(5, true)
 	err = gitopsjob.CreateGitOpsJob(ctx, r.Client, r.GitToken, jobName, component.Namespace, gitopsJobConfig)
 	if err != nil {
 		return err
