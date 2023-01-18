@@ -128,21 +128,25 @@ func GetResourceFromDevfile(log logr.Logger, devfileData data.DevfileData, deplo
 							return parser.KubernetesResources{}, err
 						}
 					}
-					resources.Deployments[0].Spec.Replicas = &currentReplica
+					if currentReplica > 0 {
+						resources.Deployments[0].Spec.Replicas = &currentReplica
+					}
 
 					if len(resources.Deployments[0].Spec.Template.Spec.Containers) > 0 {
 						if image != "" {
 							resources.Deployments[0].Spec.Template.Spec.Containers[0].Image = image
 						}
 
-						resources.Deployments[0].Spec.Template.Spec.Containers[0].Ports = append(resources.Deployments[0].Spec.Template.Spec.Containers[0].Ports, corev1.ContainerPort{ContainerPort: int32(currentPort)})
+						if currentPort > 0 {
+							resources.Deployments[0].Spec.Template.Spec.Containers[0].Ports = append(resources.Deployments[0].Spec.Template.Spec.Containers[0].Ports, corev1.ContainerPort{ContainerPort: int32(currentPort)})
 
-						if resources.Deployments[0].Spec.Template.Spec.Containers[0].ReadinessProbe != nil && resources.Deployments[0].Spec.Template.Spec.Containers[0].ReadinessProbe.ProbeHandler.TCPSocket != nil {
-							resources.Deployments[0].Spec.Template.Spec.Containers[0].ReadinessProbe.ProbeHandler.TCPSocket.Port.IntVal = int32(currentPort)
-						}
+							if resources.Deployments[0].Spec.Template.Spec.Containers[0].ReadinessProbe != nil && resources.Deployments[0].Spec.Template.Spec.Containers[0].ReadinessProbe.ProbeHandler.TCPSocket != nil {
+								resources.Deployments[0].Spec.Template.Spec.Containers[0].ReadinessProbe.ProbeHandler.TCPSocket.Port.IntVal = int32(currentPort)
+							}
 
-						if resources.Deployments[0].Spec.Template.Spec.Containers[0].LivenessProbe != nil && resources.Deployments[0].Spec.Template.Spec.Containers[0].LivenessProbe.ProbeHandler.HTTPGet != nil {
-							resources.Deployments[0].Spec.Template.Spec.Containers[0].LivenessProbe.ProbeHandler.HTTPGet.Port.IntVal = int32(currentPort)
+							if resources.Deployments[0].Spec.Template.Spec.Containers[0].LivenessProbe != nil && resources.Deployments[0].Spec.Template.Spec.Containers[0].LivenessProbe.ProbeHandler.HTTPGet != nil {
+								resources.Deployments[0].Spec.Template.Spec.Containers[0].LivenessProbe.ProbeHandler.HTTPGet.Port.IntVal = int32(currentPort)
+							}
 						}
 
 						for _, devfileEnv := range currentENV {
@@ -267,13 +271,13 @@ func GetResourceFromDevfile(log logr.Logger, devfileData data.DevfileData, deplo
 					}
 				}
 
-				if len(resources.Services) > 0 {
+				if len(resources.Services) > 0 && currentPort > 0 {
 					resources.Services[0].Spec.Ports = append(resources.Services[0].Spec.Ports, corev1.ServicePort{
 						Port:       int32(currentPort),
 						TargetPort: intstr.FromInt(currentPort),
 					})
 				}
-				if len(resources.Routes) > 0 {
+				if len(resources.Routes) > 0 && currentPort > 0 {
 					resources.Routes[0].Spec.Port.TargetPort = intstr.FromInt(currentPort)
 					// Update for route
 					route := component.Attributes.GetString(RouteKey, &err)
