@@ -43,6 +43,31 @@ func (a MockAlizerClient) DetectComponents(path string) ([]recognizer.Component,
 				},
 			},
 		}, nil
+	} else if strings.Contains(path, "nodejs-no-dockerfile") {
+		return []recognizer.Component{
+			{
+				Path: path,
+				Languages: []language.Language{
+					{
+						Name: "JavaScript",
+						Aliases: []string{
+							"js",
+							"node",
+							"nodejs",
+						},
+						Frameworks: []string{
+							"Express",
+						},
+						Tools: []string{
+							"NodeJs",
+							"Node.js",
+						},
+						UsageInPercentage: 100,
+						CanBeComponent:    true,
+					},
+				},
+			},
+		}, nil
 	} else if !strings.Contains(path, "springboot") && !strings.Contains(path, "python") {
 		return nil, nil
 	}
@@ -85,6 +110,17 @@ func (a MockAlizerClient) SelectDevFileFromTypes(path string, devFileTypes []rec
 	} else if strings.Contains(path, "python-basic") {
 		return recognizer.DevFileType{
 			Name: "python-basic",
+		}, nil
+	} else if strings.Contains(path, "nodejs-no-dockerfile") {
+		return recognizer.DevFileType{
+			Name:        "nodejs-basic",
+			Language:    "JavaScript",
+			ProjectType: "Node.js",
+			Tags: []string{
+				"Node.js",
+				"Express",
+				"ubi8",
+			},
 		}, nil
 	}
 
