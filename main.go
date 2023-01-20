@@ -202,6 +202,12 @@ func main() {
 		setupLog.Error(err, "unable to create controller", "controller", "Component")
 		os.Exit(1)
 	}
+	config, err := rest.InClusterConfig()
+	if err != nil {
+		setupLog.Error(err, ("Error creating InClusterConfig... "))
+		os.Exit(1)
+	}
+
 	if err = (&controllers.ComponentDetectionQueryReconciler{
 		Client:             mgr.GetClient(),
 		Scheme:             mgr.GetScheme(),
@@ -210,6 +216,7 @@ func main() {
 		AlizerClient:       devfile.AlizerClient{},
 		DevfileRegistryURL: devfileRegistryURL,
 		AppFS:              ioutils.NewFilesystem(),
+		Config:             config,
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "ComponentDetectionQuery")
 		os.Exit(1)

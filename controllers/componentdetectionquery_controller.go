@@ -58,6 +58,7 @@ type ComponentDetectionQueryReconciler struct {
 	Log                logr.Logger
 	DevfileRegistryURL string
 	AppFS              afero.Afero
+	Config             *rest.Config
 }
 
 //+kubebuilder:rbac:groups=appstudio.redhat.com,resources=componentdetectionqueries,verbs=get;list;watch;create;update;patch;delete
@@ -166,26 +167,19 @@ func (r *ComponentDetectionQueryReconciler) Reconcile(ctx context.Context, req c
 				log.Info(fmt.Sprintf("Determined that this is a Dockerfile only component  %v", req.NamespacedName))
 				dockerfileContextMap[context] = "./Dockerfile"
 			}
-
 			// perfume cdq job that requires repo cloning and azlier analysis
-			config, err := rest.InClusterConfig()
-			if err != nil {
-				log.Error(err, fmt.Sprintf("Error creating InClusterConfig... %v", req.NamespacedName))
-				r.SetCompleteConditionAndUpdateCR(ctx, req, &componentDetectionQuery, copiedCDQ, err)
-				return ctrl.Result{}, nil
-			}
-			clientset, err := kubernetes.NewForConfig(config)
+			clientset, err := kubernetes.NewForConfig(r.Config)
 			if err != nil {
 				log.Error(err, fmt.Sprintf("Error creating clientset with config... %v", req.NamespacedName))
 				r.SetCompleteConditionAndUpdateCR(ctx, req, &componentDetectionQuery, copiedCDQ, err)
 				return ctrl.Result{}, nil
 			}
-			jobs := clientset.BatchV1().Jobs(req.Namespace)
+			// jobs := clientset.BatchV1().Jobs(req.Namespace)
 			jobName := req.Name + "-job"
 			var backOffLimit int32 = 0
 			jobSpec := &batchv1.Job{
 				ObjectMeta: metav1.ObjectMeta{
-					Name:      req.Name + "-job",
+					Name:      jobName,
 					Namespace: req.Namespace,
 				},
 				Spec: batchv1.JobSpec{
@@ -205,8 +199,8 @@ func (r *ComponentDetectionQueryReconciler) Reconcile(ctx context.Context, req c
 					BackoffLimit: &backOffLimit,
 				},
 			}
-
-			_, err = jobs.Create(ctx, jobSpec, metav1.CreateOptions{})
+			err = r.Client.Create(ctx, jobSpec, &client.CreateOptions{})
+			// _, err = jobs.Create(ctx, jobSpec, metav1.CreateOptions{})
 			if err != nil {
 				log.Error(err, fmt.Sprintf("Error creating cdq analysis job %s... %v", jobName, req.NamespacedName))
 				r.SetCompleteConditionAndUpdateCR(ctx, req, &componentDetectionQuery, copiedCDQ, err)
@@ -231,7 +225,7 @@ func (r *ComponentDetectionQueryReconciler) Reconcile(ctx context.Context, req c
 			json.Unmarshal(cm.BinaryData["dockerfileContextMap"], &dockerfileContextMapReturned)
 			json.Unmarshal(cm.BinaryData["devfilesURLMap"], &devfilesURLMapReturned)
 			json.Unmarshal(cm.BinaryData["error"], &retErr)
-			cleanupK8sResources(log, clientset, ctx, fmt.Sprintf("%s-job", req.Name), req.Name, req.Namespace)
+			// cleanupK8sResources(log, clientset, ctx, fmt.Sprintf("%s-job", req.Name), req.Name, req.Namespace)
 			if retErr != nil {
 				log.Error(retErr, fmt.Sprintf("Unable to analyze the repo via kubernetes job... %v", req.NamespacedName))
 				r.SetCompleteConditionAndUpdateCR(ctx, req, &componentDetectionQuery, copiedCDQ, retErr)

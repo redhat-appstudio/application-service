@@ -22,7 +22,7 @@ import (
 	"fmt"
 	"path"
 
-	"github.com/cloudflare/cfssl/log"
+	"github.com/go-logr/logr"
 	"go.uber.org/zap/zapcore"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -37,7 +37,7 @@ func CloneAndAnalyze(gitToken, namespace, name, context, devfilePath, URL, Revis
 		TimeEncoder: zapcore.ISO8601TimeEncoder,
 	}
 	ctrl.SetLogger(zap.New(zap.UseFlagOptions(&opts)))
-	log := ctrl.Log.WithName("controllers").WithName("ComponentDetectionQuery").WithValues("appstudio-component", "HAS")
+	log := ctrl.Log.WithName("cdq-analysis").WithName("CloneAndAnalyze")
 	var clonePath, componentPath string
 	alizerClient := AlizerClient{}
 	devfilesMap := make(map[string][]byte)
@@ -57,14 +57,14 @@ func CloneAndAnalyze(gitToken, namespace, name, context, devfilePath, URL, Revis
 		clonePath, err = CreateTempPath(name, Fs)
 		if err != nil {
 			log.Error(err, fmt.Sprintf("Unable to create a temp path %s for cloning %v", clonePath, namespace))
-			SendBackDetectionResult(devfilesMap, devfilesURLMap, dockerfileContextMap, name, namespace, err)
+			SendBackDetectionResult(log, devfilesMap, devfilesURLMap, dockerfileContextMap, name, namespace, err)
 			return
 		}
 
 		err = CloneRepo(clonePath, URL, gitToken)
 		if err != nil {
 			log.Error(err, fmt.Sprintf("Unable to clone repo %s to path %s, exiting reconcile loop %v", URL, clonePath, namespace))
-			SendBackDetectionResult(devfilesMap, devfilesURLMap, dockerfileContextMap, name, namespace, err)
+			SendBackDetectionResult(log, devfilesMap, devfilesURLMap, dockerfileContextMap, name, namespace, err)
 			return
 		}
 		log.Info(fmt.Sprintf("cloned from %s to path %s... %v", URL, clonePath, namespace))
@@ -78,7 +78,7 @@ func CloneAndAnalyze(gitToken, namespace, name, context, devfilePath, URL, Revis
 			if err != nil {
 				log.Error(err, fmt.Sprintf("Unable to detect components using Alizer for repo %v, under path %v... %v ", URL, componentPath, namespace))
 				// r.SetCompleteConditionAndUpdateCR(ctx, req, &componentDetectionQuery, copiedCDQ, err)
-				SendBackDetectionResult(devfilesMap, devfilesURLMap, dockerfileContextMap, name, namespace, err)
+				SendBackDetectionResult(log, devfilesMap, devfilesURLMap, dockerfileContextMap, name, namespace, err)
 				return
 			}
 			log.Info(fmt.Sprintf("components detected %v... %v", components, namespace))
@@ -100,7 +100,7 @@ func CloneAndAnalyze(gitToken, namespace, name, context, devfilePath, URL, Revis
 		if err != nil {
 			if _, ok := err.(*NoDevfileFound); !ok {
 				log.Error(err, fmt.Sprintf("Unable to find devfile(s) in repo %s due to an error %s, exiting reconcile loop %v", URL, err.Error(), namespace))
-				SendBackDetectionResult(devfilesMap, devfilesURLMap, dockerfileContextMap, name, namespace, err)
+				SendBackDetectionResult(log, devfilesMap, devfilesURLMap, dockerfileContextMap, name, namespace, err)
 				return
 			}
 		}
@@ -109,7 +109,7 @@ func CloneAndAnalyze(gitToken, namespace, name, context, devfilePath, URL, Revis
 		err := AnalyzePath(alizerClient, componentPath, context, DevfileRegistryURL, devfilesMap, devfilesURLMap, dockerfileContextMap, isDevfilePresent, isDockerfilePresent)
 		if err != nil {
 			log.Error(err, fmt.Sprintf("Unable to analyze path %s for a dockerfile/devfile %v", componentPath, namespace))
-			SendBackDetectionResult(devfilesMap, devfilesURLMap, dockerfileContextMap, name, namespace, err)
+			SendBackDetectionResult(log, devfilesMap, devfilesURLMap, dockerfileContextMap, name, namespace, err)
 			return
 		}
 	}
@@ -117,15 +117,15 @@ func CloneAndAnalyze(gitToken, namespace, name, context, devfilePath, URL, Revis
 	if isExist, _ := IsExisting(Fs, clonePath); isExist {
 		if err := Fs.RemoveAll(clonePath); err != nil {
 			log.Error(err, fmt.Sprintf("Unable to remove the clonepath %s %v", clonePath, namespace))
-			SendBackDetectionResult(devfilesMap, devfilesURLMap, dockerfileContextMap, name, namespace, err)
+			SendBackDetectionResult(log, devfilesMap, devfilesURLMap, dockerfileContextMap, name, namespace, err)
 			return
 		}
 	}
 
-	SendBackDetectionResult(devfilesMap, devfilesURLMap, dockerfileContextMap, name, namespace, nil)
+	SendBackDetectionResult(log, devfilesMap, devfilesURLMap, dockerfileContextMap, name, namespace, nil)
 }
 
-func SendBackDetectionResult(devfilesMap map[string][]byte, devfilesURLMap map[string]string, dockerfileContextMap map[string]string, name, namespace string, completeError error) {
+func SendBackDetectionResult(log logr.Logger, devfilesMap map[string][]byte, devfilesURLMap map[string]string, dockerfileContextMap map[string]string, name, namespace string, completeError error) {
 	ctx := context.Background()
 	config, err := rest.InClusterConfig()
 	if err != nil {
@@ -135,6 +135,7 @@ func SendBackDetectionResult(devfilesMap map[string][]byte, devfilesURLMap map[s
 	if err != nil {
 		log.Error(err, fmt.Sprintf("Error creating clientset with config %v", config))
 	}
+	log.Info(fmt.Sprintf("Sending back result, devfilesMap %v,devfilesURLMap %v, dockerfileContextMap %v  ... %v", devfilesMap, devfilesURLMap, dockerfileContextMap, namespace))
 	configMapBinaryData := make(map[string][]byte)
 	devfilesMapbytes, _ := json.Marshal(devfilesMap)
 	devfilesURLMapbytes, _ := json.Marshal(devfilesURLMap)

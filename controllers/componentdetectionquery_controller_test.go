@@ -1,5 +1,5 @@
 /*
-Copyright 2021 Red Hat, Inc.
+Copyright 2021-2023 Red Hat, Inc.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -18,12 +18,14 @@ package controllers
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	appstudiov1alpha1 "github.com/redhat-appstudio/application-api/api/v1alpha1"
 
+	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
@@ -43,6 +45,16 @@ var _ = Describe("Component Detection Query controller", func() {
 		ComponentName   = "devfile-sample-java-springboot-basic"
 		SampleRepoLink  = "https://github.com/devfile-samples/devfile-sample-java-springboot-basic"
 	)
+
+	springDevfileContext := `
+schemaVersion: 2.2.0
+metadata:
+  name: java-springboot
+  version: 1.2.1
+  projectType: springboot
+  provider: Red Hat
+  language: Java
+`
 
 	Context("Create Component Detection Query with URL set", func() {
 		It("Should successfully detect a devfile", func() {
@@ -68,13 +80,56 @@ var _ = Describe("Component Detection Query controller", func() {
 
 			Expect(k8sClient.Create(ctx, hasCompDetectionQuery)).Should(Succeed())
 
+			configMapBinaryData := make(map[string][]byte)
+			devfilesMap := make(map[string][]byte)
+			devfilesURLMap := make(map[string]string)
+			dockerfileContextMap := make(map[string]string)
+			devfilesURLMap["./"] = "https://raw.githubusercontent.com/devfile-samples/devfile-sample-java-springboot-basic/main/devfile.yaml"
+			dockerfileContextMap["./"] = "https://raw.githubusercontent.com/devfile-samples/devfile-sample-java-springboot-basic/main/docker/Dockerfile"
+			devfilesMap["./"] = []byte(springDevfileContext)
+			devfilesMapbytes, _ := json.Marshal(devfilesMap)
+			devfilesURLMapbytes, _ := json.Marshal(devfilesURLMap)
+			dockerfileContextMapbytes, _ := json.Marshal(dockerfileContextMap)
+
+			configMapBinaryData["devfilesMap"] = devfilesMapbytes
+			configMapBinaryData["devfilesURLMap"] = devfilesURLMapbytes
+			configMapBinaryData["dockerfileContextMap"] = dockerfileContextMapbytes
+			cdqConfigMap := corev1.ConfigMap{
+				TypeMeta: metav1.TypeMeta{
+					Kind:       "ConfigMap",
+					APIVersion: "v1",
+				},
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      queryName,
+					Namespace: HASNamespace,
+				},
+				BinaryData: configMapBinaryData,
+			}
+			Expect(k8sClient.Create(ctx, &cdqConfigMap)).Should(Succeed())
+
 			// Look up the has app resource that was created.
 			// num(conditions) may still be < 1 on the first try, so retry until at least _some_ condition is set
 			hasCompDetQueryLookupKey := types.NamespacedName{Name: queryName, Namespace: HASNamespace}
 			createdHasCompDetectionQuery := &appstudiov1alpha1.ComponentDetectionQuery{}
+			createdJob := &batchv1.Job{}
+			createdConfigMap := &corev1.ConfigMap{}
 			Eventually(func() bool {
 				k8sClient.Get(context.Background(), hasCompDetQueryLookupKey, createdHasCompDetectionQuery)
 				return len(createdHasCompDetectionQuery.Status.Conditions) > 1
+			}, timeout, interval).Should(BeTrue())
+
+			// The job won't be actually completed, as the container image won't be pulled
+			// check for the object to ensure the job has been created
+			Eventually(func() bool {
+				k8sClient.Get(context.Background(), types.NamespacedName{Name: queryName + "-job", Namespace: HASNamespace}, createdJob)
+				return createdJob != nil
+			}, timeout, interval).Should(BeTrue())
+
+			// Look up the has app resource that was created.
+			// num(conditions) may still be < 1 on the first try, so retry until at least _some_ condition is set
+			Eventually(func() bool {
+				k8sClient.Get(context.Background(), hasCompDetQueryLookupKey, createdConfigMap)
+				return len(createdConfigMap.BinaryData) > 1
 			}, timeout, interval).Should(BeTrue())
 
 			// Make sure the a devfile is detected
@@ -118,15 +173,58 @@ var _ = Describe("Component Detection Query controller", func() {
 
 			Expect(k8sClient.Create(ctx, hasCompDetectionQuery)).Should(Succeed())
 
+			configMapBinaryData := make(map[string][]byte)
+			devfilesMap := make(map[string][]byte)
+			devfilesURLMap := make(map[string]string)
+			dockerfileContextMap := make(map[string]string)
+
+			devfilesURLMap["./"] = "https://raw.githubusercontent.com/devfile-samples/devfile-sample-java-springboot-basic/main/devfile.yaml"
+			dockerfileContextMap["./"] = "https://raw.githubusercontent.com/devfile-samples/devfile-sample-java-springboot-basic/main/docker/Dockerfile"
+			devfilesMap["./"] = []byte(springDevfileContext)
+			devfilesMapbytes, _ := json.Marshal(devfilesMap)
+			devfilesURLMapbytes, _ := json.Marshal(devfilesURLMap)
+			dockerfileContextMapbytes, _ := json.Marshal(dockerfileContextMap)
+
+			configMapBinaryData["devfilesMap"] = devfilesMapbytes
+			configMapBinaryData["devfilesURLMap"] = devfilesURLMapbytes
+			configMapBinaryData["dockerfileContextMap"] = dockerfileContextMapbytes
+			cdqConfigMap := corev1.ConfigMap{
+				TypeMeta: metav1.TypeMeta{
+					Kind:       "ConfigMap",
+					APIVersion: "v1",
+				},
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      queryName,
+					Namespace: HASNamespace,
+				},
+				BinaryData: configMapBinaryData,
+			}
+			Expect(k8sClient.Create(ctx, &cdqConfigMap)).Should(Succeed())
+
 			// Look up the has app resource that was created.
 			// num(conditions) may still be < 1 on the first try, so retry until at least _some_ condition is set
 			hasCompDetQueryLookupKey := types.NamespacedName{Name: queryName, Namespace: HASNamespace}
 			createdHasCompDetectionQuery := &appstudiov1alpha1.ComponentDetectionQuery{}
+			createdJob := &batchv1.Job{}
+			createdConfigMap := &corev1.ConfigMap{}
 			Eventually(func() bool {
 				k8sClient.Get(context.Background(), hasCompDetQueryLookupKey, createdHasCompDetectionQuery)
 				return len(createdHasCompDetectionQuery.Status.Conditions) > 1
 			}, timeout, interval).Should(BeTrue())
 
+			// The job won't be actually completed, as the container image won't be pulled
+			// check for the object to ensure the job has been created
+			Eventually(func() bool {
+				k8sClient.Get(context.Background(), types.NamespacedName{Name: queryName + "-job", Namespace: HASNamespace}, createdJob)
+				return createdJob != nil
+			}, timeout, interval).Should(BeTrue())
+
+			// Look up the has app resource that was created.
+			// num(conditions) may still be < 1 on the first try, so retry until at least _some_ condition is set
+			Eventually(func() bool {
+				k8sClient.Get(context.Background(), hasCompDetQueryLookupKey, createdConfigMap)
+				return len(createdConfigMap.BinaryData) > 1
+			}, timeout, interval).Should(BeTrue())
 			// Make sure the a devfile is detected
 			Expect(len(createdHasCompDetectionQuery.Status.ComponentDetected)).Should(Equal(1))
 
@@ -1153,6 +1251,7 @@ var _ = Describe("Component Detection Query controller", func() {
 
 // deleteCompDetQueryCR deletes the specified Comp Detection Query resource and verifies it was properly deleted
 func deleteCompDetQueryCR(hasCompDetectionQueryLookupKey types.NamespacedName) {
+	// cdqJobLookupKey := types.NamespacedName{Name: hasCompDetectionQueryLookupKey.Name + "-job", Namespace: hasCompDetectionQueryLookupKey.Namespace}
 	// Delete
 	Eventually(func() error {
 		f := &appstudiov1alpha1.ComponentDetectionQuery{}
@@ -1160,9 +1259,32 @@ func deleteCompDetQueryCR(hasCompDetectionQueryLookupKey types.NamespacedName) {
 		return k8sClient.Delete(context.Background(), f)
 	}, timeout, interval).Should(Succeed())
 
+	// Eventually(func() error {
+	// 	f := &batchv1.Job{}
+	// 	k8sClient.Get(context.Background(), cdqJobLookupKey, f)
+	// 	return k8sClient.Delete(context.Background(), f)
+	// }, timeout, interval).Should(Succeed())
+
+	// Eventually(func() error {
+	// 	f := &corev1.ConfigMap{}
+	// 	k8sClient.Get(context.Background(), hasCompDetectionQueryLookupKey, f)
+	// 	return k8sClient.Delete(context.Background(), f)
+	// }, timeout, interval).Should(Succeed())
+
 	// Wait for delete to finish
 	Eventually(func() error {
 		f := &appstudiov1alpha1.ComponentDetectionQuery{}
 		return k8sClient.Get(context.Background(), hasCompDetectionQueryLookupKey, f)
 	}, timeout, interval).ShouldNot(Succeed())
+
+	// Eventually(func() error {
+	// 	f := &batchv1.Job{}
+	// 	return k8sClient.Get(context.Background(), cdqJobLookupKey, f)
+	// }, timeout, interval).ShouldNot(Succeed())
+
+	// Eventually(func() error {
+	// 	f := &corev1.ConfigMap{}
+	// 	return k8sClient.Get(context.Background(), hasCompDetectionQueryLookupKey, f)
+	// }, timeout, interval).ShouldNot(Succeed())
+
 }

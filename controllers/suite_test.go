@@ -130,6 +130,7 @@ var _ = BeforeSuite(func() {
 		AlizerClient:       devfile.MockAlizerClient{},
 		DevfileRegistryURL: devfile.DevfileStageRegistryEndpoint, // Use the staging devfile registry for tests
 		AppFS:              ioutils.NewMemoryFilesystem(),
+		Config:             cfg,
 	}).SetupWithManager(k8sManager)
 	Expect(err).ToNot(HaveOccurred())
 
