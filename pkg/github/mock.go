@@ -47,10 +47,15 @@ func GetMockedClient() *github.Client {
 				b, _ := ioutil.ReadAll(req.Body)
 				reqBody := string(b)
 				// ToDo: Figure out a better way to dynamically mock errors
-				if strings.Contains(reqBody, "test-error-response") {
-					mock.WriteError(w,
+				if strings.Contains(reqBody, "test-server-error-response") || strings.Contains(reqBody, "test-server-error-response-2") {
+					WriteError(w,
 						http.StatusInternalServerError,
 						"github went belly up or something",
+					)
+				} else if strings.Contains(reqBody, "test-user-error-response") {
+					WriteError(w,
+						http.StatusUnauthorized,
+						"user is unauthorized",
 					)
 				} else {
 					/* #nosec G104 -- test code */
@@ -87,4 +92,26 @@ func GetMockedClient() *github.Client {
 
 	return github.NewClient(mockedHTTPClient)
 
+}
+
+// WriteError - based on the mock implementation to handle writing back a response
+// workaround until PR https://github.com/migueleliasweb/go-github-mock/pull/41 is merged
+func WriteError(
+	w http.ResponseWriter,
+	httpStatus int,
+	msg string,
+	errors ...github.Error,
+) {
+	w.WriteHeader(httpStatus)
+
+	w.Write(mock.MustMarshal(mockGitHubErrorResponse{
+		Message: msg,
+		Errors:  errors,
+	}))
+
+}
+
+type mockGitHubErrorResponse struct {
+	Message string         `json:"message"` // error message
+	Errors  []github.Error `json:"errors"`  // more detail on individual errors
 }

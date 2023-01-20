@@ -37,7 +37,7 @@ type ServerError struct {
 }
 
 func (e *ServerError) Error() string {
-	return fmt.Sprintf("failed to create gitops repo %s", e.err)
+	return fmt.Errorf("failed to create gitops repo due to error: %v", e.err).Error()
 }
 
 // GenerateNewRepositoryName creates a new gitops repository name, based on the following format:
