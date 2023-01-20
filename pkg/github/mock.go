@@ -47,7 +47,7 @@ func GetMockedClient() *github.Client {
 				b, _ := ioutil.ReadAll(req.Body)
 				reqBody := string(b)
 				// ToDo: Figure out a better way to dynamically mock errors
-				if strings.Contains(reqBody, "test-server-error-response") || strings.Contains(reqBody, "test-server-error-response-2") {
+				if strings.Contains(reqBody, "test-error-response") || strings.Contains(reqBody, "test-server-error-response") || strings.Contains(reqBody, "test-server-error-response-2") {
 					WriteError(w,
 						http.StatusInternalServerError,
 						"github went belly up or something",
