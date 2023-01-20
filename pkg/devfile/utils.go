@@ -24,12 +24,12 @@ import (
 	"github.com/devfile/registry-support/index/generator/schema"
 	registryLibrary "github.com/devfile/registry-support/registry-library/library"
 	"github.com/redhat-appstudio/application-service/pkg/util"
-	"github.com/redhat-developer/alizer/go/pkg/apis/recognizer"
+	"github.com/redhat-developer/alizer/go/pkg/apis/model"
 )
 
 // getAlizerDevfileTypes gets the Alizer devfile types for a specified registry
-func getAlizerDevfileTypes(registryURL string) ([]recognizer.DevFileType, error) {
-	types := []recognizer.DevFileType{}
+func getAlizerDevfileTypes(registryURL string) ([]model.DevFileType, error) {
+	types := []model.DevFileType{}
 	registryIndex, err := registryLibrary.GetRegistryIndex(registryURL, registryLibrary.RegistryOptions{
 		Telemetry: registryLibrary.TelemetryData{},
 	}, schema.SampleDevfileType)
@@ -38,7 +38,7 @@ func getAlizerDevfileTypes(registryURL string) ([]recognizer.DevFileType, error)
 	}
 
 	for _, index := range registryIndex {
-		types = append(types, recognizer.DevFileType{
+		types = append(types, model.DevFileType{
 			Name:        index.Name,
 			Language:    index.Language,
 			ProjectType: index.ProjectType,
