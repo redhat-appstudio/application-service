@@ -1,5 +1,5 @@
 //
-// Copyright 2022 Red Hat, Inc.
+// Copyright 2022-2023 Red Hat, Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -19,26 +19,25 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/redhat-developer/alizer/go/pkg/apis/language"
-	"github.com/redhat-developer/alizer/go/pkg/apis/recognizer"
+	"github.com/redhat-developer/alizer/go/pkg/apis/model"
 )
 
 type MockAlizerClient struct {
 }
 
 // DetectComponents is a wrapper call to Alizer's DetectComponents()
-func (a MockAlizerClient) DetectComponents(path string) ([]recognizer.Component, error) {
+func (a MockAlizerClient) DetectComponents(path string) ([]model.Component, error) {
 	if strings.Contains(path, "errorAnalyze") {
 		return nil, fmt.Errorf("dummy DetectComponents err")
 	} else if strings.Contains(path, "devfile-sample-nodejs-basic") {
-		return []recognizer.Component{
+		return []model.Component{
 			{
 				Path: path,
-				Languages: []language.Language{
+				Languages: []model.Language{
 					{
-						Name:              "nodejs",
-						UsageInPercentage: 60.4,
-						CanBeComponent:    true,
+						Name:           "nodejs",
+						Weight:         60.4,
+						CanBeComponent: true,
 					},
 				},
 			},
@@ -47,19 +46,19 @@ func (a MockAlizerClient) DetectComponents(path string) ([]recognizer.Component,
 		return nil, nil
 	}
 
-	return []recognizer.Component{
+	return []model.Component{
 		{
 			Path: path,
-			Languages: []language.Language{
+			Languages: []model.Language{
 				{
-					Name:              "springboot",
-					UsageInPercentage: 60.4,
-					CanBeComponent:    true,
+					Name:           "springboot",
+					Weight:         60.4,
+					CanBeComponent: true,
 				},
 				{
-					Name:              "python",
-					UsageInPercentage: 22.4,
-					CanBeComponent:    true,
+					Name:           "python",
+					Weight:         22.4,
+					CanBeComponent: true,
 				},
 			},
 		},
@@ -67,26 +66,26 @@ func (a MockAlizerClient) DetectComponents(path string) ([]recognizer.Component,
 }
 
 // SelectDevFileFromTypes is a wrapper call to Alizer's SelectDevFileFromTypes()
-func (a MockAlizerClient) SelectDevFileFromTypes(path string, devFileTypes []recognizer.DevFileType) (recognizer.DevFileType, error) {
+func (a MockAlizerClient) SelectDevFileFromTypes(path string, devFileTypes []model.DevFileType) (model.DevFileType, error) {
 	if strings.Contains(path, "/errorSelectDevFileFromTypes") {
-		return recognizer.DevFileType{}, fmt.Errorf("dummy SelectDevFileFromTypes err")
+		return model.DevFileType{}, fmt.Errorf("dummy SelectDevFileFromTypes err")
 	} else if strings.Contains(path, "/error/devfileendpoint") {
-		return recognizer.DevFileType{
+		return model.DevFileType{
 			Name: "fake",
 		}, nil
 	} else if strings.Contains(path, "java-springboot-basic") || strings.Contains(path, "springboot") {
-		return recognizer.DevFileType{
+		return model.DevFileType{
 			Name: "java-springboot-basic",
 		}, nil
 	} else if strings.Contains(path, "devfile-sample-nodejs-basic") {
-		return recognizer.DevFileType{
+		return model.DevFileType{
 			Name: "nodejs-basic",
 		}, nil
 	} else if strings.Contains(path, "python-basic") {
-		return recognizer.DevFileType{
+		return model.DevFileType{
 			Name: "python-basic",
 		}, nil
 	}
 
-	return recognizer.DevFileType{}, nil
+	return model.DevFileType{}, nil
 }
