@@ -301,6 +301,16 @@ func (r *ComponentReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 				return ctrl.Result{}, err
 			}
 
+			// If DockerfileURL is set and the devfile contains local references to a Dockerfile, then update the devfile
+			if source.GitSource != nil && source.GitSource.DockerfileURL != "" {
+				compDevfileData, err = devfile.UpdateLocalDockerfileURItoAbsolute(compDevfileData, source.GitSource.DockerfileURL)
+				if err != nil {
+					log.Error(err, fmt.Sprintf("Unable to convert local Dockerfile URIs to absolute in Component devfile %v", req.NamespacedName))
+					r.SetCreateConditionAndUpdateCR(ctx, req, &component, err)
+					return ctrl.Result{}, err
+				}
+			}
+
 			yamlHASCompData, err := yaml.Marshal(compDevfileData)
 			if err != nil {
 				log.Error(err, fmt.Sprintf("Unable to marshall the Component devfile, exiting reconcile loop %v", req.NamespacedName))
@@ -308,6 +318,7 @@ func (r *ComponentReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 				return ctrl.Result{}, err
 			}
 
+			// If the DockerfileURL is set in the Git source - update any local references to the Dockerfile in the devfile to use the fully qualified URL
 			component.Status.Devfile = string(yamlHASCompData)
 
 			// Update the HASApp CR with the new devfile
