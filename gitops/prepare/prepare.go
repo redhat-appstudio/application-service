@@ -26,8 +26,6 @@ import (
 )
 
 const (
-	// default secret for app studio registry
-	RegistrySecret = "redhat-appstudio-registry-pull-secret"
 	// Pipelines as Code global configuration secret name
 	PipelinesAsCodeSecretName = "pipelines-as-code-secret"
 	// Pipelines as Code global configuration secret namespace
@@ -37,8 +35,6 @@ const (
 // Holds data that needs to be queried from the cluster in order for the gitops generation function to work
 // This struct is left here so more data can be added as needed
 type GitopsConfig struct {
-	AppStudioRegistrySecretPresent bool
-
 	// Contains data from Pipelies as Code configuration k8s secret
 	PipelinesAsCodeCredentials map[string][]byte
 }
@@ -46,18 +42,9 @@ type GitopsConfig struct {
 func PrepareGitopsConfig(ctx context.Context, cli client.Client, component appstudiov1alpha1.Component) GitopsConfig {
 	data := GitopsConfig{}
 
-	data.AppStudioRegistrySecretPresent = resolveRegistrySecretPresence(ctx, cli, component)
 	data.PipelinesAsCodeCredentials = getPipelinesAsCodeConfigurationSecretData(ctx, cli, component)
 
 	return data
-}
-
-// Determines whether the 'redhat-appstudio-registry-pull-secret' Secret exists, so that the Generate* functions
-// can avoid declaring a secret volume workspace for the Secret when the Secret is not available.
-func resolveRegistrySecretPresence(ctx context.Context, cli client.Client, component appstudiov1alpha1.Component) bool {
-	registrySecret := &corev1.Secret{}
-	err := cli.Get(ctx, types.NamespacedName{Name: RegistrySecret, Namespace: component.Namespace}, registrySecret)
-	return err == nil
 }
 
 func getPipelinesAsCodeConfigurationSecretData(ctx context.Context, cli client.Client, component appstudiov1alpha1.Component) map[string][]byte {

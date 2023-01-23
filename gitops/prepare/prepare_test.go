@@ -78,57 +78,6 @@ func TestPrepareGitopsConfig(t *testing.T) {
 
 }
 
-func TestResolveRegistrySecretPresence(t *testing.T) {
-	ctx := context.TODO()
-
-	component := appstudiov1alpha1.Component{
-		TypeMeta: metav1.TypeMeta{
-			APIVersion: "appstudio.redhat.com/v1alpha1",
-			Kind:       "Component",
-		},
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "myName",
-			Namespace: "myNamespace",
-		},
-	}
-
-	tests := []struct {
-		name string
-		data *corev1.Secret
-		want bool
-	}{
-		{
-			name: "secret exists",
-			data: &corev1.Secret{
-				ObjectMeta: metav1.ObjectMeta{
-					Namespace: component.Namespace,
-					Name:      RegistrySecret,
-				},
-				Data: map[string][]byte{},
-			},
-			want: true,
-		},
-		{
-			name: "secret does not exist",
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			var client crclient.WithWatch
-			client = fake.NewClientBuilder().Build()
-			if tt.data != nil {
-				client = fake.NewClientBuilder().WithRuntimeObjects(tt.data).Build()
-			}
-
-			if got := resolveRegistrySecretPresence(ctx, client, component); got != tt.want {
-				t.Errorf("ResolveBuildBundle() = %v, want %v", got, tt.want)
-			}
-		})
-	}
-
-}
-
 func TestGetPipelinesAsCodeConfigurationSecretData(t *testing.T) {
 	ctx := context.TODO()
 
