@@ -39,6 +39,16 @@ func (r *ComponentReconciler) updateComponentDevfileModel(req ctrl.Request, hasC
 
 	log := r.Log.WithValues("Component", req.NamespacedName).WithValues("clusterName", req.ClusterName)
 
+	// If DockerfileURL is set and the devfile contains local references to a Dockerfile, then update the devfile
+	source := component.Spec.Source
+	var err error
+	if source.GitSource != nil && source.GitSource.DockerfileURL != "" {
+		hasCompDevfileData, err = devfile.UpdateLocalDockerfileURItoAbsolute(hasCompDevfileData, source.GitSource.DockerfileURL)
+		if err != nil {
+			return fmt.Errorf("unable to convert local Dockerfile URIs to absolute in Component devfile %v", req.NamespacedName)
+		}
+	}
+
 	devfileComponents, err := hasCompDevfileData.GetComponents(common.DevfileOptions{
 		ComponentOptions: common.ComponentOptions{
 			ComponentType: devfileAPIV1.KubernetesComponentType,
