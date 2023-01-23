@@ -256,7 +256,9 @@ func ScanRepo(log logr.Logger, a Alizer, localpath string, devfileRegistryURL st
 
 // UpdateLocalDockerfileURItoAbsolute takes in a Devfile, and a DockefileURL, and returns back a Devfile with any local URIs to the Dockerfile updates to be absolute
 func UpdateLocalDockerfileURItoAbsolute(devfile data.DevfileData, dockerfileURL string) (data.DevfileData, error) {
-	devfileComponents, err := devfile.GetComponents(common.DevfileOptions{})
+	devfileComponents, err := devfile.GetComponents(common.DevfileOptions{ComponentOptions: common.ComponentOptions{
+		ComponentType: v1alpha2.ImageComponentType,
+	}})
 	if err != nil {
 		return nil, err
 	}
@@ -269,7 +271,10 @@ func UpdateLocalDockerfileURItoAbsolute(devfile data.DevfileData, dockerfileURL 
 			}
 
 			// Update the component in the devfile
-			devfile.UpdateComponent(comp)
+			err = devfile.UpdateComponent(comp)
+			if err != nil {
+				return nil, err
+			}
 		}
 	}
 

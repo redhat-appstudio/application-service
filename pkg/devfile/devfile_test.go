@@ -468,3 +468,361 @@ func TestScanRepo(t *testing.T) {
 		})
 	}
 }
+
+func TestUpdateLocalDockerfileURItoAbsolute(t *testing.T) {
+	tests := []struct {
+		name          string
+		devfile       *v2.DevfileV2
+		dockerfileURL string
+		wantDevfile   *v2.DevfileV2
+		wantErr       bool
+	}{
+		{
+			name: "devfile.yaml with local dockerfile URI references",
+			devfile: &v2.DevfileV2{
+				Devfile: v1alpha2.Devfile{
+					DevfileHeader: devfile.DevfileHeader{
+						SchemaVersion: string(data.APISchemaVersion210),
+						Metadata: devfile.DevfileMetadata{
+							Name: "SomeDevfile",
+						},
+					},
+					DevWorkspaceTemplateSpec: v1alpha2.DevWorkspaceTemplateSpec{
+						DevWorkspaceTemplateSpecContent: v1alpha2.DevWorkspaceTemplateSpecContent{
+							Components: []v1alpha2.Component{
+								{
+									Name: "image-build",
+									ComponentUnion: v1alpha2.ComponentUnion{
+										Image: &v1alpha2.ImageComponent{
+											Image: v1alpha2.Image{
+												ImageName: "component-image",
+												ImageUnion: v1alpha2.ImageUnion{
+													Dockerfile: &v1alpha2.DockerfileImage{
+														DockerfileSrc: v1alpha2.DockerfileSrc{
+															Uri: "./Dockerfile",
+														},
+													},
+												},
+											},
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+			dockerfileURL: "https://raw.githubusercontent.com/devfile-samples/devfile-sample-java-springboot-basic/main/docker/Dockerfile",
+			wantDevfile: &v2.DevfileV2{
+				Devfile: v1alpha2.Devfile{
+					DevfileHeader: devfile.DevfileHeader{
+						SchemaVersion: string(data.APISchemaVersion210),
+						Metadata: devfile.DevfileMetadata{
+							Name: "SomeDevfile",
+						},
+					},
+					DevWorkspaceTemplateSpec: v1alpha2.DevWorkspaceTemplateSpec{
+						DevWorkspaceTemplateSpecContent: v1alpha2.DevWorkspaceTemplateSpecContent{
+							Components: []v1alpha2.Component{
+								{
+									Name: "image-build",
+									ComponentUnion: v1alpha2.ComponentUnion{
+										Image: &v1alpha2.ImageComponent{
+											Image: v1alpha2.Image{
+												ImageName: "component-image",
+												ImageUnion: v1alpha2.ImageUnion{
+													Dockerfile: &v1alpha2.DockerfileImage{
+														DockerfileSrc: v1alpha2.DockerfileSrc{
+															Uri: "https://raw.githubusercontent.com/devfile-samples/devfile-sample-java-springboot-basic/main/docker/Dockerfile",
+														},
+													},
+												},
+											},
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+			wantErr: false,
+		},
+		{
+			name: "devfile.yaml with local dockerfile URI reference, and multiple other components",
+			devfile: &v2.DevfileV2{
+				Devfile: v1alpha2.Devfile{
+					DevfileHeader: devfile.DevfileHeader{
+						SchemaVersion: string(data.APISchemaVersion210),
+						Metadata: devfile.DevfileMetadata{
+							Name: "SomeDevfile",
+						},
+					},
+					DevWorkspaceTemplateSpec: v1alpha2.DevWorkspaceTemplateSpec{
+						DevWorkspaceTemplateSpecContent: v1alpha2.DevWorkspaceTemplateSpecContent{
+							Components: []v1alpha2.Component{
+								{
+									Name: "other-components",
+									ComponentUnion: v1alpha2.ComponentUnion{
+										Container: &v1alpha2.ContainerComponent{
+											BaseComponent: v1alpha2.BaseComponent{},
+										},
+									},
+								},
+								{
+									Name: "image-build",
+									ComponentUnion: v1alpha2.ComponentUnion{
+										Image: &v1alpha2.ImageComponent{
+											Image: v1alpha2.Image{
+												ImageName: "component-image",
+												ImageUnion: v1alpha2.ImageUnion{
+													Dockerfile: &v1alpha2.DockerfileImage{
+														DockerfileSrc: v1alpha2.DockerfileSrc{
+															Uri: "./Dockerfile",
+														},
+													},
+												},
+											},
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+			dockerfileURL: "https://raw.githubusercontent.com/devfile-samples/devfile-sample-java-springboot-basic/main/docker/Dockerfile",
+			wantDevfile: &v2.DevfileV2{
+				Devfile: v1alpha2.Devfile{
+					DevfileHeader: devfile.DevfileHeader{
+						SchemaVersion: string(data.APISchemaVersion210),
+						Metadata: devfile.DevfileMetadata{
+							Name: "SomeDevfile",
+						},
+					},
+					DevWorkspaceTemplateSpec: v1alpha2.DevWorkspaceTemplateSpec{
+						DevWorkspaceTemplateSpecContent: v1alpha2.DevWorkspaceTemplateSpecContent{
+							Components: []v1alpha2.Component{
+								{
+									Name: "other-components",
+									ComponentUnion: v1alpha2.ComponentUnion{
+										Container: &v1alpha2.ContainerComponent{
+											BaseComponent: v1alpha2.BaseComponent{},
+										},
+									},
+								},
+								{
+									Name: "image-build",
+									ComponentUnion: v1alpha2.ComponentUnion{
+										Image: &v1alpha2.ImageComponent{
+											Image: v1alpha2.Image{
+												ImageName: "component-image",
+												ImageUnion: v1alpha2.ImageUnion{
+													Dockerfile: &v1alpha2.DockerfileImage{
+														DockerfileSrc: v1alpha2.DockerfileSrc{
+															Uri: "https://raw.githubusercontent.com/devfile-samples/devfile-sample-java-springboot-basic/main/docker/Dockerfile",
+														},
+													},
+												},
+											},
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+			wantErr: false,
+		},
+		{
+			name: "devfile.yaml with no local dockerfile URI reference",
+			devfile: &v2.DevfileV2{
+				Devfile: v1alpha2.Devfile{
+					DevfileHeader: devfile.DevfileHeader{
+						SchemaVersion: string(data.APISchemaVersion210),
+						Metadata: devfile.DevfileMetadata{
+							Name: "SomeDevfile",
+						},
+					},
+					DevWorkspaceTemplateSpec: v1alpha2.DevWorkspaceTemplateSpec{
+						DevWorkspaceTemplateSpecContent: v1alpha2.DevWorkspaceTemplateSpecContent{
+							Components: []v1alpha2.Component{
+								{
+									Name: "other-components",
+									ComponentUnion: v1alpha2.ComponentUnion{
+										Container: &v1alpha2.ContainerComponent{
+											BaseComponent: v1alpha2.BaseComponent{},
+										},
+									},
+								},
+								{
+									Name: "another-component",
+									ComponentUnion: v1alpha2.ComponentUnion{
+										Container: &v1alpha2.ContainerComponent{
+											BaseComponent: v1alpha2.BaseComponent{},
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+			dockerfileURL: "https://raw.githubusercontent.com/devfile-samples/devfile-sample-java-springboot-basic/main/docker/Dockerfile",
+			wantDevfile: &v2.DevfileV2{
+				Devfile: v1alpha2.Devfile{
+					DevfileHeader: devfile.DevfileHeader{
+						SchemaVersion: string(data.APISchemaVersion210),
+						Metadata: devfile.DevfileMetadata{
+							Name: "SomeDevfile",
+						},
+					},
+					DevWorkspaceTemplateSpec: v1alpha2.DevWorkspaceTemplateSpec{
+						DevWorkspaceTemplateSpecContent: v1alpha2.DevWorkspaceTemplateSpecContent{
+							Components: []v1alpha2.Component{
+								{
+									Name: "other-components",
+									ComponentUnion: v1alpha2.ComponentUnion{
+										Container: &v1alpha2.ContainerComponent{
+											BaseComponent: v1alpha2.BaseComponent{},
+										},
+									},
+								},
+								{
+									Name: "another-component",
+									ComponentUnion: v1alpha2.ComponentUnion{
+										Container: &v1alpha2.ContainerComponent{
+											BaseComponent: v1alpha2.BaseComponent{},
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+			wantErr: false,
+		},
+		{
+			name: "devfile.yaml with non-local dockerfile URI reference. Should not update absolute reference",
+			devfile: &v2.DevfileV2{
+				Devfile: v1alpha2.Devfile{
+					DevfileHeader: devfile.DevfileHeader{
+						SchemaVersion: string(data.APISchemaVersion210),
+						Metadata: devfile.DevfileMetadata{
+							Name: "SomeDevfile",
+						},
+					},
+					DevWorkspaceTemplateSpec: v1alpha2.DevWorkspaceTemplateSpec{
+						DevWorkspaceTemplateSpecContent: v1alpha2.DevWorkspaceTemplateSpecContent{
+							Components: []v1alpha2.Component{
+								{
+									Name: "other-components",
+									ComponentUnion: v1alpha2.ComponentUnion{
+										Container: &v1alpha2.ContainerComponent{
+											BaseComponent: v1alpha2.BaseComponent{},
+										},
+									},
+								},
+								{
+									Name: "image-build",
+									ComponentUnion: v1alpha2.ComponentUnion{
+										Image: &v1alpha2.ImageComponent{
+											Image: v1alpha2.Image{
+												ImageName: "component-image",
+												ImageUnion: v1alpha2.ImageUnion{
+													Dockerfile: &v1alpha2.DockerfileImage{
+														DockerfileSrc: v1alpha2.DockerfileSrc{
+															Uri: "https://somewebsite.com/dockerfiles/Dockerfile",
+														},
+													},
+												},
+											},
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+			dockerfileURL: "https://raw.githubusercontent.com/devfile-samples/devfile-sample-java-springboot-basic/main/docker/Dockerfile",
+			wantDevfile: &v2.DevfileV2{
+				Devfile: v1alpha2.Devfile{
+					DevfileHeader: devfile.DevfileHeader{
+						SchemaVersion: string(data.APISchemaVersion210),
+						Metadata: devfile.DevfileMetadata{
+							Name: "SomeDevfile",
+						},
+					},
+					DevWorkspaceTemplateSpec: v1alpha2.DevWorkspaceTemplateSpec{
+						DevWorkspaceTemplateSpecContent: v1alpha2.DevWorkspaceTemplateSpecContent{
+							Components: []v1alpha2.Component{
+								{
+									Name: "other-components",
+									ComponentUnion: v1alpha2.ComponentUnion{
+										Container: &v1alpha2.ContainerComponent{
+											BaseComponent: v1alpha2.BaseComponent{},
+										},
+									},
+								},
+								{
+									Name: "image-build",
+									ComponentUnion: v1alpha2.ComponentUnion{
+										Image: &v1alpha2.ImageComponent{
+											Image: v1alpha2.Image{
+												ImageName: "component-image",
+												ImageUnion: v1alpha2.ImageUnion{
+													Dockerfile: &v1alpha2.DockerfileImage{
+														DockerfileSrc: v1alpha2.DockerfileSrc{
+															Uri: "https://somewebsite.com/dockerfiles/Dockerfile",
+														},
+													},
+												},
+											},
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+			wantErr: false,
+		},
+		{
+			name: "devfile.yaml with invalid components, should return err",
+			devfile: &v2.DevfileV2{
+				Devfile: v1alpha2.Devfile{
+					DevWorkspaceTemplateSpec: v1alpha2.DevWorkspaceTemplateSpec{
+						DevWorkspaceTemplateSpecContent: v1alpha2.DevWorkspaceTemplateSpecContent{
+							Components: []v1alpha2.Component{
+								{
+									ComponentUnion: v1alpha2.ComponentUnion{
+										ComponentType: "bad-component",
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+			dockerfileURL: "https://raw.githubusercontent.com/devfile-samples/devfile-sample-java-springboot-basic/main/docker/Dockerfile",
+			wantErr:       true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			devfile, err := UpdateLocalDockerfileURItoAbsolute(tt.devfile, tt.dockerfileURL)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("TestUpdateLocalDockerfileURItoAbsolute() unexpected error: %v", err)
+			}
+
+			if !tt.wantErr && !reflect.DeepEqual(devfile, tt.wantDevfile) {
+				t.Errorf("devfile content did not match, got %v, wanted %v", devfile, tt.wantDevfile)
+			}
+		})
+	}
+}
