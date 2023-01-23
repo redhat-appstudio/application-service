@@ -43,10 +43,10 @@ func (a MockAlizerClient) DetectComponents(path string) ([]model.Component, erro
 			},
 		}, nil
 	} else if strings.Contains(path, "nodejs-no-dockerfile") {
-		return []recognizer.Component{
+		return []model.Component{
 			{
 				Path: path,
-				Languages: []language.Language{
+				Languages: []model.Language{
 					{
 						Name: "JavaScript",
 						Aliases: []string{
@@ -61,7 +61,7 @@ func (a MockAlizerClient) DetectComponents(path string) ([]model.Component, erro
 							"NodeJs",
 							"Node.js",
 						},
-						UsageInPercentage: 100,
+						Weight: 100,
 						CanBeComponent:    true,
 					},
 				},
@@ -111,7 +111,7 @@ func (a MockAlizerClient) SelectDevFileFromTypes(path string, devFileTypes []mod
 			Name: "python-basic",
 		}, nil
 	} else if strings.Contains(path, "nodejs-no-dockerfile") {
-		return recognizer.DevFileType{
+		return model.DevFileType{
 			Name:        "nodejs-basic",
 			Language:    "JavaScript",
 			ProjectType: "Node.js",
