@@ -135,16 +135,18 @@ func SendBackDetectionResult(log logr.Logger, devfilesMap map[string][]byte, dev
 	if err != nil {
 		log.Error(err, fmt.Sprintf("Error creating clientset with config %v", config))
 	}
-	log.Info(fmt.Sprintf("Sending back result, devfilesMap %v,devfilesURLMap %v, dockerfileContextMap %v  ... %v", devfilesMap, devfilesURLMap, dockerfileContextMap, namespace))
+	log.Info(fmt.Sprintf("Sending back result, devfilesMap %v,devfilesURLMap %v, dockerfileContextMap %v , error %v ... %v", devfilesMap, devfilesURLMap, dockerfileContextMap, completeError, namespace))
 	configMapBinaryData := make(map[string][]byte)
+	configMapData := make(map[string]string)
 	devfilesMapbytes, _ := json.Marshal(devfilesMap)
 	devfilesURLMapbytes, _ := json.Marshal(devfilesURLMap)
 	dockerfileContextMapbytes, _ := json.Marshal(dockerfileContextMap)
-	errorbytes, _ := json.Marshal(completeError)
 	configMapBinaryData["devfilesMap"] = devfilesMapbytes
 	configMapBinaryData["devfilesURLMap"] = devfilesURLMapbytes
 	configMapBinaryData["dockerfileContextMap"] = dockerfileContextMapbytes
-	configMapBinaryData["error"] = errorbytes
+	if completeError != nil {
+		configMapData["error"] = fmt.Sprintf("%v", completeError)
+	}
 	configMap := corev1.ConfigMap{
 		TypeMeta: metav1.TypeMeta{
 			Kind:       "ConfigMap",
@@ -154,6 +156,7 @@ func SendBackDetectionResult(log logr.Logger, devfilesMap map[string][]byte, dev
 			Name:      name,
 			Namespace: namespace,
 		},
+		Data:       configMapData,
 		BinaryData: configMapBinaryData,
 	}
 	_, err = clientset.CoreV1().ConfigMaps(namespace).Create(ctx, &configMap, metav1.CreateOptions{})

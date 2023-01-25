@@ -200,7 +200,6 @@ func (r *ComponentDetectionQueryReconciler) Reconcile(ctx context.Context, req c
 				},
 			}
 			err = r.Client.Create(ctx, jobSpec, &client.CreateOptions{})
-			// _, err = jobs.Create(ctx, jobSpec, metav1.CreateOptions{})
 			if err != nil {
 				log.Error(err, fmt.Sprintf("Error creating cdq analysis job %s... %v", jobName, req.NamespacedName))
 				r.SetCompleteConditionAndUpdateCR(ctx, req, &componentDetectionQuery, copiedCDQ, err)
@@ -220,13 +219,16 @@ func (r *ComponentDetectionQueryReconciler) Reconcile(ctx context.Context, req c
 			var devfileMapReturned map[string][]byte
 			var devfilesURLMapReturned map[string]string
 			var dockerfileContextMapReturned map[string]string
-			var retErr error
+			var retErrStr string
+			if cm.Data != nil {
+				retErrStr = cm.Data["error"]
+			}
 			json.Unmarshal(cm.BinaryData["devfilesMap"], &devfileMapReturned)
 			json.Unmarshal(cm.BinaryData["dockerfileContextMap"], &dockerfileContextMapReturned)
 			json.Unmarshal(cm.BinaryData["devfilesURLMap"], &devfilesURLMapReturned)
-			json.Unmarshal(cm.BinaryData["error"], &retErr)
 			cleanupK8sResources(log, clientset, ctx, fmt.Sprintf("%s-job", req.Name), req.Name, req.Namespace)
-			if retErr != nil {
+			if retErrStr != "" {
+				retErr := fmt.Errorf(retErrStr)
 				log.Error(retErr, fmt.Sprintf("Unable to analyze the repo via kubernetes job... %v", req.NamespacedName))
 				r.SetCompleteConditionAndUpdateCR(ctx, req, &componentDetectionQuery, copiedCDQ, retErr)
 				return ctrl.Result{}, nil
