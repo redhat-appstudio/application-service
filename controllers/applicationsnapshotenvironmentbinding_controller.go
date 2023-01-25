@@ -19,21 +19,18 @@ package controllers
 import (
 	"context"
 	"fmt"
-	"path/filepath"
+	"time"
 
 	gh "github.com/google/go-github/v41/github"
-	gitopsgenv1alpha1 "github.com/redhat-developer/gitops-generator/api/v1alpha1"
 	gitopsgen "github.com/redhat-developer/gitops-generator/pkg"
 	"go.uber.org/zap/zapcore"
-	corev1 "k8s.io/api/core/v1"
 
 	"github.com/go-logr/logr"
 	logicalcluster "github.com/kcp-dev/logicalcluster/v2"
 	appstudiov1alpha1 "github.com/redhat-appstudio/application-api/api/v1alpha1"
-	github "github.com/redhat-appstudio/application-service/pkg/github"
+	"github.com/redhat-appstudio/application-service/pkg/gitopsjob"
 	logutil "github.com/redhat-appstudio/application-service/pkg/log"
 	"github.com/redhat-appstudio/application-service/pkg/util"
-	"github.com/redhat-appstudio/application-service/pkg/util/ioutils"
 	"github.com/spf13/afero"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -98,10 +95,11 @@ func (r *SnapshotEnvironmentBindingReconciler) Reconcile(ctx context.Context, re
 
 	log.Info(fmt.Sprintf("Starting reconcile loop for %v %v", appSnapshotEnvBinding.Name, req.NamespacedName))
 
+	patch := client.MergeFrom(appSnapshotEnvBinding.DeepCopy())
+
 	applicationName := appSnapshotEnvBinding.Spec.Application
 	environmentName := appSnapshotEnvBinding.Spec.Environment
 	snapshotName := appSnapshotEnvBinding.Spec.Snapshot
-	components := appSnapshotEnvBinding.Spec.Components
 
 	// Check if the labels have been applied to the binding
 	bindingLabels := appSnapshotEnvBinding.GetLabels()
@@ -121,7 +119,7 @@ func (r *SnapshotEnvironmentBindingReconciler) Reconcile(ctx context.Context, re
 	err = r.Get(ctx, types.NamespacedName{Name: environmentName, Namespace: appSnapshotEnvBinding.Namespace}, &environment)
 	if err != nil {
 		log.Error(err, fmt.Sprintf("unable to get the Environment %s %v", environmentName, req.NamespacedName))
-		r.SetConditionAndUpdateCR(ctx, req, &appSnapshotEnvBinding, err)
+		r.SetConditionAndUpdateCR(ctx, req, &appSnapshotEnvBinding, patch, err)
 		return ctrl.Result{}, err
 	}
 
@@ -130,183 +128,44 @@ func (r *SnapshotEnvironmentBindingReconciler) Reconcile(ctx context.Context, re
 	err = r.Get(ctx, types.NamespacedName{Name: snapshotName, Namespace: appSnapshotEnvBinding.Namespace}, &appSnapshot)
 	if err != nil {
 		log.Error(err, fmt.Sprintf("unable to get the Application Snapshot %s %v", snapshotName, req.NamespacedName))
-		r.SetConditionAndUpdateCR(ctx, req, &appSnapshotEnvBinding, err)
+		r.SetConditionAndUpdateCR(ctx, req, &appSnapshotEnvBinding, patch, err)
 		return ctrl.Result{}, err
 	}
 
 	if appSnapshot.Spec.Application != applicationName {
 		err := fmt.Errorf("application snapshot %s does not belong to the application %s", snapshotName, applicationName)
 		log.Error(err, "")
-		r.SetConditionAndUpdateCR(ctx, req, &appSnapshotEnvBinding, err)
+		r.SetConditionAndUpdateCR(ctx, req, &appSnapshotEnvBinding, patch, err)
 		return ctrl.Result{}, err
 	}
 
-	componentGeneratedResources := make(map[string][]string)
-	var tempDir string
-	clone := true
-
-	for _, component := range components {
-		componentName := component.Name
-
-		// Get the Component CR
-		hasComponent := appstudiov1alpha1.Component{}
-		err = r.Get(ctx, types.NamespacedName{Name: componentName, Namespace: appSnapshotEnvBinding.Namespace}, &hasComponent)
-		if err != nil {
-			log.Error(err, fmt.Sprintf("unable to get the Component %s %v", componentName, req.NamespacedName))
-			r.SetConditionAndUpdateCR(ctx, req, &appSnapshotEnvBinding, err)
-			return ctrl.Result{}, err
-		}
-
-		if hasComponent.Spec.SkipGitOpsResourceGeneration {
-			continue
-		}
-
-		// Sanity check to make sure the binding component has referenced the correct application
-		if hasComponent.Spec.Application != applicationName {
-			err := fmt.Errorf("component %s does not belong to the application %s", componentName, applicationName)
-			log.Error(err, "")
-			r.SetConditionAndUpdateCR(ctx, req, &appSnapshotEnvBinding, err)
-			return ctrl.Result{}, err
-		}
-
-		var imageName string
-
-		for _, snapshotComponent := range appSnapshot.Spec.Components {
-			if snapshotComponent.Name == componentName {
-				imageName = snapshotComponent.ContainerImage
-				break
-			}
-		}
-
-		if imageName == "" {
-			err := fmt.Errorf("application snapshot %s did not reference component %s", snapshotName, componentName)
-			log.Error(err, "")
-			r.SetConditionAndUpdateCR(ctx, req, &appSnapshotEnvBinding, err)
-			return ctrl.Result{}, err
-		}
-
-		gitOpsRemoteURL, gitOpsBranch, gitOpsContext, err := util.ProcessGitOpsStatus(hasComponent.Status.GitOps, r.GitToken)
-		if err != nil {
-			r.SetConditionAndUpdateCR(ctx, req, &appSnapshotEnvBinding, err)
-			return ctrl.Result{}, err
-		}
-
-		isStatusUpdated := false
-		for _, bindingStatusComponent := range appSnapshotEnvBinding.Status.Components {
-			if bindingStatusComponent.Name == componentName {
-				isStatusUpdated = true
-				break
-			}
-		}
-
-		if clone {
-			// Create a temp folder to create the gitops resources in
-			tempDir, err = ioutils.CreateTempPath(appSnapshotEnvBinding.Name, r.AppFS)
-			if err != nil {
-				log.Error(err, "unable to create temp directory for gitops resources due to error")
-				r.SetConditionAndUpdateCR(ctx, req, &appSnapshotEnvBinding, err)
-				return ctrl.Result{}, fmt.Errorf("unable to create temp directory for gitops resources due to error: %v", err)
-			}
-		}
-
-		envVars := make([]corev1.EnvVar, 0)
-		for _, env := range component.Configuration.Env {
-			envVars = append(envVars, corev1.EnvVar{
-				Name:  env.Name,
-				Value: env.Value,
-			})
-		}
-
-		environmentConfigEnvVars := make([]corev1.EnvVar, 0)
-		for _, env := range environment.Spec.Configuration.Env {
-			environmentConfigEnvVars = append(environmentConfigEnvVars, corev1.EnvVar{
-				Name:  env.Name,
-				Value: env.Value,
-			})
-		}
-		componentResources := corev1.ResourceRequirements{}
-		if component.Configuration.Resources != nil {
-			componentResources = *component.Configuration.Resources
-		}
-
-		kubeLabels := map[string]string{
-			"app.kubernetes.io/name":       componentName,
-			"app.kubernetes.io/instance":   component.Name,
-			"app.kubernetes.io/part-of":    applicationName,
-			"app.kubernetes.io/managed-by": "kustomize",
-			"app.kubernetes.io/created-by": "application-service",
-		}
-		genOptions := gitopsgenv1alpha1.GeneratorOptions{
-			Name:          component.Name,
-			Replicas:      component.Configuration.Replicas,
-			Resources:     componentResources,
-			BaseEnvVar:    envVars,
-			OverlayEnvVar: environmentConfigEnvVars,
-			K8sLabels:     kubeLabels,
-		}
-		//Gitops functions return sanitized error messages
-		err = r.Generator.GenerateOverlaysAndPush(tempDir, clone, gitOpsRemoteURL, genOptions, applicationName, environmentName, imageName, appSnapshotEnvBinding.Namespace, r.AppFS, gitOpsBranch, gitOpsContext, true, componentGeneratedResources)
-		if err != nil {
-			log.Error(err, fmt.Sprintf("unable to get generate gitops resources for %s %v", componentName, req.NamespacedName))
-			_ = r.AppFS.RemoveAll(tempDir) // not worried with an err, its a best case attempt to delete the temp clone dir
-			r.SetConditionAndUpdateCR(ctx, req, &appSnapshotEnvBinding, err)
-			return ctrl.Result{}, err
-		}
-
-		// Retrieve the commit ID
-		var commitID string
-		repoName, orgName, err := github.GetRepoAndOrgFromURL(gitOpsRemoteURL)
-		if err != nil {
-			gitOpsErr := &GitOpsParseRepoError{gitOpsRemoteURL, err}
-			log.Error(gitOpsErr, "")
-			r.SetConditionAndUpdateCR(ctx, req, &appSnapshotEnvBinding, gitOpsErr)
-			return ctrl.Result{}, gitOpsErr
-		}
-		commitID, err = github.GetLatestCommitSHAFromRepository(r.GitHubClient, ctx, repoName, orgName, gitOpsBranch)
-		if err != nil {
-			gitOpsErr := &GitOpsCommitIdError{err}
-			log.Error(gitOpsErr, "")
-			r.SetConditionAndUpdateCR(ctx, req, &appSnapshotEnvBinding, gitOpsErr)
-			return ctrl.Result{}, gitOpsErr
-		}
-
-		if !isStatusUpdated {
-			componentStatus := appstudiov1alpha1.BindingComponentStatus{
-				Name: componentName,
-				GitOpsRepository: appstudiov1alpha1.BindingComponentGitOpsRepository{
-					URL:      hasComponent.Status.GitOps.RepositoryURL,
-					Branch:   gitOpsBranch,
-					Path:     filepath.Join(gitOpsContext, "components", componentName, "overlays", environmentName),
-					CommitID: commitID,
-				},
-			}
-
-			if _, ok := componentGeneratedResources[componentName]; ok {
-				componentStatus.GitOpsRepository.GeneratedResources = componentGeneratedResources[componentName]
-			}
-
-			appSnapshotEnvBinding.Status.Components = append(appSnapshotEnvBinding.Status.Components, componentStatus)
-		}
-
-		// Set the clone to false, since we dont want to clone the repo again for the other components
-		clone = false
+	// Launch the Kubernetes Job
+	gitopsjobConfig := gitopsjob.GitOpsJobConfig{
+		OperationType: "generate-overlays",
+		ResourceName:  appSnapshotEnvBinding.GetName(),
 	}
 
-	// Remove the cloned path
-	err = r.AppFS.RemoveAll(tempDir)
-	if err != nil {
-		log.Error(err, "Unable to remove the clone dir")
+	// Generate a random name for the Job
+	jobName := appSnapshotEnvBinding.GetName()
+	if len(jobName) > 57 {
+		jobName = appSnapshotEnvBinding.GetName()[0:56]
 	}
 
-	// Update the binding status to reflect the GitOps data
-	err = r.Client.Status().Update(ctx, &appSnapshotEnvBinding)
+	jobName = jobName + util.GetRandomString(5, true)
+	err = gitopsjob.CreateGitOpsJob(ctx, r.Client, r.GitToken, jobName, appSnapshotEnvBinding.Namespace, gitopsjobConfig)
 	if err != nil {
-		log.Error(err, "Unable to update App Snapshot Env Binding")
-		r.SetConditionAndUpdateCR(ctx, req, &appSnapshotEnvBinding, err)
+		r.SetConditionAndUpdateCR(ctx, req, &appSnapshotEnvBinding, patch, err)
 		return ctrl.Result{}, err
 	}
 
-	r.SetConditionAndUpdateCR(ctx, req, &appSnapshotEnvBinding, nil)
+	// Wait for the Job to succeed
+	err = gitopsjob.WaitForJob(ctx, r.Client, jobName, 5*time.Minute)
+	if err != nil {
+		r.SetConditionAndUpdateCR(ctx, req, &appSnapshotEnvBinding, patch, err)
+		return ctrl.Result{}, err
+	}
+
+	r.SetConditionAndUpdateCR(ctx, req, &appSnapshotEnvBinding, patch, nil)
 
 	log.Info(fmt.Sprintf("Finished reconcile loop for %v", req.NamespacedName))
 	return ctrl.Result{}, nil

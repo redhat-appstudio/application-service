@@ -24,9 +24,10 @@ import (
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	ctrl "sigs.k8s.io/controller-runtime"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
-func (r *SnapshotEnvironmentBindingReconciler) SetConditionAndUpdateCR(ctx context.Context, req ctrl.Request, appSnapshotEnvBinding *appstudiov1alpha1.SnapshotEnvironmentBinding, createError error) {
+func (r *SnapshotEnvironmentBindingReconciler) SetConditionAndUpdateCR(ctx context.Context, req ctrl.Request, appSnapshotEnvBinding *appstudiov1alpha1.SnapshotEnvironmentBinding, patch client.Patch, createError error) {
 	log := r.Log.WithValues("SnapshotEnvironmentBinding", req.NamespacedName).WithValues("clusterName", req.ClusterName)
 
 	if createError == nil {
@@ -46,7 +47,7 @@ func (r *SnapshotEnvironmentBindingReconciler) SetConditionAndUpdateCR(ctx conte
 		logutil.LogAPIResourceChangeEvent(log, appSnapshotEnvBinding.Name, "SnapshotEnvironmentBinding", logutil.ResourceCreate, createError)
 	}
 
-	err := r.Client.Status().Update(ctx, appSnapshotEnvBinding)
+	err := r.Client.Status().Patch(ctx, appSnapshotEnvBinding, patch)
 	if err != nil {
 		log.Error(err, "Unable to update application snapshot environment binding")
 	}
