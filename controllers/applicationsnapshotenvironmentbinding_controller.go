@@ -48,12 +48,13 @@ import (
 // SnapshotEnvironmentBindingReconciler reconciles a SnapshotEnvironmentBinding object
 type SnapshotEnvironmentBindingReconciler struct {
 	client.Client
-	Scheme       *runtime.Scheme
-	Log          logr.Logger
-	AppFS        afero.Afero
-	Generator    gitopsgen.Generator
-	GitHubClient *gh.Client
-	GitToken     string
+	Scheme             *runtime.Scheme
+	Log                logr.Logger
+	AppFS              afero.Afero
+	Generator          gitopsgen.Generator
+	GitHubClient       *gh.Client
+	GitToken           string
+	GitOpsJobNamespace string
 }
 
 //+kubebuilder:rbac:groups=appstudio.redhat.com,resources=snapshotenvironmentbindings,verbs=get;list;watch;create;update;patch;delete
@@ -152,18 +153,24 @@ func (r *SnapshotEnvironmentBindingReconciler) Reconcile(ctx context.Context, re
 	}
 
 	jobName = jobName + util.GetRandomString(5, true)
-	err = gitopsjob.CreateGitOpsJob(ctx, r.Client, r.GitToken, jobName, appSnapshotEnvBinding.Namespace, gitopsjobConfig)
+	jobNamespace := r.GitOpsJobNamespace
+	if jobNamespace == "" {
+		jobNamespace = appSnapshotEnvBinding.Namespace
+	}
+	err = gitopsjob.CreateGitOpsJob(ctx, r.Client, r.GitToken, jobName, appSnapshotEnvBinding.Namespace, jobNamespace, gitopsjobConfig)
 	if err != nil {
 		r.SetConditionAndUpdateCR(ctx, req, &appSnapshotEnvBinding, patch, err)
 		return ctrl.Result{}, err
 	}
 
 	// Wait for the Job to succeed
-	err = gitopsjob.WaitForJob(ctx, r.Client, jobName, 5*time.Minute)
+	err = gitopsjob.WaitForJob(ctx, r.Client, jobName, jobNamespace, 5*time.Minute)
 	if err != nil {
 		r.SetConditionAndUpdateCR(ctx, req, &appSnapshotEnvBinding, patch, err)
 		return ctrl.Result{}, err
 	}
+
+	// If the Job succeeds, delete it
 
 	r.SetConditionAndUpdateCR(ctx, req, &appSnapshotEnvBinding, patch, nil)
 
