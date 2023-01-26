@@ -21,6 +21,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"path"
+	"strings"
 
 	"go.uber.org/zap/zapcore"
 	"golang.org/x/exp/maps"
@@ -128,7 +129,6 @@ func (r *ComponentDetectionQueryReconciler) Reconcile(ctx context.Context, req c
 		devfilesMap := make(map[string][]byte)
 		devfilesURLMap := make(map[string]string)
 		dockerfileContextMap := make(map[string]string)
-
 		context := source.Context
 		if context == "" {
 			context = "./"
@@ -174,7 +174,6 @@ func (r *ComponentDetectionQueryReconciler) Reconcile(ctx context.Context, req c
 				r.SetCompleteConditionAndUpdateCR(ctx, req, &componentDetectionQuery, copiedCDQ, err)
 				return ctrl.Result{}, nil
 			}
-			// jobs := clientset.BatchV1().Jobs(req.Namespace)
 			jobName := req.Name + "-job"
 			var backOffLimit int32 = 0
 			jobSpec := &batchv1.Job{
@@ -204,6 +203,7 @@ func (r *ComponentDetectionQueryReconciler) Reconcile(ctx context.Context, req c
 				log.Error(err, fmt.Sprintf("Error creating cdq analysis job %s... %v", jobName, req.NamespacedName))
 				r.SetCompleteConditionAndUpdateCR(ctx, req, &componentDetectionQuery, copiedCDQ, err)
 				return ctrl.Result{}, nil
+
 			} else {
 				//print job details
 				log.Info(fmt.Sprintf("Successfully created cdq analysis job %v, waiting for config map to be created... %v", jobName, req.NamespacedName))
@@ -250,13 +250,19 @@ func (r *ComponentDetectionQueryReconciler) Reconcile(ctx context.Context, req c
 		}
 
 		for context, link := range dockerfileContextMap {
-			updatedLink, err := devfile.UpdateGitLink(source.URL, source.Revision, link)
-			if err != nil {
-				log.Error(err, fmt.Sprintf("Unable to update the dockerfile link... %v", req.NamespacedName))
-				r.SetCompleteConditionAndUpdateCR(ctx, req, &componentDetectionQuery, copiedCDQ, err)
-				return ctrl.Result{}, nil
+			// If the returned context/link is a local path, update the git link for the dockerfile accordingly
+			// Otherwise
+			if !strings.HasPrefix(link, "http") {
+				updatedContext := path.Join(context, link)
+
+				updatedLink, err := devfile.UpdateGitLink(source.URL, source.Revision, updatedContext)
+				if err != nil {
+					log.Error(err, fmt.Sprintf("Unable to update the dockerfile link %v", req.NamespacedName))
+					r.SetCompleteConditionAndUpdateCR(ctx, req, &componentDetectionQuery, copiedCDQ, err)
+					return ctrl.Result{}, nil
+				}
+				dockerfileContextMap[context] = updatedLink
 			}
-			dockerfileContextMap[context] = updatedLink
 		}
 
 		for context := range devfilesMap {

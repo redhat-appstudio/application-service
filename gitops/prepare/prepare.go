@@ -18,7 +18,6 @@ package prepare
 import (
 	"context"
 
-	kcpv1alpha1 "github.com/kcp-dev/kcp/pkg/apis/apis/v1alpha1"
 	appstudiov1alpha1 "github.com/redhat-appstudio/application-api/api/v1alpha1"
 
 	corev1 "k8s.io/api/core/v1"
@@ -27,59 +26,25 @@ import (
 )
 
 const (
-	// default secret for app studio registry
-	RegistrySecret = "redhat-appstudio-registry-pull-secret"
 	// Pipelines as Code global configuration secret name
 	PipelinesAsCodeSecretName = "pipelines-as-code-secret"
 	// Pipelines as Code global configuration secret namespace
 	buildServiceNamespaceName = "build-service"
-	// ConfigMap name for detection hacbs workflow
-	// Note: HACBS detection by configmap is temporary solution, will be changed to detection based
-	// on APIBinding API in KCP environment.
-	HACBSConfigMapName = "hacbs"
-	// APIBinding name for detection hacbs workflow in KCP environment
-	HACBSAPIBindingName = "integration-service"
 )
 
 // Holds data that needs to be queried from the cluster in order for the gitops generation function to work
 // This struct is left here so more data can be added as needed
 type GitopsConfig struct {
-	AppStudioRegistrySecretPresent bool
-
 	// Contains data from Pipelies as Code configuration k8s secret
 	PipelinesAsCodeCredentials map[string][]byte
-
-	IsHACBS bool
 }
 
 func PrepareGitopsConfig(ctx context.Context, cli client.Client, component appstudiov1alpha1.Component) GitopsConfig {
 	data := GitopsConfig{}
 
-	data.AppStudioRegistrySecretPresent = resolveRegistrySecretPresence(ctx, cli, component)
-	data.IsHACBS = IsHACBS(ctx, cli, component.Namespace)
 	data.PipelinesAsCodeCredentials = getPipelinesAsCodeConfigurationSecretData(ctx, cli, component)
 
 	return data
-}
-
-// Return true when integration-service APIBinding exists or hacbs configmap exists in the namespace
-func IsHACBS(ctx context.Context, cli client.Client, namespace string) bool {
-	var apiBinding = kcpv1alpha1.APIBinding{}
-	err := cli.Get(ctx, types.NamespacedName{Name: HACBSAPIBindingName}, &apiBinding)
-	if err == nil {
-		return true
-	}
-	var configMap = corev1.ConfigMap{}
-	err = cli.Get(ctx, types.NamespacedName{Name: HACBSConfigMapName, Namespace: namespace}, &configMap)
-	return err == nil
-}
-
-// Determines whether the 'redhat-appstudio-registry-pull-secret' Secret exists, so that the Generate* functions
-// can avoid declaring a secret volume workspace for the Secret when the Secret is not available.
-func resolveRegistrySecretPresence(ctx context.Context, cli client.Client, component appstudiov1alpha1.Component) bool {
-	registrySecret := &corev1.Secret{}
-	err := cli.Get(ctx, types.NamespacedName{Name: RegistrySecret, Namespace: component.Namespace}, registrySecret)
-	return err == nil
 }
 
 func getPipelinesAsCodeConfigurationSecretData(ctx context.Context, cli client.Client, component appstudiov1alpha1.Component) map[string][]byte {

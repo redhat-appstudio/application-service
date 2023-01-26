@@ -95,8 +95,7 @@ func CloneAndAnalyze(gitToken, namespace, name, context, devfilePath, URL, Revis
 	// Logic to read multiple components in from git
 	if isMultiComponent {
 		log.Info(fmt.Sprintf("Since this is a multi-component, attempt will be made to read only level 1 dir for devfiles... %v", namespace))
-
-		devfilesMap, devfilesURLMap, dockerfileContextMap, err = ScanRepo(log, alizerClient, componentPath, DevfileRegistryURL)
+		devfilesMap, devfilesURLMap, dockerfileContextMap, err = ScanRepo(log, alizerClient, componentPath, DevfileRegistryURL, URL, Revision, context)
 		if err != nil {
 			if _, ok := err.(*NoDevfileFound); !ok {
 				log.Error(err, fmt.Sprintf("Unable to find devfile(s) in repo %s due to an error %s, exiting reconcile loop %v", URL, err.Error(), namespace))

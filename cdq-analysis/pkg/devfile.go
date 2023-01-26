@@ -93,6 +93,6 @@ func DownloadDevfileAndDockerfile(url string) ([]byte, string, []byte) {
 // Map 1 returns a context to the devfile bytes if present.
 // Map 2 returns a context to the matched devfileURL from the devfile registry if no devfile is present in the context.
 // Map 3 returns a context to the dockerfile uri or a matched dockerfileURL from the devfile registry if no dockerfile is present in the context
-func ScanRepo(log logr.Logger, a Alizer, localpath string, devfileRegistryURL string) (map[string][]byte, map[string]string, map[string]string, error) {
-	return search(log, a, localpath, devfileRegistryURL)
+func ScanRepo(log logr.Logger, a Alizer, localpath string, devfileRegistryURL string, URL, revision, srcContext string) (map[string][]byte, map[string]string, map[string]string, error) {
+	return search(log, a, localpath, devfileRegistryURL, URL, revision, srcContext)
 }

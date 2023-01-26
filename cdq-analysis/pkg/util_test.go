@@ -25,7 +25,7 @@ import (
 	"testing"
 
 	indexSchema "github.com/devfile/registry-support/index/generator/schema"
-	"github.com/redhat-developer/alizer/go/pkg/apis/recognizer"
+	"github.com/redhat-developer/alizer/go/pkg/apis/model"
 )
 
 func TestISExist(t *testing.T) {
@@ -416,13 +416,13 @@ func TestGetAlizerDevfileTypes(t *testing.T) {
 	tests := []struct {
 		name      string
 		url       string
-		wantTypes []recognizer.DevFileType
+		wantTypes []model.DevFileType
 		wantErr   bool
 	}{
 		{
 			name: "Get the Sample Devfile Types",
 			url:  "http://" + serverIP,
-			wantTypes: []recognizer.DevFileType{
+			wantTypes: []model.DevFileType{
 				{
 					Name:        "sampleindex1",
 					ProjectType: "project1",

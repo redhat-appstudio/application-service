@@ -1899,6 +1899,21 @@ metadata:
 				// num(conditions) may still be < 1 on the first try, so retry until at least _some_ condition is set
 				hasCompDetQueryLookupKey := types.NamespacedName{Name: queryName, Namespace: HASNamespace}
 				createdHasCompDetectionQuery := &appstudiov1alpha1.ComponentDetectionQuery{}
+				createdJob := &batchv1.Job{}
+				createdConfigMap := &corev1.ConfigMap{}
+				// The job won't be actually completed, as the container image won't be pulled
+				// check for the object to ensure the job has been created
+				Eventually(func() bool {
+					k8sClient.Get(context.Background(), types.NamespacedName{Name: queryName + "-job", Namespace: HASNamespace}, createdJob)
+					return createdJob != nil
+				}, timeout, interval).Should(BeTrue())
+
+				// Look up the has app resource that was created.
+				// num(conditions) may still be < 1 on the first try, so retry until at least _some_ condition is set
+				Eventually(func() bool {
+					k8sClient.Get(context.Background(), hasCompDetQueryLookupKey, createdConfigMap)
+					return len(createdConfigMap.BinaryData) > 1
+				}, timeout, interval).Should(BeTrue())
 				Eventually(func() bool {
 					k8sClient.Get(context.Background(), hasCompDetQueryLookupKey, createdHasCompDetectionQuery)
 					return len(createdHasCompDetectionQuery.Status.Conditions) > 1
@@ -1916,13 +1931,101 @@ metadata:
 				deleteCompDetQueryCR(hasCompDetQueryLookupKey)
 			})
 		})
+
+		Context("Create Component Detection Query with repo that has devfile but no dockerfile", func() {
+			It("Should successfully detect a devfile and match the proper dockerfile for it", func() {
+				ctx := context.Background()
+
+				queryName := "nodejs-no-dockerfile"
+
+				hasCompDetectionQuery := &appstudiov1alpha1.ComponentDetectionQuery{
+					TypeMeta: metav1.TypeMeta{
+						APIVersion: "appstudio.redhat.com/v1alpha1",
+						Kind:       "ComponentDetectionQuery",
+					},
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      queryName,
+						Namespace: HASNamespace,
+					},
+					Spec: appstudiov1alpha1.ComponentDetectionQuerySpec{
+						GitSource: appstudiov1alpha1.GitSource{
+							URL: "https://github.com/devfile-samples/node-express-hello-devfile-no-dockerfile",
+						},
+					},
+				}
+
+				Expect(k8sClient.Create(ctx, hasCompDetectionQuery)).Should(Succeed())
+
+				configMapBinaryData := make(map[string][]byte)
+				devfilesMap := make(map[string][]byte)
+				devfilesURLMap := make(map[string]string)
+				dockerfileContextMap := make(map[string]string)
+				devfilesURLMap["./"] = "https://raw.githubusercontent.com/devfile-samples/node-express-hello-devfile-no-dockerfile/main/devfile.yaml"
+				dockerfileContextMap["./"] = "https://raw.githubusercontent.com/nodeshift-starters/devfile-sample/main/Dockerfile"
+				devfilesMap["./"] = []byte(nodeJSDevfileContext)
+				devfilesMapbytes, _ := json.Marshal(devfilesMap)
+				devfilesURLMapbytes, _ := json.Marshal(devfilesURLMap)
+				dockerfileContextMapbytes, _ := json.Marshal(dockerfileContextMap)
+
+				configMapBinaryData["devfilesMap"] = devfilesMapbytes
+				configMapBinaryData["devfilesURLMap"] = devfilesURLMapbytes
+				configMapBinaryData["dockerfileContextMap"] = dockerfileContextMapbytes
+				cdqConfigMap := corev1.ConfigMap{
+					TypeMeta: metav1.TypeMeta{
+						Kind:       "ConfigMap",
+						APIVersion: "v1",
+					},
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      queryName,
+						Namespace: HASNamespace,
+					},
+					BinaryData: configMapBinaryData,
+				}
+				Expect(k8sClient.Create(ctx, &cdqConfigMap)).Should(Succeed())
+
+				// Look up the has app resource that was created.
+				// num(conditions) may still be < 1 on the first try, so retry until at least _some_ condition is set
+				hasCompDetQueryLookupKey := types.NamespacedName{Name: queryName, Namespace: HASNamespace}
+				createdHasCompDetectionQuery := &appstudiov1alpha1.ComponentDetectionQuery{}
+				createdJob := &batchv1.Job{}
+				createdConfigMap := &corev1.ConfigMap{}
+				// The job won't be actually completed, as the container image won't be pulled
+				// check for the object to ensure the job has been created
+				Eventually(func() bool {
+					k8sClient.Get(context.Background(), types.NamespacedName{Name: queryName + "-job", Namespace: HASNamespace}, createdJob)
+					return createdJob != nil
+				}, timeout, interval).Should(BeTrue())
+
+				// Look up the has app resource that was created.
+				// num(conditions) may still be < 1 on the first try, so retry until at least _some_ condition is set
+				Eventually(func() bool {
+					k8sClient.Get(context.Background(), hasCompDetQueryLookupKey, createdConfigMap)
+					return len(createdConfigMap.BinaryData) > 1
+				}, timeout, interval).Should(BeTrue())
+				Eventually(func() bool {
+					k8sClient.Get(context.Background(), hasCompDetQueryLookupKey, createdHasCompDetectionQuery)
+					return len(createdHasCompDetectionQuery.Status.Conditions) > 1
+				}, timeout, interval).Should(BeTrue())
+
+				// Make sure the a devfile is detected
+				Expect(len(createdHasCompDetectionQuery.Status.ComponentDetected)).Should(Equal(1))
+
+				for devfileName, devfileDesc := range createdHasCompDetectionQuery.Status.ComponentDetected {
+					Expect(devfileName).Should(ContainSubstring("node"))
+					Expect(devfileDesc.ComponentStub.Source.GitSource.DevfileURL).Should(Equal("https://raw.githubusercontent.com/devfile-samples/node-express-hello-devfile-no-dockerfile/main/devfile.yaml"))
+					Expect(devfileDesc.ComponentStub.Source.GitSource.DockerfileURL).Should(Equal("https://raw.githubusercontent.com/nodeshift-starters/devfile-sample/main/Dockerfile"))
+				}
+
+				// Delete the specified Detection Query resource
+				deleteCompDetQueryCR(hasCompDetQueryLookupKey)
+			})
+		})
 	})
 
 })
 
 // deleteCompDetQueryCR deletes the specified Comp Detection Query resource and verifies it was properly deleted
 func deleteCompDetQueryCR(hasCompDetectionQueryLookupKey types.NamespacedName) {
-	// cdqJobLookupKey := types.NamespacedName{Name: hasCompDetectionQueryLookupKey.Name + "-job", Namespace: hasCompDetectionQueryLookupKey.Namespace}
 	// Delete
 	Eventually(func() error {
 		f := &appstudiov1alpha1.ComponentDetectionQuery{}
@@ -1930,32 +2033,10 @@ func deleteCompDetQueryCR(hasCompDetectionQueryLookupKey types.NamespacedName) {
 		return k8sClient.Delete(context.Background(), f)
 	}, timeout, interval).Should(Succeed())
 
-	// Eventually(func() error {
-	// 	f := &batchv1.Job{}
-	// 	k8sClient.Get(context.Background(), cdqJobLookupKey, f)
-	// 	return k8sClient.Delete(context.Background(), f)
-	// }, timeout, interval).Should(Succeed())
-
-	// Eventually(func() error {
-	// 	f := &corev1.ConfigMap{}
-	// 	k8sClient.Get(context.Background(), hasCompDetectionQueryLookupKey, f)
-	// 	return k8sClient.Delete(context.Background(), f)
-	// }, timeout, interval).Should(Succeed())
-
 	// Wait for delete to finish
 	Eventually(func() error {
 		f := &appstudiov1alpha1.ComponentDetectionQuery{}
 		return k8sClient.Get(context.Background(), hasCompDetectionQueryLookupKey, f)
 	}, timeout, interval).ShouldNot(Succeed())
-
-	// Eventually(func() error {
-	// 	f := &batchv1.Job{}
-	// 	return k8sClient.Get(context.Background(), cdqJobLookupKey, f)
-	// }, timeout, interval).ShouldNot(Succeed())
-
-	// Eventually(func() error {
-	// 	f := &corev1.ConfigMap{}
-	// 	return k8sClient.Get(context.Background(), hasCompDetectionQueryLookupKey, f)
-	// }, timeout, interval).ShouldNot(Succeed())
 
 }
