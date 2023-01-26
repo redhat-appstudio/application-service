@@ -72,6 +72,9 @@ var _ = Describe("Application controller finalizer counter tests", func() {
 			}
 			Expect(k8sClient.Create(ctx, hasComp)).Should(Succeed())
 
+			// Wait for the GitOps job to appear and trigger its completion
+			getJobAndSetItToComplete(componentName, "generate-base")
+
 			// Look up the has app resource that was created.
 			// num(conditions) may still be < 1 on the first try, so retry until at least _some_ condition is set
 			hasCompLookupKey := types.NamespacedName{Name: componentName, Namespace: AppNamespace}
@@ -158,6 +161,9 @@ var _ = Describe("Application controller finalizer counter tests", func() {
 				},
 			}
 			Expect(k8sClient.Create(ctx, hasComp)).Should(Succeed())
+
+			// Wait for the GitOps job to appear and trigger its completion
+			getJobAndSetItToComplete(componentName, "generate-base")
 
 			// Look up the has app resource that was created.
 			// num(conditions) may still be < 1 on the first try, so retry until at least _some_ condition is set
@@ -256,6 +262,9 @@ var _ = Describe("Application controller finalizer counter tests", func() {
 			}
 			Expect(k8sClient.Create(ctx, hasComp)).Should(Succeed())
 
+			// Wait for the GitOps job to appear and trigger its completion
+			getJobAndSetItToComplete(componentName, "generate-base")
+
 			// Look up the has app resource that was created.
 			// num(conditions) may still be < 1 on the first try, so retry until at least _some_ condition is set
 			hasCompLookupKey := types.NamespacedName{Name: componentName, Namespace: AppNamespace}
@@ -342,6 +351,9 @@ var _ = Describe("Application controller finalizer counter tests", func() {
 				},
 			}
 			Expect(k8sClient.Create(ctx, hasComp)).Should(Succeed())
+
+			// Wait for the GitOps job to appear and trigger its completion
+			getJobAndSetItToComplete(componentName, "generate-base")
 
 			// Look up the has app resource that was created.
 			// num(conditions) may still be < 1 on the first try, so retry until at least _some_ condition is set

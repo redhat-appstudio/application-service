@@ -10,11 +10,10 @@ import (
 	k8sErrors "k8s.io/apimachinery/pkg/api/errors"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
-	"sigs.k8s.io/controller-runtime/pkg/client"
+	ctrlclient "sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 var gitopsJobImage = "quay.io/redhat-appstudio/gitops-generator:latest"
-var gitopsJobNamespace = "application-service-system"
 
 type GitOpsOperation string
 
@@ -42,7 +41,7 @@ func (o GitOpsOperation) String() string {
 }
 
 // CreateGitOpsJob creates a Kubernetes Job to run
-func CreateGitOpsJob(ctx context.Context, client client.Client, gitToken string, jobName string, namespace string, gitopsConfig GitOpsJobConfig) error {
+func CreateGitOpsJob(ctx context.Context, client ctrlclient.Client, gitToken, jobName, jobNamespace, resourceNamespace string, gitopsConfig GitOpsJobConfig) error {
 	gitopsJob := batchv1.Job{
 		TypeMeta: v1.TypeMeta{
 			APIVersion: "batch/v1",
@@ -50,7 +49,11 @@ func CreateGitOpsJob(ctx context.Context, client client.Client, gitToken string,
 		},
 		ObjectMeta: v1.ObjectMeta{
 			Name:      jobName,
-			Namespace: gitopsJobNamespace,
+			Namespace: jobNamespace,
+			Labels: map[string]string{
+				"resourceName": gitopsConfig.ResourceName,
+				"operation":    gitopsConfig.OperationType.String(),
+			},
 		},
 		Spec: batchv1.JobSpec{
 			Template: corev1.PodTemplateSpec{
@@ -85,7 +88,7 @@ func CreateGitOpsJob(ctx context.Context, client client.Client, gitToken string,
 								},
 								{
 									Name:  "NAMESPACE",
-									Value: namespace,
+									Value: resourceNamespace,
 								},
 								{
 									Name: "GITHUB_TOKEN",
@@ -112,12 +115,11 @@ func CreateGitOpsJob(ctx context.Context, client client.Client, gitToken string,
 
 // WaitForJob waits for the given Kubernetes job to complete.
 // If it errors out, or the given timeout is reached, an error is returned
-func WaitForJob(ctx context.Context, client client.Client, jobName string, timeout time.Duration) error {
+func WaitForJob(ctx context.Context, client ctrlclient.Client, jobName string, jobNamespace string, timeout time.Duration) error {
 	var job batchv1.Job
 	var err error
 	for stay, timeout := true, time.After(timeout); stay; {
-		fmt.Println("DEBUG: FOR LOOP ITERATION")
-		err = client.Get(ctx, types.NamespacedName{Namespace: gitopsJobNamespace, Name: jobName}, &job)
+		err = client.Get(context.Background(), types.NamespacedName{Namespace: jobNamespace, Name: jobName}, &job)
 		if err != nil {
 			// If the error is anything but a isnotfound error, return the error
 			// If the resource wasn't found, keep trying up to the timeout, in case the job hasn't appeared yet
@@ -129,6 +131,9 @@ func WaitForJob(ctx context.Context, client client.Client, jobName string, timeo
 		// The CompletionTime in the job's status will only get set when the Job completes successfully, so check for its presence
 		if job.Status.CompletionTime != nil {
 			return nil
+		}
+		if job.Status.Failed >= 5 {
+			return fmt.Errorf("job failed to complete due to error")
 		}
 		time.Sleep(1 * time.Second)
 		select {
@@ -147,4 +152,19 @@ func WaitForJob(ctx context.Context, client client.Client, jobName string, timeo
 	// ToDo: Capture pod logs
 	return fmt.Errorf("gitops generation job did not complete in time")
 
+}
+
+// Delete job takes in the given gitops job and attempts to delete it
+func DeleteJob(ctx context.Context, client ctrlclient.Client, jobName string, jobNamespace string) error {
+	job := batchv1.Job{
+		TypeMeta: v1.TypeMeta{
+			APIVersion: "batch/v1",
+			Kind:       "Job",
+		},
+		ObjectMeta: v1.ObjectMeta{
+			Name:      jobName,
+			Namespace: jobNamespace,
+		},
+	}
+	return client.Delete(context.Background(), &job, &ctrlclient.DeleteOptions{})
 }

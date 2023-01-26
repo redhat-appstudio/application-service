@@ -20,7 +20,9 @@ import (
 	"context"
 	"errors"
 	"reflect"
+	"strings"
 	"testing"
+	"time"
 
 	"github.com/redhat-appstudio/application-service/gitops"
 
@@ -33,10 +35,14 @@ import (
 	"github.com/redhat-appstudio/application-service/pkg/util/ioutils"
 	"github.com/spf13/afero"
 	ctrl "sigs.k8s.io/controller-runtime"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 
 	devfileApi "github.com/devfile/api/v2/pkg/devfile"
+	batchv1 "k8s.io/api/batch/v1"
+	k8sErrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/labels"
 	//+kubebuilder:scaffold:imports
 )
 
@@ -151,7 +157,6 @@ func TestSetGitOpsStatus(t *testing.T) {
 
 func TestGenerateGitops(t *testing.T) {
 	appFS := ioutils.NewMemoryFilesystem()
-	readOnlyFs := ioutils.NewReadOnlyFs()
 	ctx := context.Background()
 
 	fakeClient := fake.NewClientBuilder().Build()
@@ -168,14 +173,14 @@ func TestGenerateGitops(t *testing.T) {
 	// Create a second reconciler for testing error scenarios
 	errGen := gitops.NewMockGenerator()
 	errGen.Errors.Push(errors.New("Fatal error"))
-	errReconciler := &ComponentReconciler{
-		Log:          ctrl.Log.WithName("controllers").WithName("Component"),
-		GitHubOrg:    github.AppStudioAppDataOrg,
-		GitToken:     "fake-token",
-		Generator:    errGen,
-		Client:       fakeClient,
-		GitHubClient: github.GetMockedClient(),
-	}
+	// errReconciler := &ComponentReconciler{
+	// 	Log:          ctrl.Log.WithName("controllers").WithName("Component"),
+	// 	GitHubOrg:    github.AppStudioAppDataOrg,
+	// 	GitToken:     "fake-token",
+	// 	Generator:    errGen,
+	// 	Client:       fakeClient,
+	// 	GitHubClient: github.GetMockedClient(),
+	// }
 
 	componentSpec := appstudiov1alpha1.ComponentSpec{
 		ComponentName: "test-component",
@@ -288,7 +293,7 @@ func TestGenerateGitops(t *testing.T) {
 					Kind:       "Component",
 				},
 				ObjectMeta: metav1.ObjectMeta{
-					Name:      "test-component",
+					Name:      "test-component-only-gitops-url",
 					Namespace: "test-namespace",
 				},
 				Spec: componentSpec,
@@ -302,7 +307,7 @@ func TestGenerateGitops(t *testing.T) {
 		},
 		{
 			name:       "Gitops generation fails",
-			reconciler: errReconciler,
+			reconciler: r,
 			fs:         appFS,
 			component: &appstudiov1alpha1.Component{
 				TypeMeta: metav1.TypeMeta{
@@ -310,29 +315,7 @@ func TestGenerateGitops(t *testing.T) {
 					Kind:       "Component",
 				},
 				ObjectMeta: metav1.ObjectMeta{
-					Name:      "test-component",
-					Namespace: "test-namespace",
-				},
-				Spec: componentSpec,
-				Status: appstudiov1alpha1.ComponentStatus{
-					GitOps: appstudiov1alpha1.GitOpsStatus{
-						RepositoryURL: "https://github.com/test/repo",
-					},
-				},
-			},
-			wantErr: true,
-		},
-		{
-			name:       "Fail to create temp folder",
-			reconciler: errReconciler,
-			fs:         readOnlyFs,
-			component: &appstudiov1alpha1.Component{
-				TypeMeta: metav1.TypeMeta{
-					APIVersion: "appstudio.redhat.com/v1alpha1",
-					Kind:       "Component",
-				},
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "test-component",
+					Name:      "test-gitops-gen-fail",
 					Namespace: "test-namespace",
 				},
 				Spec: componentSpec,
@@ -376,7 +359,7 @@ func TestGenerateGitops(t *testing.T) {
 					Kind:       "Component",
 				},
 				ObjectMeta: metav1.ObjectMeta{
-					Name:      "test-git-error",
+					Name:      "test-git-error-bad-repo",
 					Namespace: "test-namespace",
 				},
 				Spec: componentSpec,
@@ -391,8 +374,13 @@ func TestGenerateGitops(t *testing.T) {
 	}
 
 	for _, tt := range tests {
+
 		tt.reconciler.AppFS = tt.fs
 		t.Run(tt.name, func(t *testing.T) {
+			// If required, mock the completion or failure of the gitops generation job
+			if !tt.wantErr || tt.component.Name == "test-gitops-gen-fail" || strings.Contains(tt.component.Name, "test-git-error") {
+				go updateJobToCompleteOrPanic(fakeClient, tt.component.Name, tt.component.Namespace, "generate-base", !tt.wantErr)
+			}
 			err := tt.reconciler.generateGitops(ctx, ctrl.Request{}, tt.component)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("TestGenerateGitops() unexpected error: %v", err)
@@ -400,4 +388,45 @@ func TestGenerateGitops(t *testing.T) {
 		})
 	}
 
+}
+
+func updateJobToCompleteOrPanic(kubeclient client.Client, componentName string, componentNamespace string, operation string, isSuccess bool) {
+	jobList := &batchv1.JobList{}
+	for stay, timeout := true, time.After(timeout); stay; {
+		err := kubeclient.List(context.Background(), jobList, &client.ListOptions{LabelSelector: labels.SelectorFromSet(labels.Set{
+			"resourceName": componentName,
+			"operation":    operation,
+		})})
+
+		if err != nil {
+			// If the error is anything but a isnotfound error, return the error
+			// If the resource wasn't found, keep trying up to the timeout, in case the job hasn't appeared yet
+			if !k8sErrors.IsNotFound(err) {
+				panic(err)
+			}
+		}
+		if err == nil && len(jobList.Items) > 0 {
+			break
+		}
+
+		time.Sleep(1 * time.Second)
+		select {
+		case <-timeout:
+			stay = false
+		default:
+		}
+	}
+
+	gitOpsJob := jobList.Items[0]
+
+	if isSuccess || strings.Contains(componentName, "test-git-error") {
+		gitOpsJob.Status.CompletionTime = &metav1.Time{Time: time.Now()}
+	} else {
+		gitOpsJob.Status.Failed = 5
+	}
+
+	err := kubeclient.Status().Update(context.Background(), &gitOpsJob)
+	if err != nil {
+		panic(err)
+	}
 }

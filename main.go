@@ -189,15 +189,16 @@ func main() {
 		os.Exit(1)
 	}
 	if err = (&controllers.ComponentReconciler{
-		Client:          mgr.GetClient(),
-		Scheme:          mgr.GetScheme(),
-		Log:             ctrl.Log.WithName("controllers").WithName("Component").WithValues("appstudio-component", "HAS"),
-		Generator:       gitopsgen.NewGitopsGen(),
-		AppFS:           ioutils.NewFilesystem(),
-		GitToken:        ghToken,
-		ImageRepository: imageRepository,
-		SPIClient:       spi.SPIClient{},
-		GitHubClient:    client,
+		Client:             mgr.GetClient(),
+		Scheme:             mgr.GetScheme(),
+		Log:                ctrl.Log.WithName("controllers").WithName("Component").WithValues("appstudio-component", "HAS"),
+		Generator:          gitopsgen.NewGitopsGen(),
+		AppFS:              ioutils.NewFilesystem(),
+		GitToken:           ghToken,
+		ImageRepository:    imageRepository,
+		SPIClient:          spi.SPIClient{},
+		GitHubClient:       client,
+		GitOpsJobNamespace: "application-service-system",
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "Component")
 		os.Exit(1)
@@ -228,13 +229,14 @@ func main() {
 	}
 
 	if err = (&controllers.SnapshotEnvironmentBindingReconciler{
-		Client:       mgr.GetClient(),
-		Scheme:       mgr.GetScheme(),
-		Log:          ctrl.Log.WithName("controllers").WithName("SnapshotEnvironmentBinding").WithValues("appstudio-component", "HAS"),
-		Generator:    gitopsgen.NewGitopsGen(),
-		AppFS:        ioutils.NewFilesystem(),
-		GitToken:     ghToken,
-		GitHubClient: client,
+		Client:             mgr.GetClient(),
+		Scheme:             mgr.GetScheme(),
+		Log:                ctrl.Log.WithName("controllers").WithName("SnapshotEnvironmentBinding").WithValues("appstudio-component", "HAS"),
+		Generator:          gitopsgen.NewGitopsGen(),
+		AppFS:              ioutils.NewFilesystem(),
+		GitToken:           ghToken,
+		GitHubClient:       client,
+		GitOpsJobNamespace: "application-service-system",
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "SnapshotEnvironmentBinding")
 		os.Exit(1)

@@ -59,15 +59,16 @@ import (
 // ComponentReconciler reconciles a Component object
 type ComponentReconciler struct {
 	client.Client
-	Scheme          *runtime.Scheme
-	Log             logr.Logger
-	GitToken        string
-	GitHubOrg       string
-	ImageRepository string
-	Generator       gitopsgen.Generator
-	AppFS           afero.Afero
-	SPIClient       spi.SPI
-	GitHubClient    *gh.Client
+	Scheme             *runtime.Scheme
+	Log                logr.Logger
+	GitToken           string
+	GitHubOrg          string
+	ImageRepository    string
+	Generator          gitopsgen.Generator
+	AppFS              afero.Afero
+	SPIClient          spi.SPI
+	GitHubClient       *gh.Client
+	GitOpsJobNamespace string
 }
 
 //+kubebuilder:rbac:groups=appstudio.redhat.com,resources=components,verbs=get;list;watch;create;update;patch;delete
@@ -444,16 +445,22 @@ func (r *ComponentReconciler) generateGitops(ctx context.Context, req ctrl.Reque
 		jobName = component.GetName()[0:56]
 	}
 	jobName = jobName + util.GetRandomString(5, true)
-	err = gitopsjob.CreateGitOpsJob(ctx, r.Client, r.GitToken, jobName, component.Namespace, gitopsJobConfig)
+	jobNamespace := r.GitOpsJobNamespace
+	if jobNamespace == "" {
+		jobNamespace = component.Namespace
+	}
+	err = gitopsjob.CreateGitOpsJob(ctx, r.Client, r.GitToken, jobName, jobNamespace, component.Namespace, gitopsJobConfig)
 	if err != nil {
 		return err
 	}
 
 	// Wait for the job to succeed, error out if the 5 min timeout is reached
-	err = gitopsjob.WaitForJob(ctx, r.Client, jobName, 5*time.Minute)
+	err = gitopsjob.WaitForJob(ctx, r.Client, jobName, jobNamespace, 5*time.Minute)
 	if err != nil {
-		return err
+		return r.CleanUpJobAndReturn(log, jobName, jobNamespace, err)
 	}
+
+	r.CleanUpJobAndReturn(log, jobName, jobNamespace, nil)
 
 	// Get the commit ID for the gitops repository
 	var commitID string
@@ -541,4 +548,12 @@ func (r *ComponentReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		},
 	}).
 		Complete(r)
+}
+
+func (r *ComponentReconciler) CleanUpJobAndReturn(log logr.Logger, jobName, jobNamespace string, err error) error {
+	delErr := gitopsjob.DeleteJob(context.Background(), r.Client, jobName, jobNamespace)
+	if delErr != nil {
+		log.Error(err, "unable to delete gitops-generation job")
+	}
+	return err
 }
