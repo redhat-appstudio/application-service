@@ -16,8 +16,6 @@
 package devfile
 
 import (
-	"strings"
-
 	"github.com/devfile/api/v2/pkg/apis/workspaces/v1alpha2"
 	"github.com/devfile/api/v2/pkg/attributes"
 	"github.com/devfile/api/v2/pkg/devfile"
@@ -265,10 +263,7 @@ func UpdateLocalDockerfileURItoAbsolute(devfile data.DevfileData, dockerfileURL 
 
 	for _, comp := range devfileComponents {
 		if comp.Image != nil && comp.Image.Dockerfile != nil {
-			// If the DockerfileURI is local (i.e. not a fully qualified URL) overwrite it to be the given Dockerfile URL, otherwise ignore it
-			if !strings.HasPrefix(comp.Image.Dockerfile.Uri, "http") {
-				comp.Image.Dockerfile.Uri = dockerfileURL
-			}
+			comp.Image.Dockerfile.Uri = dockerfileURL
 
 			// Update the component in the devfile
 			err = devfile.UpdateComponent(comp)

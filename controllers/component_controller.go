@@ -308,7 +308,6 @@ func (r *ComponentReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 				return ctrl.Result{}, err
 			}
 
-			// If the DockerfileURL is set in the Git source - update any local references to the Dockerfile in the devfile to use the fully qualified URL
 			component.Status.Devfile = string(yamlHASCompData)
 
 			// Update the HASApp CR with the new devfile
