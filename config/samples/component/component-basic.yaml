@@ -1,27 +1,30 @@
 apiVersion: appstudio.redhat.com/v1alpha1
 kind: Component
 metadata:
-  name: component-sample
+  name: component-sample-4
 spec:
   componentName: backend
-  application: application-sample
-  replicas: 1
-  targetPort: 1111
-  route: route111
+  application: application-sample-4
+  containerImage: quay.io/myimage2
+  replicas: 5
+  targetPort: 5566
+  route: route111222
   resources:
     limits:
       memory: "500Mi"
       cpu: "2"
       storage: "400Mi"
     requests:
-      memory: "400Mi"
-      cpu: "700m"
-      storage: "200Mi"
+      memory: "401Mi"
+      cpu: "701m"
+      storage: "201Mi"
   env:
   - name: FOO
-    value: "foo1"
+    value: "foo11"
   - name: BAR
-    value: "bar1"
-  source:
-    git:
-      url: https://github.com/devfile-samples/devfile-sample-java-springboot-basic
+    value: "bar11"
+  # source:
+  #   git:
+  #     url: https://github.com/devfile-samples/devfile-sample-java-springboot-basic
+      # devfileUrl: https://raw.githubusercontent.com/maysunfaisal/devfileexample/main/devfile.yaml
+      # dockerfileUrl: https://raw.githubusercontent.com/devfile-samples/devfile-sample-java-springboot-basic/main/docker/Dockerfile

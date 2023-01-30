@@ -406,14 +406,14 @@ func TestUpdateComponentDevfileModel(t *testing.T) {
 			components: []devfileAPIV1.Component{
 				{
 					Name:       "component1",
-					Attributes: envAttributes.PutInteger(containerImagePortKey, 1001),
+					Attributes: envAttributes.PutInteger(devfilePkg.ContainerImagePortKey, 1001),
 					ComponentUnion: devfileAPIV1.ComponentUnion{
 						Kubernetes: &devfileAPIV1.KubernetesComponent{},
 					},
 				},
 				{
 					Name:       "component2",
-					Attributes: envAttributes.PutInteger(containerImagePortKey, 3333).PutString(memoryLimitKey, "2Gi"),
+					Attributes: envAttributes.PutInteger(devfilePkg.ContainerImagePortKey, 3333).PutString(devfilePkg.MemoryLimitKey, "2Gi"),
 					ComponentUnion: devfileAPIV1.ComponentUnion{
 						Image: &devfileAPIV1.ImageComponent{
 
@@ -456,14 +456,14 @@ func TestUpdateComponentDevfileModel(t *testing.T) {
 			components: []devfileAPIV1.Component{
 				{
 					Name:       "component1",
-					Attributes: envAttributes.PutInteger(containerImagePortKey, 1001),
+					Attributes: envAttributes.PutInteger(devfilePkg.ContainerImagePortKey, 1001),
 					ComponentUnion: devfileAPIV1.ComponentUnion{
 						ComponentType: "bad-component",
 					},
 				},
 				{
 					Name:       "component2",
-					Attributes: envAttributes.PutInteger(containerImagePortKey, 3333).PutString(memoryLimitKey, "2Gi"),
+					Attributes: envAttributes.PutInteger(devfilePkg.ContainerImagePortKey, 3333).PutString(devfilePkg.MemoryLimitKey, "2Gi"),
 					ComponentUnion: devfileAPIV1.ComponentUnion{
 						Image: &devfileAPIV1.ImageComponent{
 
@@ -775,7 +775,7 @@ func TestUpdateComponentStub(t *testing.T) {
 				"./": {
 					Devfile: devfileAPIV1.Devfile{
 						DevfileHeader: devfile.DevfileHeader{
-							SchemaVersion: "2.1.0",
+							SchemaVersion: "2.2.0",
 							Metadata: devfile.DevfileMetadata{
 								Name:        "test-devfile",
 								Language:    "language",
@@ -797,7 +797,7 @@ func TestUpdateComponentStub(t *testing.T) {
 				"./": {
 					Devfile: devfileAPIV1.Devfile{
 						DevfileHeader: devfile.DevfileHeader{
-							SchemaVersion: "2.1.0",
+							SchemaVersion: "2.2.0",
 							Metadata: devfile.DevfileMetadata{
 								Name:        "test-devfile",
 								Language:    "language",
@@ -822,7 +822,7 @@ func TestUpdateComponentStub(t *testing.T) {
 				"./": {
 					Devfile: devfileAPIV1.Devfile{
 						DevfileHeader: devfile.DevfileHeader{
-							SchemaVersion: "2.1.0",
+							SchemaVersion: "2.2.0",
 							Metadata: devfile.DevfileMetadata{
 								Name:        "test-devfile",
 								Language:    "language",
@@ -856,7 +856,7 @@ func TestUpdateComponentStub(t *testing.T) {
 				"./": {
 					Devfile: devfileAPIV1.Devfile{
 						DevfileHeader: devfile.DevfileHeader{
-							SchemaVersion: "2.1.0",
+							SchemaVersion: "2.2.0",
 							Metadata: devfile.DevfileMetadata{
 								Name:        "test-devfile",
 								Language:    "language",
@@ -876,7 +876,7 @@ func TestUpdateComponentStub(t *testing.T) {
 				"./": {
 					Devfile: devfileAPIV1.Devfile{
 						DevfileHeader: devfile.DevfileHeader{
-							SchemaVersion: "2.1.0",
+							SchemaVersion: "2.2.0",
 							Metadata: devfile.DevfileMetadata{
 								Name:        "test-devfile",
 								Language:    "language",
@@ -898,7 +898,7 @@ func TestUpdateComponentStub(t *testing.T) {
 				"./": {
 					Devfile: devfileAPIV1.Devfile{
 						DevfileHeader: devfile.DevfileHeader{
-							SchemaVersion: "2.1.0",
+							SchemaVersion: "2.2.0",
 							Metadata: devfile.DevfileMetadata{
 								Name:        "test-devfile",
 								Language:    "language",
@@ -921,7 +921,7 @@ func TestUpdateComponentStub(t *testing.T) {
 				"./": {
 					Devfile: devfileAPIV1.Devfile{
 						DevfileHeader: devfile.DevfileHeader{
-							SchemaVersion: "2.1.0",
+							SchemaVersion: "2.2.0",
 							Metadata: devfile.DevfileMetadata{
 								Name:        "test-devfile",
 								Language:    "language",
@@ -944,7 +944,7 @@ func TestUpdateComponentStub(t *testing.T) {
 				"./": {
 					Devfile: devfileAPIV1.Devfile{
 						DevfileHeader: devfile.DevfileHeader{
-							SchemaVersion: "2.1.0",
+							SchemaVersion: "2.2.0",
 							Metadata: devfile.DevfileMetadata{
 								Name:        "test-devfile",
 								Language:    "language",
@@ -967,7 +967,7 @@ func TestUpdateComponentStub(t *testing.T) {
 				"./": {
 					Devfile: devfileAPIV1.Devfile{
 						DevfileHeader: devfile.DevfileHeader{
-							SchemaVersion: "2.1.0",
+							SchemaVersion: "2.2.0",
 							Metadata: devfile.DevfileMetadata{
 								Name:        "test-devfile",
 								Language:    "language",
@@ -990,7 +990,7 @@ func TestUpdateComponentStub(t *testing.T) {
 				"./": {
 					Devfile: devfileAPIV1.Devfile{
 						DevfileHeader: devfile.DevfileHeader{
-							SchemaVersion: "2.1.0",
+							SchemaVersion: "2.2.0",
 							Metadata: devfile.DevfileMetadata{
 								Name:        "test-devfile",
 								Language:    "language",
@@ -1013,7 +1013,7 @@ func TestUpdateComponentStub(t *testing.T) {
 				"./": {
 					Devfile: devfileAPIV1.Devfile{
 						DevfileHeader: devfile.DevfileHeader{
-							SchemaVersion: "2.1.0",
+							SchemaVersion: "2.2.0",
 							Metadata: devfile.DevfileMetadata{
 								Name:        "test-devfile",
 								Language:    "language",
@@ -1036,7 +1036,7 @@ func TestUpdateComponentStub(t *testing.T) {
 				"./": {
 					Devfile: devfileAPIV1.Devfile{
 						DevfileHeader: devfile.DevfileHeader{
-							SchemaVersion: "2.1.0",
+							SchemaVersion: "2.2.0",
 							Metadata: devfile.DevfileMetadata{
 								Name:        "test-devfile",
 								Language:    "language",
@@ -1059,7 +1059,7 @@ func TestUpdateComponentStub(t *testing.T) {
 				"./": {
 					Devfile: devfileAPIV1.Devfile{
 						DevfileHeader: devfile.DevfileHeader{
-							SchemaVersion: "2.1.0",
+							SchemaVersion: "2.2.0",
 							Metadata: devfile.DevfileMetadata{
 								Name:        "test-devfile",
 								Language:    "language",
@@ -1082,7 +1082,7 @@ func TestUpdateComponentStub(t *testing.T) {
 				"./": {
 					Devfile: devfileAPIV1.Devfile{
 						DevfileHeader: devfile.DevfileHeader{
-							SchemaVersion: "2.1.0",
+							SchemaVersion: "2.2.0",
 							Metadata: devfile.DevfileMetadata{
 								Name:        "test-devfile",
 								Language:    "language",
@@ -1105,7 +1105,7 @@ func TestUpdateComponentStub(t *testing.T) {
 				"./": {
 					Devfile: devfileAPIV1.Devfile{
 						DevfileHeader: devfile.DevfileHeader{
-							SchemaVersion: "2.1.0",
+							SchemaVersion: "2.2.0",
 							Metadata: devfile.DevfileMetadata{
 								Name:        "test-devfile",
 								Language:    "language",
@@ -1128,7 +1128,7 @@ func TestUpdateComponentStub(t *testing.T) {
 				"./": {
 					Devfile: devfileAPIV1.Devfile{
 						DevfileHeader: devfile.DevfileHeader{
-							SchemaVersion: "2.1.0",
+							SchemaVersion: "2.2.0",
 							Metadata: devfile.DevfileMetadata{
 								Name:        "test-devfile",
 								Language:    "language",
@@ -1151,7 +1151,7 @@ func TestUpdateComponentStub(t *testing.T) {
 				"./": {
 					Devfile: devfileAPIV1.Devfile{
 						DevfileHeader: devfile.DevfileHeader{
-							SchemaVersion: "2.1.0",
+							SchemaVersion: "2.2.0",
 							Metadata: devfile.DevfileMetadata{
 								Name:        "test-devfile",
 								Language:    "language",
@@ -1174,7 +1174,7 @@ func TestUpdateComponentStub(t *testing.T) {
 				"./": {
 					Devfile: devfileAPIV1.Devfile{
 						DevfileHeader: devfile.DevfileHeader{
-							SchemaVersion: "2.1.0",
+							SchemaVersion: "2.2.0",
 							Metadata: devfile.DevfileMetadata{
 								Name:        "test-devfile",
 								Language:    "language",
@@ -1197,7 +1197,7 @@ func TestUpdateComponentStub(t *testing.T) {
 				"./": {
 					Devfile: devfileAPIV1.Devfile{
 						DevfileHeader: devfile.DevfileHeader{
-							SchemaVersion: "2.1.0",
+							SchemaVersion: "2.2.0",
 							Metadata: devfile.DevfileMetadata{
 								Name:        "test-devfile",
 								Language:    "language",
@@ -1220,7 +1220,7 @@ func TestUpdateComponentStub(t *testing.T) {
 				"./": {
 					Devfile: devfileAPIV1.Devfile{
 						DevfileHeader: devfile.DevfileHeader{
-							SchemaVersion: "2.1.0",
+							SchemaVersion: "2.2.0",
 							Metadata: devfile.DevfileMetadata{
 								Name:        "test-devfile",
 								Language:    "language",

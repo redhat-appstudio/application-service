@@ -1665,7 +1665,10 @@ var _ = Describe("Component controller", func() {
 			Expect(createdHasApp.Status.Devfile).Should(Not(Equal("")))
 
 			// Check the Component devfile
-			hasCompDevfile, err := devfile.ParseDevfileModel(createdHasComp.Status.Devfile)
+			src := devfilePkg.DevfileSrc{
+				Data: createdHasComp.Status.Devfile,
+			}
+			hasCompDevfile, err := devfilePkg.ParseDevfile(src)
 			Expect(err).Should(Not(HaveOccurred()))
 
 			devfileComponents, err := hasCompDevfile.GetComponents(common.DevfileOptions{})
@@ -1680,7 +1683,10 @@ var _ = Describe("Component controller", func() {
 			}
 
 			// Check the HAS Application devfile
-			hasAppDevfile, err := devfile.ParseDevfileModel(createdHasApp.Status.Devfile)
+			src = devfilePkg.DevfileSrc{
+				Data: createdHasApp.Status.Devfile,
+			}
+			hasAppDevfile, err := devfilePkg.ParseDevfile(src)
 			Expect(err).Should(Not(HaveOccurred()))
 
 			// gitOpsRepo and appModelRepo should both be set
