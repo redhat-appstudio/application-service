@@ -27,28 +27,33 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
-func (r *SnapshotEnvironmentBindingReconciler) SetConditionAndUpdateCR(ctx context.Context, req ctrl.Request, appSnapshotEnvBinding *appstudiov1alpha1.SnapshotEnvironmentBinding, patch client.Patch, createError error) {
+func (r *SnapshotEnvironmentBindingReconciler) SetConditionAndUpdateCR(ctx context.Context, req ctrl.Request, appSnapshotEnvBinding *appstudiov1alpha1.SnapshotEnvironmentBinding, originalSEB *appstudiov1alpha1.SnapshotEnvironmentBinding, createError error) {
 	log := r.Log.WithValues("SnapshotEnvironmentBinding", req.NamespacedName).WithValues("clusterName", req.ClusterName)
 
+	patch := client.MergeFrom(originalSEB.DeepCopy())
+	condition := metav1.Condition{}
 	if createError == nil {
-		meta.SetStatusCondition(&appSnapshotEnvBinding.Status.GitOpsRepoConditions, metav1.Condition{
+		condition = metav1.Condition{
 			Type:    "GitOpsResourcesGenerated",
 			Status:  metav1.ConditionTrue,
 			Reason:  "OK",
 			Message: "GitOps repository sync successful",
-		})
+		}
 	} else {
-		meta.SetStatusCondition(&appSnapshotEnvBinding.Status.GitOpsRepoConditions, metav1.Condition{
+		condition = metav1.Condition{
 			Type:    "GitOpsResourcesGenerated",
 			Status:  metav1.ConditionFalse,
 			Reason:  "GenerateError",
 			Message: fmt.Sprintf("GitOps repository sync failed: %v", createError),
-		})
-		logutil.LogAPIResourceChangeEvent(log, appSnapshotEnvBinding.Name, "SnapshotEnvironmentBinding", logutil.ResourceCreate, createError)
-	}
+		}
 
-	err := r.Client.Status().Patch(ctx, appSnapshotEnvBinding, patch)
+	}
+	meta.SetStatusCondition(&originalSEB.Status.GitOpsRepoConditions, condition)
+	logutil.LogAPIResourceChangeEvent(log, originalSEB.Name, "SnapshotEnvironmentBinding", logutil.ResourceCreate, createError)
+
+	err := r.Client.Status().Patch(ctx, originalSEB, patch)
 	if err != nil {
 		log.Error(err, "Unable to update application snapshot environment binding")
+
 	}
 }

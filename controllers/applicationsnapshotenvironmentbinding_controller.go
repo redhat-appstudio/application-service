@@ -22,6 +22,8 @@ import (
 	"time"
 
 	gh "github.com/google/go-github/v41/github"
+	"github.com/redhat-appstudio/application-service/gitops-generator/pkg/generate"
+	gitopsjoblib "github.com/redhat-appstudio/application-service/gitops-generator/pkg/generate"
 	gitopsgen "github.com/redhat-developer/gitops-generator/pkg"
 	"go.uber.org/zap/zapcore"
 
@@ -31,6 +33,7 @@ import (
 	"github.com/redhat-appstudio/application-service/pkg/gitopsjob"
 	logutil "github.com/redhat-appstudio/application-service/pkg/log"
 	"github.com/redhat-appstudio/application-service/pkg/util"
+	"github.com/redhat-appstudio/application-service/pkg/util/ioutils"
 	"github.com/spf13/afero"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -55,6 +58,12 @@ type SnapshotEnvironmentBindingReconciler struct {
 	GitHubClient       *gh.Client
 	GitToken           string
 	GitOpsJobNamespace string
+
+	// DoLocalGitOpsGen determines whether or not to only spawn off gitops generation jobs, or to run them locally inside HAS. Defaults to false
+	DoLocalGitOpsGen bool
+
+	// AllowLocalGitopsGen allows for certain resources to generate gitops resources locally, *if* an annotation is present on the resource. Defaults to false
+	AllowLocalGitopsGen bool
 }
 
 //+kubebuilder:rbac:groups=appstudio.redhat.com,resources=snapshotenvironmentbindings,verbs=get;list;watch;create;update;patch;delete
@@ -96,7 +105,7 @@ func (r *SnapshotEnvironmentBindingReconciler) Reconcile(ctx context.Context, re
 
 	log.Info(fmt.Sprintf("Starting reconcile loop for %v %v", appSnapshotEnvBinding.Name, req.NamespacedName))
 
-	patch := client.MergeFrom(appSnapshotEnvBinding.DeepCopy())
+	originalSEB := appSnapshotEnvBinding.DeepCopy()
 
 	applicationName := appSnapshotEnvBinding.Spec.Application
 	environmentName := appSnapshotEnvBinding.Spec.Environment
@@ -120,7 +129,7 @@ func (r *SnapshotEnvironmentBindingReconciler) Reconcile(ctx context.Context, re
 	err = r.Get(ctx, types.NamespacedName{Name: environmentName, Namespace: appSnapshotEnvBinding.Namespace}, &environment)
 	if err != nil {
 		log.Error(err, fmt.Sprintf("unable to get the Environment %s %v", environmentName, req.NamespacedName))
-		r.SetConditionAndUpdateCR(ctx, req, &appSnapshotEnvBinding, patch, err)
+		r.SetConditionAndUpdateCR(ctx, req, &appSnapshotEnvBinding, originalSEB, err)
 		return ctrl.Result{}, err
 	}
 
@@ -129,14 +138,14 @@ func (r *SnapshotEnvironmentBindingReconciler) Reconcile(ctx context.Context, re
 	err = r.Get(ctx, types.NamespacedName{Name: snapshotName, Namespace: appSnapshotEnvBinding.Namespace}, &appSnapshot)
 	if err != nil {
 		log.Error(err, fmt.Sprintf("unable to get the Application Snapshot %s %v", snapshotName, req.NamespacedName))
-		r.SetConditionAndUpdateCR(ctx, req, &appSnapshotEnvBinding, patch, err)
+		r.SetConditionAndUpdateCR(ctx, req, &appSnapshotEnvBinding, originalSEB, err)
 		return ctrl.Result{}, err
 	}
 
 	if appSnapshot.Spec.Application != applicationName {
 		err := fmt.Errorf("application snapshot %s does not belong to the application %s", snapshotName, applicationName)
 		log.Error(err, "")
-		r.SetConditionAndUpdateCR(ctx, req, &appSnapshotEnvBinding, patch, err)
+		r.SetConditionAndUpdateCR(ctx, req, &appSnapshotEnvBinding, originalSEB, err)
 		return ctrl.Result{}, err
 	}
 
@@ -157,22 +166,35 @@ func (r *SnapshotEnvironmentBindingReconciler) Reconcile(ctx context.Context, re
 	if jobNamespace == "" {
 		jobNamespace = appSnapshotEnvBinding.Namespace
 	}
-	err = gitopsjob.CreateGitOpsJob(ctx, r.Client, r.GitToken, jobName, appSnapshotEnvBinding.Namespace, jobNamespace, gitopsjobConfig)
-	if err != nil {
-		r.SetConditionAndUpdateCR(ctx, req, &appSnapshotEnvBinding, patch, err)
-		return ctrl.Result{}, err
-	}
 
-	// Wait for the Job to succeed
-	err = gitopsjob.WaitForJob(ctx, r.Client, jobName, jobNamespace, 5*time.Minute)
-	if err != nil {
-		r.SetConditionAndUpdateCR(ctx, req, &appSnapshotEnvBinding, patch, err)
-		return ctrl.Result{}, err
+	localGitopsGen := (r.AllowLocalGitopsGen && appSnapshotEnvBinding.Annotations["allowLocalGitopsGen"] == "true") || (r.DoLocalGitOpsGen)
+	if localGitopsGen {
+		err = gitopsjoblib.GenerateGitopsOverlays(context.Background(), r.Client, appSnapshotEnvBinding, ioutils.NewFilesystem(), generate.GitOpsGenParams{
+			Generator: r.Generator,
+			Token:     r.GitToken,
+		})
+		if err != nil {
+			r.SetConditionAndUpdateCR(ctx, req, &appSnapshotEnvBinding, originalSEB, err)
+			return ctrl.Result{}, err
+		}
+	} else {
+		err = gitopsjob.CreateGitOpsJob(ctx, r.Client, r.GitToken, jobName, appSnapshotEnvBinding.Namespace, jobNamespace, gitopsjobConfig)
+		if err != nil {
+			r.SetConditionAndUpdateCR(ctx, req, &appSnapshotEnvBinding, originalSEB, err)
+			return ctrl.Result{}, err
+		}
+
+		// Wait for the Job to succeed
+		err = gitopsjob.WaitForJob(ctx, r.Client, jobName, jobNamespace, 5*time.Minute)
+		if err != nil {
+			r.SetConditionAndUpdateCR(ctx, req, &appSnapshotEnvBinding, originalSEB, err)
+			return ctrl.Result{}, err
+		}
 	}
 
 	// If the Job succeeds, delete it
 
-	r.SetConditionAndUpdateCR(ctx, req, &appSnapshotEnvBinding, patch, nil)
+	r.SetConditionAndUpdateCR(ctx, req, &appSnapshotEnvBinding, originalSEB, nil)
 
 	log.Info(fmt.Sprintf("Finished reconcile loop for %v", req.NamespacedName))
 	return ctrl.Result{}, nil

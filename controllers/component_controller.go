@@ -46,12 +46,15 @@ import (
 	logicalcluster "github.com/kcp-dev/logicalcluster/v2"
 
 	appstudiov1alpha1 "github.com/redhat-appstudio/application-api/api/v1alpha1"
+	"github.com/redhat-appstudio/application-service/gitops-generator/pkg/generate"
+	gitopsjoblib "github.com/redhat-appstudio/application-service/gitops-generator/pkg/generate"
 	devfile "github.com/redhat-appstudio/application-service/pkg/devfile"
 	github "github.com/redhat-appstudio/application-service/pkg/github"
 	gitopsjob "github.com/redhat-appstudio/application-service/pkg/gitopsjob"
 	logutil "github.com/redhat-appstudio/application-service/pkg/log"
 	"github.com/redhat-appstudio/application-service/pkg/spi"
 	"github.com/redhat-appstudio/application-service/pkg/util"
+	"github.com/redhat-appstudio/application-service/pkg/util/ioutils"
 	gitopsgen "github.com/redhat-developer/gitops-generator/pkg"
 	"github.com/spf13/afero"
 )
@@ -69,6 +72,12 @@ type ComponentReconciler struct {
 	SPIClient          spi.SPI
 	GitHubClient       *gh.Client
 	GitOpsJobNamespace string
+
+	// DoLocalGitOpsGen determines whether or not to only spawn off gitops generation jobs, or to run them locally inside HAS. Defaults to false
+	DoLocalGitOpsGen bool
+
+	// AllowLocalGitopsGen allows for certain resources to generate gitops resources locally, *if* an annotation is present on the resource. Defaults to false
+	AllowLocalGitopsGen bool
 }
 
 //+kubebuilder:rbac:groups=appstudio.redhat.com,resources=components,verbs=get;list;watch;create;update;patch;delete
@@ -431,36 +440,52 @@ func (r *ComponentReconciler) generateGitops(ctx context.Context, req ctrl.Reque
 		return err
 	}
 
-	gitopsJobConfig := gitopsjob.GitOpsJobConfig{
-		OperationType: gitopsjob.GenerateBase,
-		RepositoryURL: component.Status.GitOps.RepositoryURL,
-		ResourceName:  component.GetName(),
-		Branch:        gitOpsBranch,
-		Context:       gitOpsContext,
-	}
+	// Determine if we're using a Kubernetes job for gitops generation, or generating locally
+	localGitopsGen := (r.AllowLocalGitopsGen && component.Annotations["allowLocalGitopsGen"] == "true") || (r.DoLocalGitOpsGen)
+	if localGitopsGen {
+		err = gitopsjoblib.GenerateGitopsBase(context.Background(), r.Client, *component, ioutils.NewFilesystem(), generate.GitOpsGenParams{
+			Generator: r.Generator,
+			Token:     r.GitToken,
+			RemoteURL: gitOpsURL,
+			Branch:    gitOpsBranch,
+			Context:   gitOpsContext,
+		})
+		if err != nil {
+			return err
+		}
+	} else {
+		gitopsJobConfig := gitopsjob.GitOpsJobConfig{
+			OperationType: gitopsjob.GenerateBase,
+			RepositoryURL: component.Status.GitOps.RepositoryURL,
+			ResourceName:  component.GetName(),
+			Branch:        gitOpsBranch,
+			Context:       gitOpsContext,
+		}
 
-	// Create a Kubernetes job (with random string appended to name to ensure uniqueness) to generate the GitOps resources
-	jobName := component.GetName()
-	if len(jobName) > 57 {
-		jobName = component.GetName()[0:56]
-	}
-	jobName = jobName + util.GetRandomString(5, true)
-	jobNamespace := r.GitOpsJobNamespace
-	if jobNamespace == "" {
-		jobNamespace = component.Namespace
-	}
-	err = gitopsjob.CreateGitOpsJob(ctx, r.Client, r.GitToken, jobName, jobNamespace, component.Namespace, gitopsJobConfig)
-	if err != nil {
-		return err
-	}
+		// Create a Kubernetes job (with random string appended to name to ensure uniqueness) to generate the GitOps resources
+		jobName := component.GetName()
+		if len(jobName) > 57 {
+			jobName = component.GetName()[0:56]
+		}
+		jobName = jobName + util.GetRandomString(5, true)
+		jobNamespace := r.GitOpsJobNamespace
+		if jobNamespace == "" {
+			jobNamespace = component.Namespace
+		}
+		err = gitopsjob.CreateGitOpsJob(ctx, r.Client, r.GitToken, jobName, jobNamespace, component.Namespace, gitopsJobConfig)
+		if err != nil {
+			return err
+		}
 
-	// Wait for the job to succeed, error out if the 5 min timeout is reached
-	err = gitopsjob.WaitForJob(ctx, r.Client, jobName, jobNamespace, 5*time.Minute)
-	if err != nil {
-		return r.CleanUpJobAndReturn(log, jobName, jobNamespace, err)
-	}
+		// Wait for the job to succeed, error out if the 5 min timeout is reached
+		err = gitopsjob.WaitForJob(ctx, r.Client, jobName, jobNamespace, 5*time.Minute)
+		if err != nil {
+			return r.CleanUpJobAndReturn(log, jobName, jobNamespace, err)
+		}
 
-	r.CleanUpJobAndReturn(log, jobName, jobNamespace, nil)
+		r.CleanUpJobAndReturn(log, jobName, jobNamespace, nil)
+
+	}
 
 	// Get the commit ID for the gitops repository
 	var commitID string
