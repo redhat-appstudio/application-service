@@ -16,6 +16,9 @@
 package devfile
 
 import (
+	"net"
+	"net/http"
+	"net/http/httptest"
 	"os"
 	"reflect"
 	"testing"
@@ -23,53 +26,111 @@ import (
 	"github.com/devfile/api/v2/pkg/apis/workspaces/v1alpha2"
 	"github.com/devfile/api/v2/pkg/attributes"
 	"github.com/devfile/api/v2/pkg/devfile"
-	data "github.com/devfile/library/pkg/devfile/parser/data"
-	v2 "github.com/devfile/library/pkg/devfile/parser/data/v2"
-	"github.com/devfile/library/pkg/devfile/parser/data/v2/common"
+	devfileParser "github.com/devfile/library/v2/pkg/devfile/parser"
+	data "github.com/devfile/library/v2/pkg/devfile/parser/data"
+	v2 "github.com/devfile/library/v2/pkg/devfile/parser/data/v2"
+	"github.com/devfile/library/v2/pkg/devfile/parser/data/v2/common"
 	"github.com/go-logr/logr"
 	appstudiov1alpha1 "github.com/redhat-appstudio/application-api/api/v1alpha1"
 	"github.com/redhat-appstudio/application-service/pkg/util"
 	"github.com/stretchr/testify/assert"
+	"k8s.io/apimachinery/pkg/api/resource"
+	"k8s.io/apimachinery/pkg/util/intstr"
 	ctrl "sigs.k8s.io/controller-runtime"
+	"sigs.k8s.io/yaml"
+
+	routev1 "github.com/openshift/api/route/v1"
+	appsv1 "k8s.io/api/apps/v1"
+	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 func TestParseDevfileModel(t *testing.T) {
-	tests := []struct {
-		name          string
-		devfileString string
-		wantDevfile   *v2.DevfileV2
-	}{
-		{
-			name: "Simple HASApp CR",
-			devfileString: `
+
+	testServerURL := "127.0.0.1:9080"
+
+	simpleDevfile := `
 metadata:
   attributes:
     appModelRepository.url: https://github.com/testorg/petclinic-app
     gitOpsRepository.url: https://github.com/testorg/petclinic-gitops
   name: petclinic
-schemaVersion: 2.2.0`,
-			wantDevfile: &v2.DevfileV2{
-				Devfile: v1alpha2.Devfile{
-					DevfileHeader: devfile.DevfileHeader{
-						SchemaVersion: string(data.APISchemaVersion220),
-						Metadata: devfile.DevfileMetadata{
-							Name:       "petclinic",
-							Attributes: attributes.Attributes{}.PutString("gitOpsRepository.url", "https://github.com/testorg/petclinic-gitops").PutString("appModelRepository.url", "https://github.com/testorg/petclinic-app"),
-						},
-					},
-				},
+schemaVersion: 2.2.0`
+
+	testServer := httptest.NewUnstartedServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		_, err := w.Write([]byte(simpleDevfile))
+		if err != nil {
+			t.Errorf("TestParseDevfileModel() unexpected error while writing data: %v", err)
+		}
+	}))
+	// create a listener with the desired port.
+	l, err := net.Listen("tcp", testServerURL)
+	if err != nil {
+		t.Errorf("TestParseDevfileModel() unexpected error while creating listener: %v", err)
+		return
+	}
+
+	// NewUnstartedServer creates a listener. Close that listener and replace
+	// with the one we created.
+	testServer.Listener.Close()
+	testServer.Listener = l
+
+	testServer.Start()
+	defer testServer.Close()
+
+	tests := []struct {
+		name              string
+		devfileString     string
+		devfileURL        string
+		wantDevfile       *v2.DevfileV2
+		wantMetadata      devfile.DevfileMetadata
+		wantSchemaVersion string
+	}{
+		{
+			name:          "Simple devfile from data",
+			devfileString: simpleDevfile,
+			wantMetadata: devfile.DevfileMetadata{
+				Name:       "petclinic",
+				Attributes: attributes.Attributes{}.PutString("gitOpsRepository.url", "https://github.com/testorg/petclinic-gitops").PutString("appModelRepository.url", "https://github.com/testorg/petclinic-app"),
 			},
+			wantSchemaVersion: string(data.APISchemaVersion220),
+		},
+		{
+			name:       "Simple devfile from URL",
+			devfileURL: "http://" + testServerURL,
+			wantMetadata: devfile.DevfileMetadata{
+				Name:       "petclinic",
+				Attributes: attributes.Attributes{}.PutString("gitOpsRepository.url", "https://github.com/testorg/petclinic-gitops").PutString("appModelRepository.url", "https://github.com/testorg/petclinic-app"),
+			},
+			wantSchemaVersion: string(data.APISchemaVersion220),
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			// Convert the hasApp resource to a devfile
-			devfile, err := ParseDevfileModel(tt.devfileString)
+			var devfileSrc DevfileSrc
+			if tt.devfileString != "" {
+				devfileSrc = DevfileSrc{
+					Data: tt.devfileString,
+				}
+			} else if tt.devfileURL != "" {
+				devfileSrc = DevfileSrc{
+					URL: tt.devfileURL,
+				}
+			}
+			devfile, err := ParseDevfile(devfileSrc)
 			if err != nil {
-				t.Errorf("TestConvertApplicationToDevfile() unexpected error: %v", err)
-			} else if !reflect.DeepEqual(devfile, tt.wantDevfile) {
-				t.Errorf("TestConvertApplicationToDevfile() error: expected %v got %v", tt.wantDevfile, devfile)
+				t.Errorf("TestParseDevfileModel() unexpected error: %v", err)
+			} else {
+				gotMetadata := devfile.GetMetadata()
+				if !reflect.DeepEqual(gotMetadata, tt.wantMetadata) {
+					t.Errorf("TestParseDevfileModel() metadata is different")
+				}
+
+				gotSchemaVersion := devfile.GetSchemaVersion()
+				if gotSchemaVersion != tt.wantSchemaVersion {
+					t.Errorf("TestParseDevfileModel() schema version is different")
+				}
 			}
 		})
 	}
@@ -97,7 +158,7 @@ func TestConvertApplicationToDevfile(t *testing.T) {
 			wantDevfile: &v2.DevfileV2{
 				Devfile: v1alpha2.Devfile{
 					DevfileHeader: devfile.DevfileHeader{
-						SchemaVersion: string(data.APISchemaVersion210),
+						SchemaVersion: string(data.APISchemaVersion220),
 						Metadata: devfile.DevfileMetadata{
 							Name:       "Petclinic",
 							Attributes: attributes.Attributes{}.PutString("gitOpsRepository.url", "https://github.com/testorg/petclinic-gitops").PutString("appModelRepository.url", "https://github.com/testorg/petclinic-app").PutString("gitOpsRepository.context", "./").PutString("appModelRepository.context", "/"),
@@ -126,7 +187,7 @@ func TestConvertApplicationToDevfile(t *testing.T) {
 			wantDevfile: &v2.DevfileV2{
 				Devfile: v1alpha2.Devfile{
 					DevfileHeader: devfile.DevfileHeader{
-						SchemaVersion: string(data.APISchemaVersion210),
+						SchemaVersion: string(data.APISchemaVersion220),
 						Metadata: devfile.DevfileMetadata{
 							Name:       "Petclinic",
 							Attributes: additionalAttributes.PutString("gitOpsRepository.url", "https://github.com/testorg/petclinic-gitops").PutString("appModelRepository.url", "https://github.com/testorg/petclinic-app"),
@@ -151,6 +212,19 @@ func TestConvertApplicationToDevfile(t *testing.T) {
 }
 
 func TestConvertImageComponentToDevfile(t *testing.T) {
+
+	compName := "component"
+	applicationName := "application"
+	namespace := "namespace"
+	image := "image"
+
+	deploymentTemplate := GenerateDeploymentTemplate(compName, applicationName, namespace, image)
+	deploymentTemplateBytes, err := yaml.Marshal(deploymentTemplate)
+	if err != nil {
+		t.Errorf("TestConvertImageComponentToDevfile() unexpected error: %v", err)
+		return
+	}
+
 	tests := []struct {
 		name        string
 		comp        appstudiov1alpha1.Component
@@ -159,29 +233,34 @@ func TestConvertImageComponentToDevfile(t *testing.T) {
 		{
 			name: "Simple Component CR",
 			comp: appstudiov1alpha1.Component{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      compName,
+					Namespace: namespace,
+				},
 				Spec: appstudiov1alpha1.ComponentSpec{
-					ComponentName:  "Petclinic",
-					ContainerImage: "quay.io/test/someimage:latest",
+					ComponentName:  compName,
+					ContainerImage: image,
+					Application:    applicationName,
 				},
 			},
 			wantDevfile: &v2.DevfileV2{
 				Devfile: v1alpha2.Devfile{
 					DevfileHeader: devfile.DevfileHeader{
-						SchemaVersion: string(data.APISchemaVersion210),
+						SchemaVersion: string(data.APISchemaVersion220),
 						Metadata: devfile.DevfileMetadata{
-							Name: "Petclinic",
+							Name: compName,
 						},
 					},
 					DevWorkspaceTemplateSpec: v1alpha2.DevWorkspaceTemplateSpec{
 						DevWorkspaceTemplateSpecContent: v1alpha2.DevWorkspaceTemplateSpecContent{
 							Components: []v1alpha2.Component{
 								{
-									Name: "kubernetes",
+									Name: "kubernetes-deploy",
 									ComponentUnion: v1alpha2.ComponentUnion{
 										Kubernetes: &v1alpha2.KubernetesComponent{
 											K8sLikeComponent: v1alpha2.K8sLikeComponent{
 												K8sLikeComponentLocation: v1alpha2.K8sLikeComponentLocation{
-													Inlined: "placeholder",
+													Inlined: string(deploymentTemplateBytes),
 												},
 											},
 										},
@@ -274,7 +353,7 @@ func TestCreateDevfileForDockerfileBuild(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			gotDevfile, err := CreateDevfileForDockerfileBuild(tt.uri, tt.context)
+			gotDevfile, err := CreateDevfileForDockerfileBuild(tt.uri, tt.context, "", "", "")
 			if tt.wantErr && (err == nil) {
 				t.Error("wanted error but got nil")
 			} else if !tt.wantErr && err != nil {
@@ -295,8 +374,8 @@ func TestCreateDevfileForDockerfileBuild(t *testing.T) {
 				} else if len(kubernetesComponents) != 1 {
 					t.Error("expected 1 Kubernetes component")
 				} else {
-					assert.Equal(t, "kubernetes", kubernetesComponents[0].Name, "component name should be equal")
-					assert.Equal(t, "placeholder", kubernetesComponents[0].Kubernetes.Inlined, "the inlined content should match placeholder")
+					assert.Equal(t, "kubernetes-deploy", kubernetesComponents[0].Name, "component name should be equal")
+					assert.Contains(t, kubernetesComponents[0].Kubernetes.Inlined, "Deployment", "the inlined content should contain deployment")
 				}
 
 				// Image Component
@@ -469,6 +548,1508 @@ func TestScanRepo(t *testing.T) {
 	}
 }
 
+func TestGetRouteFromEndpoint(t *testing.T) {
+
+	var (
+		name        = "route1"
+		serviceName = "service1"
+		path        = ""
+		port        = "1234"
+		secure      = true
+		annotations = map[string]string{
+			"key1": "value1",
+		}
+	)
+	t.Run(name, func(t *testing.T) {
+		actualRoute := GetRouteFromEndpoint(name, serviceName, port, path, secure, annotations)
+		assert.Equal(t, "Route", actualRoute.Kind, "Kind did not match")
+		assert.Equal(t, "route.openshift.io/v1", actualRoute.APIVersion, "APIVersion did not match")
+		assert.Equal(t, name, actualRoute.Name, "Route name did not match")
+		assert.Equal(t, "/", actualRoute.Spec.Path, "Route path did not match")
+		assert.NotNil(t, actualRoute.Spec.Port, "Route Port should not be nil")
+		assert.Equal(t, intstr.FromString(port), actualRoute.Spec.Port.TargetPort, "Route port did not match")
+		assert.NotNil(t, actualRoute.Spec.TLS, "Route TLS should not be nil")
+		assert.Equal(t, routev1.TLSTerminationEdge, actualRoute.Spec.TLS.Termination, "Route port did not match")
+		actualRouteAnnotations := actualRoute.GetAnnotations()
+		assert.NotEmpty(t, actualRouteAnnotations, "Route annotations should not be empty")
+		assert.Equal(t, "value1", actualRouteAnnotations["key1"], "Route annotation did not match")
+	})
+}
+
+func TestGenerateDeploymentTemplate(t *testing.T) {
+
+	var (
+		name        = "deploy1"
+		application = "application1"
+		namespace   = "namespace1"
+		image       = "image1"
+	)
+	t.Run(name, func(t *testing.T) {
+		actualDeployment := GenerateDeploymentTemplate(name, application, namespace, image)
+		assert.Equal(t, "Deployment", actualDeployment.Kind, "Kind did not match")
+		assert.Equal(t, name, actualDeployment.Name, "Name did not match")
+		assert.Equal(t, namespace, actualDeployment.Namespace, "Namespace did not match")
+		assert.Equal(t, generateK8sLabels(name, application), actualDeployment.Labels, "Labels did not match")
+		assert.NotNil(t, actualDeployment.Spec.Selector, "Selector can not be nil")
+		assert.Equal(t, getMatchLabel(name), actualDeployment.Spec.Selector.MatchLabels, "Match Labels did not match")
+		assert.Equal(t, getMatchLabel(name), actualDeployment.Spec.Template.Labels, "Match Labels did not match")
+		assert.Equal(t, 1, len(actualDeployment.Spec.Template.Spec.Containers), "Should have only 1 container")
+		assert.Equal(t, image, actualDeployment.Spec.Template.Spec.Containers[0].Image, "Container Image did not match")
+	})
+}
+
+func TestGetResourceFromDevfile(t *testing.T) {
+
+	kubernetesInlinedDevfile := `
+commands:
+- apply:
+    component: image-build
+  id: build-image
+- apply:
+    component: kubernetes-deploy
+  id: deployk8s
+- composite:
+    commands:
+    - build-image
+    - deployk8s
+    group:
+      isDefault: true
+      kind: deploy
+    parallel: false
+  id: deploy
+components:
+- image:
+    autoBuild: false
+    dockerfile:
+      buildContext: .
+      rootRequired: false
+      uri: docker/Dockerfile
+    imageName: java-springboot-image:latest
+  name: image-build
+- attributes:
+    api.devfile.io/k8sLikeComponent-originalURI: deploy.yaml
+    deployment/container-port: 5566
+    deployment/containerENV:
+    - name: FOO
+      value: foo11
+    - name: BAR
+      value: bar11
+    deployment/cpuLimit: "2"
+    deployment/cpuRequest: 701m
+    deployment/memoryLimit: 500Mi
+    deployment/memoryRequest: 401Mi
+    deployment/replicas: 5
+    deployment/route: route111222
+    deployment/storageLimit: 400Mi
+    deployment/storageRequest: 201Mi
+  kubernetes:
+    deployByDefault: false
+    endpoints:
+    - name: http-8081
+      path: /
+      secure: false
+      targetPort: 8081
+    inlined: |-
+      apiVersion: apps/v1
+      kind: Deployment
+      metadata:
+        creationTimestamp: null
+        labels:
+          app.kubernetes.io/created-by: application-service
+          app.kubernetes.io/instance: component-sample
+          app.kubernetes.io/managed-by: kustomize
+          app.kubernetes.io/name: backend
+          app.kubernetes.io/part-of: application-sample
+          maysun: test
+        name: deploy-sample
+      spec:
+        replicas: 1
+        selector:
+          matchLabels:
+            app.kubernetes.io/instance: component-sample
+        strategy: {}
+        template:
+          metadata:
+            creationTimestamp: null
+            labels:
+              app.kubernetes.io/instance: component-sample
+          spec:
+            containers:
+            - env:
+              - name: FOO
+                value: foo1
+              - name: BARBAR
+                value: bar1
+              image: quay.io/redhat-appstudio/user-workload:application-service-system-component-sample
+              imagePullPolicy: Always
+              livenessProbe:
+                httpGet:
+                  path: /
+                  port: 1111
+                initialDelaySeconds: 10
+                periodSeconds: 10
+              name: container-image
+              ports:
+              - containerPort: 1111
+              readinessProbe:
+                initialDelaySeconds: 10
+                periodSeconds: 10
+                tcpSocket:
+                  port: 1111
+              resources:
+                limits:
+                  cpu: "2"
+                  memory: 500Mi
+                  storage: 400Mi
+                requests:
+                  cpu: 700m
+                  memory: 400Mi
+                  storage: 200Mi
+      status: {}
+      ---
+      apiVersion: apps/v1
+      kind: Deployment
+      metadata:
+        creationTimestamp: null
+        labels:
+          app.kubernetes.io/created-by: application-service
+          app.kubernetes.io/instance: component-sample
+          app.kubernetes.io/managed-by: kustomize
+          app.kubernetes.io/name: backend
+          app.kubernetes.io/part-of: application-sample
+          maysun: test
+        name: deploy-sample-2
+      spec:
+        replicas: 1
+        selector:
+          matchLabels:
+            app.kubernetes.io/instance: component-sample
+        strategy: {}
+        template:
+          metadata:
+            creationTimestamp: null
+            labels:
+              app.kubernetes.io/instance: component-sample
+          spec:
+            containers:
+            - env:
+              - name: FOO
+                value: foo1
+              - name: BAR
+                value: bar1
+              image: quay.io/redhat-appstudio/user-workload:application-service-system-component-sample
+              imagePullPolicy: Always
+              livenessProbe:
+                httpGet:
+                  path: /
+                  port: 1111
+                initialDelaySeconds: 10
+                periodSeconds: 10
+              name: container-image
+              ports:
+              - containerPort: 1111
+              readinessProbe:
+                initialDelaySeconds: 10
+                periodSeconds: 10
+                tcpSocket:
+                  port: 1111
+              resources:
+                limits:
+                  cpu: "2"
+                  memory: 500Mi
+                  storage: 400Mi
+                requests:
+                  cpu: 700m
+                  memory: 400Mi
+                  storage: 200Mi
+      status: {}
+      ---
+      apiVersion: v1
+      kind: Service
+      metadata:
+        creationTimestamp: null
+        labels:
+          app.kubernetes.io/created-by: application-service
+          app.kubernetes.io/instance: component-sample
+          app.kubernetes.io/managed-by: kustomize
+          app.kubernetes.io/name: backend
+          app.kubernetes.io/part-of: application-sample
+          maysun: test
+        name: service-sample
+      spec:
+        ports:
+        - port: 1111
+          targetPort: 1111
+        selector:
+          app.kubernetes.io/instance: component-sample
+      status:
+        loadBalancer: {}
+      ---
+      apiVersion: v1
+      kind: Service
+      metadata:
+        creationTimestamp: null
+        labels:
+          app.kubernetes.io/created-by: application-service
+          app.kubernetes.io/instance: component-sample
+          app.kubernetes.io/managed-by: kustomize
+          app.kubernetes.io/name: backend
+          app.kubernetes.io/part-of: application-sample
+          maysun: test
+        name: service-sample-2
+      spec:
+        ports:
+        - port: 1111
+          targetPort: 1111
+        selector:
+          app.kubernetes.io/instance: component-sample
+      status:
+        loadBalancer: {}
+      ---
+      apiVersion: route.openshift.io/v1
+      kind: Route
+      metadata:
+        creationTimestamp: null
+        labels:
+          app.kubernetes.io/created-by: application-service
+          app.kubernetes.io/instance: component-sample
+          app.kubernetes.io/managed-by: kustomize
+          app.kubernetes.io/name: backend
+          app.kubernetes.io/part-of: application-sample
+          maysun: test
+        name: route-sample
+      spec:
+        host: route111
+        port:
+          targetPort: 1111
+        tls:
+          insecureEdgeTerminationPolicy: Redirect
+          termination: edge
+        to:
+          kind: Service
+          name: component-sample
+          weight: 100
+      status: {}
+      ---
+      apiVersion: route.openshift.io/v1
+      kind: Route
+      metadata:
+        creationTimestamp: null
+        labels:
+          app.kubernetes.io/created-by: application-service
+          app.kubernetes.io/instance: component-sample
+          app.kubernetes.io/managed-by: kustomize
+          app.kubernetes.io/name: backend
+          app.kubernetes.io/part-of: application-sample
+          maysun: test
+        name: route-sample-2
+      spec:
+        host: route111
+        port:
+          targetPort: 1111
+        tls:
+          insecureEdgeTerminationPolicy: Redirect
+          termination: edge
+        to:
+          kind: Service
+          name: component-sample
+          weight: 100
+      status: {}
+      ---
+      apiVersion: networking.k8s.io/v1
+      kind: Ingress
+      metadata:
+        name: ingress-sample
+        annotations:
+          nginx.ingress.kubernetes.io/rewrite-target: /
+          maysun: test
+      spec:
+        ingressClassName: nginx-example
+        rules:
+        - http:
+            paths:
+            - path: /testpath
+              pathType: Prefix
+              backend:
+                service:
+                  name: test
+                  port:
+                    number: 80
+      ---
+      apiVersion: networking.k8s.io/v1
+      kind: Ingress
+      metadata:
+        name: ingress-sample-2
+        annotations:
+          nginx.ingress.kubernetes.io/rewrite-target: /
+          maysun: test
+      spec:
+        ingressClassName: nginx-example
+        rules:
+        - http:
+            paths:
+            - path: /testpath
+              pathType: Prefix
+              backend:
+                service:
+                  name: test
+                  port:
+                    number: 80
+      ---
+      apiVersion: v1
+      kind: PersistentVolumeClaim
+      metadata:
+        name: pvc-sample
+        labels:
+          maysun: test
+      spec:
+        accessModes:
+          - ReadWriteOnce
+        volumeMode: Filesystem
+        resources:
+          requests:
+            storage: 8Gi
+        storageClassName: slow
+        selector:
+          matchLabels:
+            release: "stable"
+          matchExpressions:
+            - {key: environment, operator: In, values: [dev]}
+      ---
+      apiVersion: v1
+      kind: PersistentVolumeClaim
+      metadata:
+        name: pvc-sample-2
+        labels:
+          maysun: test
+      spec:
+        accessModes:
+          - ReadWriteOnce
+        volumeMode: Filesystem
+        resources:
+          requests:
+            storage: 8Gi
+        storageClassName: slow
+        selector:
+          matchLabels:
+            release: "stable"
+          matchExpressions:
+            - {key: environment, operator: In, values: [dev]}
+  name: kubernetes-deploy
+metadata:
+  name: java-springboot
+schemaVersion: 2.2.0`
+
+	kubernetesInlinedDevfileSvc := `
+commands:
+- apply:
+    component: image-build
+  id: build-image
+- apply:
+    component: kubernetes-deploy
+  id: deployk8s
+- composite:
+    commands:
+    - build-image
+    - deployk8s
+    group:
+      isDefault: true
+      kind: deploy
+    parallel: false
+  id: deploy
+components:
+- image:
+    autoBuild: false
+    dockerfile:
+      buildContext: .
+      rootRequired: false
+      uri: docker/Dockerfile
+    imageName: java-springboot-image:latest
+  name: image-build
+- attributes:
+    api.devfile.io/k8sLikeComponent-originalURI: deploy.yaml
+  kubernetes:
+    deployByDefault: false
+    inlined: |-
+      apiVersion: v1
+      kind: Service
+      metadata:
+        creationTimestamp: null
+        labels:
+          app.kubernetes.io/created-by: application-service
+          app.kubernetes.io/instance: component-sample
+          app.kubernetes.io/managed-by: kustomize
+          app.kubernetes.io/name: backend
+          app.kubernetes.io/part-of: application-sample
+          maysun: test
+        name: service-sample
+      spec:
+        ports:
+        - port: 1111
+          targetPort: 1111
+        selector:
+          app.kubernetes.io/instance: component-sample
+      status:
+        loadBalancer: {}
+  name: kubernetes-deploy
+metadata:
+  name: java-springboot
+schemaVersion: 2.2.0`
+
+	kubernetesInlinedDevfileDeploy := `
+commands:
+- apply:
+    component: image-build
+  id: build-image
+- apply:
+    component: kubernetes-deploy
+  id: deployk8s
+- composite:
+    commands:
+    - build-image
+    - deployk8s
+    group:
+      isDefault: true
+      kind: deploy
+    parallel: false
+  id: deploy
+components:
+- image:
+    autoBuild: false
+    dockerfile:
+      buildContext: .
+      rootRequired: false
+      uri: docker/Dockerfile
+    imageName: java-springboot-image:latest
+  name: image-build
+- attributes:
+    api.devfile.io/k8sLikeComponent-originalURI: deploy.yaml
+  kubernetes:
+    deployByDefault: false
+    endpoints:
+    - name: http-8081
+      path: /
+      secure: false
+      targetPort: 8081
+    inlined: |-
+      apiVersion: apps/v1
+      kind: Deployment
+      metadata:
+        creationTimestamp: null
+        labels:
+          app.kubernetes.io/created-by: application-service
+          app.kubernetes.io/instance: component-sample
+          app.kubernetes.io/managed-by: kustomize
+          app.kubernetes.io/name: backend
+          app.kubernetes.io/part-of: application-sample
+          maysun: test
+        name: deploy-sample
+      spec:
+        replicas: 1
+        selector:
+          matchLabels:
+            app.kubernetes.io/instance: component-sample
+        strategy: {}
+        template:
+          metadata:
+            creationTimestamp: null
+            labels:
+              app.kubernetes.io/instance: component-sample
+          spec:
+            containers:
+            - env:
+              - name: FOOFOO
+                value: foo1
+              - name: BARBAR
+                value: bar1
+              image: quay.io/redhat-appstudio/user-workload:application-service-system-component-sample
+              imagePullPolicy: Always
+              livenessProbe:
+                httpGet:
+                  path: /
+                  port: 1111
+                initialDelaySeconds: 10
+                periodSeconds: 10
+              name: container-image
+              ports:
+              - containerPort: 1111
+              readinessProbe:
+                initialDelaySeconds: 10
+                periodSeconds: 10
+                tcpSocket:
+                  port: 1111
+              resources:
+                limits:
+                  cpu: "2"
+                  memory: 500Mi
+                  storage: 400Mi
+                requests:
+                  cpu: 700m
+                  memory: 400Mi
+                  storage: 200Mi
+      status: {}
+  name: kubernetes-deploy
+metadata:
+  name: java-springboot
+schemaVersion: 2.2.0`
+
+	kubernetesInlinedDevfileRouteHostMissing := `
+commands:
+- apply:
+    component: image-build
+  id: build-image
+- apply:
+    component: kubernetes-deploy
+  id: deployk8s
+- composite:
+    commands:
+    - build-image
+    - deployk8s
+    group:
+      isDefault: true
+      kind: deploy
+    parallel: false
+  id: deploy
+components:
+- image:
+    autoBuild: false
+    dockerfile:
+      buildContext: .
+      rootRequired: false
+      uri: docker/Dockerfile
+    imageName: java-springboot-image:latest
+  name: image-build
+- attributes:
+    api.devfile.io/k8sLikeComponent-originalURI: deploy.yaml
+    deployment/container-port: 5566
+  kubernetes:
+    deployByDefault: false
+    endpoints:
+    - name: http-8081
+      path: /
+      secure: false
+      targetPort: 8081
+    inlined: |-
+      apiVersion: apps/v1
+      kind: Deployment
+      metadata:
+        creationTimestamp: null
+        labels:
+          app.kubernetes.io/created-by: application-service
+          app.kubernetes.io/instance: component-sample
+          app.kubernetes.io/managed-by: kustomize
+          app.kubernetes.io/name: backend
+          app.kubernetes.io/part-of: application-sample
+          maysun: test
+        name: deploy-sample
+      spec:
+        replicas: 1
+        selector:
+          matchLabels:
+            app.kubernetes.io/instance: component-sample
+        strategy: {}
+        template:
+          metadata:
+            creationTimestamp: null
+            labels:
+              app.kubernetes.io/instance: component-sample
+          spec:
+            containers:
+            - env:
+              - name: FOOFOO
+                value: foo1
+              - name: BARBAR
+                value: bar1
+              image: quay.io/redhat-appstudio/user-workload:application-service-system-component-sample
+              imagePullPolicy: Always
+              livenessProbe:
+                httpGet:
+                  path: /
+                  port: 1111
+                initialDelaySeconds: 10
+                periodSeconds: 10
+              name: container-image
+              ports:
+              - containerPort: 1111
+              readinessProbe:
+                initialDelaySeconds: 10
+                periodSeconds: 10
+                tcpSocket:
+                  port: 1111
+              resources:
+                limits:
+                  cpu: "2"
+                  memory: 500Mi
+                  storage: 400Mi
+                requests:
+                  cpu: 700m
+                  memory: 400Mi
+                  storage: 200Mi
+      status: {}
+  name: kubernetes-deploy
+metadata:
+  name: java-springboot
+schemaVersion: 2.2.0`
+
+	kubernetesWithoutInline := `
+commands:
+- apply:
+    component: image-build
+  id: build-image
+- apply:
+    component: kubernetes-deploy
+  id: deployk8s
+- composite:
+    commands:
+    - build-image
+    - deployk8s
+    group:
+      isDefault: true
+      kind: deploy
+    parallel: false
+  id: deploy
+components:
+- image:
+    autoBuild: false
+    dockerfile:
+      buildContext: .
+      rootRequired: false
+      uri: docker/Dockerfile
+    imageName: java-springboot-image:latest
+  name: image-build
+- attributes:
+    api.devfile.io/k8sLikeComponent-originalURI: deploy.yaml
+  kubernetes:
+    deployByDefault: false
+    uri: uri
+  name: kubernetes-deploy
+metadata:
+  name: java-springboot
+schemaVersion: 2.2.0`
+
+	kubernetesInlinedDevfileErrCase_BadMemoryLimit := `
+commands:
+- apply:
+    component: image-build
+  id: build-image
+- apply:
+    component: kubernetes-deploy
+  id: deployk8s
+- composite:
+    commands:
+    - build-image
+    - deployk8s
+    group:
+      isDefault: true
+      kind: deploy
+    parallel: false
+  id: deploy
+components:
+- image:
+    autoBuild: false
+    dockerfile:
+      buildContext: .
+      rootRequired: false
+      uri: docker/Dockerfile
+    imageName: java-springboot-image:latest
+  name: image-build
+- attributes:
+    deployment/memoryLimit: abc
+  kubernetes:
+    deployByDefault: false
+    inlined: |-
+      apiVersion: apps/v1
+      kind: Deployment
+      metadata:
+        labels:
+          maysun: test
+        name: deploy-sample
+      spec:
+        template:
+          spec:
+            containers:
+            - image: quay.io/redhat-appstudio/user-workload:application-service-system-component-sample
+              name: container-image
+  name: kubernetes-deploy
+metadata:
+  language: Java
+  name: java-springboot
+  projectType: springboot
+  version: 1.2.1
+schemaVersion: 2.2.0`
+
+	kubernetesInlinedDevfileErrCase_BadStorageLimit := `
+commands:
+- apply:
+    component: image-build
+  id: build-image
+- apply:
+    component: kubernetes-deploy
+  id: deployk8s
+- composite:
+    commands:
+    - build-image
+    - deployk8s
+    group:
+      isDefault: true
+      kind: deploy
+    parallel: false
+  id: deploy
+components:
+- image:
+    autoBuild: false
+    dockerfile:
+      buildContext: .
+      rootRequired: false
+      uri: docker/Dockerfile
+    imageName: java-springboot-image:latest
+  name: image-build
+- attributes:
+    deployment/storageLimit: abc
+  kubernetes:
+    deployByDefault: false
+    inlined: |-
+      apiVersion: apps/v1
+      kind: Deployment
+      metadata:
+        labels:
+          maysun: test
+        name: deploy-sample
+      spec:
+        template:
+          spec:
+            containers:
+            - image: quay.io/redhat-appstudio/user-workload:application-service-system-component-sample
+              name: container-image
+  name: kubernetes-deploy
+metadata:
+  name: java-springboot
+schemaVersion: 2.2.0`
+
+	kubernetesInlinedDevfileErrCase_BadCPULimit := `
+commands:
+- apply:
+    component: image-build
+  id: build-image
+- apply:
+    component: kubernetes-deploy
+  id: deployk8s
+- composite:
+    commands:
+    - build-image
+    - deployk8s
+    group:
+      isDefault: true
+      kind: deploy
+    parallel: false
+  id: deploy
+components:
+- image:
+    autoBuild: false
+    dockerfile:
+      buildContext: .
+      rootRequired: false
+      uri: docker/Dockerfile
+    imageName: java-springboot-image:latest
+  name: image-build
+- attributes:
+    deployment/cpuLimit: "abc"
+  kubernetes:
+    deployByDefault: false
+    inlined: |-
+      apiVersion: apps/v1
+      kind: Deployment
+      metadata:
+        labels:
+          maysun: test
+        name: deploy-sample
+      spec:
+        template:
+          spec:
+            containers:
+            - image: quay.io/redhat-appstudio/user-workload:application-service-system-component-sample
+              name: container-image
+  name: kubernetes-deploy
+metadata:
+  language: Java
+  name: java-springboot
+  projectType: springboot
+  version: 1.2.1
+schemaVersion: 2.2.0`
+
+	kubernetesInlinedDevfileErrCase_BadMemoryRequest := `
+commands:
+- apply:
+    component: image-build
+  id: build-image
+- apply:
+    component: kubernetes-deploy
+  id: deployk8s
+- composite:
+    commands:
+    - build-image
+    - deployk8s
+    group:
+      isDefault: true
+      kind: deploy
+    parallel: false
+  id: deploy
+components:
+- image:
+    autoBuild: false
+    dockerfile:
+      buildContext: .
+      rootRequired: false
+      uri: docker/Dockerfile
+    imageName: java-springboot-image:latest
+  name: image-build
+- attributes:
+    deployment/memoryRequest: abc
+  kubernetes:
+    deployByDefault: false
+    inlined: |-
+      apiVersion: apps/v1
+      kind: Deployment
+      metadata:
+        labels:
+          maysun: test
+        name: deploy-sample
+      spec:
+        template:
+          spec:
+            containers:
+            - image: quay.io/redhat-appstudio/user-workload:application-service-system-component-sample
+              name: container-image
+  name: kubernetes-deploy
+metadata:
+  language: Java
+  name: java-springboot
+  projectType: springboot
+  version: 1.2.1
+schemaVersion: 2.2.0`
+
+	kubernetesInlinedDevfileErrCase_BadStorageRequest := `
+commands:
+- apply:
+    component: image-build
+  id: build-image
+- apply:
+    component: kubernetes-deploy
+  id: deployk8s
+- composite:
+    commands:
+    - build-image
+    - deployk8s
+    group:
+      isDefault: true
+      kind: deploy
+    parallel: false
+  id: deploy
+components:
+- image:
+    autoBuild: false
+    dockerfile:
+      buildContext: .
+      rootRequired: false
+      uri: docker/Dockerfile
+    imageName: java-springboot-image:latest
+  name: image-build
+- attributes:
+    deployment/storageRequest: abc
+  kubernetes:
+    deployByDefault: false
+    inlined: |-
+      apiVersion: apps/v1
+      kind: Deployment
+      metadata:
+        labels:
+          maysun: test
+        name: deploy-sample
+      spec:
+        template:
+          spec:
+            containers:
+            - image: quay.io/redhat-appstudio/user-workload:application-service-system-component-sample
+              name: container-image
+  name: kubernetes-deploy
+metadata:
+  language: Java
+  name: java-springboot
+  projectType: springboot
+  version: 1.2.1
+schemaVersion: 2.2.0`
+
+	kubernetesInlinedDevfileErrCase_BadCPUrequest := `
+commands:
+- apply:
+    component: image-build
+  id: build-image
+- apply:
+    component: kubernetes-deploy
+  id: deployk8s
+- composite:
+    commands:
+    - build-image
+    - deployk8s
+    group:
+      isDefault: true
+      kind: deploy
+    parallel: false
+  id: deploy
+components:
+- image:
+    autoBuild: false
+    dockerfile:
+      buildContext: .
+      rootRequired: false
+      uri: docker/Dockerfile
+    imageName: java-springboot-image:latest
+  name: image-build
+- attributes:
+    deployment/cpuRequest: "abc"
+  kubernetes:
+    deployByDefault: false
+    inlined: |-
+      apiVersion: apps/v1
+      kind: Deployment
+      metadata:
+        labels:
+          maysun: test
+        name: deploy-sample
+      spec:
+        template:
+          spec:
+            containers:
+            - image: quay.io/redhat-appstudio/user-workload:application-service-system-component-sample
+              name: container-image
+  name: kubernetes-deploy
+metadata:
+  language: Java
+  name: java-springboot
+  projectType: springboot
+  version: 1.2.1
+schemaVersion: 2.2.0`
+
+	replica := int32(5)
+	replicaUpdated := int32(1)
+
+	tests := []struct {
+		name          string
+		devfileString string
+		componentName string
+		image         string
+		wantDeploy    appsv1.Deployment
+		wantService   corev1.Service
+		wantRoute     routev1.Route
+		wantErr       bool
+	}{
+		{
+			name:          "Simple devfile from Inline",
+			devfileString: kubernetesInlinedDevfile,
+			componentName: "component-sample",
+			image:         "image1",
+			wantDeploy: appsv1.Deployment{
+				TypeMeta: metav1.TypeMeta{
+					Kind:       "Deployment",
+					APIVersion: "apps/v1",
+				},
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "deploy-sample",
+					Labels: map[string]string{
+						"app.kubernetes.io/created-by": "application-service",
+						"app.kubernetes.io/instance":   "component-sample",
+						"app.kubernetes.io/managed-by": "kustomize",
+						"app.kubernetes.io/name":       "backend",
+						"app.kubernetes.io/part-of":    "application-sample",
+						"maysun":                       "test",
+					},
+				},
+				Spec: appsv1.DeploymentSpec{
+					Replicas: &replica,
+					Selector: &metav1.LabelSelector{
+						MatchLabels: map[string]string{
+							"app.kubernetes.io/instance": "component-sample",
+						},
+					},
+					Template: corev1.PodTemplateSpec{
+						ObjectMeta: metav1.ObjectMeta{
+							Labels: map[string]string{
+								"app.kubernetes.io/instance": "component-sample",
+							},
+						},
+						Spec: corev1.PodSpec{
+							Containers: []corev1.Container{
+								{
+									Name: "container-image",
+									Env: []corev1.EnvVar{
+										{
+											Name:  "FOO",
+											Value: "foo11",
+										},
+										{
+											Name:  "BARBAR",
+											Value: "bar1",
+										},
+										{
+											Name:  "BAR",
+											Value: "bar11",
+										},
+									},
+									Image:           "image1",
+									ImagePullPolicy: corev1.PullAlways,
+									LivenessProbe: &corev1.Probe{
+										ProbeHandler: corev1.ProbeHandler{
+											HTTPGet: &corev1.HTTPGetAction{
+												Path: "/",
+												Port: intstr.FromInt(5566),
+											},
+										},
+										InitialDelaySeconds: int32(10),
+										PeriodSeconds:       int32(10),
+									},
+									Ports: []corev1.ContainerPort{
+										{
+											ContainerPort: int32(1111),
+										},
+										{
+											ContainerPort: int32(5566),
+										},
+									},
+									ReadinessProbe: &corev1.Probe{
+										ProbeHandler: corev1.ProbeHandler{
+											TCPSocket: &corev1.TCPSocketAction{
+												Port: intstr.FromInt(5566),
+											},
+										},
+										InitialDelaySeconds: int32(10),
+										PeriodSeconds:       int32(10),
+									},
+									Resources: corev1.ResourceRequirements{
+										Limits: corev1.ResourceList{
+											corev1.ResourceCPU:     resource.MustParse("2"),
+											corev1.ResourceMemory:  resource.MustParse("500Mi"),
+											corev1.ResourceStorage: resource.MustParse("400Mi"),
+										},
+										Requests: corev1.ResourceList{
+											corev1.ResourceCPU:     resource.MustParse("701m"),
+											corev1.ResourceMemory:  resource.MustParse("401Mi"),
+											corev1.ResourceStorage: resource.MustParse("201Mi"),
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+			wantService: corev1.Service{
+				TypeMeta: metav1.TypeMeta{
+					Kind:       "Service",
+					APIVersion: "v1",
+				},
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "service-sample",
+					Labels: map[string]string{
+						"app.kubernetes.io/created-by": "application-service",
+						"app.kubernetes.io/instance":   "component-sample",
+						"app.kubernetes.io/managed-by": "kustomize",
+						"app.kubernetes.io/name":       "backend",
+						"app.kubernetes.io/part-of":    "application-sample",
+						"maysun":                       "test",
+					},
+				},
+				Spec: corev1.ServiceSpec{
+					Ports: []corev1.ServicePort{
+						{
+							Port:       int32(1111),
+							TargetPort: intstr.FromInt(1111),
+						},
+						{
+							Port:       int32(5566),
+							TargetPort: intstr.FromInt(5566),
+						},
+					},
+					Selector: map[string]string{
+						"app.kubernetes.io/instance": "component-sample",
+					},
+				},
+			},
+			wantRoute: routev1.Route{
+				TypeMeta: metav1.TypeMeta{
+					Kind:       "Route",
+					APIVersion: "route.openshift.io/v1",
+				},
+				ObjectMeta: metav1.ObjectMeta{
+					Name:        "http-8081",
+					Annotations: map[string]string{},
+				},
+				Spec: routev1.RouteSpec{
+					Host: "route111222",
+					Path: "/",
+					Port: &routev1.RoutePort{
+						TargetPort: intstr.FromInt(5566),
+					},
+					To: routev1.RouteTargetReference{
+						Kind: "Service",
+						Name: "component-sample",
+					},
+				},
+			},
+		},
+		{
+			name:          "Simple devfile from Inline with only Svc",
+			devfileString: kubernetesInlinedDevfileSvc,
+			componentName: "component-sample",
+			image:         "image1",
+			wantService: corev1.Service{
+				TypeMeta: metav1.TypeMeta{
+					Kind:       "Service",
+					APIVersion: "v1",
+				},
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "service-sample",
+					Labels: map[string]string{
+						"app.kubernetes.io/created-by": "application-service",
+						"app.kubernetes.io/instance":   "component-sample",
+						"app.kubernetes.io/managed-by": "kustomize",
+						"app.kubernetes.io/name":       "backend",
+						"app.kubernetes.io/part-of":    "application-sample",
+						"maysun":                       "test",
+					},
+				},
+				Spec: corev1.ServiceSpec{
+					Ports: []corev1.ServicePort{
+						{
+							Port:       int32(1111),
+							TargetPort: intstr.FromInt(1111),
+						},
+					},
+					Selector: map[string]string{
+						"app.kubernetes.io/instance": "component-sample",
+					},
+				},
+			},
+		},
+		{
+			name:          "Simple devfile from Inline with Deploy",
+			devfileString: kubernetesInlinedDevfileDeploy,
+			componentName: "component-sample",
+			image:         "image1",
+			wantDeploy: appsv1.Deployment{
+				TypeMeta: metav1.TypeMeta{
+					Kind:       "Deployment",
+					APIVersion: "apps/v1",
+				},
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "deploy-sample",
+					Labels: map[string]string{
+						"app.kubernetes.io/created-by": "application-service",
+						"app.kubernetes.io/instance":   "component-sample",
+						"app.kubernetes.io/managed-by": "kustomize",
+						"app.kubernetes.io/name":       "backend",
+						"app.kubernetes.io/part-of":    "application-sample",
+						"maysun":                       "test",
+					},
+				},
+				Spec: appsv1.DeploymentSpec{
+					Replicas: &replicaUpdated,
+					Selector: &metav1.LabelSelector{
+						MatchLabels: map[string]string{
+							"app.kubernetes.io/instance": "component-sample",
+						},
+					},
+					Template: corev1.PodTemplateSpec{
+						ObjectMeta: metav1.ObjectMeta{
+							Labels: map[string]string{
+								"app.kubernetes.io/instance": "component-sample",
+							},
+						},
+						Spec: corev1.PodSpec{
+							Containers: []corev1.Container{
+								{
+									Name: "container-image",
+									Env: []corev1.EnvVar{
+										{
+											Name:  "FOOFOO",
+											Value: "foo1",
+										},
+										{
+											Name:  "BARBAR",
+											Value: "bar1",
+										},
+									},
+									Image:           "image1",
+									ImagePullPolicy: corev1.PullAlways,
+									LivenessProbe: &corev1.Probe{
+										ProbeHandler: corev1.ProbeHandler{
+											HTTPGet: &corev1.HTTPGetAction{
+												Path: "/",
+												Port: intstr.FromInt(1111),
+											},
+										},
+										InitialDelaySeconds: int32(10),
+										PeriodSeconds:       int32(10),
+									},
+									Ports: []corev1.ContainerPort{
+										{
+											ContainerPort: int32(1111),
+										},
+									},
+									ReadinessProbe: &corev1.Probe{
+										ProbeHandler: corev1.ProbeHandler{
+											TCPSocket: &corev1.TCPSocketAction{
+												Port: intstr.FromInt(1111),
+											},
+										},
+										InitialDelaySeconds: int32(10),
+										PeriodSeconds:       int32(10),
+									},
+									Resources: corev1.ResourceRequirements{
+										Limits: corev1.ResourceList{
+											corev1.ResourceCPU:     resource.MustParse("2"),
+											corev1.ResourceMemory:  resource.MustParse("500Mi"),
+											corev1.ResourceStorage: resource.MustParse("400Mi"),
+										},
+										Requests: corev1.ResourceList{
+											corev1.ResourceCPU:     resource.MustParse("700m"),
+											corev1.ResourceMemory:  resource.MustParse("400Mi"),
+											corev1.ResourceStorage: resource.MustParse("200Mi"),
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+			wantRoute: routev1.Route{
+				TypeMeta: metav1.TypeMeta{
+					Kind:       "Route",
+					APIVersion: "route.openshift.io/v1",
+				},
+				ObjectMeta: metav1.ObjectMeta{
+					Name:        "http-8081",
+					Annotations: map[string]string{},
+				},
+				Spec: routev1.RouteSpec{
+					Path: "/",
+					Port: &routev1.RoutePort{
+						TargetPort: intstr.FromString("8081"),
+					},
+					To: routev1.RouteTargetReference{
+						Kind: "Service",
+						Name: "component-sample",
+					},
+				},
+			},
+		},
+		{
+			name:          "Simple devfile from Inline with Route Host missing",
+			devfileString: kubernetesInlinedDevfileRouteHostMissing,
+			componentName: "component-sample",
+			image:         "image1",
+			wantDeploy: appsv1.Deployment{
+				TypeMeta: metav1.TypeMeta{
+					Kind:       "Deployment",
+					APIVersion: "apps/v1",
+				},
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "deploy-sample",
+					Labels: map[string]string{
+						"app.kubernetes.io/created-by": "application-service",
+						"app.kubernetes.io/instance":   "component-sample",
+						"app.kubernetes.io/managed-by": "kustomize",
+						"app.kubernetes.io/name":       "backend",
+						"app.kubernetes.io/part-of":    "application-sample",
+						"maysun":                       "test",
+					},
+				},
+				Spec: appsv1.DeploymentSpec{
+					Replicas: &replicaUpdated,
+					Selector: &metav1.LabelSelector{
+						MatchLabels: map[string]string{
+							"app.kubernetes.io/instance": "component-sample",
+						},
+					},
+					Template: corev1.PodTemplateSpec{
+						ObjectMeta: metav1.ObjectMeta{
+							Labels: map[string]string{
+								"app.kubernetes.io/instance": "component-sample",
+							},
+						},
+						Spec: corev1.PodSpec{
+							Containers: []corev1.Container{
+								{
+									Name: "container-image",
+									Env: []corev1.EnvVar{
+										{
+											Name:  "FOOFOO",
+											Value: "foo1",
+										},
+										{
+											Name:  "BARBAR",
+											Value: "bar1",
+										},
+									},
+									Image:           "image1",
+									ImagePullPolicy: corev1.PullAlways,
+									LivenessProbe: &corev1.Probe{
+										ProbeHandler: corev1.ProbeHandler{
+											HTTPGet: &corev1.HTTPGetAction{
+												Path: "/",
+												Port: intstr.FromInt(5566),
+											},
+										},
+										InitialDelaySeconds: int32(10),
+										PeriodSeconds:       int32(10),
+									},
+									Ports: []corev1.ContainerPort{
+										{
+											ContainerPort: int32(1111),
+										},
+										{
+											ContainerPort: int32(5566),
+										},
+									},
+									ReadinessProbe: &corev1.Probe{
+										ProbeHandler: corev1.ProbeHandler{
+											TCPSocket: &corev1.TCPSocketAction{
+												Port: intstr.FromInt(5566),
+											},
+										},
+										InitialDelaySeconds: int32(10),
+										PeriodSeconds:       int32(10),
+									},
+									Resources: corev1.ResourceRequirements{
+										Limits: corev1.ResourceList{
+											corev1.ResourceCPU:     resource.MustParse("2"),
+											corev1.ResourceMemory:  resource.MustParse("500Mi"),
+											corev1.ResourceStorage: resource.MustParse("400Mi"),
+										},
+										Requests: corev1.ResourceList{
+											corev1.ResourceCPU:     resource.MustParse("700m"),
+											corev1.ResourceMemory:  resource.MustParse("400Mi"),
+											corev1.ResourceStorage: resource.MustParse("200Mi"),
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+			wantRoute: routev1.Route{
+				TypeMeta: metav1.TypeMeta{
+					Kind:       "Route",
+					APIVersion: "route.openshift.io/v1",
+				},
+				ObjectMeta: metav1.ObjectMeta{
+					Name:        "http-8081",
+					Annotations: map[string]string{},
+				},
+				Spec: routev1.RouteSpec{
+					Path: "/",
+					Port: &routev1.RoutePort{
+						TargetPort: intstr.FromInt(5566),
+					},
+					To: routev1.RouteTargetReference{
+						Kind: "Service",
+						Name: "component-sample",
+					},
+				},
+			},
+		},
+		{
+			name:          "Simple devfile without inline",
+			devfileString: kubernetesWithoutInline,
+			componentName: "component-sample",
+			image:         "image1",
+		},
+		{
+			name:          "Bad Memory Limit",
+			devfileString: kubernetesInlinedDevfileErrCase_BadMemoryLimit,
+			componentName: "component-sample",
+			image:         "image1",
+			wantErr:       true,
+		},
+		{
+			name:          "Bad Storage Limit",
+			devfileString: kubernetesInlinedDevfileErrCase_BadStorageLimit,
+			componentName: "component-sample",
+			image:         "image1",
+			wantErr:       true,
+		},
+		{
+			name:          "Bad CPU Limit",
+			devfileString: kubernetesInlinedDevfileErrCase_BadCPULimit,
+			componentName: "component-sample",
+			image:         "image1",
+			wantErr:       true,
+		},
+		{
+			name:          "Bad Memory Request",
+			devfileString: kubernetesInlinedDevfileErrCase_BadMemoryRequest,
+			componentName: "component-sample",
+			image:         "image1",
+			wantErr:       true,
+		},
+		{
+			name:          "Bad Storage Request",
+			devfileString: kubernetesInlinedDevfileErrCase_BadStorageRequest,
+			componentName: "component-sample",
+			image:         "image1",
+			wantErr:       true,
+		},
+		{
+			name:          "Bad CPU Request",
+			devfileString: kubernetesInlinedDevfileErrCase_BadCPUrequest,
+			componentName: "component-sample",
+			image:         "image1",
+			wantErr:       true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			var devfileSrc DevfileSrc
+			if tt.devfileString != "" {
+				devfileSrc = DevfileSrc{
+					Data: tt.devfileString,
+				}
+			}
+
+			devfileData, err := ParseDevfile(devfileSrc)
+			if err != nil {
+				t.Errorf("TestGetResourceFromDevfile() unexpected parse error: %v", err)
+			}
+			deployAssociatedComponents, err := devfileParser.GetDeployComponents(devfileData)
+			if err != nil {
+				t.Errorf("TestGetResourceFromDevfile() unexpected get deploy components error: %v", err)
+			}
+			logger := ctrl.Log.WithName("TestGetResourceFromDevfile")
+
+			actualResources, err := GetResourceFromDevfile(logger, devfileData, deployAssociatedComponents, tt.componentName, tt.image)
+			if tt.wantErr && (err == nil) {
+				t.Error("wanted error but got nil")
+			} else if !tt.wantErr && err != nil {
+				t.Errorf("TestGetResourceFromDevfile() unexpected get resource from devfile error: %v", err)
+			} else if err == nil {
+				if len(actualResources.Deployments) > 0 {
+					assert.Equal(t, tt.wantDeploy, actualResources.Deployments[0], "First Deployment did not match")
+				}
+
+				if len(actualResources.Services) > 0 {
+					assert.Equal(t, tt.wantService, actualResources.Services[0], "First Service did not match")
+				}
+
+				if len(actualResources.Routes) > 0 {
+					assert.Equal(t, tt.wantRoute, actualResources.Routes[0], "First Route did not match")
+				}
+			}
+		})
+	}
+}
+
 func TestUpdateLocalDockerfileURItoAbsolute(t *testing.T) {
 	tests := []struct {
 		name          string
@@ -482,7 +2063,7 @@ func TestUpdateLocalDockerfileURItoAbsolute(t *testing.T) {
 			devfile: &v2.DevfileV2{
 				Devfile: v1alpha2.Devfile{
 					DevfileHeader: devfile.DevfileHeader{
-						SchemaVersion: string(data.APISchemaVersion210),
+						SchemaVersion: string(data.APISchemaVersion220),
 						Metadata: devfile.DevfileMetadata{
 							Name: "SomeDevfile",
 						},
@@ -516,7 +2097,7 @@ func TestUpdateLocalDockerfileURItoAbsolute(t *testing.T) {
 			wantDevfile: &v2.DevfileV2{
 				Devfile: v1alpha2.Devfile{
 					DevfileHeader: devfile.DevfileHeader{
-						SchemaVersion: string(data.APISchemaVersion210),
+						SchemaVersion: string(data.APISchemaVersion220),
 						Metadata: devfile.DevfileMetadata{
 							Name: "SomeDevfile",
 						},
@@ -553,7 +2134,7 @@ func TestUpdateLocalDockerfileURItoAbsolute(t *testing.T) {
 			devfile: &v2.DevfileV2{
 				Devfile: v1alpha2.Devfile{
 					DevfileHeader: devfile.DevfileHeader{
-						SchemaVersion: string(data.APISchemaVersion210),
+						SchemaVersion: string(data.APISchemaVersion220),
 						Metadata: devfile.DevfileMetadata{
 							Name: "SomeDevfile",
 						},
@@ -595,7 +2176,7 @@ func TestUpdateLocalDockerfileURItoAbsolute(t *testing.T) {
 			wantDevfile: &v2.DevfileV2{
 				Devfile: v1alpha2.Devfile{
 					DevfileHeader: devfile.DevfileHeader{
-						SchemaVersion: string(data.APISchemaVersion210),
+						SchemaVersion: string(data.APISchemaVersion220),
 						Metadata: devfile.DevfileMetadata{
 							Name: "SomeDevfile",
 						},
@@ -640,7 +2221,7 @@ func TestUpdateLocalDockerfileURItoAbsolute(t *testing.T) {
 			devfile: &v2.DevfileV2{
 				Devfile: v1alpha2.Devfile{
 					DevfileHeader: devfile.DevfileHeader{
-						SchemaVersion: string(data.APISchemaVersion210),
+						SchemaVersion: string(data.APISchemaVersion220),
 						Metadata: devfile.DevfileMetadata{
 							Name: "SomeDevfile",
 						},
@@ -673,7 +2254,7 @@ func TestUpdateLocalDockerfileURItoAbsolute(t *testing.T) {
 			wantDevfile: &v2.DevfileV2{
 				Devfile: v1alpha2.Devfile{
 					DevfileHeader: devfile.DevfileHeader{
-						SchemaVersion: string(data.APISchemaVersion210),
+						SchemaVersion: string(data.APISchemaVersion220),
 						Metadata: devfile.DevfileMetadata{
 							Name: "SomeDevfile",
 						},

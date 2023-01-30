@@ -1,5 +1,5 @@
 //
-// Copyright 2022 Red Hat, Inc.
+// Copyright 2022-2023 Red Hat, Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -182,7 +182,10 @@ var _ = Describe("Application controller finalizer counter tests", func() {
 			Expect(createdHasApp.Status.Devfile).Should(Not(Equal("")))
 
 			// delete the project so that the component delete finalizer fails
-			appDevfile, err := devfile.ParseDevfileModel(createdHasApp.Status.Devfile)
+			devfileSrc := devfile.DevfileSrc{
+				Data: createdHasApp.Status.Devfile,
+			}
+			appDevfile, err := devfile.ParseDevfile(devfileSrc)
 			Expect(err).ToNot(HaveOccurred())
 
 			err = appDevfile.DeleteProject(ComponentName)

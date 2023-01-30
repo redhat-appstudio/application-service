@@ -1,5 +1,5 @@
 /*
-Copyright 2021 Red Hat, Inc.
+Copyright 2021-2023 Red Hat, Inc.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -173,7 +173,10 @@ func (r *ApplicationReconciler) Reconcile(ctx context.Context, req ctrl.Request)
 	} else {
 		// If the model already exists, see if either the displayname or description need updating
 		// Get the devfile of the hasApp CR
-		devfileData, err := devfile.ParseDevfileModel(application.Status.Devfile)
+		devfileSrc := devfile.DevfileSrc{
+			Data: application.Status.Devfile,
+		}
+		devfileData, err := devfile.ParseDevfile(devfileSrc)
 		if err != nil {
 			r.SetUpdateConditionAndUpdateCR(ctx, req, &application, err)
 			log.Error(err, fmt.Sprintf("Unable to parse devfile model, exiting reconcile loop %v", req.NamespacedName))
