@@ -18,6 +18,7 @@ package generate
 import (
 	"context"
 	"fmt"
+	"path/filepath"
 
 	appstudiov1alpha1 "github.com/redhat-appstudio/application-api/api/v1alpha1"
 	gitops "github.com/redhat-appstudio/application-service/gitops-generator/pkg/gitops"
@@ -25,11 +26,12 @@ import (
 	"github.com/redhat-appstudio/application-service/pkg/util"
 	gitopsgenv1alpha1 "github.com/redhat-developer/gitops-generator/api/v1alpha1"
 	gitopsgen "github.com/redhat-developer/gitops-generator/pkg"
+	gitopsutil "github.com/redhat-developer/gitops-generator/pkg/util"
 	"github.com/redhat-developer/gitops-generator/pkg/util/ioutils"
 	"github.com/spf13/afero"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/types"
-	client "sigs.k8s.io/controller-runtime/pkg/client"
+	ctrlclient "sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 type GitOpsGenParams struct {
@@ -40,7 +42,7 @@ type GitOpsGenParams struct {
 	Token     string
 }
 
-func GenerateGitopsBase(ctx context.Context, client client.Client, component appstudiov1alpha1.Component, appFs afero.Afero, gitopsParams GitOpsGenParams) error {
+func GenerateGitopsBase(ctx context.Context, client ctrlclient.Client, component appstudiov1alpha1.Component, appFs afero.Afero, gitopsParams GitOpsGenParams) error {
 	// Create a temp folder to create the gitops resources in
 	tempDir, err := ioutils.CreateTempPath(component.Name, appFs)
 	if err != nil {
@@ -67,12 +69,14 @@ func GenerateGitopsBase(ctx context.Context, client client.Client, component app
 	return nil
 }
 
-func GenerateGitopsOverlays(ctx context.Context, client client.Client, appSnapshotEnvBinding appstudiov1alpha1.SnapshotEnvironmentBinding, appFs afero.Afero, gitopsParams GitOpsGenParams) error {
+func GenerateGitopsOverlays(ctx context.Context, client ctrlclient.Client, appSnapshotEnvBinding appstudiov1alpha1.SnapshotEnvironmentBinding, appFs afero.Afero, gitopsParams GitOpsGenParams) error {
 	// Create a temp folder to create the gitops resources in
 	tempDir, err := ioutils.CreateTempPath(appSnapshotEnvBinding.Name, appFs)
 	if err != nil {
 		return fmt.Errorf("unable to create temp directory for GitOps resources due to error: %v", err)
 	}
+
+	patch := ctrlclient.MergeFrom(appSnapshotEnvBinding.DeepCopy())
 
 	applicationName := appSnapshotEnvBinding.Spec.Application
 	environmentName := appSnapshotEnvBinding.Spec.Environment
@@ -83,7 +87,7 @@ func GenerateGitopsOverlays(ctx context.Context, client client.Client, appSnapsh
 	environment := appstudiov1alpha1.Environment{}
 	err = client.Get(ctx, types.NamespacedName{Name: environmentName, Namespace: appSnapshotEnvBinding.Namespace}, &environment)
 	if err != nil {
-		fmt.Errorf("unable to get the Environment %s", environmentName)
+		return fmt.Errorf("unable to get the Environment %s", environmentName)
 	}
 
 	// Get the Snapshot CR
@@ -133,6 +137,13 @@ func GenerateGitopsOverlays(ctx context.Context, client client.Client, appSnapsh
 		if err != nil {
 			return err
 		}
+		isStatusUpdated := false
+		for _, bindingStatusComponent := range appSnapshotEnvBinding.Status.Components {
+			if bindingStatusComponent.Name == componentName {
+				isStatusUpdated = true
+				break
+			}
+		}
 
 		if clone {
 			// Create a temp folder to create the gitops resources in
@@ -178,8 +189,43 @@ func GenerateGitopsOverlays(ctx context.Context, client client.Client, appSnapsh
 		}
 		err = gitopsParams.Generator.GenerateOverlaysAndPush(tempDir, clone, gitOpsRemoteURL, genOptions, applicationName, environmentName, imageName, appSnapshotEnvBinding.Namespace, appFs, gitOpsBranch, gitOpsContext, true, componentGeneratedResources)
 		if err != nil {
-			gitOpsErr := util.SanitizeErrorMessage(err)
+			gitOpsErr := gitopsutil.SanitizeErrorMessage(err)
 			return gitOpsErr
+		}
+
+		// Retrieve the commit ID
+		var commitID string
+		repoPath := filepath.Join(tempDir, applicationName)
+		if commitID, err = gitopsParams.Generator.GetCommitIDFromRepo(appFs, repoPath); err != nil {
+			gitOpsErr := gitopsutil.SanitizeErrorMessage(err)
+			return gitOpsErr
+		}
+
+		if !isStatusUpdated {
+			componentStatus := appstudiov1alpha1.BindingComponentStatus{
+				Name: componentName,
+				GitOpsRepository: appstudiov1alpha1.BindingComponentGitOpsRepository{
+					URL:      hasComponent.Status.GitOps.RepositoryURL,
+					Branch:   gitOpsBranch,
+					Path:     filepath.Join(gitOpsContext, "components", componentName, "overlays", environmentName),
+					CommitID: commitID,
+				},
+			}
+
+			if _, ok := componentGeneratedResources[componentName]; ok {
+				componentStatus.GitOpsRepository.GeneratedResources = componentGeneratedResources[componentName]
+			}
+
+			appSnapshotEnvBinding.Status.Components = append(appSnapshotEnvBinding.Status.Components, componentStatus)
+		}
+
+		// Set the clone to false, since we dont want to clone the repo again for the other components
+		clone = false
+
+		// Update the status in the resource via a patch operation
+		err = client.Status().Patch(ctx, &appSnapshotEnvBinding, patch)
+		if err != nil {
+			return err
 		}
 
 	}

@@ -92,13 +92,13 @@ func main() {
 		}
 	} else {
 		snapshotEnvironmentBinding := appstudiov1alpha1.SnapshotEnvironmentBinding{}
-		err = kubeClient.Get(context.Background(), types.NamespacedName{Namespace: namespace, Name: componentName}, &snapshotEnvironmentBinding)
+		err = kubeClient.Get(context.Background(), types.NamespacedName{Namespace: namespace, Name: sebName}, &snapshotEnvironmentBinding)
 		if err != nil {
 			log.Fatal(err)
 		}
 		gitopsParams := generate.GitOpsGenParams{
 			Generator: gitops.NewGitopsGen(),
-			RemoteURL: remoteURL,
+			Token:     githubToken,
 		}
 		err = generate.GenerateGitopsOverlays(context.Background(), kubeClient, snapshotEnvironmentBinding, appFs, gitopsParams)
 		if err != nil {
@@ -136,12 +136,12 @@ func validateCommandLineFlags(operation, repoURL, namespace, componentName, sebN
 		return fmt.Errorf("usage: --namespace must be set to a Kubernetes namespace")
 	}
 
-	// Parse the URL
-	if repoURL == "" {
-		return fmt.Errorf("usage: --repoURL <repository-url> must be passed in as a flag")
-	}
-
 	if operation == "generate-base" {
+		// Parse the URL
+		if repoURL == "" {
+			return fmt.Errorf("usage: --repoURL <repository-url> must be passed in as a flag")
+		}
+
 		// Parse the Component resource
 		if componentName == "" {
 			return fmt.Errorf("usage: --component <component-name> must be passed in as a flag")

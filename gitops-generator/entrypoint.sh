@@ -5,5 +5,5 @@ set -eux
 if [ "$OPERATION" = "generate-base" ]; then
     ./gitops-generator --operation "$OPERATION" --namespace "$NAMESPACE" --repoURL "$REPOURL" --component "$RESOURCE" --branch "$BRANCH" --path "$CONTEXT"
 else
-    ./gitops-generator --operation "$OPERATION" --namespace "$NAMESPACE" --repoURL "$REPOURL" --seb "$RESOURCE"
+    ./gitops-generator --operation "$OPERATION" --namespace "$NAMESPACE" --seb "$RESOURCE"
 fi
