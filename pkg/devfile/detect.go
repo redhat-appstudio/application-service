@@ -27,13 +27,13 @@ import (
 	"github.com/go-logr/logr"
 	appstudiov1alpha1 "github.com/redhat-appstudio/application-api/api/v1alpha1"
 	"github.com/redhat-appstudio/application-service/pkg/util"
-	"github.com/redhat-developer/alizer/go/pkg/apis/language"
+	"github.com/redhat-developer/alizer/go/pkg/apis/model"
 	"github.com/redhat-developer/alizer/go/pkg/apis/recognizer"
 )
 
 type Alizer interface {
-	SelectDevFileFromTypes(path string, devFileTypes []recognizer.DevFileType) (recognizer.DevFileType, error)
-	DetectComponents(path string) ([]recognizer.Component, error)
+	SelectDevFileFromTypes(path string, devFileTypes []model.DevFileType) (model.DevFileType, error)
+	DetectComponents(path string) ([]model.Component, error)
 }
 
 type AlizerClient struct {
@@ -161,10 +161,9 @@ func AnalyzePath(a Alizer, localpath, context, devfileRegistryURL string, devfil
 			return err
 		}
 		if dockerfileImage != nil {
-			if !strings.HasPrefix(dockerfileImage.Uri, "http") {
-				// if it is a relative uri, append the context
-				dockerfileContextMapFromRepo[context] = path.Join(context, dockerfileImage.Uri)
-			} else {
+			// if it is an absolute uri, add it to the dockerfile context map
+			// If it's relative URI, leave it out, as the build will process the devfile and find the Dockerfile
+			if strings.HasPrefix(dockerfileImage.Uri, "http") {
 				dockerfileContextMapFromRepo[context] = dockerfileImage.Uri
 			}
 			isDockerfilePresent = true
@@ -249,17 +248,17 @@ func SearchForDockerfile(devfile []byte) (*v1alpha2.DockerfileImage, error) {
 }
 
 // Analyze is a wrapper call to Alizer's Analyze()
-func (a AlizerClient) Analyze(path string) ([]language.Language, error) {
+func (a AlizerClient) Analyze(path string) ([]model.Language, error) {
 	return recognizer.Analyze(path)
 }
 
 // SelectDevFileFromTypes is a wrapper call to Alizer's SelectDevFileFromTypes()
-func (a AlizerClient) SelectDevFileFromTypes(path string, devFileTypes []recognizer.DevFileType) (recognizer.DevFileType, error) {
+func (a AlizerClient) SelectDevFileFromTypes(path string, devFileTypes []model.DevFileType) (model.DevFileType, error) {
 	index, err := recognizer.SelectDevFileFromTypes(path, devFileTypes)
 	return devFileTypes[index], err
 }
 
-func (a AlizerClient) DetectComponents(path string) ([]recognizer.Component, error) {
+func (a AlizerClient) DetectComponents(path string) ([]model.Component, error) {
 	return recognizer.DetectComponents(path)
 }
 
@@ -293,7 +292,7 @@ func AnalyzeAndDetectDevfile(a Alizer, path, devfileRegistryURL string) ([]byte,
 				// No need to check for err, if a path does not have a detected devfile, ignore err
 				// if a dir can be a component but we get an unrelated err, err out
 				return nil, "", "", err
-			} else if !reflect.DeepEqual(detectedType, recognizer.DevFileType{}) {
+			} else if !reflect.DeepEqual(detectedType, model.DevFileType{}) {
 				detectedDevfileEndpoint := devfileRegistryURL + "/devfiles/" + detectedType.Name
 				devfileBytes, err = util.CurlEndpoint(detectedDevfileEndpoint)
 				if err != nil {

@@ -22,7 +22,11 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/testutil"
+	"github.com/redhat-appstudio/application-service/pkg/metrics"
 	"github.com/redhat-appstudio/application-service/pkg/util"
+	"github.com/stretchr/testify/assert"
 )
 
 func TestGenerateNewRepositoryName(t *testing.T) {
@@ -58,43 +62,93 @@ func TestGenerateNewRepositoryName(t *testing.T) {
 }
 
 func TestGenerateNewRepository(t *testing.T) {
+
+	prometheus.MustRegister(metrics.GitOpsRepoCreationTotalReqs, metrics.GitOpsRepoCreationSucceeded, metrics.GitOpsRepoCreationFailed)
 	tests := []struct {
-		name     string
-		repoName string
-		orgName  string
-		want     string
-		wantErr  bool
+		name                   string
+		repoName               string
+		orgName                string
+		want                   string
+		wantErr                bool
+		numReposCreated        int //this represents the cumulative counts of metrics assuming the tests run in order
+		numReposCreationFailed int //this represents the cumulative counts of metrics assuming the tests run in order
 	}{
 		{
-			name:     "Simple repo name",
-			repoName: "test-repo-1",
-			orgName:  "redhat-appstudio-appdata",
-			want:     "https://github.com/redhat-appstudio-appdata/test-repo-1",
-			wantErr:  false,
+			name:                   "Simple repo name",
+			repoName:               "test-repo-1",
+			orgName:                "redhat-appstudio-appdata",
+			want:                   "https://github.com/redhat-appstudio-appdata/test-repo-1",
+			wantErr:                false,
+			numReposCreated:        1,
+			numReposCreationFailed: 0,
 		},
 		{
-			name:     "Repo creation fails",
-			repoName: "test-error-response",
-			orgName:  "redhat-appstudio-appdata",
-			want:     "https://github.com/redhat-appstudio-appdata/test-repo-1",
-			wantErr:  true,
+			name:                   "Repo creation fails due to server error",
+			repoName:               "test-server-error-response",
+			orgName:                "redhat-appstudio-appdata",
+			want:                   "https://github.com/redhat-appstudio-appdata/test-error-response",
+			wantErr:                true,
+			numReposCreated:        1,
+			numReposCreationFailed: 1,
+		},
+		{
+			name:                   "Repo creation fails due to server error, failed metric count increases",
+			repoName:               "test-server-error-response-2",
+			orgName:                "redhat-appstudio-appdata",
+			want:                   "https://github.com/redhat-appstudio-appdata/test-error-response-2",
+			wantErr:                true,
+			numReposCreated:        1,
+			numReposCreationFailed: 2,
+		},
+		{
+			name:                   "Repo creation fails due to user error, metric counts should not increase",
+			repoName:               "test-user-error-response",
+			orgName:                "redhat-appstudio-appdata",
+			want:                   "https://github.com/redhat-appstudio-appdata/test-user-error-response",
+			wantErr:                true,
+			numReposCreated:        1,
+			numReposCreationFailed: 2,
 		},
 	}
 
+	numTests := len(tests)
 	for _, tt := range tests {
 		mockedClient := GetMockedClient()
 
 		t.Run(tt.name, func(t *testing.T) {
 			repoURL, err := GenerateNewRepository(mockedClient, context.Background(), tt.orgName, tt.repoName, "")
 
+			if err != nil && tt.wantErr {
+				if _, ok := err.(*ServerError); ok {
+					//validate error message
+					if !strings.Contains(err.Error(), "failed to create gitops repo due to error:") {
+						t.Errorf("TestGenerateNewRepository() unexpected server error message: %v", err)
+					}
+					//when there is a server error, we should collect the metric
+					assert.Equal(t, float64(tt.numReposCreated), testutil.ToFloat64(metrics.GitOpsRepoCreationSucceeded))
+					assert.Equal(t, float64(tt.numReposCreationFailed), testutil.ToFloat64(metrics.GitOpsRepoCreationFailed))
+				} else {
+					//If it's a user error, metric counts should not increase.  The test cases should reflect that
+					assert.Equal(t, float64(tt.numReposCreated), testutil.ToFloat64(metrics.GitOpsRepoCreationSucceeded))
+					assert.Equal(t, float64(tt.numReposCreationFailed), testutil.ToFloat64(metrics.GitOpsRepoCreationFailed))
+				}
+
+			}
 			if (err != nil) && !tt.wantErr {
 				t.Errorf("TestGenerateNewRepository() unexpected error value: %v", err)
+
 			}
 			if !tt.wantErr && repoURL != tt.want {
 				t.Errorf("TestGenerateNewRepository() error: expected %v got %v", tt.want, repoURL)
 			}
+
+			//verify the number of successful repos created
+			assert.Equal(t, float64(tt.numReposCreated), testutil.ToFloat64(metrics.GitOpsRepoCreationSucceeded))
+			assert.Equal(t, float64(tt.numReposCreationFailed), testutil.ToFloat64(metrics.GitOpsRepoCreationFailed))
 		})
 	}
+
+	assert.Equal(t, float64(numTests), testutil.ToFloat64(metrics.GitOpsRepoCreationTotalReqs))
 }
 
 func TestDeleteRepository(t *testing.T) {

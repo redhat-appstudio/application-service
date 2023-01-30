@@ -1,5 +1,5 @@
 //
-// Copyright 2021 Red Hat, Inc.
+// Copyright 2021-2023 Red Hat, Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -25,10 +25,20 @@ import (
 
 	"github.com/brianvoe/gofakeit/v6"
 	"github.com/google/go-github/v41/github"
+	"github.com/redhat-appstudio/application-service/pkg/metrics"
 	"github.com/redhat-appstudio/application-service/pkg/util"
 )
 
 const AppStudioAppDataOrg = "redhat-appstudio-appdata"
+
+// ServerError is used to identify gitops repo creation failures caused by server errors
+type ServerError struct {
+	err error
+}
+
+func (e *ServerError) Error() string {
+	return fmt.Errorf("failed to create gitops repo due to error: %v", e.err).Error()
+}
 
 // GenerateNewRepositoryName creates a new gitops repository name, based on the following format:
 // <display-name>-<partial-hash-of-clustername-and-namespace>-<random-word>-<random-word>
@@ -44,13 +54,23 @@ func GenerateNewRepositoryName(displayName, namespace, clusterName string) strin
 func GenerateNewRepository(client *github.Client, ctx context.Context, orgName string, repoName string, description string) (string, error) {
 	isPrivate := false
 	appStudioAppDataURL := "https://github.com/" + orgName + "/"
-
+	metrics.GitOpsRepoCreationTotalReqs.Inc()
 	r := &github.Repository{Name: &repoName, Private: &isPrivate, Description: &description}
-	_, _, err := client.Repositories.Create(ctx, orgName, r)
+	_, resp, err := client.Repositories.Create(ctx, orgName, r)
+
+	if 500 <= resp.StatusCode && resp.StatusCode <= 599 {
+		// return custom error
+		if err != nil {
+			metrics.GitOpsRepoCreationFailed.Inc()
+			return "", &ServerError{err: err}
+		}
+	}
+
 	if err != nil {
 		return "", err
 	}
 	repoURL := appStudioAppDataURL + repoName
+	metrics.GitOpsRepoCreationSucceeded.Inc()
 	return repoURL, nil
 }
 

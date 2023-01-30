@@ -247,17 +247,19 @@ func (r *ComponentDetectionQueryReconciler) Reconcile(ctx context.Context, req c
 		}
 
 		for context, link := range dockerfileContextMap {
-			updatedContext := context
+			// If the returned context/link is a local path, update the git link for the dockerfile accordingly
+			// Otherwise
 			if !strings.HasPrefix(link, "http") {
-				updatedContext = path.Join(context, link)
+				updatedContext := path.Join(context, link)
+
+				updatedLink, err := devfile.UpdateGitLink(source.URL, source.Revision, updatedContext)
+				if err != nil {
+					log.Error(err, fmt.Sprintf("Unable to update the dockerfile link %v", req.NamespacedName))
+					r.SetCompleteConditionAndUpdateCR(ctx, req, &componentDetectionQuery, copiedCDQ, err)
+					return ctrl.Result{}, nil
+				}
+				dockerfileContextMap[context] = updatedLink
 			}
-			updatedLink, err := devfile.UpdateGitLink(source.URL, source.Revision, updatedContext)
-			if err != nil {
-				log.Error(err, fmt.Sprintf("Unable to update the dockerfile link %v", req.NamespacedName))
-				r.SetCompleteConditionAndUpdateCR(ctx, req, &componentDetectionQuery, copiedCDQ, err)
-				return ctrl.Result{}, nil
-			}
-			dockerfileContextMap[context] = updatedLink
 		}
 
 		for context := range devfilesMap {

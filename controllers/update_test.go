@@ -400,6 +400,106 @@ func TestUpdateComponentDevfileModel(t *testing.T) {
 			},
 			wantErr: true,
 		},
+		{
+			name: "image component with local dockerfile uri updated to component's absolute dockerfileURL",
+			components: []devfileAPIV1.Component{
+				{
+					Name:       "component1",
+					Attributes: envAttributes.PutInteger(containerImagePortKey, 1001),
+					ComponentUnion: devfileAPIV1.ComponentUnion{
+						Kubernetes: &devfileAPIV1.KubernetesComponent{},
+					},
+				},
+				{
+					Name:       "component2",
+					Attributes: envAttributes.PutInteger(containerImagePortKey, 3333).PutString(memoryLimitKey, "2Gi"),
+					ComponentUnion: devfileAPIV1.ComponentUnion{
+						Image: &devfileAPIV1.ImageComponent{
+
+							Image: devfileAPIV1.Image{
+								ImageUnion: devfileAPIV1.ImageUnion{
+									Dockerfile: &devfileAPIV1.DockerfileImage{
+										DockerfileSrc: devfileAPIV1.DockerfileSrc{
+											Uri: "./dockerfile",
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+			component: appstudiov1alpha1.Component{
+				Spec: appstudiov1alpha1.ComponentSpec{
+					ComponentName: "componentName",
+					Application:   "applicationName",
+					Source: appstudiov1alpha1.ComponentSource{
+						ComponentSourceUnion: appstudiov1alpha1.ComponentSourceUnion{
+							GitSource: &appstudiov1alpha1.GitSource{
+								URL:           "url",
+								DockerfileURL: "https://website.com/dockerfiles/dockerfile",
+							},
+						},
+					},
+					Route:      "route1",
+					Replicas:   1,
+					TargetPort: 1111,
+					Env:        env,
+					Resources:  originalResources,
+				},
+			},
+			updateExpected: true,
+		},
+		{
+			name: "devfile with invalid components, error out when trying to update devfile's dockerfile uri",
+			components: []devfileAPIV1.Component{
+				{
+					Name:       "component1",
+					Attributes: envAttributes.PutInteger(containerImagePortKey, 1001),
+					ComponentUnion: devfileAPIV1.ComponentUnion{
+						ComponentType: "bad-component",
+					},
+				},
+				{
+					Name:       "component2",
+					Attributes: envAttributes.PutInteger(containerImagePortKey, 3333).PutString(memoryLimitKey, "2Gi"),
+					ComponentUnion: devfileAPIV1.ComponentUnion{
+						Image: &devfileAPIV1.ImageComponent{
+
+							Image: devfileAPIV1.Image{
+								ImageUnion: devfileAPIV1.ImageUnion{
+									Dockerfile: &devfileAPIV1.DockerfileImage{
+										DockerfileSrc: devfileAPIV1.DockerfileSrc{
+											Uri: "./dockerfile",
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+			component: appstudiov1alpha1.Component{
+				Spec: appstudiov1alpha1.ComponentSpec{
+					ComponentName: "componentName",
+					Application:   "applicationName",
+					Source: appstudiov1alpha1.ComponentSource{
+						ComponentSourceUnion: appstudiov1alpha1.ComponentSourceUnion{
+							GitSource: &appstudiov1alpha1.GitSource{
+								URL:           "url",
+								DockerfileURL: "https://website.com/dockerfiles/dockerfile",
+							},
+						},
+					},
+					Route:      "route1",
+					Replicas:   1,
+					TargetPort: 1111,
+					Env:        env,
+					Resources:  originalResources,
+				},
+			},
+			wantErr: true,
+		},
 	}
 
 	for _, tt := range tests {
