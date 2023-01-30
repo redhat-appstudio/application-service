@@ -22,6 +22,7 @@ import (
 	devfilePkg "github.com/devfile/library/pkg/devfile"
 	parser "github.com/devfile/library/pkg/devfile/parser"
 	data "github.com/devfile/library/pkg/devfile/parser/data"
+	"github.com/devfile/library/pkg/devfile/parser/data/v2/common"
 
 	appstudiov1alpha1 "github.com/redhat-appstudio/application-api/api/v1alpha1"
 	"github.com/redhat-appstudio/application-service/pkg/util"
@@ -249,4 +250,28 @@ func DownloadDevfileAndDockerfile(url string) ([]byte, string, []byte) {
 // Map 3 returns a context to the dockerfile uri or a matched dockerfileURL from the devfile registry if no dockerfile is present in the context
 func ScanRepo(log logr.Logger, a Alizer, localpath string, devfileRegistryURL string, source appstudiov1alpha1.GitSource) (map[string][]byte, map[string]string, map[string]string, error) {
 	return search(log, a, localpath, devfileRegistryURL, source)
+}
+
+// UpdateLocalDockerfileURItoAbsolute takes in a Devfile, and a DockefileURL, and returns back a Devfile with any local URIs to the Dockerfile updates to be absolute
+func UpdateLocalDockerfileURItoAbsolute(devfile data.DevfileData, dockerfileURL string) (data.DevfileData, error) {
+	devfileComponents, err := devfile.GetComponents(common.DevfileOptions{ComponentOptions: common.ComponentOptions{
+		ComponentType: v1alpha2.ImageComponentType,
+	}})
+	if err != nil {
+		return nil, err
+	}
+
+	for _, comp := range devfileComponents {
+		if comp.Image != nil && comp.Image.Dockerfile != nil {
+			comp.Image.Dockerfile.Uri = dockerfileURL
+
+			// Update the component in the devfile
+			err = devfile.UpdateComponent(comp)
+			if err != nil {
+				return nil, err
+			}
+		}
+	}
+
+	return devfile, err
 }
