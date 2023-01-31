@@ -36,7 +36,7 @@ import (
 func CloneRepo(clonePath, repoURL string, token string) error {
 	exist, err := IsExist(clonePath)
 	if !exist || err != nil {
-		os.MkdirAll(clonePath, 0755)
+		os.MkdirAll(clonePath, 0750)
 	}
 	cloneURL := repoURL
 	// Execute does an exec.Command on the specified command
