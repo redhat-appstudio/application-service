@@ -182,6 +182,36 @@ func (r *ComponentReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 		return ctrl.Result{Requeue: true}, nil
 	}
 
+	// Check if GitOps generation has failed on a reconcile
+	// Attempt to generate GitOps and set appropriate conditions accordingly
+	isUpdateConditionPresent := false
+	isGitOpsRegenSuccessful := false
+	for _, condition := range component.Status.Conditions {
+		if condition.Type == "GitOpsResourcesGenerated" && condition.Reason == "GenerateError" && condition.Status == metav1.ConditionFalse {
+			log.Info(fmt.Sprintf("Re-attempting GitOps generation for %s", component.Name))
+			if err := r.generateGitops(ctx, req, &component); err != nil {
+				errMsg := fmt.Sprintf("Unable to generate gitops resources for component %v", req.NamespacedName)
+				log.Error(err, errMsg)
+				r.SetGitOpsGeneratedConditionAndUpdateCR(ctx, &component, fmt.Errorf("%v: %v", errMsg, err))
+				return ctrl.Result{}, err
+			} else {
+				log.Info(fmt.Sprintf("GitOps re-generation successful for %s", component.Name))
+				r.SetGitOpsGeneratedConditionAndUpdateCR(ctx, &component, nil)
+				isGitOpsRegenSuccessful = true
+			}
+		} else if condition.Type == "Updated" && condition.Reason == "Error" && condition.Status == metav1.ConditionFalse {
+			isUpdateConditionPresent = true
+		}
+	}
+
+	if isGitOpsRegenSuccessful && isUpdateConditionPresent {
+		r.SetUpdateConditionAndUpdateCR(ctx, req, &component, nil)
+		return ctrl.Result{}, nil
+	} else if isGitOpsRegenSuccessful {
+		r.SetCreateConditionAndUpdateCR(ctx, req, &component, nil)
+		return ctrl.Result{}, nil
+	}
+
 	// If the devfile hasn't been populated, the CR was just created
 	var gitToken string
 	if component.Status.Devfile == "" {
