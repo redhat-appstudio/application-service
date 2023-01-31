@@ -24,6 +24,7 @@ import (
 
 type MockAlizerClient struct {
 }
+
 // DetectComponents is a wrapper call to Alizer's DetectComponents()
 func (a MockAlizerClient) DetectComponents(path string) ([]model.Component, error) {
 	if strings.Contains(path, "errorAnalyze") {
@@ -124,4 +125,3 @@ func (a MockAlizerClient) SelectDevFileFromTypes(path string, devFileTypes []mod
 
 	return model.DevFileType{}, nil
 }
-

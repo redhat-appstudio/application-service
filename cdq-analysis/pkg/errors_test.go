@@ -85,4 +85,3 @@ func TestNoDockerfileFoundErr(t *testing.T) {
 		})
 	}
 }
-
