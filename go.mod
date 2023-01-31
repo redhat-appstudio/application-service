@@ -6,8 +6,6 @@ require (
 	github.com/brianvoe/gofakeit/v6 v6.9.0
 	github.com/devfile/api/v2 v2.2.0
 	github.com/devfile/library/v2 v2.2.1-0.20221207223615-7beda0850228
-	github.com/devfile/registry-support/index/generator v0.0.0-20221018203505-df96d34d4273
-	github.com/devfile/registry-support/registry-library v0.0.0-20221018213054-47b3ffaeadba
 	github.com/go-logr/logr v1.2.3
 	github.com/golang/mock v1.6.0
 	github.com/google/go-github/v41 v41.0.0
@@ -22,7 +20,6 @@ require (
 	github.com/prometheus/client_golang v1.14.0
 	github.com/redhat-appstudio/application-api v0.0.0-20221205185405-03f73a06d978
 	github.com/redhat-appstudio/service-provider-integration-scm-file-retriever v0.8.3
-	github.com/redhat-developer/alizer/go v0.0.0-20230117135912-8f7afff3b7cd
 	github.com/redhat-developer/gitops-generator v0.0.0-20230113152345-19efcd5ec104
 	github.com/spf13/afero v1.8.0
 	github.com/stretchr/testify v1.8.1
@@ -56,8 +53,9 @@ require (
 	github.com/cheekybits/genny v1.0.0 // indirect
 	github.com/cloudflare/circl v1.3.1 // indirect
 	github.com/containerd/containerd v1.6.10 // indirect
-	github.com/containerd/typeurl v1.0.2 // indirect
 	github.com/davecgh/go-spew v1.1.2-0.20180830191138-d8f796af33cc // indirect
+	github.com/devfile/registry-support/index/generator v0.0.0-20221018203505-df96d34d4273 // indirect
+	github.com/devfile/registry-support/registry-library v0.0.0-20221018213054-47b3ffaeadba // indirect
 	github.com/docker/cli v20.10.13+incompatible // indirect
 	github.com/docker/distribution v2.8.1+incompatible // indirect
 	github.com/docker/docker v20.10.11+incompatible // indirect
@@ -70,6 +68,7 @@ require (
 	github.com/evanphx/json-patch v4.12.0+incompatible // indirect
 	github.com/evanphx/json-patch/v5 v5.6.0 // indirect
 	github.com/fatih/color v1.13.0 // indirect
+	github.com/felixge/httpsnoop v1.0.2 // indirect
 	github.com/fsnotify/fsnotify v1.5.4 // indirect
 	github.com/go-git/gcfg v1.5.0 // indirect
 	github.com/go-git/go-billy/v5 v5.3.1 // indirect
@@ -117,8 +116,8 @@ require (
 	github.com/matttproud/golang_protobuf_extensions v1.0.2-0.20181231171920-c182affec369 // indirect
 	github.com/mitchellh/copystructure v1.2.0 // indirect
 	github.com/mitchellh/reflectwalk v1.0.2 // indirect
-	github.com/moby/buildkit v0.10.6 // indirect
 	github.com/moby/locker v1.0.1 // indirect
+	github.com/moby/sys/mountinfo v0.6.0 // indirect
 	github.com/moby/term v0.0.0-20210619224110-3f7ff695adc6 // indirect
 	github.com/modern-go/concurrent v0.0.0-20180306012644-bacd9c7ef1dd // indirect
 	github.com/modern-go/reflect2 v1.0.2 // indirect
@@ -136,12 +135,12 @@ require (
 	github.com/prometheus/procfs v0.8.0 // indirect
 	github.com/redhat-appstudio/service-provider-integration-operator v0.8.3 // indirect
 	github.com/rogpeppe/go-internal v1.8.0 // indirect
-	github.com/sabhiram/go-gitignore v0.0.0-20210923224102-525f6e181f06 // indirect
 	github.com/sergi/go-diff v1.2.0 // indirect
 	github.com/shurcooL/githubv4 v0.0.0-20190718010115-4ba037080260 // indirect
 	github.com/shurcooL/graphql v0.0.0-20181231061246-d48a9a75455f // indirect
 	github.com/sirupsen/logrus v1.9.0 // indirect
 	github.com/skeema/knownhosts v1.1.0 // indirect
+	github.com/spf13/cobra v1.6.1 // indirect
 	github.com/spf13/pflag v1.0.5 // indirect
 	github.com/stretchr/objx v0.5.0 // indirect
 	github.com/xanzy/ssh-agent v0.3.3 // indirect
