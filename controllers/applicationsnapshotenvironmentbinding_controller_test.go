@@ -19,6 +19,7 @@ package controllers
 import (
 	"context"
 	"fmt"
+	"strconv"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -63,7 +64,7 @@ var _ = Describe("SnapshotEnvironmentBinding controller", func() {
 
 			createAndFetchSimpleApp(applicationName, HASAppNamespace, DisplayName, Description)
 
-			hasComp := createAndFetchSimpleComponent(componentName, HASAppNamespace, ComponentName, applicationName, SampleRepoLink, false)
+			hasComp := createAndFetchSimpleComponent(componentName, HASAppNamespace, ComponentName, applicationName, SampleRepoLink, false, true)
 			// Make sure the devfile model was properly set in Component
 			Expect(hasComp.Status.Devfile).Should(Not(Equal("")))
 
@@ -130,6 +131,9 @@ var _ = Describe("SnapshotEnvironmentBinding controller", func() {
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      bindingName,
 					Namespace: HASAppNamespace,
+					Annotations: map[string]string{
+						"allowLocalGitopsGen": "true",
+					},
 				},
 				Spec: appstudiov1alpha1.SnapshotEnvironmentBindingSpec{
 					Application: applicationName,
@@ -212,7 +216,7 @@ var _ = Describe("SnapshotEnvironmentBinding controller", func() {
 
 			createAndFetchSimpleApp(applicationName, HASAppNamespace, DisplayName, Description)
 
-			hasComp := createAndFetchSimpleComponent(componentName, HASAppNamespace, ComponentName, applicationName, SampleRepoLink, false)
+			hasComp := createAndFetchSimpleComponent(componentName, HASAppNamespace, ComponentName, applicationName, SampleRepoLink, false, true)
 			// Make sure the devfile model was properly set in Component
 			Expect(hasComp.Status.Devfile).Should(Not(Equal("")))
 
@@ -279,6 +283,9 @@ var _ = Describe("SnapshotEnvironmentBinding controller", func() {
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      bindingName,
 					Namespace: HASAppNamespace,
+					Annotations: map[string]string{
+						"allowLocalGitopsGen": "true",
+					},
 				},
 				Spec: appstudiov1alpha1.SnapshotEnvironmentBindingSpec{
 					Application: applicationName,
@@ -357,7 +364,7 @@ var _ = Describe("SnapshotEnvironmentBinding controller", func() {
 
 			createAndFetchSimpleApp(applicationName, HASAppNamespace, DisplayName, Description)
 
-			hasComp := createAndFetchSimpleComponent(componentName, HASAppNamespace, ComponentName, applicationName, SampleRepoLink, false)
+			hasComp := createAndFetchSimpleComponent(componentName, HASAppNamespace, ComponentName, applicationName, SampleRepoLink, false, true)
 			// Make sure the devfile model was properly set in Component
 			Expect(hasComp.Status.Devfile).Should(Not(Equal("")))
 
@@ -394,6 +401,9 @@ var _ = Describe("SnapshotEnvironmentBinding controller", func() {
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      bindingName,
 					Namespace: HASAppNamespace,
+					Annotations: map[string]string{
+						"allowLocalGitopsGen": "true",
+					},
 				},
 				Spec: appstudiov1alpha1.SnapshotEnvironmentBindingSpec{
 					Application: applicationName,
@@ -464,7 +474,7 @@ var _ = Describe("SnapshotEnvironmentBinding controller", func() {
 
 			createAndFetchSimpleApp(applicationName, HASAppNamespace, DisplayName, Description)
 
-			hasComp := createAndFetchSimpleComponent(componentName, HASAppNamespace, ComponentName, applicationName, SampleRepoLink, false)
+			hasComp := createAndFetchSimpleComponent(componentName, HASAppNamespace, ComponentName, applicationName, SampleRepoLink, false, true)
 			// Make sure the devfile model was properly set in Component
 			Expect(hasComp.Status.Devfile).Should(Not(Equal("")))
 
@@ -531,6 +541,9 @@ var _ = Describe("SnapshotEnvironmentBinding controller", func() {
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      bindingName,
 					Namespace: HASAppNamespace,
+					Annotations: map[string]string{
+						"allowLocalGitopsGen": "true",
+					},
 				},
 				Spec: appstudiov1alpha1.SnapshotEnvironmentBindingSpec{
 					Application: applicationName,
@@ -606,11 +619,11 @@ var _ = Describe("SnapshotEnvironmentBinding controller", func() {
 			createAndFetchSimpleApp(applicationName, HASAppNamespace, DisplayName, Description)
 			createAndFetchSimpleApp(applicationName2, HASAppNamespace, DisplayName, Description)
 
-			hasComp := createAndFetchSimpleComponent(componentName, HASAppNamespace, ComponentName, applicationName, SampleRepoLink, false)
+			hasComp := createAndFetchSimpleComponent(componentName, HASAppNamespace, ComponentName, applicationName, SampleRepoLink, false, true)
 			// Make sure the devfile model was properly set in Component
 			Expect(hasComp.Status.Devfile).Should(Not(Equal("")))
 
-			hasComp2 := createAndFetchSimpleComponent(componentName2, HASAppNamespace, ComponentName+"2", applicationName2, SampleRepoLink, false)
+			hasComp2 := createAndFetchSimpleComponent(componentName2, HASAppNamespace, ComponentName+"2", applicationName2, SampleRepoLink, false, true)
 			// Make sure the devfile model was properly set in Component
 			Expect(hasComp2.Status.Devfile).Should(Not(Equal("")))
 
@@ -677,6 +690,9 @@ var _ = Describe("SnapshotEnvironmentBinding controller", func() {
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      bindingName,
 					Namespace: HASAppNamespace,
+					Annotations: map[string]string{
+						"allowLocalGitopsGen": "true",
+					},
 				},
 				Spec: appstudiov1alpha1.SnapshotEnvironmentBindingSpec{
 					Application: applicationName,
@@ -760,11 +776,11 @@ var _ = Describe("SnapshotEnvironmentBinding controller", func() {
 
 			createAndFetchSimpleApp(applicationName, HASAppNamespace, DisplayName, Description)
 
-			hasComp := createAndFetchSimpleComponent(componentName, HASAppNamespace, ComponentName, applicationName, SampleRepoLink, false)
+			hasComp := createAndFetchSimpleComponent(componentName, HASAppNamespace, ComponentName, applicationName, SampleRepoLink, false, true)
 			// Make sure the devfile model was properly set in Component
 			Expect(hasComp.Status.Devfile).Should(Not(Equal("")))
 
-			hasComp2 := createAndFetchSimpleComponent(componentName2, HASAppNamespace, ComponentName+"2", applicationName, SampleRepoLink, false)
+			hasComp2 := createAndFetchSimpleComponent(componentName2, HASAppNamespace, ComponentName+"2", applicationName, SampleRepoLink, false, true)
 			// Make sure the devfile model was properly set in Component
 			Expect(hasComp2.Status.Devfile).Should(Not(Equal("")))
 
@@ -831,6 +847,9 @@ var _ = Describe("SnapshotEnvironmentBinding controller", func() {
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      bindingName,
 					Namespace: HASAppNamespace,
+					Annotations: map[string]string{
+						"allowLocalGitopsGen": "true",
+					},
 				},
 				Spec: appstudiov1alpha1.SnapshotEnvironmentBindingSpec{
 					Application: applicationName,
@@ -912,7 +931,7 @@ var _ = Describe("SnapshotEnvironmentBinding controller", func() {
 
 			createAndFetchSimpleApp(applicationName, HASAppNamespace, DisplayName, Description)
 
-			hasComp := createAndFetchSimpleComponent(componentName, HASAppNamespace, ComponentName, applicationName, SampleRepoLink, false)
+			hasComp := createAndFetchSimpleComponent(componentName, HASAppNamespace, ComponentName, applicationName, SampleRepoLink, false, true)
 			// Make sure the devfile model was properly set in Component
 			Expect(hasComp.Status.Devfile).Should(Not(Equal("")))
 
@@ -979,6 +998,9 @@ var _ = Describe("SnapshotEnvironmentBinding controller", func() {
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      bindingName,
 					Namespace: HASAppNamespace,
+					Annotations: map[string]string{
+						"allowLocalGitopsGen": "true",
+					},
 				},
 				Spec: appstudiov1alpha1.SnapshotEnvironmentBindingSpec{
 					Application: applicationName,
@@ -1087,7 +1109,7 @@ var _ = Describe("SnapshotEnvironmentBinding controller", func() {
 				return len(fetchedHasApp.Status.Conditions) > 0
 			}, timeout, interval).Should(BeTrue())
 
-			hasComp := createAndFetchSimpleComponent(componentName, HASAppNamespace, ComponentName, applicationName, SampleRepoLink, false)
+			hasComp := createAndFetchSimpleComponent(componentName, HASAppNamespace, ComponentName, applicationName, SampleRepoLink, false, true)
 			// Make sure the devfile model was properly set in Component
 			Expect(hasComp.Status.Devfile).Should(Not(Equal("")))
 
@@ -1154,6 +1176,9 @@ var _ = Describe("SnapshotEnvironmentBinding controller", func() {
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      bindingName,
 					Namespace: HASAppNamespace,
+					Annotations: map[string]string{
+						"allowLocalGitopsGen": "true",
+					},
 				},
 				Spec: appstudiov1alpha1.SnapshotEnvironmentBindingSpec{
 					Application: applicationName,
@@ -1214,7 +1239,7 @@ var _ = Describe("SnapshotEnvironmentBinding controller", func() {
 
 			createAndFetchSimpleApp(applicationName, HASAppNamespace, DisplayName, Description)
 
-			hasComp := createAndFetchSimpleComponent(componentName, HASAppNamespace, ComponentName, applicationName, SampleRepoLink, false)
+			hasComp := createAndFetchSimpleComponent(componentName, HASAppNamespace, ComponentName, applicationName, SampleRepoLink, false, true)
 			// Make sure the devfile model was properly set in Component
 			Expect(hasComp.Status.Devfile).Should(Not(Equal("")))
 
@@ -1256,6 +1281,9 @@ var _ = Describe("SnapshotEnvironmentBinding controller", func() {
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      bindingName,
 					Namespace: HASAppNamespace,
+					Annotations: map[string]string{
+						"allowLocalGitopsGen": "true",
+					},
 				},
 				Spec: appstudiov1alpha1.SnapshotEnvironmentBindingSpec{
 					Application: applicationName,
@@ -1330,11 +1358,11 @@ var _ = Describe("SnapshotEnvironmentBinding controller", func() {
 			createAndFetchSimpleApp(applicationName, HASAppNamespace, DisplayName, Description)
 			createAndFetchSimpleApp(applicationName2, HASAppNamespace, DisplayName, Description)
 
-			hasComp := createAndFetchSimpleComponent(componentName, HASAppNamespace, ComponentName, applicationName, SampleRepoLink, false)
+			hasComp := createAndFetchSimpleComponent(componentName, HASAppNamespace, ComponentName, applicationName, SampleRepoLink, false, true)
 			// Make sure the devfile model was properly set in Component
 			Expect(hasComp.Status.Devfile).Should(Not(Equal("")))
 
-			hasComp2 := createAndFetchSimpleComponent(componentName2, HASAppNamespace, ComponentName, applicationName2, SampleRepoLink, false)
+			hasComp2 := createAndFetchSimpleComponent(componentName2, HASAppNamespace, ComponentName, applicationName2, SampleRepoLink, false, true)
 			// Make sure the devfile model was properly set in Component
 			Expect(hasComp2.Status.Devfile).Should(Not(Equal("")))
 
@@ -1460,6 +1488,9 @@ var _ = Describe("SnapshotEnvironmentBinding controller", func() {
 						"appstudio.environment": environmentName,
 						"appstudio.application": applicationName,
 					},
+					Annotations: map[string]string{
+						"allowLocalGitopsGen": "true",
+					},
 				},
 				Spec: appstudiov1alpha1.SnapshotEnvironmentBindingSpec{
 					Application: applicationName,
@@ -1496,6 +1527,9 @@ var _ = Describe("SnapshotEnvironmentBinding controller", func() {
 					Labels: map[string]string{
 						"appstudio.environment": environmentName2,
 						"appstudio.application": applicationName2,
+					},
+					Annotations: map[string]string{
+						"allowLocalGitopsGen": "true",
 					},
 				},
 				Spec: appstudiov1alpha1.SnapshotEnvironmentBindingSpec{
@@ -1593,8 +1627,8 @@ var _ = Describe("SnapshotEnvironmentBinding controller", func() {
 			replicas := int32(3)
 
 			createAndFetchSimpleApp(applicationName, HASAppNamespace, DisplayName, Description)
-			hasComp := createAndFetchSimpleComponent(componentName, HASAppNamespace, ComponentName, applicationName, SampleRepoLink, true)
-			secondComp := createAndFetchSimpleComponent(secondComponentName, HASAppNamespace, secondComponentName, applicationName, SampleRepoLink, false)
+			hasComp := createAndFetchSimpleComponent(componentName, HASAppNamespace, ComponentName, applicationName, SampleRepoLink, true, true)
+			secondComp := createAndFetchSimpleComponent(secondComponentName, HASAppNamespace, secondComponentName, applicationName, SampleRepoLink, false, true)
 			// Make sure the devfile model was properly set in Component
 			Expect(hasComp.Status.Devfile).Should(Not(Equal("")))
 			Expect(secondComp.Status.Devfile).Should(Not(Equal("")))
@@ -1666,6 +1700,9 @@ var _ = Describe("SnapshotEnvironmentBinding controller", func() {
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      bindingName,
 					Namespace: HASAppNamespace,
+					Annotations: map[string]string{
+						"allowLocalGitopsGen": "true",
+					},
 				},
 				Spec: appstudiov1alpha1.SnapshotEnvironmentBindingSpec{
 					Application: applicationName,
@@ -1768,7 +1805,153 @@ var _ = Describe("SnapshotEnvironmentBinding controller", func() {
 			replicas := int32(3)
 
 			createAndFetchSimpleAppWithRepo(applicationName, HASAppNamespace, DisplayName, Description, "https://github.com/fakeorg/test-error-response")
-			hasComp := createAndFetchSimpleComponent(componentName, HASAppNamespace, ComponentName, applicationName, SampleRepoLink, false)
+			hasComp := createAndFetchSimpleComponent(componentName, HASAppNamespace, ComponentName, applicationName, SampleRepoLink, false, true)
+			// Make sure the devfile model was properly set in Component
+			Expect(hasComp.Status.Devfile).Should(Not(Equal("")))
+
+			appSnapshot := &appstudiov1alpha1.Snapshot{
+				TypeMeta: metav1.TypeMeta{
+					APIVersion: "appstudio.redhat.com/v1alpha1",
+					Kind:       "Snapshot",
+				},
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      snapshotName,
+					Namespace: HASAppNamespace,
+				},
+				Spec: appstudiov1alpha1.SnapshotSpec{
+					Application:        applicationName,
+					DisplayName:        "My Snapshot",
+					DisplayDescription: "My Snapshot",
+					Components: []appstudiov1alpha1.SnapshotComponent{
+						{
+							Name:           componentName,
+							ContainerImage: "image1",
+						},
+					},
+				},
+			}
+			Expect(k8sClient.Create(ctx, appSnapshot)).Should(Succeed())
+
+			appSnapshotLookupKey := types.NamespacedName{Name: snapshotName, Namespace: HASAppNamespace}
+			createdAppSnapshot := &appstudiov1alpha1.Snapshot{}
+			Eventually(func() bool {
+				k8sClient.Get(context.Background(), appSnapshotLookupKey, createdAppSnapshot)
+				return len(createdAppSnapshot.Spec.Components) > 0
+			}, timeout, interval).Should(BeTrue())
+
+			stagingEnv := &appstudiov1alpha1.Environment{
+				TypeMeta: metav1.TypeMeta{
+					APIVersion: "appstudio.redhat.com/v1alpha1",
+					Kind:       "Environment",
+				},
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      environmentName,
+					Namespace: HASAppNamespace,
+				},
+				Spec: appstudiov1alpha1.EnvironmentSpec{
+					Type:               "POC",
+					DisplayName:        DisplayName,
+					DeploymentStrategy: appstudiov1alpha1.DeploymentStrategy_AppStudioAutomated,
+					Configuration: appstudiov1alpha1.EnvironmentConfiguration{
+						Env: []appstudiov1alpha1.EnvVarPair{
+							{
+								Name:  "FOO",
+								Value: "BAR",
+							},
+						},
+					},
+				},
+			}
+			Expect(k8sClient.Create(ctx, stagingEnv)).Should(Succeed())
+
+			appBinding := &appstudiov1alpha1.SnapshotEnvironmentBinding{
+				TypeMeta: metav1.TypeMeta{
+					APIVersion: "appstudio.redhat.com/v1alpha1",
+					Kind:       "SnapshotEnvironmentBinding",
+				},
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      bindingName,
+					Namespace: HASAppNamespace,
+					Annotations: map[string]string{
+						"allowLocalGitopsGen": "true",
+					},
+				},
+				Spec: appstudiov1alpha1.SnapshotEnvironmentBindingSpec{
+					Application: applicationName,
+					Environment: environmentName,
+					Snapshot:    snapshotName,
+					Components: []appstudiov1alpha1.BindingComponent{
+						{
+							Name: componentName,
+							Configuration: appstudiov1alpha1.BindingComponentConfiguration{
+								Replicas: int(replicas),
+								Env: []appstudiov1alpha1.EnvVarPair{
+									{
+										Name:  "FOO",
+										Value: "BAR",
+									},
+								},
+								Resources: &corev1.ResourceRequirements{
+									Limits: corev1.ResourceList{
+										corev1.ResourceCPU: resource.MustParse("1"),
+									},
+								},
+							},
+						},
+					},
+				},
+			}
+
+			Expect(k8sClient.Create(ctx, appBinding)).Should(Succeed())
+
+			bindingLookupKey := types.NamespacedName{Name: bindingName, Namespace: HASAppNamespace}
+			createdBinding := &appstudiov1alpha1.SnapshotEnvironmentBinding{}
+			Eventually(func() bool {
+				k8sClient.Get(context.Background(), bindingLookupKey, createdBinding)
+				return len(createdBinding.Status.GitOpsRepoConditions) > 0
+			}, timeout, interval).Should(BeTrue())
+
+			// Validate that the GitOps resources for the bound component(s) were generated, but not for any that explicitly had skipGitOpsResourceGeneration set
+			Expect(createdBinding.Status.GitOpsRepoConditions[0].Status).Should(Equal(metav1.ConditionFalse))
+			Expect(createdBinding.Status.GitOpsRepoConditions[0].Reason).Should(Equal("GenerateError"))
+			Expect(createdBinding.Status.GitOpsRepoConditions[0].Message).Should(ContainSubstring("unable to retrive git commit id"))
+
+			// Delete the specified Component resources
+			hasCompLookupKey := types.NamespacedName{Name: componentName, Namespace: HASAppNamespace}
+			deleteHASCompCR(hasCompLookupKey)
+
+			// Delete the specified App resource
+			hasAppLookupKey := types.NamespacedName{Name: applicationName, Namespace: HASAppNamespace}
+			deleteHASAppCR(hasAppLookupKey)
+
+			// Delete the specified binding
+			deleteBinding(bindingLookupKey)
+
+			// Delete the specified snapshot
+			deleteSnapshot(appSnapshotLookupKey)
+
+			// Delete the specified environment
+			stagingEnvLookupKey := types.NamespacedName{Name: environmentName, Namespace: HASAppNamespace}
+			deleteEnvironment(stagingEnvLookupKey)
+
+		})
+	})
+
+	Context("Create SnapshotEnvironmentBinding with component configurations - via GitOps Job", func() {
+		It("Should generate gitops overlays successfully", func() {
+			ctx := context.Background()
+
+			applicationName := HASAppName + "13"
+			componentName := HASCompName + "13"
+			snapshotName := HASSnapshotName + "13"
+			bindingName := HASBindingName + "13"
+			environmentName := "staging" + "13"
+
+			replicas := int32(3)
+
+			createAndFetchSimpleApp(applicationName, HASAppNamespace, DisplayName, Description)
+
+			hasComp := createAndFetchSimpleComponent(componentName, HASAppNamespace, ComponentName, applicationName, SampleRepoLink, false, true)
 			// Make sure the devfile model was properly set in Component
 			Expect(hasComp.Status.Devfile).Should(Not(Equal("")))
 
@@ -1864,6 +2047,8 @@ var _ = Describe("SnapshotEnvironmentBinding controller", func() {
 
 			Expect(k8sClient.Create(ctx, appBinding)).Should(Succeed())
 
+			getJobAndSetItToComplete(bindingName, "generate-overlays", true)
+
 			bindingLookupKey := types.NamespacedName{Name: bindingName, Namespace: HASAppNamespace}
 			createdBinding := &appstudiov1alpha1.SnapshotEnvironmentBinding{}
 			Eventually(func() bool {
@@ -1871,16 +2056,13 @@ var _ = Describe("SnapshotEnvironmentBinding controller", func() {
 				return len(createdBinding.Status.GitOpsRepoConditions) > 0
 			}, timeout, interval).Should(BeTrue())
 
-			// Validate that the GitOps resources for the bound component(s) were generated, but not for any that explicitly had skipGitOpsResourceGeneration set
-			Expect(createdBinding.Status.GitOpsRepoConditions[0].Status).Should(Equal(metav1.ConditionFalse))
-			Expect(createdBinding.Status.GitOpsRepoConditions[0].Reason).Should(Equal("GenerateError"))
-			Expect(createdBinding.Status.GitOpsRepoConditions[0].Message).Should(ContainSubstring("unable to retrive git commit id"))
+			Expect(createdBinding.Status.GitOpsRepoConditions[0].Message).Should(Equal("GitOps repository sync successful"))
 
-			// Delete the specified Component resources
+			// Delete the specified HASComp resource
 			hasCompLookupKey := types.NamespacedName{Name: componentName, Namespace: HASAppNamespace}
 			deleteHASCompCR(hasCompLookupKey)
 
-			// Delete the specified App resource
+			// Delete the specified HASApp resource
 			hasAppLookupKey := types.NamespacedName{Name: applicationName, Namespace: HASAppNamespace}
 			deleteHASAppCR(hasAppLookupKey)
 
@@ -1893,7 +2075,129 @@ var _ = Describe("SnapshotEnvironmentBinding controller", func() {
 			// Delete the specified environment
 			stagingEnvLookupKey := types.NamespacedName{Name: environmentName, Namespace: HASAppNamespace}
 			deleteEnvironment(stagingEnvLookupKey)
+		})
+	})
 
+	Context("Create SnapshotEnvironmentBinding but GitOps job failed", func() {
+		It("Should report proper error message", func() {
+			ctx := context.Background()
+
+			applicationName := HASAppName + "14"
+			componentName := HASCompName + "14"
+			snapshotName := HASSnapshotName + "14"
+			bindingName := HASBindingName + "14"
+			environmentName := "staging" + "14"
+
+			replicas := int32(3)
+
+			createAndFetchSimpleApp(applicationName, HASAppNamespace, DisplayName, Description)
+
+			hasComp := createAndFetchSimpleComponent(componentName, HASAppNamespace, ComponentName, applicationName, SampleRepoLink, false, true)
+			// Make sure the devfile model was properly set in Component
+			Expect(hasComp.Status.Devfile).Should(Not(Equal("")))
+
+			appSnapshot := &appstudiov1alpha1.Snapshot{
+				TypeMeta: metav1.TypeMeta{
+					APIVersion: "appstudio.redhat.com/v1alpha1",
+					Kind:       "Snapshot",
+				},
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      snapshotName,
+					Namespace: HASAppNamespace,
+				},
+				Spec: appstudiov1alpha1.SnapshotSpec{
+					Application:        applicationName,
+					DisplayName:        "My Snapshot",
+					DisplayDescription: "My Snapshot",
+					Components: []appstudiov1alpha1.SnapshotComponent{
+						{
+							Name:           componentName,
+							ContainerImage: "image1",
+						},
+					},
+				},
+			}
+			Expect(k8sClient.Create(ctx, appSnapshot)).Should(Succeed())
+
+			appSnapshotLookupKey := types.NamespacedName{Name: snapshotName, Namespace: HASAppNamespace}
+			createdAppSnapshot := &appstudiov1alpha1.Snapshot{}
+			Eventually(func() bool {
+				k8sClient.Get(context.Background(), appSnapshotLookupKey, createdAppSnapshot)
+				return len(createdAppSnapshot.Spec.Components) > 0
+			}, timeout, interval).Should(BeTrue())
+
+			stagingEnv := &appstudiov1alpha1.Environment{
+				TypeMeta: metav1.TypeMeta{
+					APIVersion: "appstudio.redhat.com/v1alpha1",
+					Kind:       "Environment",
+				},
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      environmentName,
+					Namespace: HASAppNamespace,
+				},
+				Spec: appstudiov1alpha1.EnvironmentSpec{
+					Type:               "POC",
+					DisplayName:        DisplayName,
+					DeploymentStrategy: appstudiov1alpha1.DeploymentStrategy_AppStudioAutomated,
+					Configuration: appstudiov1alpha1.EnvironmentConfiguration{
+						Env: []appstudiov1alpha1.EnvVarPair{
+							{
+								Name:  "FOO",
+								Value: "BAR",
+							},
+						},
+					},
+				},
+			}
+			Expect(k8sClient.Create(ctx, stagingEnv)).Should(Succeed())
+
+			appBinding := &appstudiov1alpha1.SnapshotEnvironmentBinding{
+				TypeMeta: metav1.TypeMeta{
+					APIVersion: "appstudio.redhat.com/v1alpha1",
+					Kind:       "SnapshotEnvironmentBinding",
+				},
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      bindingName,
+					Namespace: HASAppNamespace,
+				},
+				Spec: appstudiov1alpha1.SnapshotEnvironmentBindingSpec{
+					Application: applicationName,
+					Environment: environmentName,
+					Snapshot:    snapshotName,
+					Components: []appstudiov1alpha1.BindingComponent{
+						{
+							Name: componentName,
+							Configuration: appstudiov1alpha1.BindingComponentConfiguration{
+								Replicas: int(replicas),
+								Env: []appstudiov1alpha1.EnvVarPair{
+									{
+										Name:  "FOO",
+										Value: "BAR",
+									},
+								},
+								Resources: &corev1.ResourceRequirements{
+									Limits: corev1.ResourceList{
+										corev1.ResourceCPU: resource.MustParse("1"),
+									},
+								},
+							},
+						},
+					},
+				},
+			}
+
+			Expect(k8sClient.Create(ctx, appBinding)).Should(Succeed())
+
+			getJobAndSetItToComplete(bindingName, "generate-overlays", false)
+
+			bindingLookupKey := types.NamespacedName{Name: bindingName, Namespace: HASAppNamespace}
+			createdBinding := &appstudiov1alpha1.SnapshotEnvironmentBinding{}
+			Eventually(func() bool {
+				k8sClient.Get(context.Background(), bindingLookupKey, createdBinding)
+				return len(createdBinding.Status.GitOpsRepoConditions) > 0
+			}, timeout, interval).Should(BeTrue())
+
+			Expect(createdBinding.Status.GitOpsRepoConditions[0].Message).Should(ContainSubstring("GitOps repository sync failed"))
 		})
 	})
 
@@ -1947,7 +2251,7 @@ func deleteEnvironment(environmentLookupKey types.NamespacedName) {
 	}, timeout, interval).ShouldNot(Succeed())
 }
 
-func createAndFetchSimpleComponent(name, namespace, componentName, application, gitRepo string, skipGitOps bool) appstudiov1alpha1.Component {
+func createAndFetchSimpleComponent(name, namespace, componentName, application, gitRepo string, skipGitOps bool, doLocalGitOpsGen bool) appstudiov1alpha1.Component {
 	comp := &appstudiov1alpha1.Component{
 		TypeMeta: metav1.TypeMeta{
 			APIVersion: "appstudio.redhat.com/v1alpha1",
@@ -1956,6 +2260,9 @@ func createAndFetchSimpleComponent(name, namespace, componentName, application, 
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      name,
 			Namespace: namespace,
+			Annotations: map[string]string{
+				"allowLocalGitopsGen": strconv.FormatBool(doLocalGitOpsGen),
+			},
 		},
 		Spec: appstudiov1alpha1.ComponentSpec{
 			ComponentName: componentName,

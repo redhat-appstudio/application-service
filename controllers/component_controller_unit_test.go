@@ -24,25 +24,27 @@ import (
 	"testing"
 	"time"
 
-	"github.com/redhat-appstudio/application-service/gitops"
-
 	"github.com/devfile/api/v2/pkg/apis/workspaces/v1alpha2"
 	"github.com/devfile/api/v2/pkg/attributes"
 	data "github.com/devfile/library/pkg/devfile/parser/data"
 	v2 "github.com/devfile/library/pkg/devfile/parser/data/v2"
 	appstudiov1alpha1 "github.com/redhat-appstudio/application-api/api/v1alpha1"
-	"github.com/redhat-appstudio/application-service/pkg/github"
+	"github.com/redhat-appstudio/application-service/gitops"
+	github "github.com/redhat-appstudio/application-service/pkg/github"
 	"github.com/redhat-appstudio/application-service/pkg/util/ioutils"
 	"github.com/spf13/afero"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
+	"sigs.k8s.io/controller-runtime/pkg/envtest"
 
 	devfileApi "github.com/devfile/api/v2/pkg/devfile"
 	batchv1 "k8s.io/api/batch/v1"
+	corev1 "k8s.io/api/core/v1"
 	k8sErrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
+	"k8s.io/client-go/kubernetes"
 	//+kubebuilder:scaffold:imports
 )
 
@@ -161,13 +163,26 @@ func TestGenerateGitops(t *testing.T) {
 
 	fakeClient := fake.NewClientBuilder().Build()
 
+	fakeTestEnv := &envtest.Environment{}
+
+	cfg, err := fakeTestEnv.Start()
+	if err != nil {
+		panic(err)
+	}
+	fakeClientSet, err := kubernetes.NewForConfig(cfg)
+	if err != nil {
+		panic(err)
+	}
+
 	r := &ComponentReconciler{
-		Log:          ctrl.Log.WithName("controllers").WithName("Component"),
-		GitHubOrg:    github.AppStudioAppDataOrg,
-		GitToken:     "fake-token",
-		Generator:    gitops.NewMockGenerator(),
-		Client:       fakeClient,
-		GitHubClient: github.GetMockedClient(),
+		Log:                ctrl.Log.WithName("controllers").WithName("Component"),
+		GitHubOrg:          github.AppStudioAppDataOrg,
+		GitToken:           "fake-token",
+		Generator:          gitops.NewMockGenerator(),
+		Client:             fakeClient,
+		GitHubClient:       github.GetMockedClient(),
+		GitOpsJobClientSet: fakeClientSet,
+		GitOpsJobNamespace: "default",
 	}
 
 	// Create a second reconciler for testing error scenarios
@@ -212,7 +227,7 @@ func TestGenerateGitops(t *testing.T) {
 				},
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "test-component",
-					Namespace: "test-namespace",
+					Namespace: "default",
 				},
 				Spec: componentSpec,
 				Status: appstudiov1alpha1.ComponentStatus{
@@ -236,7 +251,7 @@ func TestGenerateGitops(t *testing.T) {
 				},
 				ObjectMeta: metav1.ObjectMeta{
 					Name:        "test-component",
-					Namespace:   "test-namespace",
+					Namespace:   "default",
 					Annotations: nil,
 				},
 				Spec: componentSpec,
@@ -254,7 +269,7 @@ func TestGenerateGitops(t *testing.T) {
 				},
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "test-component",
-					Namespace: "test-namespace",
+					Namespace: "default",
 					Annotations: map[string]string{
 						"fake": "fake",
 					},
@@ -274,7 +289,7 @@ func TestGenerateGitops(t *testing.T) {
 				},
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "test-component",
-					Namespace: "test-namespace",
+					Namespace: "default",
 					Annotations: map[string]string{
 						"gitOpsRepository.url": "dsfdsf sdfsdf sdk;;;fsd ppz mne@ddsfj#$*(%",
 					},
@@ -294,7 +309,7 @@ func TestGenerateGitops(t *testing.T) {
 				},
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "test-component-only-gitops-url",
-					Namespace: "test-namespace",
+					Namespace: "default",
 				},
 				Spec: componentSpec,
 				Status: appstudiov1alpha1.ComponentStatus{
@@ -316,7 +331,7 @@ func TestGenerateGitops(t *testing.T) {
 				},
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "test-gitops-gen-fail",
-					Namespace: "test-namespace",
+					Namespace: "default",
 				},
 				Spec: componentSpec,
 				Status: appstudiov1alpha1.ComponentStatus{
@@ -338,7 +353,7 @@ func TestGenerateGitops(t *testing.T) {
 				},
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "test-git-error",
-					Namespace: "test-namespace",
+					Namespace: "default",
 				},
 				Spec: componentSpec,
 				Status: appstudiov1alpha1.ComponentStatus{
@@ -360,7 +375,7 @@ func TestGenerateGitops(t *testing.T) {
 				},
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "test-git-error-bad-repo",
-					Namespace: "test-namespace",
+					Namespace: "default",
 				},
 				Spec: componentSpec,
 				Status: appstudiov1alpha1.ComponentStatus{
@@ -379,7 +394,7 @@ func TestGenerateGitops(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			// If required, mock the completion or failure of the gitops generation job
 			if !tt.wantErr || tt.component.Name == "test-gitops-gen-fail" || strings.Contains(tt.component.Name, "test-git-error") {
-				go updateJobToCompleteOrPanic(fakeClient, tt.component.Name, tt.component.Namespace, "generate-base", !tt.wantErr)
+				go updateJobToCompleteOrPanic(fakeClient, fakeClientSet, tt.component.Name, tt.component.Namespace, "generate-base", !tt.wantErr)
 			}
 			err := tt.reconciler.generateGitops(ctx, ctrl.Request{}, tt.component)
 			if (err != nil) != tt.wantErr {
@@ -390,7 +405,7 @@ func TestGenerateGitops(t *testing.T) {
 
 }
 
-func updateJobToCompleteOrPanic(kubeclient client.Client, componentName string, componentNamespace string, operation string, isSuccess bool) {
+func updateJobToCompleteOrPanic(kubeclient client.Client, clientset *kubernetes.Clientset, componentName string, componentNamespace string, operation string, isSuccess bool) {
 	jobList := &batchv1.JobList{}
 	for stay, timeout := true, time.After(timeout); stay; {
 		err := kubeclient.List(context.Background(), jobList, &client.ListOptions{LabelSelector: labels.SelectorFromSet(labels.Set{
@@ -422,6 +437,32 @@ func updateJobToCompleteOrPanic(kubeclient client.Client, componentName string, 
 	if isSuccess || strings.Contains(componentName, "test-git-error") {
 		gitOpsJob.Status.CompletionTime = &metav1.Time{Time: time.Now()}
 	} else {
+		// Before setting the Job to failed, create a fake pod to get the logs from
+		jobPod := corev1.Pod{
+			TypeMeta: metav1.TypeMeta{
+				APIVersion: "v1",
+				Kind:       "Pod",
+			},
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      componentName,
+				Namespace: "default",
+				Labels: map[string]string{
+					"job-name": gitOpsJob.Name,
+				},
+			},
+			Spec: corev1.PodSpec{
+				Containers: []corev1.Container{
+					{
+						Name:  "container",
+						Image: "image:latest",
+					},
+				},
+			},
+		}
+		_, err := clientset.CoreV1().Pods("default").Create(context.Background(), &jobPod, metav1.CreateOptions{})
+		if err != nil {
+			panic(err)
+		}
 		gitOpsJob.Status.Failed = 5
 	}
 

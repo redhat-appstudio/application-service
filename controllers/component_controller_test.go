@@ -83,6 +83,9 @@ var _ = Describe("Component controller", func() {
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      componentName,
 					Namespace: HASAppNamespace,
+					Annotations: map[string]string{
+						"allowLocalGitopsGen": "true",
+					},
 				},
 				Spec: appstudiov1alpha1.ComponentSpec{
 					ComponentName: ComponentName,
@@ -188,6 +191,9 @@ var _ = Describe("Component controller", func() {
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      componentName,
 					Namespace: HASAppNamespace,
+					Annotations: map[string]string{
+						"allowLocalGitopsGen": "true",
+					},
 				},
 				Spec: appstudiov1alpha1.ComponentSpec{
 					ComponentName: ComponentName,
@@ -283,6 +289,9 @@ var _ = Describe("Component controller", func() {
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      componentName,
 					Namespace: HASAppNamespace,
+					Annotations: map[string]string{
+						"allowLocalGitopsGen": "true",
+					},
 				},
 				Spec: appstudiov1alpha1.ComponentSpec{
 					ComponentName: ComponentName,
@@ -338,6 +347,9 @@ var _ = Describe("Component controller", func() {
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      componentName,
 					Namespace: HASAppNamespace,
+					Annotations: map[string]string{
+						"allowLocalGitopsGen": "true",
+					},
 				},
 				Spec: appstudiov1alpha1.ComponentSpec{
 					ComponentName: ComponentName,
@@ -469,6 +481,9 @@ var _ = Describe("Component controller", func() {
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      componentName,
 					Namespace: HASAppNamespace,
+					Annotations: map[string]string{
+						"allowLocalGitopsGen": "true",
+					},
 				},
 				Spec: appstudiov1alpha1.ComponentSpec{
 					ComponentName:  ComponentName,
@@ -615,6 +630,9 @@ var _ = Describe("Component controller", func() {
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      componentName,
 					Namespace: HASAppNamespace,
+					Annotations: map[string]string{
+						"allowLocalGitopsGen": "true",
+					},
 				},
 				Spec: appstudiov1alpha1.ComponentSpec{
 					ComponentName:  ComponentName,
@@ -685,6 +703,9 @@ var _ = Describe("Component controller", func() {
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      componentName,
 					Namespace: HASAppNamespace,
+					Annotations: map[string]string{
+						"allowLocalGitopsGen": "true",
+					},
 				},
 				Spec: appstudiov1alpha1.ComponentSpec{
 					ComponentName:  ComponentName,
@@ -707,7 +728,7 @@ var _ = Describe("Component controller", func() {
 			createdHasComp := &appstudiov1alpha1.Component{}
 			Eventually(func() bool {
 				k8sClient.Get(context.Background(), hasCompLookupKey, createdHasComp)
-				return len(createdHasComp.Status.Conditions) > 0
+				return len(createdHasComp.Status.Conditions) > 0 && createdHasComp.Status.Devfile != ""
 			}, timeout, interval).Should(BeTrue())
 
 			// Remove the component's devfile and update a field in the spec to trigger a reconcile
@@ -783,6 +804,9 @@ var _ = Describe("Component controller", func() {
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      componentName,
 					Namespace: HASAppNamespace,
+					Annotations: map[string]string{
+						"allowLocalGitopsGen": "true",
+					},
 				},
 				Spec: appstudiov1alpha1.ComponentSpec{
 					ComponentName:  ComponentName,
@@ -844,6 +868,9 @@ var _ = Describe("Component controller", func() {
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      componentName,
 					Namespace: HASAppNamespace,
+					Annotations: map[string]string{
+						"allowLocalGitopsGen": "true",
+					},
 				},
 				Spec: appstudiov1alpha1.ComponentSpec{
 					ComponentName:  ComponentName,
@@ -935,6 +962,9 @@ var _ = Describe("Component controller", func() {
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      componentName,
 					Namespace: HASAppNamespace,
+					Annotations: map[string]string{
+						"allowLocalGitopsGen": "true",
+					},
 				},
 				Spec: appstudiov1alpha1.ComponentSpec{
 					ComponentName:  ComponentName,
@@ -987,6 +1017,9 @@ var _ = Describe("Component controller", func() {
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      componentName,
 					Namespace: HASAppNamespace,
+					Annotations: map[string]string{
+						"allowLocalGitopsGen": "true",
+					},
 				},
 				Spec: appstudiov1alpha1.ComponentSpec{
 					ComponentName: ComponentName,
@@ -1043,6 +1076,9 @@ var _ = Describe("Component controller", func() {
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      componentName,
 					Namespace: HASAppNamespace,
+					Annotations: map[string]string{
+						"allowLocalGitopsGen": "true",
+					},
 				},
 				Spec: appstudiov1alpha1.ComponentSpec{
 					ComponentName: ComponentName,
@@ -1101,6 +1137,9 @@ var _ = Describe("Component controller", func() {
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      componentName,
 					Namespace: HASAppNamespace,
+					Annotations: map[string]string{
+						"allowLocalGitopsGen": "true",
+					},
 				},
 				Spec: appstudiov1alpha1.ComponentSpec{
 					ComponentName: ComponentName,
@@ -1175,6 +1214,9 @@ var _ = Describe("Component controller", func() {
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      componentName,
 					Namespace: HASAppNamespace,
+					Annotations: map[string]string{
+						"allowLocalGitopsGen": "true",
+					},
 				},
 				Spec: appstudiov1alpha1.ComponentSpec{
 					ComponentName: ComponentName,
@@ -1247,6 +1289,9 @@ var _ = Describe("Component controller", func() {
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      componentName,
 					Namespace: HASAppNamespace,
+					Annotations: map[string]string{
+						"allowLocalGitopsGen": "true",
+					},
 				},
 				Spec: appstudiov1alpha1.ComponentSpec{
 					ComponentName: ComponentName,
@@ -1304,6 +1349,9 @@ var _ = Describe("Component controller", func() {
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      componentName,
 					Namespace: HASAppNamespace,
+					Annotations: map[string]string{
+						"allowLocalGitopsGen": "true",
+					},
 				},
 				Spec: appstudiov1alpha1.ComponentSpec{
 					ComponentName: ComponentName,
@@ -1360,6 +1408,9 @@ var _ = Describe("Component controller", func() {
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      componentName,
 					Namespace: HASAppNamespace,
+					Annotations: map[string]string{
+						"allowLocalGitopsGen": "true",
+					},
 				},
 				Spec: appstudiov1alpha1.ComponentSpec{
 					ComponentName:  ComponentName,
@@ -1421,6 +1472,9 @@ var _ = Describe("Component controller", func() {
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      componentName,
 					Namespace: HASAppNamespace,
+					Annotations: map[string]string{
+						"allowLocalGitopsGen": "true",
+					},
 				},
 				Spec: appstudiov1alpha1.ComponentSpec{
 					ComponentName: ComponentName,
@@ -1533,6 +1587,9 @@ var _ = Describe("Component controller", func() {
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      componentName,
 					Namespace: HASAppNamespace,
+					Annotations: map[string]string{
+						"allowLocalGitopsGen": "true",
+					},
 				},
 				Spec: appstudiov1alpha1.ComponentSpec{
 					ComponentName: ComponentName,
@@ -1605,6 +1662,9 @@ var _ = Describe("Component controller", func() {
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      componentName,
 					Namespace: HASAppNamespace,
+					Annotations: map[string]string{
+						"allowLocalGitopsGen": "true",
+					},
 				},
 				Spec: appstudiov1alpha1.ComponentSpec{
 					ComponentName: ComponentName,
@@ -1714,6 +1774,9 @@ var _ = Describe("Component controller", func() {
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      componentName,
 					Namespace: HASAppNamespace,
+					Annotations: map[string]string{
+						"allowLocalGitopsGen": "true",
+					},
 				},
 				Spec: appstudiov1alpha1.ComponentSpec{
 					ComponentName: ComponentName,
@@ -1990,7 +2053,7 @@ func deleteHASCompCR(hasCompLookupKey types.NamespacedName) {
 // getJobAndSetItToComplete finds the Kubernetes job for the component and sets its completion time in the status
 // allowing HAS to see it as completed
 // Since these tests are running on a mock Kubernetes cluster, we must manually trigger its completion, as a Pod will never get created
-func getJobAndSetItToComplete(componentName string, operation string) {
+func getJobAndSetItToComplete(componentName string, operation string, isSucceeded bool) {
 	jobList := &batchv1.JobList{}
 	Eventually(func() bool {
 		k8sClient.List(ctx, jobList, &client.ListOptions{LabelSelector: labels.SelectorFromSet(labels.Set{
@@ -2002,7 +2065,12 @@ func getJobAndSetItToComplete(componentName string, operation string) {
 
 	gitOpsJob := jobList.Items[0]
 
-	gitOpsJob.Status.CompletionTime = &metav1.Time{Time: time.Now()}
+	if isSucceeded {
+		gitOpsJob.Status.CompletionTime = &metav1.Time{Time: time.Now()}
+	} else {
+		// If we're setting the job to failed, set the failure count to 5, as that's the
+		gitOpsJob.Status.Failed = 5
+	}
 
 	Eventually(func() error {
 		return k8sClient.Status().Update(ctx, &gitOpsJob)

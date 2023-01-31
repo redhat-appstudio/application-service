@@ -3,13 +3,17 @@ package gitopsjob
 import (
 	"context"
 	"fmt"
+	"io"
 	"time"
 
+	"github.com/go-logr/logr"
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
+
 	k8sErrors "k8s.io/apimachinery/pkg/api/errors"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/client-go/kubernetes"
 	ctrlclient "sigs.k8s.io/controller-runtime/pkg/client"
 )
 
@@ -42,6 +46,8 @@ func (o GitOpsOperation) String() string {
 
 // CreateGitOpsJob creates a Kubernetes Job to run
 func CreateGitOpsJob(ctx context.Context, client ctrlclient.Client, gitToken, jobName, jobNamespace, resourceNamespace string, gitopsConfig GitOpsJobConfig) error {
+	backOffLimit := int32(5)
+
 	gitopsJob := batchv1.Job{
 		TypeMeta: v1.TypeMeta{
 			APIVersion: "batch/v1",
@@ -56,6 +62,7 @@ func CreateGitOpsJob(ctx context.Context, client ctrlclient.Client, gitToken, jo
 			},
 		},
 		Spec: batchv1.JobSpec{
+			BackoffLimit: &backOffLimit,
 			Template: corev1.PodTemplateSpec{
 				Spec: corev1.PodSpec{
 					ServiceAccountName: "application-service-controller-manager",
@@ -115,7 +122,7 @@ func CreateGitOpsJob(ctx context.Context, client ctrlclient.Client, gitToken, jo
 
 // WaitForJob waits for the given Kubernetes job to complete.
 // If it errors out, or the given timeout is reached, an error is returned
-func WaitForJob(ctx context.Context, client ctrlclient.Client, jobName string, jobNamespace string, timeout time.Duration) error {
+func WaitForJob(log logr.Logger, ctx context.Context, client ctrlclient.Client, clientset kubernetes.Interface, jobName string, jobNamespace string, timeout time.Duration) error {
 	var job batchv1.Job
 	var err error
 	for stay, timeout := true, time.After(timeout); stay; {
@@ -133,7 +140,14 @@ func WaitForJob(ctx context.Context, client ctrlclient.Client, jobName string, j
 			return nil
 		}
 		if job.Status.Failed >= 5 {
-			return fmt.Errorf("job failed to complete due to error")
+			// Attempt to get the Pod logs
+			errMsg, err := GetPodLogs(context.Background(), client, clientset, jobName, jobNamespace)
+			if err != nil {
+				log.Error(err, "unable to retrieve pod logs for job "+jobName)
+				return fmt.Errorf("gitops generation job failed")
+			} else {
+				return fmt.Errorf(errMsg)
+			}
 		}
 		time.Sleep(1 * time.Second)
 		select {
@@ -149,7 +163,6 @@ func WaitForJob(ctx context.Context, client ctrlclient.Client, jobName string, j
 		return err
 	}
 
-	// ToDo: Capture pod logs
 	return fmt.Errorf("gitops generation job did not complete in time")
 
 }
@@ -167,4 +180,39 @@ func DeleteJob(ctx context.Context, client ctrlclient.Client, jobName string, jo
 		},
 	}
 	return client.Delete(context.Background(), &job, &ctrlclient.DeleteOptions{})
+}
+
+func GetPodLogs(ctx context.Context, client ctrlclient.Client, clientset kubernetes.Interface, jobName string, jobNamespace string) (string, error) {
+	jobPodList, err := clientset.CoreV1().Pods(jobNamespace).List(ctx, v1.ListOptions{LabelSelector: "job-name=" + jobName})
+	if len(jobPodList.Items) == 0 || err != nil {
+		return "", fmt.Errorf("unable to find pod associated with the Kubernetes job %q in namespace %q", jobName, jobNamespace)
+	}
+
+	// Retrieve the pod name
+	pod := jobPodList.Items[0]
+	podName := pod.Name
+
+	podLogRequest := clientset.CoreV1().Pods(jobNamespace).GetLogs(podName, &corev1.PodLogOptions{})
+	stream, err := podLogRequest.Stream(context.TODO())
+	if err != nil {
+		return "", err
+	}
+	defer stream.Close()
+	var logs string
+	for {
+		buf := make([]byte, 2000)
+		numBytes, err := stream.Read(buf)
+		if numBytes == 0 {
+			break
+		}
+		if err == io.EOF {
+			break
+		}
+		if err != nil {
+			return "", err
+		}
+		logs = logs + string(buf[:numBytes])
+	}
+	return logs, nil
+
 }

@@ -38,6 +38,7 @@ import (
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/client-go/kubernetes"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/builder"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -64,6 +65,8 @@ type SnapshotEnvironmentBindingReconciler struct {
 
 	// AllowLocalGitopsGen allows for certain resources to generate gitops resources locally, *if* an annotation is present on the resource. Defaults to false
 	AllowLocalGitopsGen bool
+
+	GitOpsJobClientSet *kubernetes.Clientset
 }
 
 //+kubebuilder:rbac:groups=appstudio.redhat.com,resources=snapshotenvironmentbindings,verbs=get;list;watch;create;update;patch;delete
@@ -185,7 +188,7 @@ func (r *SnapshotEnvironmentBindingReconciler) Reconcile(ctx context.Context, re
 		}
 
 		// Wait for the Job to succeed
-		err = gitopsjob.WaitForJob(ctx, r.Client, jobName, jobNamespace, 5*time.Minute)
+		err = gitopsjob.WaitForJob(log, context.Background(), r.Client, r.GitOpsJobClientSet, jobName, jobNamespace, 5*time.Minute)
 		if err != nil {
 			r.SetConditionAndUpdateCR(ctx, req, &appSnapshotEnvBinding, originalSEB, err)
 			return ctrl.Result{}, err

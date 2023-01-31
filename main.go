@@ -31,6 +31,7 @@ import (
 	"go.uber.org/zap/zapcore"
 	"golang.org/x/oauth2"
 	"k8s.io/client-go/discovery"
+	"k8s.io/client-go/kubernetes"
 	_ "k8s.io/client-go/plugin/pkg/client/auth"
 	"k8s.io/client-go/rest"
 
@@ -110,8 +111,13 @@ func main() {
 		}()
 	}
 
+	clientset, err := kubernetes.NewForConfig(restConfig)
+	if err != nil {
+		setupLog.Error(err, "unable to setup clientset")
+		os.Exit(1)
+	}
+
 	var mgr ctrl.Manager
-	var err error
 	options := ctrl.Options{
 		Scheme:                 scheme,
 		MetricsBindAddress:     metricsAddr,
@@ -199,6 +205,7 @@ func main() {
 		SPIClient:          spi.SPIClient{},
 		GitHubClient:       client,
 		GitOpsJobNamespace: "application-service-system",
+		GitOpsJobClientSet: clientset,
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "Component")
 		os.Exit(1)
@@ -237,6 +244,7 @@ func main() {
 		GitToken:           ghToken,
 		GitHubClient:       client,
 		GitOpsJobNamespace: "application-service-system",
+		GitOpsJobClientSet: clientset,
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "SnapshotEnvironmentBinding")
 		os.Exit(1)

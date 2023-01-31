@@ -21,12 +21,11 @@ import (
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
-	"sigs.k8s.io/yaml"
-
 	appstudiov1alpha1 "github.com/redhat-appstudio/application-api/api/v1alpha1"
 	devfile "github.com/redhat-appstudio/application-service/pkg/devfile"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
+	"sigs.k8s.io/yaml"
 )
 
 var _ = Describe("Application controller finalizer counter tests", func() {
@@ -73,7 +72,7 @@ var _ = Describe("Application controller finalizer counter tests", func() {
 			Expect(k8sClient.Create(ctx, hasComp)).Should(Succeed())
 
 			// Wait for the GitOps job to appear and trigger its completion
-			//getJobAndSetItToComplete(componentName, "generate-base")
+			getJobAndSetItToComplete(componentName, "generate-base", true)
 
 			// Look up the has app resource that was created.
 			// num(conditions) may still be < 1 on the first try, so retry until at least _some_ condition is set
@@ -163,7 +162,7 @@ var _ = Describe("Application controller finalizer counter tests", func() {
 			Expect(k8sClient.Create(ctx, hasComp)).Should(Succeed())
 
 			// Wait for the GitOps job to appear and trigger its completion
-			//getJobAndSetItToComplete(componentName, "generate-base")
+			getJobAndSetItToComplete(componentName, "generate-base", true)
 
 			// Look up the has app resource that was created.
 			// num(conditions) may still be < 1 on the first try, so retry until at least _some_ condition is set
@@ -263,7 +262,7 @@ var _ = Describe("Application controller finalizer counter tests", func() {
 			Expect(k8sClient.Create(ctx, hasComp)).Should(Succeed())
 
 			// Wait for the GitOps job to appear and trigger its completion
-			//getJobAndSetItToComplete(componentName, "generate-base")
+			getJobAndSetItToComplete(componentName, "generate-base", true)
 
 			// Look up the has app resource that was created.
 			// num(conditions) may still be < 1 on the first try, so retry until at least _some_ condition is set
@@ -353,7 +352,7 @@ var _ = Describe("Application controller finalizer counter tests", func() {
 			Expect(k8sClient.Create(ctx, hasComp)).Should(Succeed())
 
 			// Wait for the GitOps job to appear and trigger its completion
-			//getJobAndSetItToComplete(componentName, "generate-base")
+			getJobAndSetItToComplete(componentName, "generate-base", true)
 
 			// Look up the has app resource that was created.
 			// num(conditions) may still be < 1 on the first try, so retry until at least _some_ condition is set

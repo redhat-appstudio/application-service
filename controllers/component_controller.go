@@ -28,6 +28,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/util/workqueue"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/builder"
@@ -72,6 +73,7 @@ type ComponentReconciler struct {
 	SPIClient          spi.SPI
 	GitHubClient       *gh.Client
 	GitOpsJobNamespace string
+	GitOpsJobClientSet *kubernetes.Clientset
 
 	// DoLocalGitOpsGen determines whether or not to only spawn off gitops generation jobs, or to run them locally inside HAS. Defaults to false
 	DoLocalGitOpsGen bool
@@ -478,7 +480,7 @@ func (r *ComponentReconciler) generateGitops(ctx context.Context, req ctrl.Reque
 		}
 
 		// Wait for the job to succeed, error out if the 5 min timeout is reached
-		err = gitopsjob.WaitForJob(ctx, r.Client, jobName, jobNamespace, 5*time.Minute)
+		err = gitopsjob.WaitForJob(log, context.Background(), r.Client, r.GitOpsJobClientSet, jobName, jobNamespace, 5*time.Minute)
 		if err != nil {
 			return r.CleanUpJobAndReturn(log, jobName, jobNamespace, err)
 		}

@@ -21,11 +21,13 @@ import (
 	"go/build"
 	"path/filepath"
 	"testing"
+	"time"
 
 	"github.com/redhat-appstudio/application-service/gitops"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
+	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/kubernetes/scheme"
 
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -83,6 +85,9 @@ var _ = BeforeSuite(func() {
 	Expect(err).NotTo(HaveOccurred())
 	Expect(cfg).NotTo(BeNil())
 
+	ClientSet, err := kubernetes.NewForConfig(cfg)
+	Expect(err).NotTo(HaveOccurred())
+
 	err = appstudiov1alpha1.AddToScheme(scheme.Scheme)
 	Expect(err).NotTo(HaveOccurred())
 
@@ -111,15 +116,16 @@ var _ = BeforeSuite(func() {
 	Expect(err).ToNot(HaveOccurred())
 
 	err = (&ComponentReconciler{
-		Client:           k8sManager.GetClient(),
-		Scheme:           k8sManager.GetScheme(),
-		Log:              ctrl.Log.WithName("controllers").WithName("Component"),
-		Generator:        gitops.NewMockGenerator(),
-		AppFS:            ioutils.NewMemoryFilesystem(),
-		ImageRepository:  "docker.io/foo/customized",
-		SPIClient:        spi.MockSPIClient{},
-		GitHubClient:     github.GetMockedClient(),
-		DoLocalGitOpsGen: true,
+		Client:              k8sManager.GetClient(),
+		Scheme:              k8sManager.GetScheme(),
+		Log:                 ctrl.Log.WithName("controllers").WithName("Component"),
+		Generator:           gitops.NewMockGenerator(),
+		AppFS:               ioutils.NewMemoryFilesystem(),
+		ImageRepository:     "docker.io/foo/customized",
+		SPIClient:           spi.MockSPIClient{},
+		GitHubClient:        github.GetMockedClient(),
+		AllowLocalGitopsGen: true,
+		GitOpsJobClientSet:  ClientSet,
 	}).SetupWithManager(k8sManager)
 	Expect(err).ToNot(HaveOccurred())
 
@@ -135,13 +141,14 @@ var _ = BeforeSuite(func() {
 	Expect(err).ToNot(HaveOccurred())
 
 	err = (&SnapshotEnvironmentBindingReconciler{
-		Client:           k8sManager.GetClient(),
-		Scheme:           k8sManager.GetScheme(),
-		Log:              ctrl.Log.WithName("controllers").WithName("SnapshotEnvironmentBinding"),
-		Generator:        gitops.NewMockGenerator(),
-		AppFS:            ioutils.NewMemoryFilesystem(),
-		GitHubClient:     github.GetMockedClient(),
-		DoLocalGitOpsGen: true,
+		Client:              k8sManager.GetClient(),
+		Scheme:              k8sManager.GetScheme(),
+		Log:                 ctrl.Log.WithName("controllers").WithName("SnapshotEnvironmentBinding"),
+		Generator:           gitops.NewMockGenerator(),
+		AppFS:               ioutils.NewMemoryFilesystem(),
+		GitHubClient:        github.GetMockedClient(),
+		AllowLocalGitopsGen: true,
+		GitOpsJobClientSet:  ClientSet,
 	}).SetupWithManager(k8sManager)
 	Expect(err).ToNot(HaveOccurred())
 
@@ -156,5 +163,9 @@ var _ = AfterSuite(func() {
 	cancel()
 	By("tearing down the test environment")
 	err := testEnv.Stop()
+	if err != nil {
+		time.Sleep(4 * time.Second)
+	}
+	err = testEnv.Stop()
 	Expect(err).NotTo(HaveOccurred())
 })
