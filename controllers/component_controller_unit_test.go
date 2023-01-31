@@ -1,5 +1,5 @@
 /*
-Copyright 2021-2022 Red Hat, Inc.
+Copyright 2021-2023 Red Hat, Inc.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -24,12 +24,18 @@ import (
 	"testing"
 	"time"
 
+	"github.com/golang/mock/gomock"
+	"github.com/redhat-appstudio/application-service/gitops"
+
 	"github.com/devfile/api/v2/pkg/apis/workspaces/v1alpha2"
 	"github.com/devfile/api/v2/pkg/attributes"
-	data "github.com/devfile/library/pkg/devfile/parser/data"
-	v2 "github.com/devfile/library/pkg/devfile/parser/data/v2"
+	data "github.com/devfile/library/v2/pkg/devfile/parser/data"
+	v2 "github.com/devfile/library/v2/pkg/devfile/parser/data/v2"
+	"github.com/devfile/library/v2/pkg/devfile/parser/data/v2/common"
 	appstudiov1alpha1 "github.com/redhat-appstudio/application-api/api/v1alpha1"
 	"github.com/redhat-appstudio/application-service/gitops"
+	devfile "github.com/redhat-appstudio/application-service/pkg/devfile"
+	"github.com/redhat-appstudio/application-service/pkg/github"
 	github "github.com/redhat-appstudio/application-service/pkg/github"
 	"github.com/redhat-appstudio/application-service/pkg/util/ioutils"
 	"github.com/spf13/afero"
@@ -37,6 +43,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 	"sigs.k8s.io/controller-runtime/pkg/envtest"
+	"sigs.k8s.io/yaml"
 
 	devfileApi "github.com/devfile/api/v2/pkg/devfile"
 	batchv1 "k8s.io/api/batch/v1"
@@ -188,14 +195,6 @@ func TestGenerateGitops(t *testing.T) {
 	// Create a second reconciler for testing error scenarios
 	errGen := gitops.NewMockGenerator()
 	errGen.Errors.Push(errors.New("Fatal error"))
-	// errReconciler := &ComponentReconciler{
-	// 	Log:          ctrl.Log.WithName("controllers").WithName("Component"),
-	// 	GitHubOrg:    github.AppStudioAppDataOrg,
-	// 	GitToken:     "fake-token",
-	// 	Generator:    errGen,
-	// 	Client:       fakeClient,
-	// 	GitHubClient: github.GetMockedClient(),
-	// }
 
 	componentSpec := appstudiov1alpha1.ComponentSpec{
 		ComponentName: "test-component",
@@ -204,6 +203,136 @@ func TestGenerateGitops(t *testing.T) {
 			ComponentSourceUnion: appstudiov1alpha1.ComponentSourceUnion{
 				GitSource: &appstudiov1alpha1.GitSource{
 					URL: "git@github.com:testing/testing.git",
+				},
+			},
+		},
+	}
+
+	componentNames := []string{"testcomp0", "testcomp1", "testcomp2"}
+	isDefault := true
+	notDefault := false
+
+	applyCommands := []v1alpha2.Command{
+		{
+			Id: "apply0",
+			CommandUnion: v1alpha2.CommandUnion{
+				Apply: &v1alpha2.ApplyCommand{
+					Component: componentNames[0],
+					LabeledCommand: v1alpha2.LabeledCommand{
+						BaseCommand: v1alpha2.BaseCommand{
+							Group: &v1alpha2.CommandGroup{
+								Kind:      v1alpha2.DeployCommandGroupKind,
+								IsDefault: &isDefault,
+							},
+						},
+					},
+				},
+			},
+		},
+		{
+			Id: "apply1",
+			CommandUnion: v1alpha2.CommandUnion{
+				Apply: &v1alpha2.ApplyCommand{
+					Component: componentNames[1],
+				},
+			},
+		},
+		{
+			Id: "apply2",
+			CommandUnion: v1alpha2.CommandUnion{
+				Apply: &v1alpha2.ApplyCommand{
+					Component: componentNames[2],
+				},
+			},
+		},
+	}
+	deployCommands := []v1alpha2.Command{
+		{
+			Id: "applynotdefault",
+			CommandUnion: v1alpha2.CommandUnion{
+				Apply: &v1alpha2.ApplyCommand{
+					Component: componentNames[0],
+					LabeledCommand: v1alpha2.LabeledCommand{
+						BaseCommand: v1alpha2.BaseCommand{
+							Group: &v1alpha2.CommandGroup{
+								Kind:      v1alpha2.DeployCommandGroupKind,
+								IsDefault: &notDefault,
+							},
+						},
+					},
+				},
+			},
+		},
+		{
+			Id: "apply0",
+			CommandUnion: v1alpha2.CommandUnion{
+				Apply: &v1alpha2.ApplyCommand{
+					Component: componentNames[0],
+					LabeledCommand: v1alpha2.LabeledCommand{
+						BaseCommand: v1alpha2.BaseCommand{
+							Group: &v1alpha2.CommandGroup{
+								Kind: v1alpha2.DeployCommandGroupKind,
+							},
+						},
+					},
+				},
+			},
+		},
+		{
+			Id: "composite1",
+			CommandUnion: v1alpha2.CommandUnion{
+				Composite: &v1alpha2.CompositeCommand{
+					Commands: []string{"apply0", "apply2"},
+					LabeledCommand: v1alpha2.LabeledCommand{
+						BaseCommand: v1alpha2.BaseCommand{
+							Group: &v1alpha2.CommandGroup{
+								Kind:      v1alpha2.DeployCommandGroupKind,
+								IsDefault: &isDefault,
+							},
+						},
+					},
+				},
+			},
+		},
+		{
+			Id: "compositenotdefault",
+			CommandUnion: v1alpha2.CommandUnion{
+				Composite: &v1alpha2.CompositeCommand{
+					Commands: []string{"apply0", "apply2"},
+					LabeledCommand: v1alpha2.LabeledCommand{
+						BaseCommand: v1alpha2.BaseCommand{
+							Group: &v1alpha2.CommandGroup{
+								Kind:      v1alpha2.DeployCommandGroupKind,
+								IsDefault: &notDefault,
+							},
+						},
+					},
+				},
+			},
+		},
+	}
+
+	compName := "component"
+	applicationName := "application"
+	namespace := "namespace"
+	image := "image"
+
+	deploymentTemplate := devfile.GenerateDeploymentTemplate(compName, applicationName, namespace, image)
+	deploymentTemplateBytes, err := yaml.Marshal(deploymentTemplate)
+	if err != nil {
+		t.Errorf("TestConvertImageComponentToDevfile() unexpected error: %v", err)
+		return
+	}
+	kubernetesComponents := []v1alpha2.Component{
+		{
+			Name: "kubernetes-deploy",
+			ComponentUnion: v1alpha2.ComponentUnion{
+				Kubernetes: &v1alpha2.KubernetesComponent{
+					K8sLikeComponent: v1alpha2.K8sLikeComponent{
+						K8sLikeComponentLocation: v1alpha2.K8sLikeComponentLocation{
+							Inlined: string(deploymentTemplateBytes),
+						},
+					},
 				},
 			},
 		},
@@ -392,11 +521,41 @@ func TestGenerateGitops(t *testing.T) {
 
 		tt.reconciler.AppFS = tt.fs
 		t.Run(tt.name, func(t *testing.T) {
+			goMockCtrl := gomock.NewController(t)
+			defer goMockCtrl.Finish()
+			mockDevfileData := data.NewMockDevfileData(goMockCtrl)
+
+			// set up the mock data
+			deployCommandFilter := common.DevfileOptions{
+				CommandOptions: common.CommandOptions{
+					CommandGroupKind: v1alpha2.DeployCommandGroupKind,
+				},
+			}
+			mockDeployCommands := mockDevfileData.EXPECT().GetCommands(deployCommandFilter)
+			mockDeployCommands.Return(deployCommands, nil).AnyTimes()
+
+			applyCommandFilter := common.DevfileOptions{
+				CommandOptions: common.CommandOptions{
+					CommandType: v1alpha2.ApplyCommandType,
+				},
+			}
+			mockApplyCommands := mockDevfileData.EXPECT().GetCommands(applyCommandFilter)
+			mockApplyCommands.Return(applyCommands, nil).AnyTimes()
+
+			kubernetesComponentFilter := common.DevfileOptions{
+				ComponentOptions: common.ComponentOptions{
+					ComponentType: v1alpha2.KubernetesComponentType,
+				},
+			}
+			mockKubernetesComponents := mockDevfileData.EXPECT().GetComponents(kubernetesComponentFilter)
+			mockKubernetesComponents.Return(kubernetesComponents, nil).AnyTimes()
+
 			// If required, mock the completion or failure of the gitops generation job
 			if !tt.wantErr || tt.component.Name == "test-gitops-gen-fail" || strings.Contains(tt.component.Name, "test-git-error") {
 				go updateJobToCompleteOrPanic(fakeClient, fakeClientSet, tt.component.Name, tt.component.Namespace, "generate-base", !tt.wantErr)
 			}
-			err := tt.reconciler.generateGitops(ctx, ctrl.Request{}, tt.component)
+
+			err := tt.reconciler.generateGitops(ctx, ctrl.Request{}, tt.component, mockDevfileData)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("TestGenerateGitops() unexpected error: %v", err)
 			}

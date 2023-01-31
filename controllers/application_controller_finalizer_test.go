@@ -1,5 +1,5 @@
 /*
-Copyright 2021 Red Hat, Inc.
+Copyright 2021-2023 Red Hat, Inc.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -55,7 +55,10 @@ var _ = Describe("Application controller finalizer counter tests", func() {
 		It("Should delete successfully even when finalizer fails after 5 times", func() {
 			// Create a simple Application CR and get its devfile
 			fetchedApp := createAndFetchSimpleApp(AppName, AppNamespace, DisplayName, Description)
-			curDevfile, err := devfile.ParseDevfileModel(fetchedApp.Status.Devfile)
+			devfileSrc := devfile.DevfileSrc{
+				Data: fetchedApp.Status.Devfile,
+			}
+			curDevfile, err := devfile.ParseDevfile(devfileSrc)
 
 			// Make sure the devfile model was properly set
 			Expect(fetchedApp.Status.Devfile).Should(Not(Equal("")))
@@ -95,7 +98,10 @@ var _ = Describe("Application controller finalizer counter tests", func() {
 			// Create an Application resource and get its devfile
 			fetchedHasApp := createAndFetchSimpleApp(AppName, AppNamespace, DisplayName, Description)
 			Expect(fetchedHasApp.Status.Devfile).Should(Not(Equal("")))
-			curDevfile, err := devfile.ParseDevfileModel(fetchedHasApp.Status.Devfile)
+			devfileSrc := devfile.DevfileSrc{
+				Data: fetchedHasApp.Status.Devfile,
+			}
+			curDevfile, err := devfile.ParseDevfile(devfileSrc)
 			Expect(err).ToNot(HaveOccurred())
 
 			// Set an invalid gitops URL and update the status of the resource

@@ -1,5 +1,5 @@
 /*
-Copyright 2021 Red Hat, Inc.
+Copyright 2021-2023 Red Hat, Inc.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -130,11 +130,17 @@ var _ = Describe("Component controller", func() {
 			Expect(createdHasApp.Status.Devfile).Should(Not(Equal("")))
 
 			// Check the Component devfile
-			_, err := devfile.ParseDevfileModel(createdHasComp.Status.Devfile)
+			devfileSrc := devfilePkg.DevfileSrc{
+				Data: createdHasComp.Status.Devfile,
+			}
+			_, err := devfilePkg.ParseDevfile(devfileSrc)
 			Expect(err).Should(Not(HaveOccurred()))
 
 			// Check the HAS Application devfile
-			hasAppDevfile, err := devfile.ParseDevfileModel(createdHasApp.Status.Devfile)
+			devfileSrc = devfilePkg.DevfileSrc{
+				Data: createdHasApp.Status.Devfile,
+			}
+			hasAppDevfile, err := devfilePkg.ParseDevfile(devfileSrc)
 			Expect(err).Should(Not(HaveOccurred()))
 
 			// gitOpsRepo and appModelRepo should both be set
@@ -233,14 +239,20 @@ var _ = Describe("Component controller", func() {
 			Expect(createdHasApp.Status.Devfile).Should(Not(Equal("")))
 
 			// Check the Component devfile
-			hasCompDevfile, err := devfile.ParseDevfileModel(createdHasComp.Status.Devfile)
+			devfileSrc := devfilePkg.DevfileSrc{
+				Data: createdHasComp.Status.Devfile,
+			}
+			hasCompDevfile, err := devfilePkg.ParseDevfile(devfileSrc)
 			Expect(err).Should(Not(HaveOccurred()))
 
 			// Check if its Liberty
 			Expect(string(hasCompDevfile.GetMetadata().DisplayName)).Should(ContainSubstring("Liberty"))
 
 			// Check the HAS Application devfile
-			hasAppDevfile, err := devfile.ParseDevfileModel(createdHasApp.Status.Devfile)
+			devfileSrc = devfilePkg.DevfileSrc{
+				Data: createdHasApp.Status.Devfile,
+			}
+			hasAppDevfile, err := devfilePkg.ParseDevfile(devfileSrc)
 			Expect(err).Should(Not(HaveOccurred()))
 
 			// gitOpsRepo and appModelRepo should both be set
@@ -530,7 +542,10 @@ var _ = Describe("Component controller", func() {
 			Expect(createdHasApp.Status.Devfile).Should(Not(Equal("")))
 
 			// Check the Component devfile
-			hasCompDevfile, err := devfile.ParseDevfileModel(createdHasComp.Status.Devfile)
+			devfileSrc := devfilePkg.DevfileSrc{
+				Data: createdHasComp.Status.Devfile,
+			}
+			hasCompDevfile, err := devfilePkg.ParseDevfile(devfileSrc)
 			Expect(err).Should(Not(HaveOccurred()))
 
 			checklist := updateChecklist{
@@ -544,7 +559,10 @@ var _ = Describe("Component controller", func() {
 			verifyHASComponentUpdates(hasCompDevfile, checklist, nil)
 
 			// Check the HAS Application devfile
-			hasAppDevfile, err := devfile.ParseDevfileModel(createdHasApp.Status.Devfile)
+			devfileSrc = devfilePkg.DevfileSrc{
+				Data: createdHasApp.Status.Devfile,
+			}
+			hasAppDevfile, err := devfilePkg.ParseDevfile(devfileSrc)
 			Expect(err).Should(Not(HaveOccurred()))
 
 			// gitOpsRepo and appModelRepo should both be set
@@ -592,7 +610,10 @@ var _ = Describe("Component controller", func() {
 			Expect(updatedHasComp.Status.Devfile).Should(Not(Equal("")))
 
 			// Check the Component updated devfile
-			hasCompUpdatedDevfile, err := devfile.ParseDevfileModel(updatedHasComp.Status.Devfile)
+			devfileSrc = devfilePkg.DevfileSrc{
+				Data: updatedHasComp.Status.Devfile,
+			}
+			hasCompUpdatedDevfile, err := devfilePkg.ParseDevfile(devfileSrc)
 			Expect(err).Should(Not(HaveOccurred()))
 
 			checklist = updateChecklist{
@@ -672,7 +693,10 @@ var _ = Describe("Component controller", func() {
 			Expect(createdHasApp.Status.Devfile).Should(Not(Equal("")))
 
 			// Check the Component devfile
-			_, err := devfile.ParseDevfileModel(createdHasComp.Status.Devfile)
+			devfileSrc := devfilePkg.DevfileSrc{
+				Data: createdHasComp.Status.Devfile,
+			}
+			_, err := devfilePkg.ParseDevfile(devfileSrc)
 			Expect(err).Should(Not(HaveOccurred()))
 
 			// Make sure the component's built image is included in the status
@@ -932,7 +956,10 @@ var _ = Describe("Component controller", func() {
 			componentName := HASCompName + "10"
 
 			hasApp := createAndFetchSimpleApp(applicationName, HASAppNamespace, DisplayName, Description)
-			curDevfile, err := devfile.ParseDevfileModel(hasApp.Status.Devfile)
+			devfileSrc := devfilePkg.DevfileSrc{
+				Data: hasApp.Status.Devfile,
+			}
+			curDevfile, err := devfilePkg.ParseDevfile(devfileSrc)
 			Expect(err).ToNot(HaveOccurred())
 
 			// Remove the gitops URL and update the status of the resource
@@ -1107,7 +1134,7 @@ var _ = Describe("Component controller", func() {
 			// Make sure the devfile model was properly set in Component
 			errCondition := createdHasComp.Status.Conditions[len(createdHasComp.Status.Conditions)-1]
 			Expect(errCondition.Status).Should(Equal(metav1.ConditionFalse))
-			Expect(errCondition.Message).Should(ContainSubstring("Component create failed: schemaVersion not present in devfile"))
+			Expect(errCondition.Message).Should(ContainSubstring("schemaVersion not present in devfile"))
 
 			hasAppLookupKey := types.NamespacedName{Name: applicationName, Namespace: HASAppNamespace}
 
@@ -1515,7 +1542,10 @@ var _ = Describe("Component controller", func() {
 			Expect(createdHasApp.Status.Devfile).Should(Not(Equal("")))
 
 			// Check the Component devfile
-			hasCompDevfile, err := devfile.ParseDevfileModel(createdHasComp.Status.Devfile)
+			devfileSrc := devfilePkg.DevfileSrc{
+				Data: createdHasComp.Status.Devfile,
+			}
+			hasCompDevfile, err := devfilePkg.ParseDevfile(devfileSrc)
 			Expect(err).Should(Not(HaveOccurred()))
 
 			dockerfileComponents, err := hasCompDevfile.GetComponents(common.DevfileOptions{})
@@ -1523,17 +1553,20 @@ var _ = Describe("Component controller", func() {
 			Expect(len(dockerfileComponents)).Should(Equal(2))
 
 			for _, component := range dockerfileComponents {
-				Expect(component.Name).Should(BeElementOf([]string{"dockerfile-build", "kubernetes"}))
+				Expect(component.Name).Should(BeElementOf([]string{"dockerfile-build", "kubernetes-deploy"}))
 				if component.Image != nil && component.Image.Dockerfile != nil {
 					Expect(component.Image.Dockerfile.Uri).Should(Equal(hasComp.Spec.Source.GitSource.DockerfileURL))
 					Expect(component.Image.Dockerfile.BuildContext).Should(Equal(hasComp.Spec.Source.GitSource.Context))
 				} else if component.Kubernetes != nil {
-					Expect(component.Kubernetes.Inlined).Should(Equal("placeholder"))
+					Expect(component.Kubernetes.Inlined).Should(ContainSubstring("Deployment"))
 				}
 			}
 
 			// Check the HAS Application devfile
-			hasAppDevfile, err := devfile.ParseDevfileModel(createdHasApp.Status.Devfile)
+			devfileSrc = devfilePkg.DevfileSrc{
+				Data: createdHasApp.Status.Devfile,
+			}
+			hasAppDevfile, err := devfilePkg.ParseDevfile(devfileSrc)
 			Expect(err).Should(Not(HaveOccurred()))
 
 			// gitOpsRepo and appModelRepo should both be set
@@ -1817,7 +1850,10 @@ var _ = Describe("Component controller", func() {
 			Expect(createdHasApp.Status.Devfile).Should(Not(Equal("")))
 
 			// Check the Component devfile
-			hasCompDevfile, err := devfile.ParseDevfileModel(createdHasComp.Status.Devfile)
+			src := devfilePkg.DevfileSrc{
+				Data: createdHasComp.Status.Devfile,
+			}
+			hasCompDevfile, err := devfilePkg.ParseDevfile(src)
 			Expect(err).Should(Not(HaveOccurred()))
 
 			devfileComponents, err := hasCompDevfile.GetComponents(common.DevfileOptions{})
@@ -1832,7 +1868,10 @@ var _ = Describe("Component controller", func() {
 			}
 
 			// Check the HAS Application devfile
-			hasAppDevfile, err := devfile.ParseDevfileModel(createdHasApp.Status.Devfile)
+			src = devfilePkg.DevfileSrc{
+				Data: createdHasApp.Status.Devfile,
+			}
+			hasAppDevfile, err := devfilePkg.ParseDevfile(src)
 			Expect(err).Should(Not(HaveOccurred()))
 
 			// gitOpsRepo and appModelRepo should both be set
@@ -1893,7 +1932,7 @@ func verifyHASComponentUpdates(devfile data.DevfileData, checklist updateCheckli
 
 		// Check the route
 		if checklist.route != "" {
-			route := componentAttributes.Get(routeKey, &err)
+			route := componentAttributes.Get(devfilePkg.RouteKey, &err)
 			if goPkgTest == nil {
 				Expect(err).Should(Not(HaveOccurred()))
 				Expect(route).Should(Equal(checklist.route))
@@ -1906,7 +1945,7 @@ func verifyHASComponentUpdates(devfile data.DevfileData, checklist updateCheckli
 
 		// Check the replica
 		if checklist.replica != 0 {
-			replicas := componentAttributes.Get(replicaKey, &err)
+			replicas := componentAttributes.Get(devfilePkg.ReplicaKey, &err)
 			if goPkgTest == nil {
 				Expect(err).Should(Not(HaveOccurred()))
 				Expect(replicas).Should(Equal(float64(checklist.replica)))
@@ -1920,7 +1959,7 @@ func verifyHASComponentUpdates(devfile data.DevfileData, checklist updateCheckli
 		// Check the storage limit
 		if _, ok := limits[corev1.ResourceStorage]; ok {
 			storageLimitChecklist := limits[corev1.ResourceStorage]
-			storageLimit := componentAttributes.Get(storageLimitKey, &err)
+			storageLimit := componentAttributes.Get(devfilePkg.StorageLimitKey, &err)
 			if goPkgTest == nil {
 				Expect(err).Should(Not(HaveOccurred()))
 				Expect(storageLimit).Should(Equal(storageLimitChecklist.String()))
@@ -1934,7 +1973,7 @@ func verifyHASComponentUpdates(devfile data.DevfileData, checklist updateCheckli
 		// Check the storage request
 		if _, ok := requests[corev1.ResourceStorage]; ok {
 			storageRequestChecklist := requests[corev1.ResourceStorage]
-			storageRequest := componentAttributes.Get(storageRequestKey, &err)
+			storageRequest := componentAttributes.Get(devfilePkg.StorageRequestKey, &err)
 			if goPkgTest == nil {
 				Expect(err).Should(Not(HaveOccurred()))
 				Expect(storageRequest).Should(Equal(storageRequestChecklist.String()))
@@ -1948,7 +1987,7 @@ func verifyHASComponentUpdates(devfile data.DevfileData, checklist updateCheckli
 		// Check the memory limit
 		if _, ok := limits[corev1.ResourceMemory]; ok {
 			memoryLimitChecklist := limits[corev1.ResourceMemory]
-			memoryLimit := componentAttributes.Get(memoryLimitKey, &err)
+			memoryLimit := componentAttributes.Get(devfilePkg.MemoryLimitKey, &err)
 			if goPkgTest == nil {
 				Expect(err).Should(Not(HaveOccurred()))
 				Expect(memoryLimit.(string)).Should(Equal(memoryLimitChecklist.String()))
@@ -1962,7 +2001,7 @@ func verifyHASComponentUpdates(devfile data.DevfileData, checklist updateCheckli
 		// Check the memory request
 		if _, ok := requests[corev1.ResourceMemory]; ok {
 			memoryRequestChecklist := requests[corev1.ResourceMemory]
-			memoryRequest := componentAttributes.Get(memoryRequestKey, &err)
+			memoryRequest := componentAttributes.Get(devfilePkg.MemoryRequestKey, &err)
 			if goPkgTest == nil {
 				Expect(err).Should(Not(HaveOccurred()))
 				Expect(memoryRequest).Should(Equal(memoryRequestChecklist.String()))
@@ -1976,7 +2015,7 @@ func verifyHASComponentUpdates(devfile data.DevfileData, checklist updateCheckli
 		// Check the cpu limit
 		if _, ok := limits[corev1.ResourceCPU]; ok {
 			cpuLimitChecklist := limits[corev1.ResourceCPU]
-			cpuLimit := componentAttributes.Get(cpuLimitKey, &err)
+			cpuLimit := componentAttributes.Get(devfilePkg.CpuLimitKey, &err)
 			if goPkgTest == nil {
 				Expect(err).Should(Not(HaveOccurred()))
 				Expect(cpuLimit).Should(Equal(cpuLimitChecklist.String()))
@@ -1990,7 +2029,7 @@ func verifyHASComponentUpdates(devfile data.DevfileData, checklist updateCheckli
 		// Check the cpu request
 		if _, ok := requests[corev1.ResourceCPU]; ok {
 			cpuRequestChecklist := requests[corev1.ResourceCPU]
-			cpuRequest := componentAttributes.Get(cpuRequestKey, &err)
+			cpuRequest := componentAttributes.Get(devfilePkg.CpuRequestKey, &err)
 			if goPkgTest == nil {
 				Expect(err).Should(Not(HaveOccurred()))
 				Expect(cpuRequest).Should(Equal(cpuRequestChecklist.String()))
@@ -2003,7 +2042,7 @@ func verifyHASComponentUpdates(devfile data.DevfileData, checklist updateCheckli
 
 		// Check for container port
 		if checklist.port != 0 {
-			containerPort := componentAttributes.Get(containerImagePortKey, &err)
+			containerPort := componentAttributes.Get(devfilePkg.ContainerImagePortKey, &err)
 			if goPkgTest == nil {
 				Expect(err).Should(Not(HaveOccurred()))
 				Expect(containerPort).Should(Equal(float64(checklist.port)))
@@ -2017,7 +2056,7 @@ func verifyHASComponentUpdates(devfile data.DevfileData, checklist updateCheckli
 		for _, checklistEnv := range checklist.env {
 			isMatched := false
 			var containerENVs []corev1.EnvVar
-			err := componentAttributes.GetInto(containerENVKey, &containerENVs)
+			err := componentAttributes.GetInto(devfilePkg.ContainerENVKey, &containerENVs)
 			for _, containerEnv := range containerENVs {
 				if containerEnv.Name == checklistEnv.Name && containerEnv.Value == checklistEnv.Value {
 					isMatched = true
