@@ -17,20 +17,6 @@ package pkg
 
 import "fmt"
 
-// NoFileFound returns an error if no file was found
-type NoFileFound struct {
-	Location string
-	Err      error
-}
-
-func (e *NoFileFound) Error() string {
-	errMsg := fmt.Sprintf("unable to find file in the specified location %s", e.Location)
-	if e.Err != nil {
-		errMsg = fmt.Sprintf("%s due to %v", errMsg, e.Err)
-	}
-	return errMsg
-}
-
 // NoDevfileFound returns an error if no devfile was found
 type NoDevfileFound struct {
 	Location string

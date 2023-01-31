@@ -21,6 +21,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"path"
+	"reflect"
 	"strings"
 
 	"go.uber.org/zap/zapcore"
@@ -219,16 +220,24 @@ func (r *ComponentDetectionQueryReconciler) Reconcile(ctx context.Context, req c
 			var devfileMapReturned map[string][]byte
 			var devfilesURLMapReturned map[string]string
 			var dockerfileContextMapReturned map[string]string
-			var retErrStr string
-			if cm.Data != nil {
-				retErrStr = cm.Data["error"]
-			}
+			var errMapReturned map[string]string
 			json.Unmarshal(cm.BinaryData["devfilesMap"], &devfileMapReturned)
 			json.Unmarshal(cm.BinaryData["dockerfileContextMap"], &dockerfileContextMapReturned)
 			json.Unmarshal(cm.BinaryData["devfilesURLMap"], &devfilesURLMapReturned)
+			json.Unmarshal(cm.BinaryData["errorMap"], &errMapReturned)
 			cleanupK8sResources(log, clientset, ctx, fmt.Sprintf("%s-job", req.Name), req.Name, req.Namespace)
-			if retErrStr != "" {
-				retErr := fmt.Errorf(retErrStr)
+			if errMapReturned != nil && !reflect.DeepEqual(errMapReturned, map[string]string{}) {
+				var retErr error
+				// only 1 index in the error map
+				for key, value := range errMapReturned {
+					if key == "NoDevfileFound" {
+						retErr = &devfile.NoDevfileFound{Err: fmt.Errorf(value)}
+					} else if key == "NoDockerfileFound" {
+						retErr = &devfile.NoDockerfileFound{Err: fmt.Errorf(value)}
+					} else {
+						retErr = &devfile.InternalError{Err: fmt.Errorf(value)}
+					}
+				}
 				log.Error(retErr, fmt.Sprintf("Unable to analyze the repo via kubernetes job... %v", req.NamespacedName))
 				r.SetCompleteConditionAndUpdateCR(ctx, req, &componentDetectionQuery, copiedCDQ, retErr)
 				return ctrl.Result{}, nil

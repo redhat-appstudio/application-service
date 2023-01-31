@@ -738,10 +738,13 @@ metadata:
 
 			Expect(k8sClient.Create(ctx, hasCompDetectionQuery)).Should(Succeed())
 
-			configMapData := make(map[string]string)
-			completeError := "ComponentDetectionQuery failed: failed to clone the repo"
+			configMapBinaryData := make(map[string][]byte)
+			errorMap := make(map[string]string)
+			errorMap["InternalError"] = "failed to clone the repo"
 
-			configMapData["error"] = completeError
+			errorMapbytes, _ := json.Marshal(errorMap)
+			configMapBinaryData["errorMap"] = errorMapbytes
+
 			cdqConfigMap := corev1.ConfigMap{
 				TypeMeta: metav1.TypeMeta{
 					Kind:       "ConfigMap",
@@ -751,7 +754,7 @@ metadata:
 					Name:      queryName,
 					Namespace: HASNamespace,
 				},
-				Data: configMapData,
+				BinaryData: configMapBinaryData,
 			}
 			Expect(k8sClient.Create(ctx, &cdqConfigMap)).Should(Succeed())
 			// Look up the has app resource that was created.
@@ -771,7 +774,7 @@ metadata:
 			// num(conditions) may still be < 1 on the first try, so retry until at least _some_ condition is set
 			Eventually(func() bool {
 				k8sClient.Get(context.Background(), hasCompDetQueryLookupKey, createdConfigMap)
-				return len(createdConfigMap.Data) > 0
+				return len(createdConfigMap.BinaryData) > 0
 			}, timeout, interval).Should(BeTrue())
 			Eventually(func() bool {
 				k8sClient.Get(context.Background(), hasCompDetQueryLookupKey, createdHasCompDetectionQuery)
@@ -779,7 +782,7 @@ metadata:
 			}, timeout, interval).Should(BeTrue())
 
 			// Make sure the right err is set
-			Expect(createdHasCompDetectionQuery.Status.Conditions[1].Message).Should(ContainSubstring("failed to clone the repo"))
+			Expect(createdHasCompDetectionQuery.Status.Conditions[1].Message).Should(ContainSubstring("internal error: failed to clone the repo"))
 
 			// Delete the specified Detection Query resource
 			deleteCompDetQueryCR(hasCompDetQueryLookupKey)
@@ -828,10 +831,13 @@ metadata:
 
 			Expect(k8sClient.Create(ctx, hasCompDetectionQuery)).Should(Succeed())
 
-			configMapData := make(map[string]string)
-			completeError := "ComponentDetectionQuery failed: failed to clone the repo"
+			configMapBinaryData := make(map[string][]byte)
+			errorMap := make(map[string]string)
+			errorMap["InternalError"] = "failed to clone the repo"
 
-			configMapData["error"] = completeError
+			errorMapbytes, _ := json.Marshal(errorMap)
+			configMapBinaryData["errorMap"] = errorMapbytes
+
 			cdqConfigMap := corev1.ConfigMap{
 				TypeMeta: metav1.TypeMeta{
 					Kind:       "ConfigMap",
@@ -841,7 +847,7 @@ metadata:
 					Name:      queryName,
 					Namespace: HASNamespace,
 				},
-				Data: configMapData,
+				BinaryData: configMapBinaryData,
 			}
 			Expect(k8sClient.Create(ctx, &cdqConfigMap)).Should(Succeed())
 
@@ -862,7 +868,7 @@ metadata:
 			// num(conditions) may still be < 1 on the first try, so retry until at least _some_ condition is set
 			Eventually(func() bool {
 				k8sClient.Get(context.Background(), hasCompDetQueryLookupKey, createdConfigMap)
-				return len(createdConfigMap.Data) > 0
+				return len(createdConfigMap.BinaryData) > 0
 			}, timeout, interval).Should(BeTrue())
 			Eventually(func() bool {
 				k8sClient.Get(context.Background(), hasCompDetQueryLookupKey, createdHasCompDetectionQuery)
@@ -871,7 +877,7 @@ metadata:
 
 			// index is 1 because of CDQ status condition Processing
 			Expect(createdHasCompDetectionQuery.Status.Conditions[1].Status).Should(Equal(metav1.ConditionFalse))
-			Expect(createdHasCompDetectionQuery.Status.Conditions[1].Message).Should(ContainSubstring("ComponentDetectionQuery failed: failed to clone the repo"))
+			Expect(createdHasCompDetectionQuery.Status.Conditions[1].Message).Should(ContainSubstring("ComponentDetectionQuery failed: internal error: failed to clone the repo"))
 
 			// Delete the specified Detection Query resource
 			deleteCompDetQueryCR(hasCompDetQueryLookupKey)
@@ -919,10 +925,13 @@ metadata:
 
 			Expect(k8sClient.Create(ctx, hasCompDetectionQuery)).Should(Succeed())
 
-			configMapData := make(map[string]string)
-			completeError := "ComponentDetectionQuery failed: failed to clone the repo"
+			configMapBinaryData := make(map[string][]byte)
+			errorMap := make(map[string]string)
+			errorMap["InternalError"] = "failed to clone the repo"
 
-			configMapData["error"] = completeError
+			errorMapbytes, _ := json.Marshal(errorMap)
+			configMapBinaryData["errorMap"] = errorMapbytes
+
 			cdqConfigMap := corev1.ConfigMap{
 				TypeMeta: metav1.TypeMeta{
 					Kind:       "ConfigMap",
@@ -932,7 +941,7 @@ metadata:
 					Name:      queryName,
 					Namespace: HASNamespace,
 				},
-				Data: configMapData,
+				BinaryData: configMapBinaryData,
 			}
 			Expect(k8sClient.Create(ctx, &cdqConfigMap)).Should(Succeed())
 
@@ -953,7 +962,7 @@ metadata:
 			// num(conditions) may still be < 1 on the first try, so retry until at least _some_ condition is set
 			Eventually(func() bool {
 				k8sClient.Get(context.Background(), hasCompDetQueryLookupKey, createdConfigMap)
-				return len(createdConfigMap.Data) > 0
+				return len(createdConfigMap.BinaryData) > 0
 			}, timeout, interval).Should(BeTrue())
 			Eventually(func() bool {
 				k8sClient.Get(context.Background(), hasCompDetQueryLookupKey, createdHasCompDetectionQuery)
@@ -962,7 +971,7 @@ metadata:
 
 			// index is 1 because of CDQ status condition Processing
 			Expect(createdHasCompDetectionQuery.Status.Conditions[1].Status).Should(Equal(metav1.ConditionFalse))
-			Expect(createdHasCompDetectionQuery.Status.Conditions[1].Message).Should(ContainSubstring("ComponentDetectionQuery failed: failed to clone the repo"))
+			Expect(createdHasCompDetectionQuery.Status.Conditions[1].Message).Should(ContainSubstring("ComponentDetectionQuery failed: internal error: failed to clone the repo"))
 
 			// Delete the specified Detection Query resource
 			deleteCompDetQueryCR(hasCompDetQueryLookupKey)
@@ -1012,10 +1021,13 @@ metadata:
 
 			Expect(k8sClient.Create(ctx, hasCompDetectionQuery)).Should(Succeed())
 
-			configMapData := make(map[string]string)
-			completeError := "ComponentDetectionQuery failed: failed to clone the repo"
+			configMapBinaryData := make(map[string][]byte)
+			errorMap := make(map[string]string)
+			errorMap["InternalError"] = "failed to clone the repo"
 
-			configMapData["error"] = completeError
+			errorMapbytes, _ := json.Marshal(errorMap)
+			configMapBinaryData["errorMap"] = errorMapbytes
+
 			cdqConfigMap := corev1.ConfigMap{
 				TypeMeta: metav1.TypeMeta{
 					Kind:       "ConfigMap",
@@ -1025,7 +1037,7 @@ metadata:
 					Name:      queryName,
 					Namespace: HASNamespace,
 				},
-				Data: configMapData,
+				BinaryData: configMapBinaryData,
 			}
 			Expect(k8sClient.Create(ctx, &cdqConfigMap)).Should(Succeed())
 
@@ -1046,7 +1058,7 @@ metadata:
 			// num(conditions) may still be < 1 on the first try, so retry until at least _some_ condition is set
 			Eventually(func() bool {
 				k8sClient.Get(context.Background(), hasCompDetQueryLookupKey, createdConfigMap)
-				return len(createdConfigMap.Data) > 0
+				return len(createdConfigMap.BinaryData) > 0
 			}, timeout, interval).Should(BeTrue())
 			Eventually(func() bool {
 				k8sClient.Get(context.Background(), hasCompDetQueryLookupKey, createdHasCompDetectionQuery)
@@ -1087,10 +1099,13 @@ metadata:
 
 			Expect(k8sClient.Create(ctx, hasCompDetectionQuery)).Should(Succeed())
 
-			configMapData := make(map[string]string)
-			completeError := fmt.Sprintf("ComponentDetectionQuery failed: Secret %q not found", queryName)
+			configMapBinaryData := make(map[string][]byte)
+			errorMap := make(map[string]string)
+			errorMap["InternalError"] = fmt.Sprintf("Secret %q not found", queryName)
 
-			configMapData["error"] = completeError
+			errorMapbytes, _ := json.Marshal(errorMap)
+			configMapBinaryData["errorMap"] = errorMapbytes
+
 			cdqConfigMap := corev1.ConfigMap{
 				TypeMeta: metav1.TypeMeta{
 					Kind:       "ConfigMap",
@@ -1100,7 +1115,7 @@ metadata:
 					Name:      queryName,
 					Namespace: HASNamespace,
 				},
-				Data: configMapData,
+				BinaryData: configMapBinaryData,
 			}
 			Expect(k8sClient.Create(ctx, &cdqConfigMap)).Should(Succeed())
 
@@ -1121,7 +1136,7 @@ metadata:
 			// num(conditions) may still be < 1 on the first try, so retry until at least _some_ condition is set
 			Eventually(func() bool {
 				k8sClient.Get(context.Background(), hasCompDetQueryLookupKey, createdConfigMap)
-				return len(createdConfigMap.Data) > 0
+				return len(createdConfigMap.BinaryData) > 0
 			}, timeout, interval).Should(BeTrue())
 			Eventually(func() bool {
 				k8sClient.Get(context.Background(), hasCompDetQueryLookupKey, createdHasCompDetectionQuery)
@@ -1161,10 +1176,13 @@ metadata:
 
 			Expect(k8sClient.Create(ctx, hasCompDetectionQuery)).Should(Succeed())
 
-			configMapData := make(map[string]string)
-			completeError := "ComponentDetectionQuery failed: failed to decode devfile json: json: cannot unmarshal string into Go value of type map[string]"
+			configMapBinaryData := make(map[string][]byte)
+			errorMap := make(map[string]string)
+			errorMap["InternalError"] = "failed to decode devfile json: json: cannot unmarshal string into Go value of type map[string]"
 
-			configMapData["error"] = completeError
+			errorMapbytes, _ := json.Marshal(errorMap)
+			configMapBinaryData["errorMap"] = errorMapbytes
+
 			cdqConfigMap := corev1.ConfigMap{
 				TypeMeta: metav1.TypeMeta{
 					Kind:       "ConfigMap",
@@ -1174,7 +1192,7 @@ metadata:
 					Name:      queryName,
 					Namespace: HASNamespace,
 				},
-				Data: configMapData,
+				BinaryData: configMapBinaryData,
 			}
 			Expect(k8sClient.Create(ctx, &cdqConfigMap)).Should(Succeed())
 
@@ -1195,7 +1213,7 @@ metadata:
 			// num(conditions) may still be < 1 on the first try, so retry until at least _some_ condition is set
 			Eventually(func() bool {
 				k8sClient.Get(context.Background(), hasCompDetQueryLookupKey, createdConfigMap)
-				return len(createdConfigMap.Data) > 0
+				return len(createdConfigMap.BinaryData) > 0
 			}, timeout, interval).Should(BeTrue())
 			Eventually(func() bool {
 				k8sClient.Get(context.Background(), hasCompDetQueryLookupKey, createdHasCompDetectionQuery)
@@ -1204,7 +1222,7 @@ metadata:
 
 			// Make sure that the proper error condition is set
 			Expect(createdHasCompDetectionQuery.Status.Conditions[1].Status).Should(Equal(metav1.ConditionFalse))
-			Expect(createdHasCompDetectionQuery.Status.Conditions[1].Message).Should(ContainSubstring("ComponentDetectionQuery failed: failed to decode devfile json: json: cannot unmarshal string into Go value of type map[string]"))
+			Expect(createdHasCompDetectionQuery.Status.Conditions[1].Message).Should(ContainSubstring("ComponentDetectionQuery failed: internal error: failed to decode devfile json: json: cannot unmarshal string into Go value of type map[string]"))
 			// Delete the specified Detection Query resource
 			deleteCompDetQueryCR(hasCompDetQueryLookupKey)
 		})
@@ -1326,10 +1344,13 @@ metadata:
 
 			Expect(k8sClient.Create(ctx, hasCompDetectionQuery)).Should(Succeed())
 
-			configMapData := make(map[string]string)
-			completeError := "ComponentDetectionQuery failed: failed to clone the repo"
+			configMapBinaryData := make(map[string][]byte)
+			errorMap := make(map[string]string)
+			errorMap["InternalError"] = "failed to clone the repo"
 
-			configMapData["error"] = completeError
+			errorMapbytes, _ := json.Marshal(errorMap)
+			configMapBinaryData["errorMap"] = errorMapbytes
+
 			cdqConfigMap := corev1.ConfigMap{
 				TypeMeta: metav1.TypeMeta{
 					Kind:       "ConfigMap",
@@ -1339,7 +1360,7 @@ metadata:
 					Name:      queryName,
 					Namespace: HASNamespace,
 				},
-				Data: configMapData,
+				BinaryData: configMapBinaryData,
 			}
 			Expect(k8sClient.Create(ctx, &cdqConfigMap)).Should(Succeed())
 
@@ -1360,7 +1381,7 @@ metadata:
 			// num(conditions) may still be < 1 on the first try, so retry until at least _some_ condition is set
 			Eventually(func() bool {
 				k8sClient.Get(context.Background(), hasCompDetQueryLookupKey, createdConfigMap)
-				return len(createdConfigMap.Data) > 0
+				return len(createdConfigMap.BinaryData) > 0
 			}, timeout, interval).Should(BeTrue())
 			Eventually(func() bool {
 				k8sClient.Get(context.Background(), hasCompDetQueryLookupKey, createdHasCompDetectionQuery)
@@ -1371,7 +1392,7 @@ metadata:
 			Expect(len(createdHasCompDetectionQuery.Status.ComponentDetected)).Should(Equal(0))
 
 			// Make sure the right err is set
-			Expect(createdHasCompDetectionQuery.Status.Conditions[1].Message).Should(ContainSubstring("ComponentDetectionQuery failed: failed to clone the repo"))
+			Expect(createdHasCompDetectionQuery.Status.Conditions[1].Message).Should(ContainSubstring("ComponentDetectionQuery failed: internal error: failed to clone the repo"))
 
 			// Delete the specified Detection Query resource
 			deleteCompDetQueryCR(hasCompDetQueryLookupKey)
@@ -1402,10 +1423,13 @@ metadata:
 
 			Expect(k8sClient.Create(ctx, hasCompDetectionQuery)).Should(Succeed())
 
-			configMapData := make(map[string]string)
-			completeError := "ComponentDetectionQuery failed: failed to clone the repo"
+			configMapBinaryData := make(map[string][]byte)
+			errorMap := make(map[string]string)
+			errorMap["InternalError"] = "failed to clone the repo"
 
-			configMapData["error"] = completeError
+			errorMapbytes, _ := json.Marshal(errorMap)
+			configMapBinaryData["errorMap"] = errorMapbytes
+
 			cdqConfigMap := corev1.ConfigMap{
 				TypeMeta: metav1.TypeMeta{
 					Kind:       "ConfigMap",
@@ -1415,7 +1439,7 @@ metadata:
 					Name:      queryName,
 					Namespace: HASNamespace,
 				},
-				Data: configMapData,
+				BinaryData: configMapBinaryData,
 			}
 			Expect(k8sClient.Create(ctx, &cdqConfigMap)).Should(Succeed())
 
@@ -1436,7 +1460,7 @@ metadata:
 			// num(conditions) may still be < 1 on the first try, so retry until at least _some_ condition is set
 			Eventually(func() bool {
 				k8sClient.Get(context.Background(), hasCompDetQueryLookupKey, createdConfigMap)
-				return len(createdConfigMap.Data) > 0
+				return len(createdConfigMap.BinaryData) > 0
 			}, timeout, interval).Should(BeTrue())
 			Eventually(func() bool {
 				k8sClient.Get(context.Background(), hasCompDetQueryLookupKey, createdHasCompDetectionQuery)
@@ -1447,7 +1471,7 @@ metadata:
 			Expect(len(createdHasCompDetectionQuery.Status.ComponentDetected)).Should(Equal(0))
 
 			// Make sure the right err is set
-			Expect(createdHasCompDetectionQuery.Status.Conditions[1].Message).Should(ContainSubstring("ComponentDetectionQuery failed: failed to clone the repo"))
+			Expect(createdHasCompDetectionQuery.Status.Conditions[1].Message).Should(ContainSubstring("ComponentDetectionQuery failed: internal error: failed to clone the repo"))
 
 			// Trigger a requeue by updating the resource
 			createdHasCompDetectionQuery.Spec.GitSource.URL = SampleRepoLink
