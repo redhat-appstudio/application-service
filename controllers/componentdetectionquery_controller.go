@@ -173,7 +173,7 @@ func (r *ComponentDetectionQueryReconciler) Reconcile(ctx context.Context, req c
 					return ctrl.Result{}, nil
 				}
 
-				err = util.CloneRepo(clonePath, source.URL, gitToken)
+				err = util.CloneRepo(clonePath, source.URL, source.Revision, gitToken)
 				if err != nil {
 					log.Error(err, fmt.Sprintf("Unable to clone repo %s to path %s, exiting reconcile loop %v", source.URL, clonePath, req.NamespacedName))
 					r.SetCompleteConditionAndUpdateCR(ctx, req, &componentDetectionQuery, copiedCDQ, err)
