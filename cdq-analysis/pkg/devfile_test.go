@@ -16,140 +16,107 @@
 package pkg
 
 import (
+	"net"
+	"net/http"
+	"net/http/httptest"
 	"os"
 	"reflect"
 	"testing"
 
-	"github.com/devfile/api/v2/pkg/apis/workspaces/v1alpha2"
 	"github.com/devfile/api/v2/pkg/attributes"
 	"github.com/devfile/api/v2/pkg/devfile"
-	data "github.com/devfile/library/pkg/devfile/parser/data"
-	v2 "github.com/devfile/library/pkg/devfile/parser/data/v2"
+	data "github.com/devfile/library/v2/pkg/devfile/parser/data"
+	v2 "github.com/devfile/library/v2/pkg/devfile/parser/data/v2"
 	"github.com/go-logr/logr"
 	ctrl "sigs.k8s.io/controller-runtime"
 )
 
-func TestParseDevfileModel(t *testing.T) {
-	tests := []struct {
-		name          string
-		devfileString string
-		wantDevfile   *v2.DevfileV2
-	}{
-		{
-			name: "Simple HASApp CR",
-			devfileString: `
+func TestParseDevfile(t *testing.T) {
+
+	testServerURL := "127.0.0.1:9080"
+
+	simpleDevfile := `
 metadata:
   attributes:
     appModelRepository.url: https://github.com/testorg/petclinic-app
     gitOpsRepository.url: https://github.com/testorg/petclinic-gitops
   name: petclinic
-schemaVersion: 2.2.0`,
-			wantDevfile: &v2.DevfileV2{
-				Devfile: v1alpha2.Devfile{
-					DevfileHeader: devfile.DevfileHeader{
-						SchemaVersion: string(data.APISchemaVersion220),
-						Metadata: devfile.DevfileMetadata{
-							Name:       "petclinic",
-							Attributes: attributes.Attributes{}.PutString("gitOpsRepository.url", "https://github.com/testorg/petclinic-gitops").PutString("appModelRepository.url", "https://github.com/testorg/petclinic-app"),
-						},
-					},
-				},
+schemaVersion: 2.2.0`
+
+	testServer := httptest.NewUnstartedServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		_, err := w.Write([]byte(simpleDevfile))
+		if err != nil {
+			t.Errorf("TestParseDevfileModel() unexpected error while writing data: %v", err)
+		}
+	}))
+	// create a listener with the desired port.
+	l, err := net.Listen("tcp", testServerURL)
+	if err != nil {
+		t.Errorf("TestParseDevfileModel() unexpected error while creating listener: %v", err)
+		return
+	}
+
+	// NewUnstartedServer creates a listener. Close that listener and replace
+	// with the one we created.
+	testServer.Listener.Close()
+	testServer.Listener = l
+
+	testServer.Start()
+	defer testServer.Close()
+
+	tests := []struct {
+		name              string
+		devfileString     string
+		devfileURL        string
+		wantDevfile       *v2.DevfileV2
+		wantMetadata      devfile.DevfileMetadata
+		wantSchemaVersion string
+	}{
+		{
+			name:          "Simple devfile from data",
+			devfileString: simpleDevfile,
+			wantMetadata: devfile.DevfileMetadata{
+				Name:       "petclinic",
+				Attributes: attributes.Attributes{}.PutString("gitOpsRepository.url", "https://github.com/testorg/petclinic-gitops").PutString("appModelRepository.url", "https://github.com/testorg/petclinic-app"),
 			},
+			wantSchemaVersion: string(data.APISchemaVersion220),
+		},
+		{
+			name:       "Simple devfile from URL",
+			devfileURL: "http://" + testServerURL,
+			wantMetadata: devfile.DevfileMetadata{
+				Name:       "petclinic",
+				Attributes: attributes.Attributes{}.PutString("gitOpsRepository.url", "https://github.com/testorg/petclinic-gitops").PutString("appModelRepository.url", "https://github.com/testorg/petclinic-app"),
+			},
+			wantSchemaVersion: string(data.APISchemaVersion220),
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			// Convert the hasApp resource to a devfile
-			devfile, err := ParseDevfileModel(tt.devfileString)
+			var devfileSrc DevfileSrc
+			if tt.devfileString != "" {
+				devfileSrc = DevfileSrc{
+					Data: tt.devfileString,
+				}
+			} else if tt.devfileURL != "" {
+				devfileSrc = DevfileSrc{
+					URL: tt.devfileURL,
+				}
+			}
+			devfile, err := ParseDevfile(devfileSrc)
 			if err != nil {
-				t.Errorf("TestConvertApplicationToDevfile() unexpected error: %v", err)
-			} else if !reflect.DeepEqual(devfile, tt.wantDevfile) {
-				t.Errorf("TestConvertApplicationToDevfile() error: expected %v got %v", tt.wantDevfile, devfile)
-			}
-		})
-	}
-}
+				t.Errorf("TestParseDevfileModel() unexpected error: %v", err)
+			} else {
+				gotMetadata := devfile.GetMetadata()
+				if !reflect.DeepEqual(gotMetadata, tt.wantMetadata) {
+					t.Errorf("TestParseDevfileModel() metadata is different")
+				}
 
-func TestFindAndDownloadDevfile(t *testing.T) {
-	tests := []struct {
-		name               string
-		url                string
-		wantDevfileContext string
-		wantErr            bool
-	}{
-		{
-			name:               "Curl devfile.yaml",
-			url:                "https://raw.githubusercontent.com/maysunfaisal/devfilepriority/main/case1",
-			wantDevfileContext: "devfile.yaml",
-		},
-		{
-			name:               "Curl .devfile.yaml",
-			url:                "https://raw.githubusercontent.com/maysunfaisal/devfilepriority/main/case2",
-			wantDevfileContext: ".devfile.yaml",
-		},
-		{
-			name:               "Curl .devfile/devfile.yaml",
-			url:                "https://raw.githubusercontent.com/maysunfaisal/devfilepriority/main/case3",
-			wantDevfileContext: ".devfile/devfile.yaml",
-		},
-		{
-			name:               "Curl .devfile/.devfile.yaml",
-			url:                "https://raw.githubusercontent.com/maysunfaisal/devfilepriority/main/case4",
-			wantDevfileContext: ".devfile/.devfile.yaml",
-		},
-		{
-			name:    "Cannot curl for a devfile",
-			url:     "https://github.com/octocat/Hello-World",
-			wantErr: true,
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			contents, devfileContext, err := FindAndDownloadDevfile(tt.url)
-			if tt.wantErr && (err == nil) {
-				t.Error("wanted error but got nil")
-			} else if !tt.wantErr && err != nil {
-				t.Errorf("got unexpected error %v", err)
-			} else if err == nil && contents == nil {
-				t.Errorf("unable to read body")
-			} else if err == nil && (devfileContext != tt.wantDevfileContext) {
-				t.Errorf("devfile context did not match, got %v, wanted %v", devfileContext, tt.wantDevfileContext)
-			}
-		})
-	}
-}
-
-func TestDownloadDevfileAndDockerfile(t *testing.T) {
-	tests := []struct {
-		name               string
-		url                string
-		wantDevfileContext string
-		want               bool
-	}{
-		{
-			name:               "Curl devfile.yaml and dockerfile",
-			url:                "https://raw.githubusercontent.com/maysunfaisal/devfile-sample-python-samelevel/main",
-			wantDevfileContext: ".devfile.yaml",
-			want:               true,
-		},
-		{
-			name: "Cannot curl for a devfile nor a dockerfile",
-			url:  "https://github.com/octocat/Hello-World",
-			want: false,
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			devfile, devfileContext, dockerfile := DownloadDevfileAndDockerfile(tt.url)
-			if tt.want != (len(devfile) > 0 && len(dockerfile) > 0) {
-				t.Errorf("devfile and a dockerfile wanted: %v but got devfile: %v dockerfile: %v", tt.want, len(devfile) > 0, len(dockerfile) > 0)
-			}
-
-			if devfileContext != tt.wantDevfileContext {
-				t.Errorf("devfile context did not match, got %v, wanted %v", devfileContext, tt.wantDevfileContext)
+				gotSchemaVersion := devfile.GetSchemaVersion()
+				if gotSchemaVersion != tt.wantSchemaVersion {
+					t.Errorf("TestParseDevfileModel() schema version is different")
+				}
 			}
 		})
 	}
@@ -208,7 +175,7 @@ func TestScanRepo(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			logger = ctrl.Log.WithName("TestScanRepo")
 			err := CloneRepo(tt.clonePath, tt.repo, tt.token)
-			URL:=tt.repo
+			URL := tt.repo
 			if err != nil {
 				t.Errorf("got unexpected error %v", err)
 			} else {

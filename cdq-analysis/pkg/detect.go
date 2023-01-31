@@ -23,7 +23,7 @@ import (
 	"strings"
 
 	"github.com/devfile/api/v2/pkg/apis/workspaces/v1alpha2"
-	"github.com/devfile/library/pkg/devfile/parser/data/v2/common"
+	"github.com/devfile/library/v2/pkg/devfile/parser/data/v2/common"
 	"github.com/go-logr/logr"
 	"github.com/redhat-developer/alizer/go/pkg/apis/model"
 	"github.com/redhat-developer/alizer/go/pkg/apis/recognizer"
@@ -221,7 +221,10 @@ func SearchForDockerfile(devfile []byte) (*v1alpha2.DockerfileImage, error) {
 	if len(devfile) == 0 {
 		return nil, nil
 	}
-	devfileData, err := ParseDevfileModel(string(devfile))
+	devfileSrc := DevfileSrc{
+		Data: string(devfile),
+	}
+	devfileData, err := ParseDevfile(devfileSrc)
 	if err != nil {
 		return nil, err
 	}

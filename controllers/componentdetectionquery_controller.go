@@ -56,7 +56,6 @@ type ComponentDetectionQueryReconciler struct {
 	client.Client
 	Scheme             *runtime.Scheme
 	SPIClient          spi.SPI
-	AlizerClient       devfile.Alizer
 	Log                logr.Logger
 	DevfileRegistryURL string
 	AppFS              afero.Afero

@@ -1,5 +1,5 @@
 /*
-Copyright 2021 Red Hat, Inc.
+Copyright 2021-2023 Red Hat, Inc.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -25,8 +25,8 @@ import (
 	"github.com/brianvoe/gofakeit/v6"
 	devfileAPIV1 "github.com/devfile/api/v2/pkg/apis/workspaces/v1alpha2"
 	"github.com/devfile/api/v2/pkg/attributes"
-	data "github.com/devfile/library/pkg/devfile/parser/data"
-	"github.com/devfile/library/pkg/devfile/parser/data/v2/common"
+	data "github.com/devfile/library/v2/pkg/devfile/parser/data"
+	"github.com/devfile/library/v2/pkg/devfile/parser/data/v2/common"
 	appstudiov1alpha1 "github.com/redhat-appstudio/application-api/api/v1alpha1"
 	devfile "github.com/redhat-appstudio/application-service/pkg/devfile"
 	"github.com/redhat-appstudio/application-service/pkg/util"
@@ -39,7 +39,17 @@ func (r *ComponentReconciler) updateComponentDevfileModel(req ctrl.Request, hasC
 
 	log := r.Log.WithValues("Component", req.NamespacedName).WithValues("clusterName", req.ClusterName)
 
-	devfileComponents, err := hasCompDevfileData.GetComponents(common.DevfileOptions{
+	// If DockerfileURL is set and the devfile contains references to a Dockerfile then update the devfile
+	source := component.Spec.Source
+	var err error
+	if source.GitSource != nil && source.GitSource.DockerfileURL != "" {
+		hasCompDevfileData, err = devfile.UpdateLocalDockerfileURItoAbsolute(hasCompDevfileData, source.GitSource.DockerfileURL)
+		if err != nil {
+			return fmt.Errorf("unable to convert local Dockerfile URIs to absolute in Component devfile %v", req.NamespacedName)
+		}
+	}
+
+	kubernetesComponents, err := hasCompDevfileData.GetComponents(common.DevfileOptions{
 		ComponentOptions: common.ComponentOptions{
 			ComponentType: devfileAPIV1.KubernetesComponentType,
 		},
@@ -48,15 +58,15 @@ func (r *ComponentReconciler) updateComponentDevfileModel(req ctrl.Request, hasC
 		return err
 	}
 
-	for _, devfileComponent := range devfileComponents {
+	for _, kubernetesComponent := range kubernetesComponents {
 		compUpdateRequired := false
 		// Update for Replica
 		currentReplica := 0
-		if len(devfileComponent.Attributes) == 0 {
-			devfileComponent.Attributes = attributes.Attributes{}
+		if len(kubernetesComponent.Attributes) == 0 {
+			kubernetesComponent.Attributes = attributes.Attributes{}
 		} else {
 			var err error
-			currentReplica = int(devfileComponent.Attributes.GetNumber(replicaKey, &err))
+			currentReplica = int(kubernetesComponent.Attributes.GetNumber(devfile.ReplicaKey, &err))
 			if err != nil {
 				if _, ok := err.(*attributes.KeyNotFoundError); !ok {
 					return err
@@ -64,35 +74,35 @@ func (r *ComponentReconciler) updateComponentDevfileModel(req ctrl.Request, hasC
 			}
 		}
 		if currentReplica != component.Spec.Replicas {
-			log.Info(fmt.Sprintf("setting devfile component %s attribute component.Spec.Replicas to %v", devfileComponent.Name, component.Spec.Replicas))
-			devfileComponent.Attributes = devfileComponent.Attributes.PutInteger(replicaKey, component.Spec.Replicas)
+			log.Info(fmt.Sprintf("setting devfile component %s attribute component.Spec.Replicas to %v", kubernetesComponent.Name, component.Spec.Replicas))
+			kubernetesComponent.Attributes = kubernetesComponent.Attributes.PutInteger(devfile.ReplicaKey, component.Spec.Replicas)
 			compUpdateRequired = true
 		}
 
 		// Update for Port
 		var err error
-		currentPort := int(devfileComponent.Attributes.GetNumber(containerImagePortKey, &err))
+		currentPort := int(kubernetesComponent.Attributes.GetNumber(devfile.ContainerImagePortKey, &err))
 		if err != nil {
 			if _, ok := err.(*attributes.KeyNotFoundError); !ok {
 				return err
 			}
 		}
 		if currentPort != component.Spec.TargetPort {
-			log.Info(fmt.Sprintf("setting devfile component %s attribute component.Spec.TargetPort %v", devfileComponent.Name, component.Spec.TargetPort))
-			devfileComponent.Attributes = devfileComponent.Attributes.PutInteger(containerImagePortKey, component.Spec.TargetPort)
+			log.Info(fmt.Sprintf("setting devfile component %s attribute component.Spec.TargetPort %v", kubernetesComponent.Name, component.Spec.TargetPort))
+			kubernetesComponent.Attributes = kubernetesComponent.Attributes.PutInteger(devfile.ContainerImagePortKey, component.Spec.TargetPort)
 			compUpdateRequired = true
 		}
 
 		// Update for Route
 		if component.Spec.Route != "" {
-			log.Info(fmt.Sprintf("setting devfile component %s attribute component.Spec.Route %s", devfileComponent.Name, component.Spec.Route))
-			devfileComponent.Attributes = devfileComponent.Attributes.PutString(routeKey, component.Spec.Route)
+			log.Info(fmt.Sprintf("setting devfile component %s attribute component.Spec.Route %s", kubernetesComponent.Name, component.Spec.Route))
+			kubernetesComponent.Attributes = kubernetesComponent.Attributes.PutString(devfile.RouteKey, component.Spec.Route)
 			compUpdateRequired = true
 		}
 
 		// Update for Env
 		currentENV := []corev1.EnvVar{}
-		err = devfileComponent.Attributes.GetInto(containerENVKey, &currentENV)
+		err = kubernetesComponent.Attributes.GetInto(devfile.ContainerENVKey, &currentENV)
 		if err != nil {
 			if _, ok := err.(*attributes.KeyNotFoundError); !ok {
 				return err
@@ -110,18 +120,18 @@ func (r *ComponentReconciler) updateComponentDevfileModel(req ctrl.Request, hasC
 			for i, devfileEnv := range currentENV {
 				if devfileEnv.Name == name {
 					isPresent = true
-					log.Info(fmt.Sprintf("setting devfileComponent %s env %s value to %v", devfileComponent.Name, devfileEnv.Name, value))
+					log.Info(fmt.Sprintf("setting devfileComponent %s env %s value to %v", kubernetesComponent.Name, devfileEnv.Name, value))
 					devfileEnv.Value = value
 					currentENV[i] = devfileEnv
 				}
 			}
 
 			if !isPresent {
-				log.Info(fmt.Sprintf("appending to devfile component %s env %s : %v", devfileComponent.Name, name, value))
+				log.Info(fmt.Sprintf("appending to devfile component %s env %s : %v", kubernetesComponent.Name, name, value))
 				currentENV = append(currentENV, env)
 			}
 			var err error
-			devfileComponent.Attributes = devfileComponent.Attributes.FromMap(map[string]interface{}{containerENVKey: currentENV}, &err)
+			kubernetesComponent.Attributes = kubernetesComponent.Attributes.FromMap(map[string]interface{}{devfile.ContainerENVKey: currentENV}, &err)
 			if err != nil {
 				return err
 			}
@@ -134,24 +144,24 @@ func (r *ComponentReconciler) updateComponentDevfileModel(req ctrl.Request, hasC
 			// CPU Limit
 			resourceCPULimit := limits[corev1.ResourceCPU]
 			if resourceCPULimit.String() != "" {
-				log.Info(fmt.Sprintf("setting devfile component %s attribute cpu limit to %s", devfileComponent.Name, resourceCPULimit.String()))
-				devfileComponent.Attributes = devfileComponent.Attributes.PutString(cpuLimitKey, resourceCPULimit.String())
+				log.Info(fmt.Sprintf("setting devfile component %s attribute cpu limit to %s", kubernetesComponent.Name, resourceCPULimit.String()))
+				kubernetesComponent.Attributes = kubernetesComponent.Attributes.PutString(devfile.CpuLimitKey, resourceCPULimit.String())
 				compUpdateRequired = true
 			}
 
 			// Memory Limit
 			resourceMemoryLimit := limits[corev1.ResourceMemory]
 			if resourceMemoryLimit.String() != "" {
-				log.Info(fmt.Sprintf("setting devfile component %s attribute memory limit to %s", devfileComponent.Name, resourceMemoryLimit.String()))
-				devfileComponent.Attributes = devfileComponent.Attributes.PutString(memoryLimitKey, resourceMemoryLimit.String())
+				log.Info(fmt.Sprintf("setting devfile component %s attribute memory limit to %s", kubernetesComponent.Name, resourceMemoryLimit.String()))
+				kubernetesComponent.Attributes = kubernetesComponent.Attributes.PutString(devfile.MemoryLimitKey, resourceMemoryLimit.String())
 				compUpdateRequired = true
 			}
 
 			// Storage Limit
 			resourceStorageLimit := limits[corev1.ResourceStorage]
 			if resourceStorageLimit.String() != "" {
-				log.Info(fmt.Sprintf("setting devfile component %s attribute storage limit to %s", devfileComponent.Name, resourceStorageLimit.String()))
-				devfileComponent.Attributes = devfileComponent.Attributes.PutString(storageLimitKey, resourceStorageLimit.String())
+				log.Info(fmt.Sprintf("setting devfile component %s attribute storage limit to %s", kubernetesComponent.Name, resourceStorageLimit.String()))
+				kubernetesComponent.Attributes = kubernetesComponent.Attributes.PutString(devfile.StorageLimitKey, resourceStorageLimit.String())
 				compUpdateRequired = true
 			}
 		}
@@ -161,36 +171,36 @@ func (r *ComponentReconciler) updateComponentDevfileModel(req ctrl.Request, hasC
 		if len(requests) > 0 {
 			// CPU Request
 			resourceCPURequest := requests[corev1.ResourceCPU]
-			if len(devfileComponent.Attributes) == 0 {
-				devfileComponent.Attributes = attributes.Attributes{}
+			if len(kubernetesComponent.Attributes) == 0 {
+				kubernetesComponent.Attributes = attributes.Attributes{}
 			}
 			if resourceCPURequest.String() != "" {
-				log.Info(fmt.Sprintf("updating devfile component %s attribute cpu request to %s", devfileComponent.Name, resourceCPURequest.String()))
-				devfileComponent.Attributes = devfileComponent.Attributes.PutString(cpuRequestKey, resourceCPURequest.String())
+				log.Info(fmt.Sprintf("updating devfile component %s attribute cpu request to %s", kubernetesComponent.Name, resourceCPURequest.String()))
+				kubernetesComponent.Attributes = kubernetesComponent.Attributes.PutString(devfile.CpuRequestKey, resourceCPURequest.String())
 				compUpdateRequired = true
 			}
 
 			// Memory Request
 			resourceMemoryRequest := requests[corev1.ResourceMemory]
 			if resourceMemoryRequest.String() != "" {
-				log.Info(fmt.Sprintf("updating devfile component %s attribute memory request to %s", devfileComponent.Name, resourceMemoryRequest.String()))
-				devfileComponent.Attributes = devfileComponent.Attributes.PutString(memoryRequestKey, resourceMemoryRequest.String())
+				log.Info(fmt.Sprintf("updating devfile component %s attribute memory request to %s", kubernetesComponent.Name, resourceMemoryRequest.String()))
+				kubernetesComponent.Attributes = kubernetesComponent.Attributes.PutString(devfile.MemoryRequestKey, resourceMemoryRequest.String())
 				compUpdateRequired = true
 			}
 
 			// Storage Request
 			resourceStorageRequest := requests[corev1.ResourceStorage]
 			if resourceStorageRequest.String() != "" {
-				log.Info(fmt.Sprintf("updating devfile component %s attribute storage request to %s", devfileComponent.Name, resourceStorageRequest.String()))
-				devfileComponent.Attributes = devfileComponent.Attributes.PutString(storageRequestKey, resourceStorageRequest.String())
+				log.Info(fmt.Sprintf("updating devfile component %s attribute storage request to %s", kubernetesComponent.Name, resourceStorageRequest.String()))
+				kubernetesComponent.Attributes = kubernetesComponent.Attributes.PutString(devfile.StorageRequestKey, resourceStorageRequest.String())
 				compUpdateRequired = true
 			}
 		}
 
 		if compUpdateRequired {
 			// Update the devfileComponent once it has been updated with the Component data
-			log.Info(fmt.Sprintf("updating devfile component name %s ...", devfileComponent.Name))
-			err := hasCompDevfileData.UpdateComponent(devfileComponent)
+			log.Info(fmt.Sprintf("updating devfile component name %s ...", kubernetesComponent.Name))
+			err := hasCompDevfileData.UpdateComponent(kubernetesComponent)
 			if err != nil {
 				return err
 			}
@@ -279,7 +289,10 @@ func (r *ComponentDetectionQueryReconciler) updateComponentStub(req ctrl.Request
 		log.Info(fmt.Sprintf("Currently reading the devfile for context %v", context))
 
 		// Parse the Component Devfile
-		compDevfileData, err := devfile.ParseDevfileModel(string(devfileBytes))
+		devfileSrc := devfile.DevfileSrc{
+			Data: string(devfileBytes),
+		}
+		compDevfileData, err := devfile.ParseDevfile(devfileSrc)
 		if err != nil {
 			return err
 		}
@@ -318,7 +331,7 @@ func (r *ComponentDetectionQueryReconciler) updateComponentStub(req ctrl.Request
 			kubernetesComponentAttribute := devfileKubernetesComponents[0].Attributes
 
 			// Devfile Env
-			err := kubernetesComponentAttribute.GetInto(containerENVKey, &componentStub.Env)
+			err := kubernetesComponentAttribute.GetInto(devfile.ContainerENVKey, &componentStub.Env)
 			if err != nil {
 				if _, ok := err.(*attributes.KeyNotFoundError); !ok {
 					return err
@@ -326,7 +339,7 @@ func (r *ComponentDetectionQueryReconciler) updateComponentStub(req ctrl.Request
 			}
 
 			// Devfile Port
-			componentStub.TargetPort = int(kubernetesComponentAttribute.GetNumber(containerImagePortKey, &err))
+			componentStub.TargetPort = int(kubernetesComponentAttribute.GetNumber(devfile.ContainerImagePortKey, &err))
 			if err != nil {
 				if _, ok := err.(*attributes.KeyNotFoundError); !ok {
 					return err
@@ -334,7 +347,7 @@ func (r *ComponentDetectionQueryReconciler) updateComponentStub(req ctrl.Request
 			}
 
 			// Devfile Route
-			componentStub.Route = kubernetesComponentAttribute.GetString(routeKey, &err)
+			componentStub.Route = kubernetesComponentAttribute.GetString(devfile.RouteKey, &err)
 			if err != nil {
 				if _, ok := err.(*attributes.KeyNotFoundError); !ok {
 					return err
@@ -342,7 +355,7 @@ func (r *ComponentDetectionQueryReconciler) updateComponentStub(req ctrl.Request
 			}
 
 			// Devfile Replica
-			componentStub.Replicas = int(kubernetesComponentAttribute.GetNumber(replicaKey, &err))
+			componentStub.Replicas = int(kubernetesComponentAttribute.GetNumber(devfile.ReplicaKey, &err))
 			if err != nil {
 				if _, ok := err.(*attributes.KeyNotFoundError); !ok {
 					return err
@@ -356,7 +369,7 @@ func (r *ComponentDetectionQueryReconciler) updateComponentStub(req ctrl.Request
 			limits := componentStub.Resources.Limits
 
 			// CPU Limit
-			cpuLimitString := kubernetesComponentAttribute.GetString(cpuLimitKey, &err)
+			cpuLimitString := kubernetesComponentAttribute.GetString(devfile.CpuLimitKey, &err)
 			if err != nil {
 				if _, ok := err.(*attributes.KeyNotFoundError); !ok {
 					return err
@@ -371,7 +384,7 @@ func (r *ComponentDetectionQueryReconciler) updateComponentStub(req ctrl.Request
 			}
 
 			// Memory Limit
-			memoryLimitString := kubernetesComponentAttribute.GetString(memoryLimitKey, &err)
+			memoryLimitString := kubernetesComponentAttribute.GetString(devfile.MemoryLimitKey, &err)
 			if err != nil {
 				if _, ok := err.(*attributes.KeyNotFoundError); !ok {
 					return err
@@ -386,7 +399,7 @@ func (r *ComponentDetectionQueryReconciler) updateComponentStub(req ctrl.Request
 			}
 
 			// Storage Limit
-			storageLimitString := kubernetesComponentAttribute.GetString(storageLimitKey, &err)
+			storageLimitString := kubernetesComponentAttribute.GetString(devfile.StorageLimitKey, &err)
 			if err != nil {
 				if _, ok := err.(*attributes.KeyNotFoundError); !ok {
 					return err
@@ -407,7 +420,7 @@ func (r *ComponentDetectionQueryReconciler) updateComponentStub(req ctrl.Request
 			requests := componentStub.Resources.Requests
 
 			// CPU Request
-			cpuRequestString := kubernetesComponentAttribute.GetString(cpuRequestKey, &err)
+			cpuRequestString := kubernetesComponentAttribute.GetString(devfile.CpuRequestKey, &err)
 			if err != nil {
 				if _, ok := err.(*attributes.KeyNotFoundError); !ok {
 					return err
@@ -422,7 +435,7 @@ func (r *ComponentDetectionQueryReconciler) updateComponentStub(req ctrl.Request
 			}
 
 			// Memory Request
-			memoryRequestString := kubernetesComponentAttribute.GetString(memoryRequestKey, &err)
+			memoryRequestString := kubernetesComponentAttribute.GetString(devfile.MemoryRequestKey, &err)
 			if err != nil {
 				if _, ok := err.(*attributes.KeyNotFoundError); !ok {
 					return err
@@ -437,7 +450,7 @@ func (r *ComponentDetectionQueryReconciler) updateComponentStub(req ctrl.Request
 			}
 
 			// Storage Request
-			storageRequestString := kubernetesComponentAttribute.GetString(storageRequestKey, &err)
+			storageRequestString := kubernetesComponentAttribute.GetString(devfile.StorageRequestKey, &err)
 			if err != nil {
 				if _, ok := err.(*attributes.KeyNotFoundError); !ok {
 					return err

@@ -213,7 +213,6 @@ func main() {
 		Scheme:             mgr.GetScheme(),
 		Log:                ctrl.Log.WithName("controllers").WithName("ComponentDetectionQuery").WithValues("appstudio-component", "HAS"),
 		SPIClient:          spi.SPIClient{},
-		AlizerClient:       devfile.AlizerClient{},
 		DevfileRegistryURL: devfileRegistryURL,
 		AppFS:              ioutils.NewFilesystem(),
 		Config:             config,

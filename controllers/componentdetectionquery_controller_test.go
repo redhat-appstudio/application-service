@@ -159,7 +159,6 @@ metadata:
 				Expect(devfileName).Should(ContainSubstring("spring"))
 				Expect(devfileDesc.ComponentStub.Source.GitSource.Context).Should(ContainSubstring("./"))
 				Expect(devfileDesc.ComponentStub.Source.GitSource.DevfileURL).Should(Equal("https://raw.githubusercontent.com/devfile-samples/devfile-sample-java-springboot-basic/main/devfile.yaml"))
-				Expect(devfileDesc.ComponentStub.Source.GitSource.DockerfileURL).Should(Equal("https://raw.githubusercontent.com/devfile-samples/devfile-sample-java-springboot-basic/main/docker/Dockerfile"))
 				Expect(devfileDesc.DevfileFound).Should(BeTrue())
 			}
 
@@ -1222,7 +1221,7 @@ metadata:
 
 			// Make sure that the proper error condition is set
 			Expect(createdHasCompDetectionQuery.Status.Conditions[1].Status).Should(Equal(metav1.ConditionFalse))
-			Expect(createdHasCompDetectionQuery.Status.Conditions[1].Message).Should(ContainSubstring("ComponentDetectionQuery failed: internal error: failed to decode devfile json: json: cannot unmarshal string into Go value of type map[string]"))
+			Expect(createdHasCompDetectionQuery.Status.Conditions[1].Message).Should(ContainSubstring("internal error: failed to decode devfile json: json: cannot unmarshal string into Go value of type map[string]"))
 			// Delete the specified Detection Query resource
 			deleteCompDetQueryCR(hasCompDetQueryLookupKey)
 		})

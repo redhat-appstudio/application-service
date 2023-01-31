@@ -16,9 +16,11 @@
 package pkg
 
 import (
-	devfilePkg "github.com/devfile/library/pkg/devfile"
-	parser "github.com/devfile/library/pkg/devfile/parser"
-	data "github.com/devfile/library/pkg/devfile/parser/data"
+	"fmt"
+
+	devfilePkg "github.com/devfile/library/v2/pkg/devfile"
+	"github.com/devfile/library/v2/pkg/devfile/parser"
+	"github.com/devfile/library/v2/pkg/devfile/parser/data"
 
 	"github.com/go-logr/logr"
 )
@@ -41,49 +43,33 @@ const (
 	DevfileStageRegistryEndpoint = "https://registry.stage.devfile.io"
 )
 
-// ParseDevfileModel calls the devfile library's parse and returns the devfile data
-func ParseDevfileModel(devfileModel string) (data.DevfileData, error) {
-	// Retrieve the devfile from the body of the resource
-	devfileBytes := []byte(devfileModel)
+// DevfileSrc specifies the src of the Devfile
+type DevfileSrc struct {
+	Data string
+	URL  string
+}
+
+// ParseDevfile calls the devfile library's parse and returns the devfile data.
+// Provide either a Data src or the URL src
+func ParseDevfile(src DevfileSrc) (data.DevfileData, error) {
+
+	httpTimeout := 10
+	convert := true
 	parserArgs := parser.ParserArgs{
-		Data: devfileBytes,
+		HTTPTimeout:                   &httpTimeout,
+		ConvertKubernetesContentInUri: &convert,
 	}
+
+	if src.Data != "" {
+		parserArgs.Data = []byte(src.Data)
+	} else if src.URL != "" {
+		parserArgs.URL = src.URL
+	} else {
+		return nil, fmt.Errorf("cannot parse devfile without a src")
+	}
+
 	devfileObj, _, err := devfilePkg.ParseDevfileAndValidate(parserArgs)
 	return devfileObj.Data, err
-}
-
-// FindAndDownloadDevfile downloads devfile from the various possible devfile locations in dir and returns the contents and its context
-func FindAndDownloadDevfile(dir string) ([]byte, string, error) {
-	var devfileBytes []byte
-	var err error
-	validDevfileLocations := []string{Devfile, HiddenDevfile, HiddenDirDevfile, HiddenDirHiddenDevfile}
-
-	for _, path := range validDevfileLocations {
-		devfilePath := dir + "/" + path
-		devfileBytes, err = DownloadFile(devfilePath)
-		if err == nil {
-			// if we get a 200, return
-			return devfileBytes, path, err
-		}
-	}
-
-	return nil, "", &NoDevfileFound{Location: dir}
-}
-
-// DownloadFile downloads the specified file
-func DownloadFile(file string) ([]byte, error) {
-	return CurlEndpoint(file)
-}
-
-// DownloadDevfileAndDockerfile attempts to download and return the devfile, devfile context and dockerfile from the root of the specified url
-func DownloadDevfileAndDockerfile(url string) ([]byte, string, []byte) {
-	var devfileBytes, dockerfileBytes []byte
-	var devfilePath string
-
-	devfileBytes, devfilePath, _ = FindAndDownloadDevfile(url)
-	dockerfileBytes, _ = DownloadFile(url + "/Dockerfile")
-
-	return devfileBytes, devfilePath, dockerfileBytes
 }
 
 // ScanRepo attempts to read and return devfiles and dockerfiles from the local path upto the specified depth

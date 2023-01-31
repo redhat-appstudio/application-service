@@ -1,5 +1,5 @@
 //
-// Copyright 2021-2022 Red Hat, Inc.
+// Copyright 2021-2023 Red Hat, Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -21,13 +21,14 @@ import (
 	"math/rand"
 	"net/http"
 	"net/url"
-	"os"
-	"os/exec"
+	"reflect"
 	"regexp"
 	"strings"
 
 	appstudiov1alpha1 "github.com/redhat-appstudio/application-api/api/v1alpha1"
 	gitopsgenv1alpha1 "github.com/redhat-developer/gitops-generator/api/v1alpha1"
+
+	"github.com/devfile/library/v2/pkg/devfile/parser"
 )
 
 func SanitizeName(name string) string {
@@ -37,18 +38,6 @@ func SanitizeName(name string) string {
 	}
 
 	return sanitizedName
-}
-
-// IsExist returns whether the given file or directory exists
-func IsExist(path string) (bool, error) {
-	_, err := os.Stat(path)
-	if err == nil {
-		return true, nil
-	}
-	if os.IsNotExist(err) {
-		return false, nil
-	}
-	return false, err
 }
 
 // ProcessGitOpsStatus processes the GitOps status and returns the remote url, branch, context and the error
@@ -146,39 +135,6 @@ func CurlEndpoint(endpoint string) ([]byte, error) {
 	return nil, fmt.Errorf("received a non-200 status when curling %s", endpoint)
 }
 
-// CloneRepo clones the repoURL to clonePath
-func CloneRepo(clonePath, repoURL string, token string) error {
-	exist, err := IsExist(clonePath)
-	if !exist || err != nil {
-		err = os.MkdirAll(clonePath, 0750)
-		if err != nil {
-			return err
-		}
-	}
-	cloneURL := repoURL
-	// Execute does an exec.Command on the specified command
-	if token != "" {
-		tempStr := strings.Split(repoURL, "https://")
-
-		// e.g. https://token:<token>@github.com/owner/repoName.git
-		cloneURL = fmt.Sprintf("https://token:%s@%s", token, tempStr[1])
-	}
-	/* #nosec G204 -- user input is processed into an expected format for the git clone command */
-	c := exec.Command("git", "clone", cloneURL, clonePath)
-	c.Dir = clonePath
-
-	// set env to skip authentication prompt and directly error out
-	c.Env = os.Environ()
-	c.Env = append(c.Env, "GIT_TERMINAL_PROMPT=0", "GIT_ASKPASS=/bin/echo")
-
-	_, err = c.CombinedOutput()
-	if err != nil {
-		return fmt.Errorf("failed to clone the repo: %v", err)
-	}
-
-	return nil
-}
-
 // CheckWithRegex checks if a name matches the pattern.
 // If a pattern fails to compile, it returns false
 func CheckWithRegex(pattern, name string) bool {
@@ -207,7 +163,8 @@ func GetRandomString(n int, lower bool) string {
 	return randomString
 }
 
-func GetMappedGitOpsComponent(component appstudiov1alpha1.Component) gitopsgenv1alpha1.GeneratorOptions {
+// GetMappedGitOpsComponent gets a mapped GeneratorOptions from the Component for GitOps resource generation
+func GetMappedGitOpsComponent(component appstudiov1alpha1.Component, kubernetesResources parser.KubernetesResources) gitopsgenv1alpha1.GeneratorOptions {
 	customK8sLabels := map[string]string{
 		"app.kubernetes.io/name":       component.Spec.ComponentName,
 		"app.kubernetes.io/instance":   component.Name,
@@ -235,5 +192,14 @@ func GetMappedGitOpsComponent(component appstudiov1alpha1.Component) gitopsgenv1
 	} else {
 		gitopsMapComponent.GitSource = &gitopsgenv1alpha1.GitSource{}
 	}
+
+	if !reflect.DeepEqual(kubernetesResources, parser.KubernetesResources{}) {
+		gitopsMapComponent.KubernetesResources.Deployments = append(gitopsMapComponent.KubernetesResources.Deployments, kubernetesResources.Deployments...)
+		gitopsMapComponent.KubernetesResources.Services = append(gitopsMapComponent.KubernetesResources.Services, kubernetesResources.Services...)
+		gitopsMapComponent.KubernetesResources.Routes = append(gitopsMapComponent.KubernetesResources.Routes, kubernetesResources.Routes...)
+		gitopsMapComponent.KubernetesResources.Ingresses = append(gitopsMapComponent.KubernetesResources.Ingresses, kubernetesResources.Ingresses...)
+		gitopsMapComponent.KubernetesResources.Others = append(gitopsMapComponent.KubernetesResources.Others, kubernetesResources.Others...)
+	}
+
 	return gitopsMapComponent
 }
