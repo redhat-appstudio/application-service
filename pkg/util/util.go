@@ -29,6 +29,8 @@ import (
 
 	appstudiov1alpha1 "github.com/redhat-appstudio/application-api/api/v1alpha1"
 	gitopsgenv1alpha1 "github.com/redhat-developer/gitops-generator/api/v1alpha1"
+	v1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/resource"
 
 	"github.com/devfile/library/v2/pkg/devfile/parser"
 )
@@ -238,6 +240,20 @@ func GetMappedGitOpsComponent(component appstudiov1alpha1.Component, kubernetesR
 		}
 	} else {
 		gitopsMapComponent.GitSource = &gitopsgenv1alpha1.GitSource{}
+	}
+
+	// If the resource requests or limits were unset, set default values
+	if gitopsMapComponent.Resources.Requests == nil {
+		gitopsMapComponent.Resources.Requests = v1.ResourceList{
+			v1.ResourceCPU:    resource.MustParse("10m"),
+			v1.ResourceMemory: resource.MustParse("50Mi"),
+		}
+	}
+	if gitopsMapComponent.Resources.Limits == nil {
+		gitopsMapComponent.Resources.Limits = v1.ResourceList{
+			v1.ResourceCPU:    resource.MustParse("1"),
+			v1.ResourceMemory: resource.MustParse("512Mi"),
+		}
 	}
 
 	if !reflect.DeepEqual(kubernetesResources, parser.KubernetesResources{}) {
