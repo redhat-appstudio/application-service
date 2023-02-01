@@ -26,7 +26,6 @@ import (
 
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
-	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
@@ -495,8 +494,8 @@ func TestGetMappedComponent(t *testing.T) {
 				Secret:      "Secret",
 				Resources: corev1.ResourceRequirements{
 					Requests: corev1.ResourceList{
-						v1.ResourceCPU:    resource.MustParse("10m"),
-						v1.ResourceMemory: resource.MustParse("50Mi"),
+						corev1.ResourceCPU:    resource.MustParse("10m"),
+						corev1.ResourceMemory: resource.MustParse("50Mi"),
 					},
 					Limits: corev1.ResourceList{
 						corev1.ResourceLimitsCPU: resource.MustParse("1"),
@@ -537,12 +536,12 @@ func TestGetMappedComponent(t *testing.T) {
 				GitSource:   &gitopsgenv1alpha1.GitSource{},
 				Resources: corev1.ResourceRequirements{
 					Requests: corev1.ResourceList{
-						v1.ResourceCPU:    resource.MustParse("10m"),
-						v1.ResourceMemory: resource.MustParse("50Mi"),
+						corev1.ResourceCPU:    resource.MustParse("10m"),
+						corev1.ResourceMemory: resource.MustParse("50Mi"),
 					},
 					Limits: corev1.ResourceList{
-						v1.ResourceCPU:    resource.MustParse("1"),
-						v1.ResourceMemory: resource.MustParse("512Mi"),
+						corev1.ResourceCPU:    resource.MustParse("1"),
+						corev1.ResourceMemory: resource.MustParse("512Mi"),
 					},
 				},
 			},
@@ -565,12 +564,12 @@ func TestGetMappedComponent(t *testing.T) {
 				Application: "AppTest003",
 				Resources: corev1.ResourceRequirements{
 					Requests: corev1.ResourceList{
-						v1.ResourceCPU:    resource.MustParse("10m"),
-						v1.ResourceMemory: resource.MustParse("50Mi"),
+						corev1.ResourceCPU:    resource.MustParse("10m"),
+						corev1.ResourceMemory: resource.MustParse("50Mi"),
 					},
 					Limits: corev1.ResourceList{
-						v1.ResourceCPU:    resource.MustParse("1"),
-						v1.ResourceMemory: resource.MustParse("512Mi"),
+						corev1.ResourceCPU:    resource.MustParse("1"),
+						corev1.ResourceMemory: resource.MustParse("512Mi"),
 					},
 				},
 			},
@@ -597,12 +596,12 @@ func TestGetMappedComponent(t *testing.T) {
 				GitSource:   &gitopsgenv1alpha1.GitSource{},
 				Resources: corev1.ResourceRequirements{
 					Requests: corev1.ResourceList{
-						v1.ResourceCPU:    resource.MustParse("10m"),
-						v1.ResourceMemory: resource.MustParse("50Mi"),
+						corev1.ResourceCPU:    resource.MustParse("10m"),
+						corev1.ResourceMemory: resource.MustParse("50Mi"),
 					},
 					Limits: corev1.ResourceList{
-						v1.ResourceCPU:    resource.MustParse("1"),
-						v1.ResourceMemory: resource.MustParse("512Mi"),
+						corev1.ResourceCPU:    resource.MustParse("1"),
+						corev1.ResourceMemory: resource.MustParse("512Mi"),
 					},
 				},
 			},
@@ -631,12 +630,12 @@ func TestGetMappedComponent(t *testing.T) {
 				GitSource:   &gitopsgenv1alpha1.GitSource{},
 				Resources: corev1.ResourceRequirements{
 					Requests: corev1.ResourceList{
-						v1.ResourceCPU:    resource.MustParse("10m"),
-						v1.ResourceMemory: resource.MustParse("50Mi"),
+						corev1.ResourceCPU:    resource.MustParse("10m"),
+						corev1.ResourceMemory: resource.MustParse("50Mi"),
 					},
 					Limits: corev1.ResourceList{
-						v1.ResourceCPU:    resource.MustParse("1"),
-						v1.ResourceMemory: resource.MustParse("512Mi"),
+						corev1.ResourceCPU:    resource.MustParse("1"),
+						corev1.ResourceMemory: resource.MustParse("512Mi"),
 					},
 				},
 			},
@@ -703,12 +702,12 @@ func TestGetMappedComponent(t *testing.T) {
 				},
 				Resources: corev1.ResourceRequirements{
 					Requests: corev1.ResourceList{
-						v1.ResourceCPU:    resource.MustParse("10m"),
-						v1.ResourceMemory: resource.MustParse("50Mi"),
+						corev1.ResourceCPU:    resource.MustParse("10m"),
+						corev1.ResourceMemory: resource.MustParse("50Mi"),
 					},
 					Limits: corev1.ResourceList{
-						v1.ResourceCPU:    resource.MustParse("1"),
-						v1.ResourceMemory: resource.MustParse("512Mi"),
+						corev1.ResourceCPU:    resource.MustParse("1"),
+						corev1.ResourceMemory: resource.MustParse("512Mi"),
 					},
 				},
 			},
