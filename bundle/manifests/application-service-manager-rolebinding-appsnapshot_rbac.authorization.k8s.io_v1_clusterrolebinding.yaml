@@ -10,4 +10,4 @@ roleRef:
 subjects:
 - kind: ServiceAccount
   name: application-service-controller-manager
-  namespace: application-service-system
+  namespace: application-service

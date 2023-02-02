@@ -1,5 +1,5 @@
 # Adds namespace to all resources.
-namespace: application-service-system
+namespace: application-service
 
 # Value of this field is prepended to the
 # names of all resources, e.g. a deployment named
