@@ -51,7 +51,7 @@ import (
 
 	appstudiov1alpha1 "github.com/redhat-appstudio/application-api/api/v1alpha1"
 	"github.com/redhat-appstudio/application-service/controllers"
-	appservicegitops "github.com/redhat-appstudio/application-service/gitops"
+	appservicegitops "github.com/redhat-appstudio/application-service/gitops-generator/pkg/gitops"
 	"github.com/redhat-appstudio/application-service/pkg/devfile"
 	"github.com/redhat-appstudio/application-service/pkg/spi"
 	"github.com/redhat-appstudio/application-service/pkg/util/ioutils"

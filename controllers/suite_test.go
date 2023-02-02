@@ -23,7 +23,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/redhat-appstudio/application-service/gitops"
+	"github.com/redhat-appstudio/application-service/gitops-generator/pkg/gitops"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
