@@ -25,13 +25,14 @@ import (
 
 	"github.com/devfile/api/v2/pkg/apis/workspaces/v1alpha2"
 	"github.com/devfile/api/v2/pkg/attributes"
-	data "github.com/devfile/library/pkg/devfile/parser/data"
-	"github.com/devfile/library/pkg/devfile/parser/data/v2/common"
+	data "github.com/devfile/library/v2/pkg/devfile/parser/data"
+	"github.com/devfile/library/v2/pkg/devfile/parser/data/v2/common"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	appstudiov1alpha1 "github.com/redhat-appstudio/application-api/api/v1alpha1"
 	devfile "github.com/redhat-appstudio/application-service/pkg/devfile"
+	devfilePkg "github.com/redhat-appstudio/application-service/pkg/devfile"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/yaml"
 
@@ -1738,7 +1739,10 @@ var _ = Describe("Component controller", func() {
 			Expect(createdHasApp.Status.Devfile).Should(Not(Equal("")))
 
 			// Check the Component devfile
-			hasCompDevfile, err := devfile.ParseDevfileModel(createdHasComp.Status.Devfile)
+			devfileSrc := devfilePkg.DevfileSrc{
+				Data: createdHasComp.Status.Devfile,
+			}
+			hasCompDevfile, err := devfile.ParseDevfile(devfileSrc)
 			Expect(err).Should(Not(HaveOccurred()))
 
 			devfileComponents, err := hasCompDevfile.GetComponents(common.DevfileOptions{})
@@ -1753,7 +1757,10 @@ var _ = Describe("Component controller", func() {
 			}
 
 			// Check the HAS Application devfile
-			hasAppDevfile, err := devfile.ParseDevfileModel(createdHasApp.Status.Devfile)
+			devfileSrc = devfilePkg.DevfileSrc{
+				Data: createdHasApp.Status.Devfile,
+			}
+			hasAppDevfile, err := devfile.ParseDevfile(devfileSrc)
 			Expect(err).Should(Not(HaveOccurred()))
 
 			// gitOpsRepo and appModelRepo should both be set

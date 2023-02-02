@@ -42,7 +42,6 @@ import (
 	"sigs.k8s.io/yaml"
 
 	"github.com/devfile/api/v2/pkg/attributes"
-	devfileParser "github.com/devfile/library/v2/pkg/devfile/parser"
 	data "github.com/devfile/library/v2/pkg/devfile/parser/data"
 	"github.com/go-logr/logr"
 	gh "github.com/google/go-github/v41/github"
