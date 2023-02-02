@@ -15,11 +15,15 @@
 package main
 
 import (
+	"context"
+	"fmt"
 	"os"
 	"strconv"
 	"strings"
 
 	"github.com/redhat-appstudio/application-service/cdq-analysis/pkg"
+	"k8s.io/client-go/kubernetes"
+	"k8s.io/client-go/rest"
 )
 
 func main() {
@@ -32,7 +36,7 @@ func main() {
 	gitToken := os.Args[1]
 	namespace := os.Args[2]
 	name := os.Args[3]
-	context := os.Args[4]
+	contextPath := os.Args[4]
 	devfilePath := os.Args[5]
 	URL := os.Args[6]
 	Revision := os.Args[7]
@@ -40,5 +44,19 @@ func main() {
 	isDevfilePresent, _ := strconv.ParseBool(os.Args[9])
 	isDockerfilePresent, _ := strconv.ParseBool(os.Args[10])
 
-	pkg.CloneAndAnalyze(gitToken, namespace, name, context, devfilePath, URL, Revision, DevfileRegistryURL, isDevfilePresent, isDockerfilePresent)
+	ctx := context.Background()
+	config, err := rest.InClusterConfig()
+	if err != nil {
+		fmt.Printf("Error creating InClusterConfig: %v", err)
+	}
+
+	clientset, err := kubernetes.NewForConfig(config)
+	if err != nil {
+		fmt.Printf("Error creating clientset with config %v: %v", config, err)
+	}
+	k8sInfoClient := pkg.K8sInfoClient{
+		Ctx:ctx,
+		Clientset: clientset,
+	}
+	pkg.CloneAndAnalyze(k8sInfoClient, gitToken, namespace, name, contextPath, devfilePath, URL, Revision, DevfileRegistryURL, isDevfilePresent, isDockerfilePresent)
 }
