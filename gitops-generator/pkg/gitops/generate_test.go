@@ -45,32 +45,6 @@ func TestGenerateTektonBuild(t *testing.T) {
 		testMessageToDisplay string
 	}{
 		{
-			name:       "Check trigger based resources",
-			fs:         fs,
-			testFolder: "test1",
-			component: appstudiov1alpha1.Component{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "testcomponent",
-					Namespace: "workspace-name",
-				},
-				Spec: appstudiov1alpha1.ComponentSpec{
-					Source: appstudiov1alpha1.ComponentSource{
-						ComponentSourceUnion: appstudiov1alpha1.ComponentSourceUnion{
-							GitSource: &appstudiov1alpha1.GitSource{
-								URL: "https://host/git-repo.git",
-							},
-						},
-					},
-				},
-			},
-			want: []string{
-				kustomizeFileName,
-				buildTriggerTemplateFileName,
-				buildEventListenerFileName,
-				buildWebhookRouteFileName,
-			},
-		},
-		{
 			name:       "Check pipeline as code resources",
 			fs:         fs,
 			testFolder: "test2",
@@ -144,6 +118,37 @@ func TestGenerateTektonBuild(t *testing.T) {
 				exist, err := tt.fs.Exists(filepath.Join(path, tt.component.Name, "/components/", tt.component.Name, "/base/.tekton/", item))
 				testutils.AssertNoError(t, err)
 				assert.True(t, exist, "Expected file %s missing in gitops", item)
+			}
+		})
+	}
+}
+
+func TestGetAndSetDefaultImageRepo(t *testing.T) {
+
+	tests := []struct {
+		name      string
+		imageRepo string
+		want      string
+	}{
+		{
+			name: "Get default image repo",
+			want: "quay.io/redhat-appstudio/user-workload",
+		},
+		{
+			name:      "Override default image repo",
+			imageRepo: "quay.io/myuser/myrepo",
+			want:      "quay.io/myuser/myrepo",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if tt.imageRepo != "" {
+				SetDefaultImageRepo(tt.imageRepo)
+			}
+			imageRepo := GetDefaultImageRepo()
+			if imageRepo != tt.want {
+				t.Errorf("TestGetAndSetDefaultImageRepo(): want %v, got %v", tt.want, imageRepo)
 			}
 		})
 	}
