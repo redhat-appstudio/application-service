@@ -16,13 +16,17 @@
 package util
 
 import (
+	"fmt"
 	"net/url"
+	"reflect"
 
+	"github.com/devfile/library/v2/pkg/devfile/parser"
 	appstudiov1alpha1 "github.com/redhat-appstudio/application-api/api/v1alpha1"
 	gitopsgenv1alpha1 "github.com/redhat-developer/gitops-generator/api/v1alpha1"
 )
 
-func GetMappedGitOpsComponent(component appstudiov1alpha1.Component) gitopsgenv1alpha1.GeneratorOptions {
+// GetMappedGitOpsComponent gets a mapped GeneratorOptions from the Component for GitOps resource generation
+func GetMappedGitOpsComponent(component appstudiov1alpha1.Component, kubernetesResources parser.KubernetesResources) gitopsgenv1alpha1.GeneratorOptions {
 	customK8sLabels := map[string]string{
 		"app.kubernetes.io/name":       component.Spec.ComponentName,
 		"app.kubernetes.io/instance":   component.Name,
@@ -50,6 +54,15 @@ func GetMappedGitOpsComponent(component appstudiov1alpha1.Component) gitopsgenv1
 	} else {
 		gitopsMapComponent.GitSource = &gitopsgenv1alpha1.GitSource{}
 	}
+
+	if !reflect.DeepEqual(kubernetesResources, parser.KubernetesResources{}) {
+		gitopsMapComponent.KubernetesResources.Deployments = append(gitopsMapComponent.KubernetesResources.Deployments, kubernetesResources.Deployments...)
+		gitopsMapComponent.KubernetesResources.Services = append(gitopsMapComponent.KubernetesResources.Services, kubernetesResources.Services...)
+		gitopsMapComponent.KubernetesResources.Routes = append(gitopsMapComponent.KubernetesResources.Routes, kubernetesResources.Routes...)
+		gitopsMapComponent.KubernetesResources.Ingresses = append(gitopsMapComponent.KubernetesResources.Ingresses, kubernetesResources.Ingresses...)
+		gitopsMapComponent.KubernetesResources.Others = append(gitopsMapComponent.KubernetesResources.Others, kubernetesResources.Others...)
+	}
+
 	return gitopsMapComponent
 }
 
@@ -61,4 +74,34 @@ func GetRemoteURL(gitOpsURL string, gitToken string) (string, error) {
 	parsedURL.User = url.User(gitToken)
 	remoteURL := parsedURL.String()
 	return remoteURL, nil
+}
+
+// ProcessGitOpsStatus processes the GitOps status and returns the remote url, branch, context and the error
+func ProcessGitOpsStatus(gitopsStatus appstudiov1alpha1.GitOpsStatus, gitToken string) (string, string, string, error) {
+	var gitOpsURL, gitOpsBranch, gitOpsContext string
+	gitOpsURL = gitopsStatus.RepositoryURL
+	if gitOpsURL == "" {
+		err := fmt.Errorf("unable to process GitOps status, GitOps Repository URL cannot be empty")
+		return "", "", "", err
+	}
+	if gitopsStatus.Branch != "" {
+		gitOpsBranch = gitopsStatus.Branch
+	} else {
+		gitOpsBranch = "main"
+	}
+	if gitopsStatus.Context != "" {
+		gitOpsContext = gitopsStatus.Context
+	} else {
+		gitOpsContext = "/"
+	}
+
+	// Construct the remote URL for the gitops repository
+	parsedURL, err := url.Parse(gitOpsURL)
+	if err != nil {
+		return "", "", "", err
+	}
+	parsedURL.User = url.User(gitToken)
+	remoteURL := parsedURL.String()
+
+	return remoteURL, gitOpsBranch, gitOpsContext, nil
 }

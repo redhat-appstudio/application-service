@@ -20,10 +20,12 @@ import (
 	"fmt"
 	"path/filepath"
 
+	devfileParser "github.com/devfile/library/v2/pkg/devfile/parser"
 	appstudiov1alpha1 "github.com/redhat-appstudio/application-api/api/v1alpha1"
+	devfile "github.com/redhat-appstudio/application-service/gitops-generator/pkg/devfile"
 	gitops "github.com/redhat-appstudio/application-service/gitops-generator/pkg/gitops"
 	"github.com/redhat-appstudio/application-service/gitops-generator/pkg/gitops/prepare"
-	"github.com/redhat-appstudio/application-service/pkg/util"
+	"github.com/redhat-appstudio/application-service/gitops-generator/pkg/util"
 	gitopsgenv1alpha1 "github.com/redhat-developer/gitops-generator/api/v1alpha1"
 	gitopsgen "github.com/redhat-developer/gitops-generator/pkg"
 	gitopsutil "github.com/redhat-developer/gitops-generator/pkg/util"
@@ -49,25 +51,32 @@ func GenerateGitopsBase(ctx context.Context, client ctrlclient.Client, component
 		return fmt.Errorf("unable to create temp directory for GitOps resources due to error: %v", err)
 	}
 
-	deployAssociatedComponents, err := devfileParser.GetDeployComponents(compDevfileData)
+	devfileSrc := devfile.DevfileSrc{
+		Data: component.Status.Devfile,
+	}
+	compDevfileData, err := devfile.ParseDevfile(devfileSrc)
 	if err != nil {
-		log.Error(err, "unable to get deploy components")
 		return err
 	}
 
-	kubernetesResources, err := devfile.GetResourceFromDevfile(log, compDevfileData, deployAssociatedComponents, component.Name, component.Spec.ContainerImage)
+	deployAssociatedComponents, err := devfileParser.GetDeployComponents(compDevfileData)
 	if err != nil {
-		log.Error(err, "unable to get kubernetes resources from the devfile outerloop components")
+		//log.Error(err, "unable to get deploy components")
+		return err
+	}
+
+	kubernetesResources, err := devfile.GetResourceFromDevfile(compDevfileData, deployAssociatedComponents, component.Name, component.Spec.ContainerImage)
+	if err != nil {
+		//log.Error(err, "unable to get kubernetes resources from the devfile outerloop components")
 		return err
 	}
 
 	// Generate and push the gitops resources
-	gitopsConfig := prepare.PrepareGitopsConfig(ctx, r.Client, *component)
-	mappedGitOpsComponent := util.GetMappedGitOpsComponent(*component, kubernetesResources)
+	gitopsConfig := prepare.PrepareGitopsConfig(ctx, client, component)
+	mappedGitOpsComponent := util.GetMappedGitOpsComponent(component, kubernetesResources)
 
-	err = r.Generator.CloneGenerateAndPush(tempDir, gitOpsURL, mappedGitOpsComponent, r.AppFS, gitOpsBranch, gitOpsContext, false)
+	err = gitopsParams.Generator.CloneGenerateAndPush(tempDir, gitopsParams.RemoteURL, mappedGitOpsComponent, appFs, gitopsParams.Branch, gitopsParams.Context, false)
 	if err != nil {
-		log.Error(err, "unable to generate gitops resources due to error")
 		return err
 	}
 
