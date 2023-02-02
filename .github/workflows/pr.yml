@@ -125,3 +125,23 @@ jobs:
           fetch-depth: 0
       - name: Check if dockerimage build is working
         run: docker build -f ./Dockerfile .
+  
+  gitops-generator-build:
+    name: Check GitOps Generator build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out code into the Go module directory
+        uses: actions/checkout@v2
+        with:
+          fetch-depth: 0
+      - name: Set up Go 1.x
+        uses: actions/setup-go@v2
+        with:
+          go-version: 1.18
+      - name: Change to the GitOps Generator directory
+        run: cd gitops-generator/
+      - name: Run the GitOps Generator Tests
+        run: go test ./...
+      - name: Check if dockerimage build is working
+        run: docker build -f ./Dockerfile .
+
