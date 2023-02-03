@@ -20,7 +20,7 @@ require (
 	github.com/prometheus/client_golang v1.14.0
 	github.com/redhat-appstudio/application-api v0.0.0-20221205185405-03f73a06d978
 	github.com/redhat-appstudio/service-provider-integration-scm-file-retriever v0.8.3
-	github.com/redhat-developer/gitops-generator v0.0.0-20230113152345-19efcd5ec104
+	github.com/redhat-developer/gitops-generator v0.0.0-20230202231730-e63f1f811195
 	github.com/spf13/afero v1.8.0
 	github.com/stretchr/testify v1.8.1
 	go.uber.org/zap v1.24.0
