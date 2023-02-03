@@ -476,6 +476,14 @@ func (r *ComponentReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 
 			component.Status.ContainerImage = component.Spec.ContainerImage
 			component.Status.Devfile = string(yamlHASCompData)
+			err = r.Client.Status().Update(ctx, &component)
+			if err != nil {
+				log.Error(err, "Unable to update Component status")
+				// if we're unable to update the Component CR status, then we need to err out
+				// since we need the reference of the devfile in Component to be always accessible
+				r.SetUpdateConditionAndUpdateCR(ctx, req, &component, err)
+				return ctrl.Result{}, err
+			}
 
 			// Generate and push the gitops resources, if necessary.
 			if !component.Spec.SkipGitOpsResourceGeneration {
