@@ -17,7 +17,10 @@ package main
 import (
 	"context"
 	"fmt"
+	"go.uber.org/zap/zapcore"
 	"os"
+	ctrl "sigs.k8s.io/controller-runtime"
+	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 	"strconv"
 	"strings"
 
@@ -54,9 +57,15 @@ func main() {
 	if err != nil {
 		fmt.Printf("Error creating clientset with config %v: %v", config, err)
 	}
+	opts := zap.Options{
+		TimeEncoder: zapcore.ISO8601TimeEncoder,
+	}
+	ctrl.SetLogger(zap.New(zap.UseFlagOptions(&opts)))
+	log := ctrl.Log.WithName("cdq-analysis").WithName("CloneAndAnalyze")
 	k8sInfoClient := pkg.K8sInfoClient{
-		Ctx:ctx,
+		Ctx:       ctx,
 		Clientset: clientset,
+		Log:       log,
 	}
 	pkg.CloneAndAnalyze(k8sInfoClient, gitToken, namespace, name, contextPath, devfilePath, URL, Revision, DevfileRegistryURL, isDevfilePresent, isDockerfilePresent)
 }

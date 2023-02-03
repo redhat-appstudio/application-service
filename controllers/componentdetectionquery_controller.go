@@ -369,7 +369,7 @@ func cleanupK8sResources(log logr.Logger, clientset *kubernetes.Clientset, ctx c
 
 	pp := metav1.DeletePropagationBackground
 
-	err := jobsClient.Delete(context.Background(), jobName, metav1.DeleteOptions{PropagationPolicy: &pp})
+	err := jobsClient.Delete(ctx, jobName, metav1.DeleteOptions{PropagationPolicy: &pp})
 
 	if err != nil {
 		log.Error(err, fmt.Sprintf("Failed to delete job %s... %s", jobName, namespace))
@@ -379,7 +379,7 @@ func cleanupK8sResources(log logr.Logger, clientset *kubernetes.Clientset, ctx c
 
 	log.Info(fmt.Sprintf("Deleting config map %s... %s", configMapName, namespace))
 	configMapClient := clientset.CoreV1().ConfigMaps(namespace)
-	err = configMapClient.Delete(context.Background(), configMapName, metav1.DeleteOptions{PropagationPolicy: &pp})
+	err = configMapClient.Delete(ctx, configMapName, metav1.DeleteOptions{PropagationPolicy: &pp})
 	if err != nil {
 		log.Error(err, fmt.Sprintf("Failed to delete config map %s... %s", configMapName, namespace))
 	} else {

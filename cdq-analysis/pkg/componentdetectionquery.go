@@ -23,27 +23,21 @@ import (
 	"path"
 
 	"github.com/go-logr/logr"
-	"go.uber.org/zap/zapcore"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
-	ctrl "sigs.k8s.io/controller-runtime"
-	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 )
 
-type K8sInfoClient struct{
-	Ctx context.Context
+type K8sInfoClient struct {
+	Ctx       context.Context
 	Clientset kubernetes.Interface
+	Log       logr.Logger
 }
 
 // CDQ analyzer
 // return values are for testing purpose
-func CloneAndAnalyze(k K8sInfoClient, gitToken, namespace, name, context, devfilePath, URL, Revision, DevfileRegistryURL string, isDevfilePresent, isDockerfilePresent bool) (map[string][]byte, map[string]string, map[string]string, error){
-	opts := zap.Options{
-		TimeEncoder: zapcore.ISO8601TimeEncoder,
-	}
-	ctrl.SetLogger(zap.New(zap.UseFlagOptions(&opts)))
-	log := ctrl.Log.WithName("cdq-analysis").WithName("CloneAndAnalyze")
+func CloneAndAnalyze(k K8sInfoClient, gitToken, namespace, name, context, devfilePath, URL, Revision, DevfileRegistryURL string, isDevfilePresent, isDockerfilePresent bool) (map[string][]byte, map[string]string, map[string]string, error) {
+	log := k.Log
 	var clonePath, componentPath string
 	alizerClient := AlizerClient{}
 	devfilesMap := make(map[string][]byte)
@@ -63,14 +57,14 @@ func CloneAndAnalyze(k K8sInfoClient, gitToken, namespace, name, context, devfil
 		clonePath, err = CreateTempPath(name, Fs)
 		if err != nil {
 			log.Error(err, fmt.Sprintf("Unable to create a temp path %s for cloning %v", clonePath, namespace))
-			k.SendBackDetectionResult(log, devfilesMap, devfilesURLMap, dockerfileContextMap, name, namespace, err)
+			k.SendBackDetectionResult(devfilesMap, devfilesURLMap, dockerfileContextMap, name, namespace, err)
 			return nil, nil, nil, err
 		}
 
 		err = CloneRepo(clonePath, URL, gitToken)
 		if err != nil {
 			log.Error(err, fmt.Sprintf("Unable to clone repo %s to path %s, exiting reconcile loop %v", URL, clonePath, namespace))
-			k.SendBackDetectionResult(log, devfilesMap, devfilesURLMap, dockerfileContextMap, name, namespace, err)
+			k.SendBackDetectionResult(devfilesMap, devfilesURLMap, dockerfileContextMap, name, namespace, err)
 			return nil, nil, nil, err
 		}
 		log.Info(fmt.Sprintf("cloned from %s to path %s... %v", URL, clonePath, namespace))
@@ -83,8 +77,7 @@ func CloneAndAnalyze(k K8sInfoClient, gitToken, namespace, name, context, devfil
 			components, err := alizerClient.DetectComponents(componentPath)
 			if err != nil {
 				log.Error(err, fmt.Sprintf("Unable to detect components using Alizer for repo %v, under path %v... %v ", URL, componentPath, namespace))
-				// r.SetCompleteConditionAndUpdateCR(ctx, req, &componentDetectionQuery, copiedCDQ, err)
-				k.SendBackDetectionResult(log, devfilesMap, devfilesURLMap, dockerfileContextMap, name, namespace, err)
+				k.SendBackDetectionResult(devfilesMap, devfilesURLMap, dockerfileContextMap, name, namespace, err)
 				return nil, nil, nil, err
 			}
 			log.Info(fmt.Sprintf("components detected %v... %v", components, namespace))
@@ -105,7 +98,7 @@ func CloneAndAnalyze(k K8sInfoClient, gitToken, namespace, name, context, devfil
 		if err != nil {
 			if _, ok := err.(*NoDevfileFound); !ok {
 				log.Error(err, fmt.Sprintf("Unable to find devfile(s) in repo %s due to an error %s, exiting reconcile loop %v", URL, err.Error(), namespace))
-				k.SendBackDetectionResult(log, devfilesMap, devfilesURLMap, dockerfileContextMap, name, namespace, err)
+				k.SendBackDetectionResult(devfilesMap, devfilesURLMap, dockerfileContextMap, name, namespace, err)
 				return nil, nil, nil, err
 			}
 		}
@@ -114,7 +107,7 @@ func CloneAndAnalyze(k K8sInfoClient, gitToken, namespace, name, context, devfil
 		err := AnalyzePath(alizerClient, componentPath, context, DevfileRegistryURL, devfilesMap, devfilesURLMap, dockerfileContextMap, isDevfilePresent, isDockerfilePresent)
 		if err != nil {
 			log.Error(err, fmt.Sprintf("Unable to analyze path %s for a dockerfile/devfile %v", componentPath, namespace))
-			k.SendBackDetectionResult(log, devfilesMap, devfilesURLMap, dockerfileContextMap, name, namespace, err)
+			k.SendBackDetectionResult(devfilesMap, devfilesURLMap, dockerfileContextMap, name, namespace, err)
 			return nil, nil, nil, err
 		}
 	}
@@ -122,30 +115,17 @@ func CloneAndAnalyze(k K8sInfoClient, gitToken, namespace, name, context, devfil
 	if isExist, _ := IsExisting(Fs, clonePath); isExist {
 		if err := Fs.RemoveAll(clonePath); err != nil {
 			log.Error(err, fmt.Sprintf("Unable to remove the clonepath %s %v", clonePath, namespace))
-			k.SendBackDetectionResult(log, devfilesMap, devfilesURLMap, dockerfileContextMap, name, namespace, err)
+			k.SendBackDetectionResult(devfilesMap, devfilesURLMap, dockerfileContextMap, name, namespace, err)
 			return nil, nil, nil, err
 		}
 	}
 
-	k.SendBackDetectionResult(log, devfilesMap, devfilesURLMap, dockerfileContextMap, name, namespace, nil)
+	k.SendBackDetectionResult(devfilesMap, devfilesURLMap, dockerfileContextMap, name, namespace, nil)
 	return devfilesMap, devfilesURLMap, dockerfileContextMap, nil
 }
 
-// func SendBackDetectionResult(log logr.Logger, devfilesMap map[string][]byte, devfilesURLMap map[string]string, dockerfileContextMap map[string]string, name, namespace string, completeError error) {
-// 	ctx := context.Background()
-// 	config, err := rest.InClusterConfig()
-// 	if err != nil {
-// 		log.Error(err, fmt.Sprintf("Error creating InClusterConfig"))
-// 	}
-
-// 	clientset, err := kubernetes.NewForConfig(config)
-// 	if err != nil {
-// 		log.Error(err, fmt.Sprintf("Error creating clientset with config %v", config))
-// 	}
-// 	SendBackDetectionResultHelper(clientset, ctx, log, devfilesMap, devfilesURLMap, dockerfileContextMap, name, namespace, completeError)
-// }
-
-func (k K8sInfoClient)SendBackDetectionResult(log logr.Logger, devfilesMap map[string][]byte, devfilesURLMap map[string]string, dockerfileContextMap map[string]string, name, namespace string, completeError error) {
+func (k K8sInfoClient) SendBackDetectionResult(devfilesMap map[string][]byte, devfilesURLMap map[string]string, dockerfileContextMap map[string]string, name, namespace string, completeError error) {
+	log := k.Log
 	log.Info(fmt.Sprintf("Sending back result, devfilesMap %v,devfilesURLMap %v, dockerfileContextMap %v , error %v ... %v", devfilesMap, devfilesURLMap, dockerfileContextMap, completeError, namespace))
 
 	configMapBinaryData := make(map[string][]byte)
@@ -165,12 +145,12 @@ func (k K8sInfoClient)SendBackDetectionResult(log logr.Logger, devfilesMap map[s
 	if completeError != nil {
 		errorMap := make(map[string]string)
 		switch completeError.(type) {
-			case *NoDevfileFound:
-				errorMap["NoDevfileFound"] = fmt.Sprintf("%v", completeError)
-			case *NoDockerfileFound:
-				errorMap["NoDockerfileFound"] = fmt.Sprintf("%v", completeError)
-			default:
-				errorMap["InternalError"] = fmt.Sprintf("%v", completeError)
+		case *NoDevfileFound:
+			errorMap["NoDevfileFound"] = fmt.Sprintf("%v", completeError)
+		case *NoDockerfileFound:
+			errorMap["NoDockerfileFound"] = fmt.Sprintf("%v", completeError)
+		default:
+			errorMap["InternalError"] = fmt.Sprintf("%v", completeError)
 		}
 		errorMapbytes, _ := json.Marshal(errorMap)
 		configMapBinaryData["errorMap"] = errorMapbytes
