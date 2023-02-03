@@ -189,7 +189,18 @@ func (r *ComponentReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 	for _, condition := range component.Status.Conditions {
 		if condition.Type == "GitOpsResourcesGenerated" && condition.Reason == "GenerateError" && condition.Status == metav1.ConditionFalse {
 			log.Info(fmt.Sprintf("Re-attempting GitOps generation for %s", component.Name))
-			if err := r.generateGitops(ctx, req, &component); err != nil {
+			// Parse the Component Devfile
+			devfileSrc := devfile.DevfileSrc{
+				Data: component.Status.Devfile,
+			}
+			compDevfileData, err := devfile.ParseDevfile(devfileSrc)
+			if err != nil {
+				errMsg := fmt.Sprintf("Unable to parse the devfile from Component status and re-attempt GitOps generation, exiting reconcile loop %v", req.NamespacedName)
+				log.Error(err, errMsg)
+				r.SetGitOpsGeneratedConditionAndUpdateCR(ctx, &component, fmt.Errorf("%v: %v", errMsg, err))
+				return ctrl.Result{}, err
+			}
+			if err := r.generateGitops(ctx, req, &component, compDevfileData); err != nil {
 				errMsg := fmt.Sprintf("Unable to generate gitops resources for component %v", req.NamespacedName)
 				log.Error(err, errMsg)
 				r.SetGitOpsGeneratedConditionAndUpdateCR(ctx, &component, fmt.Errorf("%v: %v", errMsg, err))

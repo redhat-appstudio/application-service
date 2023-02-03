@@ -1608,12 +1608,127 @@ var _ = Describe("Component controller", func() {
 		})
 	})
 
-	Context("Component with empty GitOps repository", func() {
-		It("Should error out", func() {
+	Context("Create Component with dockerfile URL set for repo with devfile URL", func() {
+		It("Should create successfully and override local Dockerfile URL references in the Devfile", func() {
 			ctx := context.Background()
 
 			applicationName := HASAppName + "20"
 			componentName := HASCompName + "20"
+
+			createAndFetchSimpleApp(applicationName, HASAppNamespace, DisplayName, Description)
+
+			hasComp := &appstudiov1alpha1.Component{
+				TypeMeta: metav1.TypeMeta{
+					APIVersion: "appstudio.redhat.com/v1alpha1",
+					Kind:       "Component",
+				},
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      componentName,
+					Namespace: HASAppNamespace,
+				},
+				Spec: appstudiov1alpha1.ComponentSpec{
+					ComponentName: ComponentName,
+					Application:   applicationName,
+					Source: appstudiov1alpha1.ComponentSource{
+						ComponentSourceUnion: appstudiov1alpha1.ComponentSourceUnion{
+							GitSource: &appstudiov1alpha1.GitSource{
+								URL:           "https://github.com/devfile-resources/node-express-hello-no-devfile",
+								DevfileURL:    "https://raw.githubusercontent.com/nodeshift-starters/devfile-sample/main/devfile.yaml",
+								DockerfileURL: "https://raw.githubusercontent.com/nodeshift-starters/devfile-sample/main/Dockerfile",
+							},
+						},
+					},
+				},
+			}
+			Expect(k8sClient.Create(ctx, hasComp)).Should(Succeed())
+
+			// Look up the component resource that was created.
+			// num(conditions) may still be < 2 (GitOpsGenerated, Created) on the first try, so retry until at least _some_ condition is set
+			hasCompLookupKey := types.NamespacedName{Name: componentName, Namespace: HASAppNamespace}
+			createdHasComp := &appstudiov1alpha1.Component{}
+			Eventually(func() bool {
+				k8sClient.Get(context.Background(), hasCompLookupKey, createdHasComp)
+				return len(createdHasComp.Status.Conditions) > 1 && createdHasComp.Status.GitOps.RepositoryURL != ""
+			}, timeout, interval).Should(BeTrue())
+
+			// Make sure the devfile model was properly set in Component
+			Expect(createdHasComp.Status.Devfile).Should(Not(Equal("")))
+
+			hasAppLookupKey := types.NamespacedName{Name: applicationName, Namespace: HASAppNamespace}
+			createdHasApp := &appstudiov1alpha1.Application{}
+			Eventually(func() bool {
+				k8sClient.Get(context.Background(), hasAppLookupKey, createdHasApp)
+				return len(createdHasApp.Status.Conditions) > 0 && strings.Contains(createdHasApp.Status.Devfile, ComponentName)
+			}, timeout, interval).Should(BeTrue())
+
+			// Make sure the devfile model was properly set in Application
+			Expect(createdHasApp.Status.Devfile).Should(Not(Equal("")))
+
+			// Check the Component devfile
+			src := devfilePkg.DevfileSrc{
+				Data: createdHasComp.Status.Devfile,
+			}
+			hasCompDevfile, err := devfilePkg.ParseDevfile(src)
+			Expect(err).Should(Not(HaveOccurred()))
+
+			devfileComponents, err := hasCompDevfile.GetComponents(common.DevfileOptions{})
+			Expect(err).Should(Not(HaveOccurred()))
+			Expect(len(devfileComponents)).Should(Equal(3))
+
+			for _, component := range devfileComponents {
+				Expect(component.Name).Should(BeElementOf([]string{"image-build", "kubernetes-deploy", "runtime"}))
+				if component.Image != nil && component.Image.Dockerfile != nil {
+					Expect(component.Image.Dockerfile.Uri).Should(Equal(hasComp.Spec.Source.GitSource.DockerfileURL))
+				}
+			}
+
+			// Check the HAS Application devfile
+			src = devfilePkg.DevfileSrc{
+				Data: createdHasApp.Status.Devfile,
+			}
+			hasAppDevfile, err := devfilePkg.ParseDevfile(src)
+			Expect(err).Should(Not(HaveOccurred()))
+
+			// gitOpsRepo and appModelRepo should both be set
+			Expect(string(hasAppDevfile.GetMetadata().Attributes["gitOpsRepository.url"].Raw)).Should(Not(Equal("")))
+			Expect(string(hasAppDevfile.GetMetadata().Attributes["appModelRepository.url"].Raw)).Should(Not(Equal("")))
+
+			// gitOpsRepo set in the component equal the repository in the app cr's devfile
+			gitopsRepo := hasAppDevfile.GetMetadata().Attributes.GetString("gitOpsRepository.url", &err)
+			Expect(err).Should(Not(HaveOccurred()))
+			Expect(string(createdHasComp.Status.GitOps.RepositoryURL)).Should(Equal(gitopsRepo))
+
+			hasProjects, err := hasAppDevfile.GetProjects(common.DevfileOptions{})
+			Expect(err).Should(Not(HaveOccurred()))
+			Expect(len(hasProjects)).ShouldNot(Equal(0))
+
+			nameMatched := false
+			repoLinkMatched := false
+			for _, project := range hasProjects {
+				if project.Name == ComponentName {
+					nameMatched = true
+				}
+				if project.Git != nil && project.Git.GitLikeProjectSource.Remotes["origin"] == "https://github.com/devfile-resources/node-express-hello-no-devfile" {
+					repoLinkMatched = true
+				}
+			}
+			Expect(nameMatched).Should(Equal(true))
+			Expect(repoLinkMatched).Should(Equal(true))
+
+			// Delete the specified HASComp resource
+			deleteHASCompCR(hasCompLookupKey)
+
+			// Delete the specified HASApp resource
+			deleteHASAppCR(hasAppLookupKey)
+		})
+	})
+
+	Context("Component with empty GitOps repository", func() {
+		It("Should error out", func() {
+			ctx := context.Background()
+
+			applicationName := HASAppName + "21"
+			componentName := HASCompName + "21"
 
 			createAndFetchSimpleApp(applicationName, HASAppNamespace, DisplayName, Description)
 
@@ -1624,7 +1739,9 @@ var _ = Describe("Component controller", func() {
 				return fetchedHasApp.Status.Devfile != ""
 			}, timeout, interval).Should(BeTrue())
 
-			hasAppDevfile, err := devfile.ParseDevfileModel(fetchedHasApp.Status.Devfile)
+			hasAppDevfile, err := devfilePkg.ParseDevfile(devfilePkg.DevfileSrc{
+				Data: fetchedHasApp.Status.Devfile,
+			})
 			Expect(err).Should(Not(HaveOccurred()))
 
 			// Update the GitOps Repo to a URI that mocked API returns a dummy err
@@ -1638,7 +1755,9 @@ var _ = Describe("Component controller", func() {
 			fetchedHasApp = &appstudiov1alpha1.Application{}
 			Eventually(func() bool {
 				k8sClient.Get(context.Background(), hasAppLookupKey, fetchedHasApp)
-				hasAppDevfile, err := devfile.ParseDevfileModel(fetchedHasApp.Status.Devfile)
+				hasAppDevfile, err := devfilePkg.ParseDevfile(devfilePkg.DevfileSrc{
+					Data: fetchedHasApp.Status.Devfile,
+				})
 				Expect(err).Should(Not(HaveOccurred()))
 				gitOpsRepoURL := hasAppDevfile.GetMetadata().Attributes.GetString("gitOpsRepository.url", &err)
 				Expect(err).Should(Not(HaveOccurred()))
@@ -1691,13 +1810,37 @@ var _ = Describe("Component controller", func() {
 			// Make sure the devfile model was properly set in Component
 			Expect(createdHasComp.Status.Devfile).Should(Not(Equal("")))
 
+			// Update the devfile to empty to see if errors out
+			originalDevfile := createdHasComp.Status.Devfile
+			createdHasComp.Status.Devfile = ""
+			Expect(k8sClient.Status().Update(ctx, createdHasComp)).Should(Succeed())
+			createdHasComp = &appstudiov1alpha1.Component{}
+			Eventually(func() bool {
+				var devfileCheck, createConditionCheck, gitOpsConditionCheck bool
+				k8sClient.Get(context.Background(), hasCompLookupKey, createdHasComp)
+				if createdHasComp.Status.Devfile == "" {
+					devfileCheck = true
+				}
+				for _, condition := range createdHasComp.Status.Conditions {
+					if condition.Type == "Created" && condition.Status == metav1.ConditionFalse {
+						createConditionCheck = true
+					}
+					if condition.Type == "GitOpsResourcesGenerated" && condition.Status == metav1.ConditionFalse && strings.Contains(condition.Message, "cannot parse devfile without a src") {
+						gitOpsConditionCheck = true
+					}
+				}
+				return devfileCheck && createConditionCheck && gitOpsConditionCheck
+			}, timeout, interval).Should(BeTrue())
+
 			// Update the GitOps URL to a repository wihout errors
 			createdHasComp.Status.GitOps.RepositoryURL = "https://github.com/redhat-appstudio-mjf/test-no-error"
+			// Revert the Devfile status
+			createdHasComp.Status.Devfile = originalDevfile
 			Expect(k8sClient.Status().Update(ctx, createdHasComp)).Should(Succeed())
 			createdHasComp = &appstudiov1alpha1.Component{}
 			Eventually(func() bool {
 				k8sClient.Get(context.Background(), hasCompLookupKey, createdHasComp)
-				return len(createdHasComp.Status.Conditions) > 1 && createdHasComp.Status.GitOps.RepositoryURL == "https://github.com/redhat-appstudio-mjf/test-no-error"
+				return len(createdHasComp.Status.Conditions) > 1 && createdHasComp.Status.GitOps.RepositoryURL == "https://github.com/redhat-appstudio-mjf/test-no-error" && createdHasComp.Status.Devfile == originalDevfile
 			}, timeout, interval).Should(BeTrue())
 
 			updatedHasComp := &appstudiov1alpha1.Component{}
