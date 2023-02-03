@@ -165,7 +165,7 @@ func (r *ComponentReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 			// remove the finalizer from the list and update it.
 			controllerutil.RemoveFinalizer(&component, compFinalizerName)
 			// Dont worry about the err on the Update call since the object is being deleted
-			r.Update(ctx, &component)
+			_ = r.Update(ctx, &component)
 		}
 
 		// once the Finalizer has been dealt with, return as there is no need

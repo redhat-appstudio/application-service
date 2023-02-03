@@ -120,7 +120,7 @@ func (r *ApplicationReconciler) Reconcile(ctx context.Context, req ctrl.Request)
 			// remove the finalizer from the list and update it.
 			controllerutil.RemoveFinalizer(&application, appFinalizerName)
 			// Dont worry about the err on the Update call since the object is being deleted
-			r.Update(ctx, &application)
+			_ = r.Update(ctx, &application)
 		}
 
 		// once the Finalizer has been dealt with, return as there is no need
