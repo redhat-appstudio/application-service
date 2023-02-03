@@ -1617,6 +1617,34 @@ var _ = Describe("Component controller", func() {
 
 			createAndFetchSimpleApp(applicationName, HASAppNamespace, DisplayName, Description)
 
+			hasAppLookupKey := types.NamespacedName{Name: applicationName, Namespace: HASAppNamespace}
+			fetchedHasApp := &appstudiov1alpha1.Application{}
+			Eventually(func() bool {
+				k8sClient.Get(context.Background(), hasAppLookupKey, fetchedHasApp)
+				return fetchedHasApp.Status.Devfile != ""
+			}, timeout, interval).Should(BeTrue())
+
+			hasAppDevfile, err := devfile.ParseDevfileModel(fetchedHasApp.Status.Devfile)
+			Expect(err).Should(Not(HaveOccurred()))
+
+			// Update the GitOps Repo to a URI that mocked API returns a dummy err
+			hasAppDevfile.GetMetadata().Attributes.PutString("gitOpsRepository.url", "https://github.com/redhat-appstudio-mjf/test-error-response")
+
+			devfileYaml, err := yaml.Marshal(hasAppDevfile)
+			Expect(err).ToNot(HaveOccurred())
+			fetchedHasApp.Status.Devfile = string(devfileYaml)
+			Expect(k8sClient.Status().Update(ctx, fetchedHasApp)).Should(Succeed())
+
+			fetchedHasApp = &appstudiov1alpha1.Application{}
+			Eventually(func() bool {
+				k8sClient.Get(context.Background(), hasAppLookupKey, fetchedHasApp)
+				hasAppDevfile, err := devfile.ParseDevfileModel(fetchedHasApp.Status.Devfile)
+				Expect(err).Should(Not(HaveOccurred()))
+				gitOpsRepoURL := hasAppDevfile.GetMetadata().Attributes.GetString("gitOpsRepository.url", &err)
+				Expect(err).Should(Not(HaveOccurred()))
+				return gitOpsRepoURL == "https://github.com/redhat-appstudio-mjf/test-error-response"
+			}, timeout, interval).Should(BeTrue())
+
 			hasComp := &appstudiov1alpha1.Component{
 				TypeMeta: metav1.TypeMeta{
 					APIVersion: "appstudio.redhat.com/v1alpha1",
@@ -1641,50 +1669,86 @@ var _ = Describe("Component controller", func() {
 			}
 			Expect(k8sClient.Create(ctx, hasComp)).Should(Succeed())
 
-			// Look up the has app resource that was created.
-			// num(conditions) may still be < 2 (GeneratedGitOps, Created) on the first try, so retry until at least _some_ condition is set
 			hasCompLookupKey := types.NamespacedName{Name: componentName, Namespace: HASAppNamespace}
 			createdHasComp := &appstudiov1alpha1.Component{}
 			Eventually(func() bool {
+				var gitOpsRepCheck, createConditionCheck, gitOpsConditionCheck bool
 				k8sClient.Get(context.Background(), hasCompLookupKey, createdHasComp)
-				return len(createdHasComp.Status.Conditions) > 1 && createdHasComp.Status.GitOps.RepositoryURL != ""
+				if createdHasComp.Status.GitOps.RepositoryURL == "https://github.com/redhat-appstudio-mjf/test-error-response" {
+					gitOpsRepCheck = true
+				}
+				for _, condition := range createdHasComp.Status.Conditions {
+					if condition.Type == "Created" && condition.Status == metav1.ConditionFalse {
+						createConditionCheck = true
+					}
+					if condition.Type == "GitOpsResourcesGenerated" && condition.Status == metav1.ConditionFalse {
+						gitOpsConditionCheck = true
+					}
+				}
+				return gitOpsRepCheck && createConditionCheck && gitOpsConditionCheck
 			}, timeout, interval).Should(BeTrue())
 
 			// Make sure the devfile model was properly set in Component
 			Expect(createdHasComp.Status.Devfile).Should(Not(Equal("")))
 
-			// Verify that the GitOpsGenerated status condition was also set
-			// ToDo: Add helper func for accessing the status conditions in a better way
-			gitopsCondition := createdHasComp.Status.Conditions[len(createdHasComp.Status.Conditions)-2]
-			Expect(gitopsCondition.Type).To(Equal("GitOpsResourcesGenerated"))
-			Expect(gitopsCondition.Status).To(Equal(metav1.ConditionTrue))
-
-			// Update the GitOps URL to a repository with empty commits
-			createdHasComp.Status.GitOps.RepositoryURL = "https://github.com/redhat-appstudio-mjf/test-error-response"
+			// Update the GitOps URL to a repository wihout errors
+			createdHasComp.Status.GitOps.RepositoryURL = "https://github.com/redhat-appstudio-mjf/test-no-error"
 			Expect(k8sClient.Status().Update(ctx, createdHasComp)).Should(Succeed())
 			createdHasComp = &appstudiov1alpha1.Component{}
 			Eventually(func() bool {
 				k8sClient.Get(context.Background(), hasCompLookupKey, createdHasComp)
-				return len(createdHasComp.Status.Conditions) > 1 && createdHasComp.Status.GitOps.RepositoryURL == "https://github.com/redhat-appstudio-mjf/test-error-response"
+				return len(createdHasComp.Status.Conditions) > 1 && createdHasComp.Status.GitOps.RepositoryURL == "https://github.com/redhat-appstudio-mjf/test-no-error"
 			}, timeout, interval).Should(BeTrue())
-
-			// Force an update reconcile
-			createdHasComp.Spec.Route = "updatedRoute"
-			Expect(k8sClient.Update(ctx, createdHasComp)).Should(Succeed())
 
 			updatedHasComp := &appstudiov1alpha1.Component{}
 			Eventually(func() bool {
+				var gitOpsConditionCheck, createConditionCheck bool
 				k8sClient.Get(context.Background(), hasCompLookupKey, updatedHasComp)
 				for _, condition := range updatedHasComp.Status.Conditions {
-					if condition.Type == "GitOpsResourcesGenerated" && condition.Status == metav1.ConditionFalse {
-						return true
+					if condition.Type == "GitOpsResourcesGenerated" && condition.Status == metav1.ConditionTrue {
+						gitOpsConditionCheck = true
+					}
+					if condition.Type == "Created" && condition.Status == metav1.ConditionTrue {
+						createConditionCheck = true
 					}
 				}
-				return false
+				return gitOpsConditionCheck && createConditionCheck
 			}, timeout, interval).Should(BeTrue())
 
 			// Make sure the devfile model was properly set in Component
 			Expect(updatedHasComp.Status.Devfile).Should(Not(Equal("")))
+
+			updatedHasComp.Status.GitOps.RepositoryURL = "https://github.com/redhat-appstudio-mjf/test-error-response"
+			Expect(k8sClient.Status().Update(ctx, updatedHasComp)).Should(Succeed())
+			updatedHasComp = &appstudiov1alpha1.Component{}
+			Eventually(func() bool {
+				k8sClient.Get(context.Background(), hasCompLookupKey, updatedHasComp)
+				return len(updatedHasComp.Status.Conditions) > 1 && updatedHasComp.Status.GitOps.RepositoryURL == "https://github.com/redhat-appstudio-mjf/test-error-response"
+			}, timeout, interval).Should(BeTrue())
+
+			// Force an update reconcile
+			updatedHasComp.Spec.Route = "updatedRoute"
+			Expect(k8sClient.Update(ctx, updatedHasComp)).Should(Succeed())
+
+			updatedHasComp = &appstudiov1alpha1.Component{}
+			Eventually(func() bool {
+				var createConditionCheck, updateConditionCheck, gitOpsConditionCheck bool
+				k8sClient.Get(context.Background(), hasCompLookupKey, updatedHasComp)
+				for _, condition := range updatedHasComp.Status.Conditions {
+					if condition.Type == "Created" && condition.Status == metav1.ConditionTrue {
+						createConditionCheck = true
+					}
+
+					if condition.Type == "Updated" && condition.Status == metav1.ConditionFalse {
+						updateConditionCheck = true
+					}
+
+					if condition.Type == "GitOpsResourcesGenerated" && condition.Status == metav1.ConditionFalse {
+						gitOpsConditionCheck = true
+					}
+				}
+				return createConditionCheck && updateConditionCheck && gitOpsConditionCheck
+			}, timeout, interval).Should(BeTrue())
 
 			updatedHasComp.Status.GitOps.RepositoryURL = "https://github.com/redhat-appstudio-mjf/test-no-error"
 			Expect(k8sClient.Status().Update(ctx, updatedHasComp)).Should(Succeed())
@@ -1700,20 +1764,28 @@ var _ = Describe("Component controller", func() {
 
 			updatedHasComp = &appstudiov1alpha1.Component{}
 			Eventually(func() bool {
+				var createConditionCheck, updateConditionCheck, gitOpsConditionCheck bool
 				k8sClient.Get(context.Background(), hasCompLookupKey, updatedHasComp)
 				for _, condition := range updatedHasComp.Status.Conditions {
+					if condition.Type == "Created" && condition.Status == metav1.ConditionTrue {
+						createConditionCheck = true
+					}
+
+					if condition.Type == "Updated" && condition.Status == metav1.ConditionTrue {
+						updateConditionCheck = true
+					}
+
 					if condition.Type == "GitOpsResourcesGenerated" && condition.Status == metav1.ConditionTrue {
-						return true
+						gitOpsConditionCheck = true
 					}
 				}
-				return false
+				return createConditionCheck && updateConditionCheck && gitOpsConditionCheck
 			}, timeout, interval).Should(BeTrue())
 
 			// Delete the specified HASComp resource
 			deleteHASCompCR(hasCompLookupKey)
 
 			// Delete the specified HASApp resource
-			hasAppLookupKey := types.NamespacedName{Name: applicationName, Namespace: HASAppNamespace}
 			deleteHASAppCR(hasAppLookupKey)
 		})
 	})

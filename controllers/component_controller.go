@@ -415,7 +415,6 @@ func (r *ComponentReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 			}
 
 			r.SetCreateConditionAndUpdateCR(ctx, req, &component, nil)
-
 		}
 	} else {
 
@@ -464,8 +463,10 @@ func (r *ComponentReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 				return ctrl.Result{}, err
 			}
 
-			// Generate and push the gitops resources, if necessary.
 			component.Status.ContainerImage = component.Spec.ContainerImage
+			component.Status.Devfile = string(yamlHASCompData)
+
+			// Generate and push the gitops resources, if necessary.
 			if !component.Spec.SkipGitOpsResourceGeneration {
 				if err := r.generateGitops(ctx, req, &component, hasCompDevfileData); err != nil {
 					errMsg := fmt.Sprintf("Unable to generate gitops resources for component %v", req.NamespacedName)
@@ -477,8 +478,6 @@ func (r *ComponentReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 					r.SetGitOpsGeneratedConditionAndUpdateCR(ctx, &component, nil)
 				}
 			}
-
-			component.Status.Devfile = string(yamlHASCompData)
 			r.SetUpdateConditionAndUpdateCR(ctx, req, &component, nil)
 
 		} else {
