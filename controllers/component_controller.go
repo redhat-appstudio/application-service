@@ -164,10 +164,13 @@ func (r *ComponentReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 		if containsString(component.GetFinalizers(), compFinalizerName) {
 			// remove the finalizer from the list and update it.
 			controllerutil.RemoveFinalizer(&component, compFinalizerName)
-			if err := r.Update(ctx, &component); err != nil {
-				return ctrl.Result{}, err
-			}
+			// Dont worry about the err on the Update call since the object is being deleted
+			r.Update(ctx, &component)
 		}
+
+		// once the Finalizer has been dealt with, return as there is no need
+		// to go through the reconcile logic on an object being deleted
+		return ctrl.Result{}, nil
 	}
 
 	log.Info(fmt.Sprintf("Starting reconcile loop for %v", req.NamespacedName))
