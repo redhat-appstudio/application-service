@@ -108,6 +108,7 @@ func GetRepoAndOrgFromURL(repoURL string) (string, string, error) {
 	return repoName, orgName, nil
 }
 
+// GetLatestCommitSHAFromRepository gets the latest Commit SHA from the repository
 func GetLatestCommitSHAFromRepository(client *github.Client, ctx context.Context, repoName string, orgName string, branch string) (string, error) {
 	commitSHA, _, err := client.Repositories.GetCommitSHA1(ctx, orgName, repoName, branch, "")
 	if err != nil {
