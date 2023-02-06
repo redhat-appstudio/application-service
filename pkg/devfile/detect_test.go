@@ -31,6 +31,7 @@ func TestAnalyzeAndDetectDevfile(t *testing.T) {
 		name                string
 		clonePath           string
 		repo                string
+		revision            string
 		token               string
 		registryURL         string
 		wantDevfile         bool
@@ -41,6 +42,15 @@ func TestAnalyzeAndDetectDevfile(t *testing.T) {
 			name:                "Successfully detect a devfile from the registry",
 			clonePath:           "/tmp/java-springboot-basic",
 			repo:                "https://github.com/maysunfaisal/devfile-sample-java-springboot-basic-1",
+			registryURL:         DevfileStageRegistryEndpoint,
+			wantDevfile:         true,
+			wantDevfileEndpoint: "https://registry.stage.devfile.io/devfiles/java-springboot-basic",
+		},
+		{
+			name:                "Successfully detect a devfile from the registry using an alternate branch",
+			clonePath:           "/tmp/java-springboot-basic",
+			repo:                "https://github.com/devfile-samples/devfile-sample-java-springboot-basic",
+			revision:            "testbranch",
 			registryURL:         DevfileStageRegistryEndpoint,
 			wantDevfile:         true,
 			wantDevfileEndpoint: "https://registry.stage.devfile.io/devfiles/java-springboot-basic",
@@ -84,7 +94,7 @@ func TestAnalyzeAndDetectDevfile(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			err := util.CloneRepo(tt.clonePath, tt.repo, tt.token)
+			err := util.CloneRepo(tt.clonePath, tt.repo, tt.revision, tt.token)
 			if err != nil {
 				t.Errorf("got unexpected error %v", err)
 			} else {
