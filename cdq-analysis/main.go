@@ -17,12 +17,13 @@ package main
 import (
 	"context"
 	"fmt"
-	"go.uber.org/zap/zapcore"
 	"os"
-	ctrl "sigs.k8s.io/controller-runtime"
-	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 	"strconv"
 	"strings"
+
+	"go.uber.org/zap/zapcore"
+	ctrl "sigs.k8s.io/controller-runtime"
+	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 
 	"github.com/redhat-appstudio/application-service/cdq-analysis/pkg"
 	"k8s.io/client-go/kubernetes"

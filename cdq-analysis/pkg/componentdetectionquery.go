@@ -61,7 +61,7 @@ func CloneAndAnalyze(k K8sInfoClient, gitToken, namespace, name, context, devfil
 			return nil, nil, nil, err
 		}
 
-		err = CloneRepo(clonePath, URL, gitToken)
+		err = CloneRepo(clonePath, URL, Revision, gitToken)
 		if err != nil {
 			log.Error(err, fmt.Sprintf("Unable to clone repo %s to path %s, exiting reconcile loop %v", URL, clonePath, namespace))
 			k.SendBackDetectionResult(devfilesMap, devfilesURLMap, dockerfileContextMap, name, namespace, err)

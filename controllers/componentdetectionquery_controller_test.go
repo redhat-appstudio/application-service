@@ -93,7 +93,8 @@ metadata:
 				},
 				Spec: appstudiov1alpha1.ComponentDetectionQuerySpec{
 					GitSource: appstudiov1alpha1.GitSource{
-						URL: SampleRepoLink,
+						URL:      SampleRepoLink,
+						Revision: "main",
 					},
 				},
 			}
@@ -158,6 +159,7 @@ metadata:
 			for devfileName, devfileDesc := range createdHasCompDetectionQuery.Status.ComponentDetected {
 				Expect(devfileName).Should(ContainSubstring("spring"))
 				Expect(devfileDesc.ComponentStub.Source.GitSource.Context).Should(ContainSubstring("./"))
+				Expect(devfileDesc.ComponentStub.Source.GitSource.Revision).Should(ContainSubstring("main"))
 				Expect(devfileDesc.ComponentStub.Source.GitSource.DevfileURL).Should(Equal("https://raw.githubusercontent.com/devfile-samples/devfile-sample-java-springboot-basic/main/devfile.yaml"))
 				Expect(devfileDesc.DevfileFound).Should(BeTrue())
 			}

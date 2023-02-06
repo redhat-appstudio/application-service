@@ -151,7 +151,11 @@ func (r *ComponentDetectionQueryReconciler) Reconcile(ctx context.Context, req c
 			} else {
 				// Use SPI to retrieve the devfile from the private repository
 				// TODO - maysunfaisal also search for Dockerfile
-				devfileBytes, err = spi.DownloadDevfileUsingSPI(r.SPIClient, ctx, componentDetectionQuery.Namespace, source.URL, "main", context)
+				revision := source.Revision
+				if revision == "" {
+					revision = "main"
+				}
+				devfileBytes, err = spi.DownloadDevfileUsingSPI(r.SPIClient, ctx, componentDetectionQuery.Namespace, source.URL, revision, context)
 				if err != nil {
 					log.Error(err, fmt.Sprintf("Unable to curl for any known devfile locations from %s... %v", source.URL, req.NamespacedName))
 				}
