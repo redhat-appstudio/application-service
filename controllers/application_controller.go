@@ -134,7 +134,7 @@ func (r *ApplicationReconciler) Reconcile(ctx context.Context, req ctrl.Request)
 		appModelRepo := application.Spec.AppModelRepository.URL
 		if gitOpsRepo == "" {
 			// If both repositories are blank, just generate a single shared repository
-			repoName := github.GenerateNewRepositoryName(application.Spec.DisplayName, application.Namespace, req.ClusterName)
+			repoName := github.GenerateNewRepositoryName(application.Name, application.Namespace, req.ClusterName)
 
 			// Generate the git repo in the redhat-appstudio-appdata org
 			repoUrl, err := github.GenerateNewRepository(r.GitHubClient, ctx, r.GitHubOrg, repoName, "GitOps Repository")

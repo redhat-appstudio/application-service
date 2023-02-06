@@ -459,6 +459,7 @@ func TestScanRepo(t *testing.T) {
 		name                         string
 		clonePath                    string
 		repo                         string
+		revision                     string
 		token                        string
 		wantErr                      bool
 		expectedDevfileContext       []string
@@ -469,6 +470,20 @@ func TestScanRepo(t *testing.T) {
 			name:                   "Should return 2 devfile contexts, and 2 devfileURLs as this is a multi comp devfile",
 			clonePath:              "/tmp/testclone",
 			repo:                   "https://github.com/maysunfaisal/multi-components-deep",
+			expectedDevfileContext: []string{"python", "devfile-sample-java-springboot-basic"},
+			expectedDevfileURLContextMap: map[string]string{
+				"devfile-sample-java-springboot-basic": "https://raw.githubusercontent.com/maysunfaisal/multi-components-deep/main/devfile-sample-java-springboot-basic/.devfile/.devfile.yaml",
+				"python":                               "https://registry.stage.devfile.io/devfiles/python-basic",
+			},
+			expectedDockerfileContextMap: map[string]string{
+				"devfile-sample-java-springboot-basic": "devfile-sample-java-springboot-basic/docker/Dockerfile",
+				"python":                               "https://raw.githubusercontent.com/devfile-samples/devfile-sample-python-basic/main/docker/Dockerfile"},
+		},
+		{
+			name:                   "Should return 2 devfile contexts, and 2 devfileURLs as this is a multi comp devfile - with revision specified",
+			clonePath:              "/tmp/testclone",
+			repo:                   "https://github.com/maysunfaisal/multi-components-deep",
+			revision:               "2a7b64d94453746579ae0898e44bcdd3d8575167",
 			expectedDevfileContext: []string{"python", "devfile-sample-java-springboot-basic"},
 			expectedDevfileURLContextMap: map[string]string{
 				"devfile-sample-java-springboot-basic": "https://raw.githubusercontent.com/maysunfaisal/multi-components-deep/main/devfile-sample-java-springboot-basic/.devfile/.devfile.yaml",
@@ -502,7 +517,7 @@ func TestScanRepo(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			logger = ctrl.Log.WithName("TestScanRepo")
-			err := util.CloneRepo(tt.clonePath, tt.repo, tt.token)
+			err := util.CloneRepo(tt.clonePath, tt.repo, tt.revision, tt.token)
 			source := appstudiov1alpha1.GitSource{
 				URL: tt.repo,
 			}
