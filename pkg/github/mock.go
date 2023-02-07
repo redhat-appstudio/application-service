@@ -1,5 +1,5 @@
 //
-// Copyright 2021 Red Hat, Inc.
+// Copyright 2021-2023 Red Hat, Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -85,6 +85,29 @@ func GetMockedClient() *github.Client {
 				} else {
 					/* #nosec G104 -- test code */
 					w.Write([]byte("ca82a6dff817ec66f44342007202690a93763949"))
+				}
+			}),
+		),
+		mock.WithRequestMatchHandler(
+			mock.GetReposByOwnerByRepo,
+			http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
+				if strings.Contains(req.RequestURI, "test-error-response") {
+					mock.WriteError(w,
+						http.StatusInternalServerError,
+						"github went belly up or something",
+					)
+				} else if strings.Contains(req.RequestURI, "test-repo-2") {
+					/* #nosec G104 -- test code */
+					w.Write(mock.MustMarshal(github.Repository{
+						Name:          github.String("test-repo-2"),
+						DefaultBranch: github.String("master"),
+					}))
+				} else {
+					/* #nosec G104 -- test code */
+					w.Write(mock.MustMarshal(github.Repository{
+						Name:          github.String("test-repo-1"),
+						DefaultBranch: github.String("main"),
+					}))
 				}
 			}),
 		),

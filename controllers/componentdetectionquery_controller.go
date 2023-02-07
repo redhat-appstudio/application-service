@@ -35,9 +35,11 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/predicate"
 
 	"github.com/go-logr/logr"
+	gh "github.com/google/go-github/v41/github"
 	logicalcluster "github.com/kcp-dev/logicalcluster/v2"
 	appstudiov1alpha1 "github.com/redhat-appstudio/application-api/api/v1alpha1"
 	devfile "github.com/redhat-appstudio/application-service/pkg/devfile"
+	"github.com/redhat-appstudio/application-service/pkg/github"
 	logutil "github.com/redhat-appstudio/application-service/pkg/log"
 	"github.com/redhat-appstudio/application-service/pkg/spi"
 	"github.com/redhat-appstudio/application-service/pkg/util"
@@ -52,6 +54,7 @@ type ComponentDetectionQueryReconciler struct {
 	SPIClient          spi.SPI
 	AlizerClient       devfile.Alizer
 	Log                logr.Logger
+	GitHubClient       *gh.Client
 	DevfileRegistryURL string
 	AppFS              afero.Afero
 }
@@ -126,6 +129,15 @@ func (r *ComponentDetectionQueryReconciler) Reconcile(ctx context.Context, req c
 		if context == "" {
 			context = "./"
 		}
+		if source.Revision == "" {
+			log.Info(fmt.Sprintf("Look for default branch of repo %s... %v", source.URL, req.NamespacedName))
+			source.Revision, err = github.GetDefaultBranchFromRepo(source.URL, r.GitHubClient, ctx)
+			if err != nil {
+				log.Error(err, fmt.Sprintf("Unable to get default branch of Github Repo %v ... %v", source.URL, req.NamespacedName))
+				r.SetCompleteConditionAndUpdateCR(ctx, req, &componentDetectionQuery, copiedCDQ, err)
+				return ctrl.Result{}, nil
+			}
+		}
 
 		if source.DevfileURL == "" {
 			isMultiComponent := false
@@ -145,11 +157,7 @@ func (r *ComponentDetectionQueryReconciler) Reconcile(ctx context.Context, req c
 			} else {
 				// Use SPI to retrieve the devfile from the private repository
 				// TODO - maysunfaisal also search for Dockerfile
-				revision := source.Revision
-				if revision == "" {
-					revision = "main"
-				}
-				devfileBytes, err = spi.DownloadDevfileUsingSPI(r.SPIClient, ctx, componentDetectionQuery.Namespace, source.URL, revision, context)
+				devfileBytes, err = spi.DownloadDevfileUsingSPI(r.SPIClient, ctx, componentDetectionQuery.Namespace, source.URL, source.Revision, context)
 				if err != nil {
 					log.Error(err, fmt.Sprintf("Unable to curl for any known devfile locations from %s %v", source.URL, req.NamespacedName))
 				}

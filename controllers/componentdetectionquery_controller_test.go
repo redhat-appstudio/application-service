@@ -256,7 +256,8 @@ var _ = Describe("Component Detection Query controller", func() {
 				},
 				Spec: appstudiov1alpha1.ComponentDetectionQuerySpec{
 					GitSource: appstudiov1alpha1.GitSource{
-						URL: "https://github.com/octocat/Hello-World",
+						URL:      "https://github.com/octocat/Hello-World",
+						Revision: "master",
 					},
 				},
 			}
@@ -439,7 +440,8 @@ var _ = Describe("Component Detection Query controller", func() {
 				},
 				Spec: appstudiov1alpha1.ComponentDetectionQuerySpec{
 					GitSource: appstudiov1alpha1.GitSource{
-						URL: "https://github.com/redhat-appstudio-appdata/!@#$%U%I$F    DFDN##",
+						URL:      "https://github.com/redhat-appstudio-appdata/!@#$%U%I$F    DFDN##",
+						Revision: "main",
 					},
 				},
 			}
@@ -659,7 +661,8 @@ var _ = Describe("Component Detection Query controller", func() {
 				Spec: appstudiov1alpha1.ComponentDetectionQuerySpec{
 					Secret: queryName,
 					GitSource: appstudiov1alpha1.GitSource{
-						URL: "https://github.com/test-repo/test-error-response",
+						URL:      "https://github.com/test-repo/test-error-response",
+						Revision: "main",
 					},
 				},
 			}

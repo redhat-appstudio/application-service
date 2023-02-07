@@ -108,6 +108,21 @@ func GetRepoAndOrgFromURL(repoURL string) (string, string, error) {
 	return repoName, orgName, nil
 }
 
+// GetDefaultBranchFromURL returns the default branch of a given repoURL
+func GetDefaultBranchFromRepo(repoURL string, client *github.Client, ctx context.Context) (string, error) {
+	repoName, orgName, err := GetRepoAndOrgFromURL(repoURL)
+	if err != nil {
+		return "", err
+	}
+	//repo.DefaultBranch
+	repo, _, err := client.Repositories.Get(ctx, orgName, repoName)
+	if err != nil {
+		return "", err
+	}
+
+	return *repo.DefaultBranch, nil
+}
+
 // GetLatestCommitSHAFromRepository gets the latest Commit SHA from the repository
 func GetLatestCommitSHAFromRepository(client *github.Client, ctx context.Context, repoName string, orgName string, branch string) (string, error) {
 	commitSHA, _, err := client.Repositories.GetCommitSHA1(ctx, orgName, repoName, branch, "")

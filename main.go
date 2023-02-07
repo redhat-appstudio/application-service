@@ -1,5 +1,5 @@
 /*
-Copyright 2021-2022.
+Copyright 2021-2023.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -208,6 +208,7 @@ func main() {
 		Log:                ctrl.Log.WithName("controllers").WithName("ComponentDetectionQuery").WithValues("appstudio-component", "HAS"),
 		SPIClient:          spi.SPIClient{},
 		AlizerClient:       devfile.AlizerClient{},
+		GitHubClient:       client,
 		DevfileRegistryURL: devfileRegistryURL,
 		AppFS:              ioutils.NewFilesystem(),
 	}).SetupWithManager(mgr); err != nil {
