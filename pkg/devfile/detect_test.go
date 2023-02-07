@@ -172,7 +172,7 @@ func TestSelectDevfileFromTypes(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			os.RemoveAll(tt.clonePath)
-			err := util.CloneRepo(tt.clonePath, tt.repo, "")
+			err := util.CloneRepo(tt.clonePath, tt.repo, "main", "")
 			if err != nil {
 				t.Errorf("got unexpected error %v", err)
 			}
