@@ -258,6 +258,9 @@ func (a AlizerClient) Analyze(path string) ([]model.Language, error) {
 // SelectDevFileFromTypes is a wrapper call to Alizer's SelectDevFileFromTypes()
 func (a AlizerClient) SelectDevFileFromTypes(path string, devFileTypes []model.DevFileType) (model.DevFileType, error) {
 	index, err := recognizer.SelectDevFileFromTypes(path, devFileTypes)
+	if err != nil {
+		return model.DevFileType{}, err
+	}
 	return devFileTypes[index], err
 }
 
