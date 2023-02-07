@@ -571,7 +571,7 @@ func (r *ComponentReconciler) generateGitops(ctx context.Context, req ctrl.Reque
 			return r.CleanUpJobAndReturn(log, jobName, jobNamespace, err)
 		}
 
-		r.CleanUpJobAndReturn(log, jobName, jobNamespace, nil)
+		_ = r.CleanUpJobAndReturn(log, jobName, jobNamespace, nil)
 
 	}
 
