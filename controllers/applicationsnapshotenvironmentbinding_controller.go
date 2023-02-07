@@ -74,6 +74,7 @@ type SnapshotEnvironmentBindingReconciler struct {
 //+kubebuilder:rbac:groups=appstudio.redhat.com,resources=snapshotenvironmentbindings/finalizers,verbs=update
 //+kubebuilder:rbac:groups=appstudio.redhat.com,resources=snapshots,verbs=get;list;watch
 //+kubebuilder:rbac:groups=appstudio.redhat.com,resources=environments,verbs=get;list;watch
+//+kubebuilder:rbac:groups=batch,resources=jobs,verbs=get;list;watch;create;delete
 
 // Reconcile is part of the main kubernetes reconciliation loop which aims to
 // move the current state of the cluster closer to the desired state.
@@ -191,11 +192,12 @@ func (r *SnapshotEnvironmentBindingReconciler) Reconcile(ctx context.Context, re
 		err = gitopsjob.WaitForJob(log, context.Background(), r.Client, r.GitOpsJobClientSet, jobName, jobNamespace, 5*time.Minute)
 		if err != nil {
 			r.SetConditionAndUpdateCR(ctx, req, &appSnapshotEnvBinding, originalSEB, err)
-			return ctrl.Result{}, err
+			return ctrl.Result{}, CleanUpJobAndReturn(log, r.Client, jobName, jobNamespace, err)
 		}
 	}
 
 	// If the Job succeeds, delete it
+	_ = CleanUpJobAndReturn(log, r.Client, jobName, jobNamespace, err)
 
 	r.SetConditionAndUpdateCR(ctx, req, &appSnapshotEnvBinding, originalSEB, nil)
 

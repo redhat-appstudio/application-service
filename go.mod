@@ -18,7 +18,7 @@ require (
 	github.com/onsi/gomega v1.24.1
 	github.com/openshift/api v0.0.0-20210503193030-25175d9d392d
 	github.com/prometheus/client_golang v1.14.0
-	github.com/redhat-appstudio/application-api v0.0.0-20221205185405-03f73a06d978
+	github.com/redhat-appstudio/application-api v0.0.0-20230202132727-5f5541035490
 	github.com/redhat-appstudio/application-service/gitops-generator v0.0.0
 	github.com/redhat-appstudio/service-provider-integration-scm-file-retriever v0.8.3
 	github.com/redhat-developer/alizer/go v0.0.0-20230117135912-8f7afff3b7cd

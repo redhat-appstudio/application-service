@@ -1095,8 +1095,12 @@ github.com/quasilyte/go-ruleguard/rules v0.0.0-20210428214800-545e0d2e0bf7/go.mo
 github.com/quasilyte/regex/syntax v0.0.0-20200407221936-30656e2c4a95/go.mod h1:rlzQ04UMyJXu/aOvhd8qT+hvDrFpiwqp8MRXDY9szc0=
 github.com/redhat-appstudio/application-api v0.0.0-20221205185405-03f73a06d978 h1:ph20Fw9vs64KAHVCx3VoiaUBXY8A66cbtuDex+M9A8A=
 github.com/redhat-appstudio/application-api v0.0.0-20221205185405-03f73a06d978/go.mod h1:LpcTNLCDMf1CUNTw2bgTiz8M49sUsN2F9T7bOSKcJEo=
+github.com/redhat-appstudio/application-api v0.0.0-20230202132727-5f5541035490 h1:jn+8mI7kwmdWEtxACPzYHBEdAbUZbWSTagypE8E6vzI=
+github.com/redhat-appstudio/application-api v0.0.0-20230202132727-5f5541035490/go.mod h1:LpcTNLCDMf1CUNTw2bgTiz8M49sUsN2F9T7bOSKcJEo=
 github.com/redhat-developer/gitops-generator v0.0.0-20230113152345-19efcd5ec104 h1:L/qrY5URzgzpIY/uHsKXn9Y8+KyrR3BN6hk61n59UqE=
 github.com/redhat-developer/gitops-generator v0.0.0-20230113152345-19efcd5ec104/go.mod h1:Et+rhPFOBHSBQCJv96CY7lTIQY2xfYYwvXsOqkQ7W1g=
+github.com/redhat-developer/gitops-generator v0.0.0-20230202231730-e63f1f811195 h1:C8sYKTW067BHQhXRLnXvtNgd/6OfEtAaUMiP7lrgKQA=
+github.com/redhat-developer/gitops-generator v0.0.0-20230202231730-e63f1f811195/go.mod h1:Et+rhPFOBHSBQCJv96CY7lTIQY2xfYYwvXsOqkQ7W1g=
 github.com/rogpeppe/fastuuid v0.0.0-20150106093220-6724a57986af/go.mod h1:XWv6SoW27p1b0cqNHllgS5HIMJraePCO15w5zCzIWYg=
 github.com/rogpeppe/fastuuid v1.2.0/go.mod h1:jVj6XXZzXRy/MSR5jhDC/2q6DgLz+nrA6LYCDYWNEvQ=
 github.com/rogpeppe/go-internal v1.3.0/go.mod h1:M8bDsm7K2OlrFYOpmOWEs/qY81heoFRclV5y23lUDJ4=

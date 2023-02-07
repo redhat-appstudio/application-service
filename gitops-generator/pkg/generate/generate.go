@@ -61,13 +61,11 @@ func GenerateGitopsBase(ctx context.Context, client ctrlclient.Client, component
 
 	deployAssociatedComponents, err := devfileParser.GetDeployComponents(compDevfileData)
 	if err != nil {
-		//log.Error(err, "unable to get deploy components")
 		return err
 	}
 
 	kubernetesResources, err := devfile.GetResourceFromDevfile(compDevfileData, deployAssociatedComponents, component.Name, component.Spec.ContainerImage)
 	if err != nil {
-		//log.Error(err, "unable to get kubernetes resources from the devfile outerloop components")
 		return err
 	}
 
@@ -89,7 +87,7 @@ func GenerateGitopsBase(ctx context.Context, client ctrlclient.Client, component
 	if err != nil {
 		return err
 	}
-	return nil
+	return appFs.RemoveAll(tempDir)
 }
 
 func GenerateGitopsOverlays(ctx context.Context, client ctrlclient.Client, appSnapshotEnvBinding appstudiov1alpha1.SnapshotEnvironmentBinding, appFs afero.Afero, gitopsParams GitOpsGenParams) error {
@@ -252,6 +250,6 @@ func GenerateGitopsOverlays(ctx context.Context, client ctrlclient.Client, appSn
 		}
 
 	}
-	return nil
+	return appFs.RemoveAll(tempDir)
 
 }

@@ -9,8 +9,8 @@ require (
 	github.com/mitchellh/go-homedir v1.1.0
 	github.com/openshift-pipelines/pipelines-as-code v0.0.0-20220622161720-2a6007e17200
 	github.com/openshift/api v0.0.0-20210503193030-25175d9d392d
-	github.com/redhat-appstudio/application-api v0.0.0-20221205185405-03f73a06d978
-	github.com/redhat-developer/gitops-generator v0.0.0-20230113152345-19efcd5ec104
+	github.com/redhat-appstudio/application-api v0.0.0-20230202132727-5f5541035490
+	github.com/redhat-developer/gitops-generator v0.0.0-20230202231730-e63f1f811195
 	github.com/spf13/afero v1.8.0
 	github.com/stretchr/testify v1.8.1
 	k8s.io/api v0.25.4

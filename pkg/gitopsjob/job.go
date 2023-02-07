@@ -33,13 +33,12 @@ import (
 	ctrlclient "sigs.k8s.io/controller-runtime/pkg/client"
 )
 
-var gitopsJobImage = "quay.io/redhat-appstudio/gitops-generator:latest"
-
 type GitOpsOperation string
 
 const (
 	GenerateBase     GitOpsOperation = "generate-base"
 	GenerateOverlays GitOpsOperation = "generate-overlays"
+	gitopsJobImage                   = "quay.io/redhat-appstudio/gitops-generator:latest"
 )
 
 type GitOpsJobConfig struct {
@@ -181,7 +180,7 @@ func WaitForJob(log logr.Logger, ctx context.Context, client ctrlclient.Client, 
 
 	if err != nil && k8sErrors.IsNotFound(err) {
 		return fmt.Errorf("gitops generation job was not found after timeout reached")
-	} 
+	}
 
 	return err
 

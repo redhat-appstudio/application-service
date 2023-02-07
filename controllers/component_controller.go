@@ -568,10 +568,10 @@ func (r *ComponentReconciler) generateGitops(ctx context.Context, req ctrl.Reque
 		// Wait for the job to succeed, error out if the 5 min timeout is reached
 		err = gitopsjob.WaitForJob(log, context.Background(), r.Client, r.GitOpsJobClientSet, jobName, jobNamespace, 5*time.Minute)
 		if err != nil {
-			return r.CleanUpJobAndReturn(log, jobName, jobNamespace, err)
+			return CleanUpJobAndReturn(log, r.Client, jobName, jobNamespace, err)
 		}
 
-		_ = r.CleanUpJobAndReturn(log, jobName, jobNamespace, nil)
+		_ = CleanUpJobAndReturn(log, r.Client, jobName, jobNamespace, nil)
 
 	}
 
@@ -663,8 +663,8 @@ func (r *ComponentReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		Complete(r)
 }
 
-func (r *ComponentReconciler) CleanUpJobAndReturn(log logr.Logger, jobName, jobNamespace string, err error) error {
-	delErr := gitopsjob.DeleteJob(context.Background(), r.Client, jobName, jobNamespace)
+func CleanUpJobAndReturn(log logr.Logger, client client.Client, jobName, jobNamespace string, err error) error {
+	delErr := gitopsjob.DeleteJob(context.Background(), client, jobName, jobNamespace)
 	if delErr != nil {
 		log.Error(err, "unable to delete gitops-generation job")
 	}
