@@ -674,9 +674,7 @@ components:
         name: deploy-sample
       spec:
         replicas: 1
-        selector:
-          matchLabels:
-            app.kubernetes.io/instance: component-sample
+        selector: {}
         strategy: {}
         template:
           metadata:
@@ -950,6 +948,78 @@ metadata:
   name: java-springboot
 schemaVersion: 2.2.0`
 
+	kubernetesInlinedDevfileRoute := `
+commands:
+- apply:
+    component: image-build
+  id: build-image
+- apply:
+    component: kubernetes-deploy
+  id: deployk8s
+- composite:
+    commands:
+    - build-image
+    - deployk8s
+    group:
+      isDefault: true
+      kind: deploy
+    parallel: false
+  id: deploy
+components:
+- image:
+    autoBuild: false
+    dockerfile:
+      buildContext: .
+      rootRequired: false
+      uri: docker/Dockerfile
+    imageName: java-springboot-image:latest
+  name: image-build
+- attributes:
+    api.devfile.io/k8sLikeComponent-originalURI: deploy.yaml
+    deployment/container-port: 5566
+    deployment/containerENV:
+    - name: FOO
+      value: foo11
+    - name: BAR
+      value: bar11
+    deployment/cpuLimit: "2"
+    deployment/cpuRequest: 701m
+    deployment/memoryLimit: 500Mi
+    deployment/memoryRequest: 401Mi
+    deployment/replicas: 5
+    deployment/route: route111222
+    deployment/storageLimit: 400Mi
+    deployment/storageRequest: 201Mi
+  kubernetes:
+    deployByDefault: false
+    endpoints:
+    - name: http-8081
+      path: /
+      secure: false
+      targetPort: 8081
+    inlined: |-
+      apiVersion: route.openshift.io/v1
+      kind: Route
+      metadata:
+        creationTimestamp: null
+        name: route-sample-2
+      spec:
+        host: route111
+        port:
+          targetPort: 1111
+        tls:
+          insecureEdgeTerminationPolicy: Redirect
+          termination: edge
+        to:
+          kind: Service
+          name: component-sample
+          weight: 100
+      status: {}
+  name: kubernetes-deploy
+metadata:
+  name: java-springboot
+schemaVersion: 2.2.0`
+
 	kubernetesInlinedDevfileSvc := `
 commands:
 - apply:
@@ -985,13 +1055,6 @@ components:
       kind: Service
       metadata:
         creationTimestamp: null
-        labels:
-          app.kubernetes.io/created-by: application-service
-          app.kubernetes.io/instance: component-sample
-          app.kubernetes.io/managed-by: kustomize
-          app.kubernetes.io/name: backend
-          app.kubernetes.io/part-of: application-sample
-          maysun: test
         name: service-sample
       spec:
         ports:
@@ -1716,6 +1779,41 @@ schemaVersion: 2.2.0`
 			},
 		},
 		{
+			name:          "Simple devfile from Inline with only route",
+			devfileString: kubernetesInlinedDevfileRoute,
+			componentName: "component-sample",
+			appName:       "application-sample",
+			image:         "image1",
+			wantRoute: routev1.Route{
+				TypeMeta: metav1.TypeMeta{
+					Kind:       "Route",
+					APIVersion: "route.openshift.io/v1",
+				},
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "component-sample",
+					Labels: map[string]string{
+						"app.kubernetes.io/created-by": "application-service",
+						"app.kubernetes.io/instance":   "component-sample",
+						"app.kubernetes.io/managed-by": "kustomize",
+						"app.kubernetes.io/name":       "component-sample",
+						"app.kubernetes.io/part-of":    "application-sample",
+					},
+					Annotations: map[string]string{},
+				},
+				Spec: routev1.RouteSpec{
+					Host: "route111222",
+					Path: "/",
+					Port: &routev1.RoutePort{
+						TargetPort: intstr.FromInt(5566),
+					},
+					To: routev1.RouteTargetReference{
+						Kind: "Service",
+						Name: "component-sample",
+					},
+				},
+			},
+		},
+		{
 			name:          "Simple devfile from Inline with only Svc",
 			devfileString: kubernetesInlinedDevfileSvc,
 			componentName: "component-sample",
@@ -1734,7 +1832,6 @@ schemaVersion: 2.2.0`
 						"app.kubernetes.io/managed-by": "kustomize",
 						"app.kubernetes.io/name":       "component-sample",
 						"app.kubernetes.io/part-of":    "application-sample",
-						"maysun":                       "test",
 					},
 				},
 				Spec: corev1.ServiceSpec{
