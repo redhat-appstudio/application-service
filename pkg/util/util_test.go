@@ -218,6 +218,7 @@ func TestCloneRepo(t *testing.T) {
 		name      string
 		clonePath string
 		repo      string
+		revision  string
 		token     string
 		wantErr   bool
 	}{
@@ -250,11 +251,30 @@ func TestCloneRepo(t *testing.T) {
 			token:     "fake-token",
 			wantErr:   true,
 		},
+		{
+			name:      "Clone Successfully - branch specified as revision",
+			clonePath: "/tmp/testspringboot",
+			repo:      "https://github.com/devfile-resources/node-express-hello-no-devfile",
+			revision:  "testbranch",
+		},
+		{
+			name:      "Clone Successfully - commit specified as revision",
+			clonePath: "/tmp/nodeexpressrevision",
+			repo:      "https://github.com/devfile-resources/node-express-hello-no-devfile",
+			revision:  "22d213a42091199bc1f85a8eac60a5ff82371df3",
+		},
+		{
+			name:      "Invalid revision, should err out",
+			clonePath: "/tmp/nodeexpressrevisioninvalidrevision",
+			repo:      "https://github.com/devfile-resources/node-express-hello-no-devfile",
+			revision:  "fasdfasdfasdfdsklafj2w23",
+			wantErr:   true,
+		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			err := CloneRepo(tt.clonePath, tt.repo, tt.token)
+			err := CloneRepo(tt.clonePath, tt.repo, tt.revision, tt.token)
 			if tt.wantErr && (err == nil) {
 				t.Error("wanted error but got nil")
 			} else if !tt.wantErr && err != nil {

@@ -150,7 +150,7 @@ func CurlEndpoint(endpoint string) ([]byte, error) {
 }
 
 // CloneRepo clones the repoURL to clonePath
-func CloneRepo(clonePath, repoURL string, token string) error {
+func CloneRepo(clonePath, repoURL string, revision string, token string) error {
 	exist, err := IsExist(clonePath)
 	if !exist || err != nil {
 		err = os.MkdirAll(clonePath, 0750)
@@ -177,6 +177,16 @@ func CloneRepo(clonePath, repoURL string, token string) error {
 	_, err = c.CombinedOutput()
 	if err != nil {
 		return fmt.Errorf("failed to clone the repo: %v", err)
+	}
+
+	if revision != "" {
+		c = exec.Command("git", "checkout", revision)
+		c.Dir = clonePath
+
+		_, err = c.CombinedOutput()
+		if err != nil {
+			return fmt.Errorf("failed to checkout the revision %q: %v", revision, err)
+		}
 	}
 
 	return nil
