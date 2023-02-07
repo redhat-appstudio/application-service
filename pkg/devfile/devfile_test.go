@@ -670,11 +670,6 @@ components:
       metadata:
         creationTimestamp: null
         labels:
-          app.kubernetes.io/created-by: application-service
-          app.kubernetes.io/instance: component-sample
-          app.kubernetes.io/managed-by: kustomize
-          app.kubernetes.io/name: backend
-          app.kubernetes.io/part-of: application-sample
           maysun: test
         name: deploy-sample
       spec:
@@ -1552,6 +1547,7 @@ schemaVersion: 2.2.0`
 		name          string
 		devfileString string
 		componentName string
+		appName       string
 		image         string
 		wantDeploy    appsv1.Deployment
 		wantService   corev1.Service
@@ -1562,6 +1558,7 @@ schemaVersion: 2.2.0`
 			name:          "Simple devfile from Inline",
 			devfileString: kubernetesInlinedDevfile,
 			componentName: "component-sample",
+			appName:       "application-sample",
 			image:         "image1",
 			wantDeploy: appsv1.Deployment{
 				TypeMeta: metav1.TypeMeta{
@@ -1569,12 +1566,12 @@ schemaVersion: 2.2.0`
 					APIVersion: "apps/v1",
 				},
 				ObjectMeta: metav1.ObjectMeta{
-					Name: "deploy-sample",
+					Name: "component-sample",
 					Labels: map[string]string{
 						"app.kubernetes.io/created-by": "application-service",
 						"app.kubernetes.io/instance":   "component-sample",
 						"app.kubernetes.io/managed-by": "kustomize",
-						"app.kubernetes.io/name":       "backend",
+						"app.kubernetes.io/name":       "component-sample",
 						"app.kubernetes.io/part-of":    "application-sample",
 						"maysun":                       "test",
 					},
@@ -1663,12 +1660,12 @@ schemaVersion: 2.2.0`
 					APIVersion: "v1",
 				},
 				ObjectMeta: metav1.ObjectMeta{
-					Name: "service-sample",
+					Name: "component-sample",
 					Labels: map[string]string{
 						"app.kubernetes.io/created-by": "application-service",
 						"app.kubernetes.io/instance":   "component-sample",
 						"app.kubernetes.io/managed-by": "kustomize",
-						"app.kubernetes.io/name":       "backend",
+						"app.kubernetes.io/name":       "component-sample",
 						"app.kubernetes.io/part-of":    "application-sample",
 						"maysun":                       "test",
 					},
@@ -1695,7 +1692,14 @@ schemaVersion: 2.2.0`
 					APIVersion: "route.openshift.io/v1",
 				},
 				ObjectMeta: metav1.ObjectMeta{
-					Name:        "http-8081",
+					Name: "component-sample",
+					Labels: map[string]string{
+						"app.kubernetes.io/created-by": "application-service",
+						"app.kubernetes.io/instance":   "component-sample",
+						"app.kubernetes.io/managed-by": "kustomize",
+						"app.kubernetes.io/name":       "component-sample",
+						"app.kubernetes.io/part-of":    "application-sample",
+					},
 					Annotations: map[string]string{},
 				},
 				Spec: routev1.RouteSpec{
@@ -1715,6 +1719,7 @@ schemaVersion: 2.2.0`
 			name:          "Simple devfile from Inline with only Svc",
 			devfileString: kubernetesInlinedDevfileSvc,
 			componentName: "component-sample",
+			appName:       "application-sample",
 			image:         "image1",
 			wantService: corev1.Service{
 				TypeMeta: metav1.TypeMeta{
@@ -1722,12 +1727,12 @@ schemaVersion: 2.2.0`
 					APIVersion: "v1",
 				},
 				ObjectMeta: metav1.ObjectMeta{
-					Name: "service-sample",
+					Name: "component-sample",
 					Labels: map[string]string{
 						"app.kubernetes.io/created-by": "application-service",
 						"app.kubernetes.io/instance":   "component-sample",
 						"app.kubernetes.io/managed-by": "kustomize",
-						"app.kubernetes.io/name":       "backend",
+						"app.kubernetes.io/name":       "component-sample",
 						"app.kubernetes.io/part-of":    "application-sample",
 						"maysun":                       "test",
 					},
@@ -1749,6 +1754,7 @@ schemaVersion: 2.2.0`
 			name:          "Simple devfile from Inline with Deploy",
 			devfileString: kubernetesInlinedDevfileDeploy,
 			componentName: "component-sample",
+			appName:       "application-sample",
 			image:         "image1",
 			wantDeploy: appsv1.Deployment{
 				TypeMeta: metav1.TypeMeta{
@@ -1756,12 +1762,12 @@ schemaVersion: 2.2.0`
 					APIVersion: "apps/v1",
 				},
 				ObjectMeta: metav1.ObjectMeta{
-					Name: "deploy-sample",
+					Name: "component-sample",
 					Labels: map[string]string{
 						"app.kubernetes.io/created-by": "application-service",
 						"app.kubernetes.io/instance":   "component-sample",
 						"app.kubernetes.io/managed-by": "kustomize",
-						"app.kubernetes.io/name":       "backend",
+						"app.kubernetes.io/name":       "component-sample",
 						"app.kubernetes.io/part-of":    "application-sample",
 						"maysun":                       "test",
 					},
@@ -1843,7 +1849,14 @@ schemaVersion: 2.2.0`
 					APIVersion: "route.openshift.io/v1",
 				},
 				ObjectMeta: metav1.ObjectMeta{
-					Name:        "http-8081",
+					Name: "component-sample",
+					Labels: map[string]string{
+						"app.kubernetes.io/created-by": "application-service",
+						"app.kubernetes.io/instance":   "component-sample",
+						"app.kubernetes.io/managed-by": "kustomize",
+						"app.kubernetes.io/name":       "component-sample",
+						"app.kubernetes.io/part-of":    "application-sample",
+					},
 					Annotations: map[string]string{},
 				},
 				Spec: routev1.RouteSpec{
@@ -1862,6 +1875,7 @@ schemaVersion: 2.2.0`
 			name:          "Simple devfile from Inline with Route Host missing",
 			devfileString: kubernetesInlinedDevfileRouteHostMissing,
 			componentName: "component-sample",
+			appName:       "application-sample",
 			image:         "image1",
 			wantDeploy: appsv1.Deployment{
 				TypeMeta: metav1.TypeMeta{
@@ -1869,12 +1883,12 @@ schemaVersion: 2.2.0`
 					APIVersion: "apps/v1",
 				},
 				ObjectMeta: metav1.ObjectMeta{
-					Name: "deploy-sample",
+					Name: "component-sample",
 					Labels: map[string]string{
 						"app.kubernetes.io/created-by": "application-service",
 						"app.kubernetes.io/instance":   "component-sample",
 						"app.kubernetes.io/managed-by": "kustomize",
-						"app.kubernetes.io/name":       "backend",
+						"app.kubernetes.io/name":       "component-sample",
 						"app.kubernetes.io/part-of":    "application-sample",
 						"maysun":                       "test",
 					},
@@ -1959,7 +1973,14 @@ schemaVersion: 2.2.0`
 					APIVersion: "route.openshift.io/v1",
 				},
 				ObjectMeta: metav1.ObjectMeta{
-					Name:        "http-8081",
+					Name: "component-sample",
+					Labels: map[string]string{
+						"app.kubernetes.io/created-by": "application-service",
+						"app.kubernetes.io/instance":   "component-sample",
+						"app.kubernetes.io/managed-by": "kustomize",
+						"app.kubernetes.io/name":       "component-sample",
+						"app.kubernetes.io/part-of":    "application-sample",
+					},
 					Annotations: map[string]string{},
 				},
 				Spec: routev1.RouteSpec{
@@ -2043,7 +2064,7 @@ schemaVersion: 2.2.0`
 			}
 			logger := ctrl.Log.WithName("TestGetResourceFromDevfile")
 
-			actualResources, err := GetResourceFromDevfile(logger, devfileData, deployAssociatedComponents, tt.componentName, tt.image)
+			actualResources, err := GetResourceFromDevfile(logger, devfileData, deployAssociatedComponents, tt.componentName, tt.appName, tt.image)
 			if tt.wantErr && (err == nil) {
 				t.Error("wanted error but got nil")
 			} else if !tt.wantErr && err != nil {
