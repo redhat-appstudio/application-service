@@ -181,11 +181,9 @@ func WaitForJob(log logr.Logger, ctx context.Context, client ctrlclient.Client, 
 
 	if err != nil && k8sErrors.IsNotFound(err) {
 		return fmt.Errorf("gitops generation job was not found after timeout reached")
-	} else if err != nil {
-		return err
-	}
+	} 
 
-	return fmt.Errorf("gitops generation job did not complete in time")
+	return err
 
 }
 
