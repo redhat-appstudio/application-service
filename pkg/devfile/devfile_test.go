@@ -1605,6 +1605,7 @@ schemaVersion: 2.2.0`
 
 	replica := int32(5)
 	replicaUpdated := int32(1)
+	namespace := "testNamespace"
 
 	tests := []struct {
 		name          string
@@ -1629,7 +1630,8 @@ schemaVersion: 2.2.0`
 					APIVersion: "apps/v1",
 				},
 				ObjectMeta: metav1.ObjectMeta{
-					Name: "component-sample",
+					Name:      "component-sample",
+					Namespace: namespace,
 					Labels: map[string]string{
 						"app.kubernetes.io/created-by": "application-service",
 						"app.kubernetes.io/instance":   "component-sample",
@@ -1723,7 +1725,8 @@ schemaVersion: 2.2.0`
 					APIVersion: "v1",
 				},
 				ObjectMeta: metav1.ObjectMeta{
-					Name: "component-sample",
+					Name:      "component-sample",
+					Namespace: namespace,
 					Labels: map[string]string{
 						"app.kubernetes.io/created-by": "application-service",
 						"app.kubernetes.io/instance":   "component-sample",
@@ -1755,7 +1758,8 @@ schemaVersion: 2.2.0`
 					APIVersion: "route.openshift.io/v1",
 				},
 				ObjectMeta: metav1.ObjectMeta{
-					Name: "component-sample",
+					Name:      "component-sample",
+					Namespace: namespace,
 					Labels: map[string]string{
 						"app.kubernetes.io/created-by": "application-service",
 						"app.kubernetes.io/instance":   "component-sample",
@@ -1790,7 +1794,8 @@ schemaVersion: 2.2.0`
 					APIVersion: "route.openshift.io/v1",
 				},
 				ObjectMeta: metav1.ObjectMeta{
-					Name: "component-sample",
+					Name:      "component-sample",
+					Namespace: namespace,
 					Labels: map[string]string{
 						"app.kubernetes.io/created-by": "application-service",
 						"app.kubernetes.io/instance":   "component-sample",
@@ -1825,7 +1830,8 @@ schemaVersion: 2.2.0`
 					APIVersion: "v1",
 				},
 				ObjectMeta: metav1.ObjectMeta{
-					Name: "component-sample",
+					Name:      "component-sample",
+					Namespace: namespace,
 					Labels: map[string]string{
 						"app.kubernetes.io/created-by": "application-service",
 						"app.kubernetes.io/instance":   "component-sample",
@@ -1859,7 +1865,8 @@ schemaVersion: 2.2.0`
 					APIVersion: "apps/v1",
 				},
 				ObjectMeta: metav1.ObjectMeta{
-					Name: "component-sample",
+					Name:      "component-sample",
+					Namespace: namespace,
 					Labels: map[string]string{
 						"app.kubernetes.io/created-by": "application-service",
 						"app.kubernetes.io/instance":   "component-sample",
@@ -1946,7 +1953,8 @@ schemaVersion: 2.2.0`
 					APIVersion: "route.openshift.io/v1",
 				},
 				ObjectMeta: metav1.ObjectMeta{
-					Name: "component-sample",
+					Name:      "component-sample",
+					Namespace: namespace,
 					Labels: map[string]string{
 						"app.kubernetes.io/created-by": "application-service",
 						"app.kubernetes.io/instance":   "component-sample",
@@ -1980,7 +1988,8 @@ schemaVersion: 2.2.0`
 					APIVersion: "apps/v1",
 				},
 				ObjectMeta: metav1.ObjectMeta{
-					Name: "component-sample",
+					Name:      "component-sample",
+					Namespace: namespace,
 					Labels: map[string]string{
 						"app.kubernetes.io/created-by": "application-service",
 						"app.kubernetes.io/instance":   "component-sample",
@@ -2070,7 +2079,8 @@ schemaVersion: 2.2.0`
 					APIVersion: "route.openshift.io/v1",
 				},
 				ObjectMeta: metav1.ObjectMeta{
-					Name: "component-sample",
+					Name:      "component-sample",
+					Namespace: namespace,
 					Labels: map[string]string{
 						"app.kubernetes.io/created-by": "application-service",
 						"app.kubernetes.io/instance":   "component-sample",
@@ -2161,7 +2171,7 @@ schemaVersion: 2.2.0`
 			}
 			logger := ctrl.Log.WithName("TestGetResourceFromDevfile")
 
-			actualResources, err := GetResourceFromDevfile(logger, devfileData, deployAssociatedComponents, tt.componentName, tt.appName, tt.image)
+			actualResources, err := GetResourceFromDevfile(logger, devfileData, deployAssociatedComponents, tt.componentName, tt.appName, tt.image, namespace)
 			if tt.wantErr && (err == nil) {
 				t.Error("wanted error but got nil")
 			} else if !tt.wantErr && err != nil {

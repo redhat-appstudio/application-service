@@ -61,7 +61,7 @@ const (
 	DevfileStageRegistryEndpoint = "https://registry.stage.devfile.io"
 )
 
-func GetResourceFromDevfile(log logr.Logger, devfileData data.DevfileData, deployAssociatedComponents map[string]string, compName, appName, image string) (parser.KubernetesResources, error) {
+func GetResourceFromDevfile(log logr.Logger, devfileData data.DevfileData, deployAssociatedComponents map[string]string, compName, appName, image, namespace string) (parser.KubernetesResources, error) {
 	kubernetesComponentFilter := common.DevfileOptions{
 		ComponentOptions: common.ComponentOptions{
 			ComponentType: v1alpha2.KubernetesComponentType,
@@ -134,6 +134,7 @@ func GetResourceFromDevfile(log logr.Logger, devfileData data.DevfileData, deplo
 
 					// replace the deployment metadata.name to use the component name
 					resources.Deployments[0].ObjectMeta.Name = compName
+					resources.Deployments[0].ObjectMeta.Namespace = namespace
 
 					// generate and append the deployment labels with the hc & ha information
 					if resources.Deployments[0].ObjectMeta.Labels != nil {
@@ -304,6 +305,7 @@ func GetResourceFromDevfile(log logr.Logger, devfileData data.DevfileData, deplo
 				if len(resources.Services) > 0 {
 					// replace the service metadata.name to use the component name
 					resources.Services[0].ObjectMeta.Name = compName
+					resources.Services[0].ObjectMeta.Namespace = namespace
 
 					// generate and append the service labels with the hc & ha information
 					if resources.Services[0].ObjectMeta.Labels != nil {
@@ -327,6 +329,7 @@ func GetResourceFromDevfile(log logr.Logger, devfileData data.DevfileData, deplo
 				if len(resources.Routes) > 0 {
 					// replace the route metadata.name to use the component name
 					resources.Routes[0].ObjectMeta.Name = compName
+					resources.Routes[0].ObjectMeta.Namespace = namespace
 
 					// generate and append the route labels with the hc & ha information
 					if resources.Routes[0].ObjectMeta.Labels != nil {
