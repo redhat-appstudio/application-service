@@ -129,7 +129,7 @@ func TestSelectDevfileFromTypes(t *testing.T) {
 	}{
 		{
 			name:      "Successfully detect a devfile from the registry",
-			clonePath: "/tmp/java-springboot-basic",
+			clonePath: "/tmp/test-selected-devfile",
 			repo:      "https://github.com/maysunfaisal/devfile-sample-java-springboot-basic-1",
 			devfileTypes: []model.DevFileType{
 				{
@@ -158,8 +158,8 @@ func TestSelectDevfileFromTypes(t *testing.T) {
 		},
 		{
 			name:      "Unable to detect a devfile from the registry",
-			clonePath: "/tmp/test-console",
-			repo:      "https://github.com/devfile-resources/go-vendor-alizer-no-detection",
+			clonePath: "/tmp/test-no-devfiles-selected",
+			repo:      "https://github.com/maysunfaisal/devfile-sample-java-springboot-basic-1",
 			devfileTypes: []model.DevFileType{
 				{
 					Name: "python-basic", Language: "Python", ProjectType: "Python", Tags: []string{"Python", "Pip", "Flask"},
