@@ -166,11 +166,10 @@ language: JavaScript
 				"python-src-none":                      "https://registry.devfile.io/devfiles/python-basic",
 			},
 			wantDockerfileContextMap: map[string]string{
-				"devfile-sample-java-springboot-basic": "devfile-sample-java-springboot-basic/docker/Dockerfile",
-				"devfile-sample-nodejs-basic":          "https://raw.githubusercontent.com/nodeshift-starters/devfile-sample/main/Dockerfile",
-				"devfile-sample-python-basic":          "https://raw.githubusercontent.com/maysunfaisal/multi-components-dockerfile/main/devfile-sample-python-basic/Dockerfile",
-				"python-src-docker":                    "python-src-docker/Dockerfile",
-				"python-src-none":                      "https://raw.githubusercontent.com/devfile-samples/devfile-sample-python-basic/main/docker/Dockerfile",
+				"devfile-sample-nodejs-basic": "https://raw.githubusercontent.com/nodeshift-starters/devfile-sample/main/Dockerfile",
+				"devfile-sample-python-basic": "https://raw.githubusercontent.com/maysunfaisal/multi-components-dockerfile/main/devfile-sample-python-basic/Dockerfile",
+				"python-src-docker":           "python-src-docker/Dockerfile",
+				"python-src-none":             "https://raw.githubusercontent.com/devfile-samples/devfile-sample-python-basic/main/docker/Dockerfile",
 			},
 		},
 		{

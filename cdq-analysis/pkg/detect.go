@@ -158,10 +158,9 @@ func AnalyzePath(a Alizer, localpath, context, devfileRegistryURL string, devfil
 			return err
 		}
 		if dockerfileImage != nil {
-			if !strings.HasPrefix(dockerfileImage.Uri, "http") {
-				// if it is a relative uri, append the context
-				dockerfileContextMapFromRepo[context] = path.Join(context, dockerfileImage.Uri)
-			} else {
+			// if it is an absolute uri, add it to the dockerfile context map
+			// If it's relative URI, leave it out, as the build will process the devfile and find the Dockerfile
+			if strings.HasPrefix(dockerfileImage.Uri, "http") {
 				dockerfileContextMapFromRepo[context] = dockerfileImage.Uri
 			}
 			isDockerfilePresent = true
@@ -255,6 +254,9 @@ func (a AlizerClient) Analyze(path string) ([]model.Language, error) {
 // SelectDevFileFromTypes is a wrapper call to Alizer's SelectDevFileFromTypes()
 func (a AlizerClient) SelectDevFileFromTypes(path string, devFileTypes []model.DevFileType) (model.DevFileType, error) {
 	index, err := recognizer.SelectDevFileFromTypes(path, devFileTypes)
+	if err != nil {
+		return model.DevFileType{}, err
+	}
 	return devFileTypes[index], err
 }
 
