@@ -133,7 +133,7 @@ func GeneratePACRepository(component appstudiov1alpha1.Component, config map[str
 			Annotations: getBuildCommonLabelsForComponent(&component),
 		},
 		Spec: pacv1alpha1.RepositorySpec{
-			URL:         strings.TrimSuffix(component.Spec.Source.GitSource.URL, ".git"),
+			URL:         strings.TrimSuffix(strings.TrimSuffix(component.Spec.Source.GitSource.URL, ".git"), "/"),
 			GitProvider: gitProviderConfig,
 		},
 	}

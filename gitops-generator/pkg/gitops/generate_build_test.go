@@ -179,7 +179,7 @@ func TestGeneratePACRepository(t *testing.T) {
 		},
 		{
 			name:    "should create PaC repository for GitLab webhook",
-			repoUrl: "https://gitlab.com/user/test-component-repository",
+			repoUrl: "https://gitlab.com/user/test-component-repository/",
 			pacConfig: map[string][]byte{
 				"github.token": []byte("ghp_token"),
 				"gitlab.token": []byte("glpat-token"),
@@ -191,7 +191,7 @@ func TestGeneratePACRepository(t *testing.T) {
 				},
 				WebhookSecret: &pacv1alpha1.Secret{
 					Name: PipelinesAsCodeWebhooksSecretName,
-					Key:  GetWebhookSecretKeyForComponent(getComponent("https://gitlab.com/user/test-component-repository")),
+					Key:  GetWebhookSecretKeyForComponent(getComponent("https://gitlab.com/user/test-component-repository/")),
 				},
 				URL: "https://gitlab.com",
 			},
@@ -240,9 +240,9 @@ func TestGeneratePACRepository(t *testing.T) {
 			if pacRepo.Annotations["appstudio.openshift.io/component"] != component.Name {
 				t.Errorf("Generated PaC repository must have component annotation")
 			}
-
-			if pacRepo.Spec.URL != strings.TrimRight(tt.repoUrl, ".git") {
-				t.Errorf("Wrong git repository URL in PaC repository: %s, want %s", pacRepo.Spec.URL, tt.repoUrl)
+			expectedRepo := strings.TrimSuffix(strings.TrimSuffix(tt.repoUrl, ".git"), "/")
+			if pacRepo.Spec.URL != expectedRepo {
+				t.Errorf("Wrong git repository URL in PaC repository: %s, want %s", pacRepo.Spec.URL, expectedRepo)
 			}
 			if !reflect.DeepEqual(pacRepo.Spec.GitProvider, tt.expectedGitProviderConfig) {
 				t.Errorf("Wrong git provider config in PaC repository: %#v, want %#v", pacRepo.Spec.GitProvider, tt.expectedGitProviderConfig)
