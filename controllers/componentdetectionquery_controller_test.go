@@ -19,6 +19,7 @@ package controllers
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -232,6 +233,13 @@ var _ = Describe("Component Detection Query controller", func() {
 			for devfileName, devfileDesc := range createdHasCompDetectionQuery.Status.ComponentDetected {
 				Expect(devfileName).Should(Or(ContainSubstring("java-springboot"), ContainSubstring("python")))
 				Expect(devfileDesc.ComponentStub.Source.GitSource.Context).Should(BeElementOf([]string{"devfile-sample-java-springboot-basic", "devfile-sample-python-basic"}))
+				if strings.Contains(devfileName, "java-springboot") {
+					Expect(devfileDesc.ComponentStub.Source.GitSource.DevfileURL).Should(Equal("https://raw.githubusercontent.com/devfile-samples/devfile-sample-java-springboot-basic/main/devfile.yaml"))
+					Expect(devfileDesc.ComponentStub.Source.GitSource.DockerfileURL).Should(Equal("https://raw.githubusercontent.com/devfile-samples/devfile-sample-java-springboot-basic/main/docker/Dockerfile"))
+				} else if strings.Contains(devfileName, "python") {
+					Expect(devfileDesc.ComponentStub.Source.GitSource.DevfileURL).Should(Equal("https://raw.githubusercontent.com/devfile-samples/devfile-sample-python-basic/main/devfile.yaml"))
+					Expect(devfileDesc.ComponentStub.Source.GitSource.DockerfileURL).Should(Equal("https://raw.githubusercontent.com/devfile-samples/devfile-sample-python-basic/main/docker/Dockerfile"))
+				}
 			}
 
 			// Delete the specified Detection Query resource
@@ -768,8 +776,8 @@ var _ = Describe("Component Detection Query controller", func() {
 		})
 	})
 
-	Context("Create Component Detection Query with springboot repo that has no devfile", func() {
-		It("Should match a devfile", func() {
+	Context("Create Component Detection Query with springboot repo that has devfile", func() {
+		It("Should return a correct devfile", func() {
 			ctx := context.Background()
 
 			queryName := "springboot" + HASCompDetQuery + "16"
@@ -808,7 +816,7 @@ var _ = Describe("Component Detection Query controller", func() {
 			Expect(len(createdHasCompDetectionQuery.Status.ComponentDetected)).Should(Equal(1))
 			for _, componentDesc := range createdHasCompDetectionQuery.Status.ComponentDetected {
 				Expect(componentDesc.ComponentStub.Source.GitSource).ShouldNot(BeNil())
-				Expect(componentDesc.ComponentStub.Source.GitSource.DevfileURL).ShouldNot(BeEmpty())
+				Expect(componentDesc.ComponentStub.Source.GitSource.DevfileURL).Should(Equal("https://raw.githubusercontent.com/maysunfaisal/devfile-sample-java-springboot-basic-1/main/devfile.yaml"))
 			}
 
 			// Delete the specified Detection Query resource
