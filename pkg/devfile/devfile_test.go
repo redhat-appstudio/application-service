@@ -655,8 +655,6 @@ components:
     deployment/memoryRequest: 401Mi
     deployment/replicas: 5
     deployment/route: route111222
-    deployment/storageLimit: 400Mi
-    deployment/storageRequest: 201Mi
   kubernetes:
     deployByDefault: false
     endpoints:
@@ -708,11 +706,9 @@ components:
                 limits:
                   cpu: "2"
                   memory: 500Mi
-                  storage: 400Mi
                 requests:
                   cpu: 700m
                   memory: 400Mi
-                  storage: 200Mi
       status: {}
       ---
       apiVersion: apps/v1
@@ -1703,14 +1699,12 @@ schemaVersion: 2.2.0`
 									},
 									Resources: corev1.ResourceRequirements{
 										Limits: corev1.ResourceList{
-											corev1.ResourceCPU:     resource.MustParse("2"),
-											corev1.ResourceMemory:  resource.MustParse("500Mi"),
-											corev1.ResourceStorage: resource.MustParse("400Mi"),
+											corev1.ResourceCPU:    resource.MustParse("2"),
+											corev1.ResourceMemory: resource.MustParse("500Mi"),
 										},
 										Requests: corev1.ResourceList{
-											corev1.ResourceCPU:     resource.MustParse("701m"),
-											corev1.ResourceMemory:  resource.MustParse("401Mi"),
-											corev1.ResourceStorage: resource.MustParse("201Mi"),
+											corev1.ResourceCPU:    resource.MustParse("701m"),
+											corev1.ResourceMemory: resource.MustParse("401Mi"),
 										},
 									},
 								},

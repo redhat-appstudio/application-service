@@ -221,7 +221,7 @@ func GetResourceFromDevfile(log logr.Logger, devfileData data.DevfileData, deplo
 							containerLimits = make(corev1.ResourceList)
 						}
 
-						if cpuLimit != "" {
+						if cpuLimit != "" && cpuLimit != "0" {
 							cpuLimitQuantity, err := resource.ParseQuantity(cpuLimit)
 							if err != nil {
 								return parser.KubernetesResources{}, err
@@ -229,7 +229,7 @@ func GetResourceFromDevfile(log logr.Logger, devfileData data.DevfileData, deplo
 							containerLimits[corev1.ResourceCPU] = cpuLimitQuantity
 						}
 
-						if memoryLimit != "" {
+						if memoryLimit != "" && memoryLimit != "0" {
 							memoryLimitQuantity, err := resource.ParseQuantity(memoryLimit)
 							if err != nil {
 								return parser.KubernetesResources{}, err
@@ -237,7 +237,7 @@ func GetResourceFromDevfile(log logr.Logger, devfileData data.DevfileData, deplo
 							containerLimits[corev1.ResourceMemory] = memoryLimitQuantity
 						}
 
-						if storageLimit != "" {
+						if storageLimit != "" && storageLimit != "0" {
 							storageLimitQuantity, err := resource.ParseQuantity(storageLimit)
 							if err != nil {
 								return parser.KubernetesResources{}, err
@@ -274,7 +274,7 @@ func GetResourceFromDevfile(log logr.Logger, devfileData data.DevfileData, deplo
 							containerRequests = make(corev1.ResourceList)
 						}
 
-						if cpuRequest != "" {
+						if cpuRequest != "" && cpuRequest != "0" {
 							cpuRequestQuantity, err := resource.ParseQuantity(cpuRequest)
 							if err != nil {
 								return parser.KubernetesResources{}, err
@@ -282,7 +282,7 @@ func GetResourceFromDevfile(log logr.Logger, devfileData data.DevfileData, deplo
 							containerRequests[corev1.ResourceCPU] = cpuRequestQuantity
 						}
 
-						if memoryRequest != "" {
+						if memoryRequest != "" && memoryRequest != "0" {
 							memoryRequestQuantity, err := resource.ParseQuantity(memoryRequest)
 							if err != nil {
 								return parser.KubernetesResources{}, err
@@ -290,7 +290,7 @@ func GetResourceFromDevfile(log logr.Logger, devfileData data.DevfileData, deplo
 							containerRequests[corev1.ResourceMemory] = memoryRequestQuantity
 						}
 
-						if storageRequest != "" {
+						if storageRequest != "" && storageRequest != "0" {
 							storageRequestQuantity, err := resource.ParseQuantity(storageRequest)
 							if err != nil {
 								return parser.KubernetesResources{}, err
