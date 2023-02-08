@@ -20,11 +20,11 @@ require (
 	github.com/prometheus/client_golang v1.14.0
 	github.com/redhat-appstudio/application-api v0.0.0-20221205185405-03f73a06d978
 	github.com/redhat-appstudio/service-provider-integration-scm-file-retriever v0.8.3
-	github.com/redhat-developer/gitops-generator v0.0.0-20230202231730-e63f1f811195
+	github.com/redhat-developer/gitops-generator v0.0.0-20230208144708-bb8df7f4cfac
 	github.com/spf13/afero v1.8.0
 	github.com/stretchr/testify v1.8.1
 	go.uber.org/zap v1.24.0
-	golang.org/x/exp v0.0.0-20221215174704-0915cd710c24
+	golang.org/x/exp v0.0.0-20230206171751-46f607a40771
 	golang.org/x/oauth2 v0.2.0
 	k8s.io/api v0.25.4
 	k8s.io/apimachinery v0.25.4

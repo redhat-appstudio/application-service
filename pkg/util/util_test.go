@@ -399,6 +399,10 @@ func TestGetMappedComponent(t *testing.T) {
 				Application: "AppTest001",
 				Secret:      "Secret",
 				Resources: corev1.ResourceRequirements{
+					Requests: corev1.ResourceList{
+						corev1.ResourceCPU:    resource.MustParse("10m"),
+						corev1.ResourceMemory: resource.MustParse("50Mi"),
+					},
 					Limits: corev1.ResourceList{
 						corev1.ResourceLimitsCPU: resource.MustParse("1"),
 						corev1.ResourceMemory:    resource.MustParse("1Gi"),
@@ -436,6 +440,16 @@ func TestGetMappedComponent(t *testing.T) {
 				Namespace:   "testnamespace",
 				Application: "AppTest002",
 				GitSource:   &gitopsgenv1alpha1.GitSource{},
+				Resources: corev1.ResourceRequirements{
+					Requests: corev1.ResourceList{
+						corev1.ResourceCPU:    resource.MustParse("10m"),
+						corev1.ResourceMemory: resource.MustParse("50Mi"),
+					},
+					Limits: corev1.ResourceList{
+						corev1.ResourceCPU:    resource.MustParse("1"),
+						corev1.ResourceMemory: resource.MustParse("512Mi"),
+					},
+				},
 			},
 		},
 		{
@@ -454,6 +468,16 @@ func TestGetMappedComponent(t *testing.T) {
 				Name:        "testcomponent",
 				Namespace:   "testnamespace",
 				Application: "AppTest003",
+				Resources: corev1.ResourceRequirements{
+					Requests: corev1.ResourceList{
+						corev1.ResourceCPU:    resource.MustParse("10m"),
+						corev1.ResourceMemory: resource.MustParse("50Mi"),
+					},
+					Limits: corev1.ResourceList{
+						corev1.ResourceCPU:    resource.MustParse("1"),
+						corev1.ResourceMemory: resource.MustParse("512Mi"),
+					},
+				},
 			},
 		},
 		{
@@ -476,6 +500,16 @@ func TestGetMappedComponent(t *testing.T) {
 				Namespace:   "testnamespace",
 				Application: "AppTest004",
 				GitSource:   &gitopsgenv1alpha1.GitSource{},
+				Resources: corev1.ResourceRequirements{
+					Requests: corev1.ResourceList{
+						corev1.ResourceCPU:    resource.MustParse("10m"),
+						corev1.ResourceMemory: resource.MustParse("50Mi"),
+					},
+					Limits: corev1.ResourceList{
+						corev1.ResourceCPU:    resource.MustParse("1"),
+						corev1.ResourceMemory: resource.MustParse("512Mi"),
+					},
+				},
 			},
 		},
 		{
@@ -500,6 +534,16 @@ func TestGetMappedComponent(t *testing.T) {
 				Namespace:   "testnamespace",
 				Application: "AppTest005",
 				GitSource:   &gitopsgenv1alpha1.GitSource{},
+				Resources: corev1.ResourceRequirements{
+					Requests: corev1.ResourceList{
+						corev1.ResourceCPU:    resource.MustParse("10m"),
+						corev1.ResourceMemory: resource.MustParse("50Mi"),
+					},
+					Limits: corev1.ResourceList{
+						corev1.ResourceCPU:    resource.MustParse("1"),
+						corev1.ResourceMemory: resource.MustParse("512Mi"),
+					},
+				},
 			},
 		},
 		{
@@ -561,6 +605,16 @@ func TestGetMappedComponent(t *testing.T) {
 						},
 					},
 					Others: other,
+				},
+				Resources: corev1.ResourceRequirements{
+					Requests: corev1.ResourceList{
+						corev1.ResourceCPU:    resource.MustParse("10m"),
+						corev1.ResourceMemory: resource.MustParse("50Mi"),
+					},
+					Limits: corev1.ResourceList{
+						corev1.ResourceCPU:    resource.MustParse("1"),
+						corev1.ResourceMemory: resource.MustParse("512Mi"),
+					},
 				},
 			},
 		},
