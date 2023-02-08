@@ -321,7 +321,7 @@ var _ = Describe("Application controller", func() {
 		It("Should update successfully with updated description", func() {
 			ctx := context.Background()
 
-			applicationName := HASAppName + "5"
+			applicationName := "test-error-response" + "5"
 
 			hasApp := &appstudiov1alpha1.Application{
 				TypeMeta: metav1.TypeMeta{

@@ -218,6 +218,7 @@ func TestCloneRepo(t *testing.T) {
 		name      string
 		clonePath string
 		repo      string
+		revision  string
 		token     string
 		wantErr   bool
 	}{
@@ -250,11 +251,30 @@ func TestCloneRepo(t *testing.T) {
 			token:     "fake-token",
 			wantErr:   true,
 		},
+		{
+			name:      "Clone Successfully - branch specified as revision",
+			clonePath: "/tmp/testspringboot",
+			repo:      "https://github.com/devfile-resources/node-express-hello-no-devfile",
+			revision:  "testbranch",
+		},
+		{
+			name:      "Clone Successfully - commit specified as revision",
+			clonePath: "/tmp/nodeexpressrevision",
+			repo:      "https://github.com/devfile-resources/node-express-hello-no-devfile",
+			revision:  "22d213a42091199bc1f85a8eac60a5ff82371df3",
+		},
+		{
+			name:      "Invalid revision, should err out",
+			clonePath: "/tmp/nodeexpressrevisioninvalidrevision",
+			repo:      "https://github.com/devfile-resources/node-express-hello-no-devfile",
+			revision:  "fasdfasdfasdfdsklafj2w23",
+			wantErr:   true,
+		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			err := CloneRepo(tt.clonePath, tt.repo, tt.token)
+			err := CloneRepo(tt.clonePath, tt.repo, tt.revision, tt.token)
 			if tt.wantErr && (err == nil) {
 				t.Error("wanted error but got nil")
 			} else if !tt.wantErr && err != nil {
@@ -493,6 +513,10 @@ func TestGetMappedComponent(t *testing.T) {
 				Application: "AppTest001",
 				Secret:      "Secret",
 				Resources: corev1.ResourceRequirements{
+					Requests: corev1.ResourceList{
+						corev1.ResourceCPU:    resource.MustParse("10m"),
+						corev1.ResourceMemory: resource.MustParse("50Mi"),
+					},
 					Limits: corev1.ResourceList{
 						corev1.ResourceLimitsCPU: resource.MustParse("1"),
 						corev1.ResourceMemory:    resource.MustParse("1Gi"),
@@ -530,6 +554,16 @@ func TestGetMappedComponent(t *testing.T) {
 				Namespace:   "testnamespace",
 				Application: "AppTest002",
 				GitSource:   &gitopsgenv1alpha1.GitSource{},
+				Resources: corev1.ResourceRequirements{
+					Requests: corev1.ResourceList{
+						corev1.ResourceCPU:    resource.MustParse("10m"),
+						corev1.ResourceMemory: resource.MustParse("50Mi"),
+					},
+					Limits: corev1.ResourceList{
+						corev1.ResourceCPU:    resource.MustParse("1"),
+						corev1.ResourceMemory: resource.MustParse("512Mi"),
+					},
+				},
 			},
 		},
 		{
@@ -548,6 +582,16 @@ func TestGetMappedComponent(t *testing.T) {
 				Name:        "testcomponent",
 				Namespace:   "testnamespace",
 				Application: "AppTest003",
+				Resources: corev1.ResourceRequirements{
+					Requests: corev1.ResourceList{
+						corev1.ResourceCPU:    resource.MustParse("10m"),
+						corev1.ResourceMemory: resource.MustParse("50Mi"),
+					},
+					Limits: corev1.ResourceList{
+						corev1.ResourceCPU:    resource.MustParse("1"),
+						corev1.ResourceMemory: resource.MustParse("512Mi"),
+					},
+				},
 			},
 		},
 		{
@@ -570,6 +614,16 @@ func TestGetMappedComponent(t *testing.T) {
 				Namespace:   "testnamespace",
 				Application: "AppTest004",
 				GitSource:   &gitopsgenv1alpha1.GitSource{},
+				Resources: corev1.ResourceRequirements{
+					Requests: corev1.ResourceList{
+						corev1.ResourceCPU:    resource.MustParse("10m"),
+						corev1.ResourceMemory: resource.MustParse("50Mi"),
+					},
+					Limits: corev1.ResourceList{
+						corev1.ResourceCPU:    resource.MustParse("1"),
+						corev1.ResourceMemory: resource.MustParse("512Mi"),
+					},
+				},
 			},
 		},
 		{
@@ -594,6 +648,16 @@ func TestGetMappedComponent(t *testing.T) {
 				Namespace:   "testnamespace",
 				Application: "AppTest005",
 				GitSource:   &gitopsgenv1alpha1.GitSource{},
+				Resources: corev1.ResourceRequirements{
+					Requests: corev1.ResourceList{
+						corev1.ResourceCPU:    resource.MustParse("10m"),
+						corev1.ResourceMemory: resource.MustParse("50Mi"),
+					},
+					Limits: corev1.ResourceList{
+						corev1.ResourceCPU:    resource.MustParse("1"),
+						corev1.ResourceMemory: resource.MustParse("512Mi"),
+					},
+				},
 			},
 		},
 		{
@@ -655,6 +719,16 @@ func TestGetMappedComponent(t *testing.T) {
 						},
 					},
 					Others: other,
+				},
+				Resources: corev1.ResourceRequirements{
+					Requests: corev1.ResourceList{
+						corev1.ResourceCPU:    resource.MustParse("10m"),
+						corev1.ResourceMemory: resource.MustParse("50Mi"),
+					},
+					Limits: corev1.ResourceList{
+						corev1.ResourceCPU:    resource.MustParse("1"),
+						corev1.ResourceMemory: resource.MustParse("512Mi"),
+					},
 				},
 			},
 		},
