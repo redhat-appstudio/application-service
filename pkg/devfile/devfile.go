@@ -26,6 +26,7 @@ import (
 	parser "github.com/devfile/library/v2/pkg/devfile/parser"
 	data "github.com/devfile/library/v2/pkg/devfile/parser/data"
 	"github.com/devfile/library/v2/pkg/devfile/parser/data/v2/common"
+	"golang.org/x/exp/maps"
 
 	appstudiov1alpha1 "github.com/redhat-appstudio/application-api/api/v1alpha1"
 	"github.com/redhat-appstudio/application-service/pkg/util"
@@ -60,7 +61,7 @@ const (
 	DevfileStageRegistryEndpoint = "https://registry.stage.devfile.io"
 )
 
-func GetResourceFromDevfile(log logr.Logger, devfileData data.DevfileData, deployAssociatedComponents map[string]string, name, image string) (parser.KubernetesResources, error) {
+func GetResourceFromDevfile(log logr.Logger, devfileData data.DevfileData, deployAssociatedComponents map[string]string, compName, appName, image, namespace string) (parser.KubernetesResources, error) {
 	kubernetesComponentFilter := common.DevfileOptions{
 		ComponentOptions: common.ComponentOptions{
 			ComponentType: v1alpha2.KubernetesComponentType,
@@ -72,6 +73,8 @@ func GetResourceFromDevfile(log logr.Logger, devfileData data.DevfileData, deplo
 	}
 
 	var appendedResources parser.KubernetesResources
+	k8sLabels := generateK8sLabels(compName, appName)
+	matchLabels := getMatchLabel(compName)
 
 	for _, component := range kubernetesComponents {
 		if _, ok := deployAssociatedComponents[component.Name]; ok && component.Kubernetes != nil {
@@ -98,7 +101,7 @@ func GetResourceFromDevfile(log logr.Logger, devfileData data.DevfileData, deplo
 							isSecure = *endpoint.Secure
 						}
 
-						endpointRoutes = append(endpointRoutes, GetRouteFromEndpoint(endpoint.Name, name, fmt.Sprintf("%d", endpoint.TargetPort), endpoint.Path, isSecure, endpoint.Annotations))
+						endpointRoutes = append(endpointRoutes, GetRouteFromEndpoint(endpoint.Name, compName, fmt.Sprintf("%d", endpoint.TargetPort), endpoint.Path, isSecure, endpoint.Annotations))
 					}
 				}
 				resources.Routes = append(endpointRoutes, resources.Routes...) // attempt to always merge the devfile endpoints to the list first as it has priority
@@ -128,6 +131,34 @@ func GetResourceFromDevfile(log logr.Logger, devfileData data.DevfileData, deplo
 							return parser.KubernetesResources{}, err
 						}
 					}
+
+					// replace the deployment metadata.name to use the component name
+					resources.Deployments[0].ObjectMeta.Name = compName
+					resources.Deployments[0].ObjectMeta.Namespace = namespace
+
+					// generate and append the deployment labels with the hc & ha information
+					if resources.Deployments[0].ObjectMeta.Labels != nil {
+						maps.Copy(resources.Deployments[0].ObjectMeta.Labels, k8sLabels)
+					} else {
+						resources.Deployments[0].ObjectMeta.Labels = k8sLabels
+					}
+					if resources.Deployments[0].Spec.Selector != nil {
+						if resources.Deployments[0].Spec.Selector.MatchLabels != nil {
+							maps.Copy(resources.Deployments[0].Spec.Selector.MatchLabels, matchLabels)
+						} else {
+							resources.Deployments[0].Spec.Selector.MatchLabels = matchLabels
+						}
+					} else {
+						resources.Deployments[0].Spec.Selector = &v1.LabelSelector{
+							MatchLabels: matchLabels,
+						}
+					}
+					if resources.Deployments[0].Spec.Template.ObjectMeta.Labels != nil {
+						maps.Copy(resources.Deployments[0].Spec.Template.ObjectMeta.Labels, matchLabels)
+					} else {
+						resources.Deployments[0].Spec.Template.ObjectMeta.Labels = matchLabels
+					}
+
 					if currentReplica > 0 {
 						resources.Deployments[0].Spec.Replicas = &currentReplica
 					}
@@ -271,24 +302,54 @@ func GetResourceFromDevfile(log logr.Logger, devfileData data.DevfileData, deplo
 					}
 				}
 
-				if len(resources.Services) > 0 && currentPort > 0 {
-					resources.Services[0].Spec.Ports = append(resources.Services[0].Spec.Ports, corev1.ServicePort{
-						Port:       int32(currentPort),
-						TargetPort: intstr.FromInt(currentPort),
-					})
-				}
-				if len(resources.Routes) > 0 && currentPort > 0 {
-					resources.Routes[0].Spec.Port.TargetPort = intstr.FromInt(currentPort)
-					// Update for route
-					route := component.Attributes.GetString(RouteKey, &err)
-					if err != nil {
-						if _, ok := err.(*attributes.KeyNotFoundError); !ok {
-							return parser.KubernetesResources{}, err
-						}
+				if len(resources.Services) > 0 {
+					// replace the service metadata.name to use the component name
+					resources.Services[0].ObjectMeta.Name = compName
+					resources.Services[0].ObjectMeta.Namespace = namespace
+
+					// generate and append the service labels with the hc & ha information
+					if resources.Services[0].ObjectMeta.Labels != nil {
+						maps.Copy(resources.Services[0].ObjectMeta.Labels, k8sLabels)
+					} else {
+						resources.Services[0].ObjectMeta.Labels = k8sLabels
+					}
+					if resources.Services[0].Spec.Selector != nil {
+						maps.Copy(resources.Services[0].Spec.Selector, matchLabels)
+					} else {
+						resources.Services[0].Spec.Selector = matchLabels
 					}
 
-					if route != "" {
-						resources.Routes[0].Spec.Host = route
+					if currentPort > 0 {
+						resources.Services[0].Spec.Ports = append(resources.Services[0].Spec.Ports, corev1.ServicePort{
+							Port:       int32(currentPort),
+							TargetPort: intstr.FromInt(currentPort),
+						})
+					}
+				}
+				if len(resources.Routes) > 0 {
+					// replace the route metadata.name to use the component name
+					resources.Routes[0].ObjectMeta.Name = compName
+					resources.Routes[0].ObjectMeta.Namespace = namespace
+
+					// generate and append the route labels with the hc & ha information
+					if resources.Routes[0].ObjectMeta.Labels != nil {
+						maps.Copy(resources.Routes[0].ObjectMeta.Labels, k8sLabels)
+					} else {
+						resources.Routes[0].ObjectMeta.Labels = k8sLabels
+					}
+					if currentPort > 0 {
+						resources.Routes[0].Spec.Port.TargetPort = intstr.FromInt(currentPort)
+						// Update for route
+						route := component.Attributes.GetString(RouteKey, &err)
+						if err != nil {
+							if _, ok := err.(*attributes.KeyNotFoundError); !ok {
+								return parser.KubernetesResources{}, err
+							}
+						}
+
+						if route != "" {
+							resources.Routes[0].Spec.Host = route
+						}
 					}
 				}
 

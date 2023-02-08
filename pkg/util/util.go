@@ -29,6 +29,8 @@ import (
 
 	appstudiov1alpha1 "github.com/redhat-appstudio/application-api/api/v1alpha1"
 	gitopsgenv1alpha1 "github.com/redhat-developer/gitops-generator/api/v1alpha1"
+	v1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/resource"
 
 	"github.com/devfile/library/v2/pkg/devfile/parser"
 )
@@ -150,7 +152,7 @@ func CurlEndpoint(endpoint string) ([]byte, error) {
 }
 
 // CloneRepo clones the repoURL to clonePath
-func CloneRepo(clonePath, repoURL string, token string) error {
+func CloneRepo(clonePath, repoURL string, revision string, token string) error {
 	exist, err := IsExist(clonePath)
 	if !exist || err != nil {
 		err = os.MkdirAll(clonePath, 0750)
@@ -177,6 +179,16 @@ func CloneRepo(clonePath, repoURL string, token string) error {
 	_, err = c.CombinedOutput()
 	if err != nil {
 		return fmt.Errorf("failed to clone the repo: %v", err)
+	}
+
+	if revision != "" {
+		c = exec.Command("git", "checkout", revision)
+		c.Dir = clonePath
+
+		_, err = c.CombinedOutput()
+		if err != nil {
+			return fmt.Errorf("failed to checkout the revision %q: %v", revision, err)
+		}
 	}
 
 	return nil
@@ -238,6 +250,20 @@ func GetMappedGitOpsComponent(component appstudiov1alpha1.Component, kubernetesR
 		}
 	} else {
 		gitopsMapComponent.GitSource = &gitopsgenv1alpha1.GitSource{}
+	}
+
+	// If the resource requests or limits were unset, set default values
+	if gitopsMapComponent.Resources.Requests == nil {
+		gitopsMapComponent.Resources.Requests = v1.ResourceList{
+			v1.ResourceCPU:    resource.MustParse("10m"),
+			v1.ResourceMemory: resource.MustParse("50Mi"),
+		}
+	}
+	if gitopsMapComponent.Resources.Limits == nil {
+		gitopsMapComponent.Resources.Limits = v1.ResourceList{
+			v1.ResourceCPU:    resource.MustParse("1"),
+			v1.ResourceMemory: resource.MustParse("512Mi"),
+		}
 	}
 
 	if !reflect.DeepEqual(kubernetesResources, parser.KubernetesResources{}) {

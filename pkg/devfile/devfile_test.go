@@ -459,6 +459,7 @@ func TestScanRepo(t *testing.T) {
 		name                         string
 		clonePath                    string
 		repo                         string
+		revision                     string
 		token                        string
 		wantErr                      bool
 		expectedDevfileContext       []string
@@ -469,6 +470,20 @@ func TestScanRepo(t *testing.T) {
 			name:                   "Should return 2 devfile contexts, and 2 devfileURLs as this is a multi comp devfile",
 			clonePath:              "/tmp/testclone",
 			repo:                   "https://github.com/maysunfaisal/multi-components-deep",
+			expectedDevfileContext: []string{"python", "devfile-sample-java-springboot-basic"},
+			expectedDevfileURLContextMap: map[string]string{
+				"devfile-sample-java-springboot-basic": "https://raw.githubusercontent.com/maysunfaisal/multi-components-deep/main/devfile-sample-java-springboot-basic/.devfile/.devfile.yaml",
+				"python":                               "https://registry.stage.devfile.io/devfiles/python-basic",
+			},
+			expectedDockerfileContextMap: map[string]string{
+				"devfile-sample-java-springboot-basic": "devfile-sample-java-springboot-basic/docker/Dockerfile",
+				"python":                               "https://raw.githubusercontent.com/devfile-samples/devfile-sample-python-basic/main/docker/Dockerfile"},
+		},
+		{
+			name:                   "Should return 2 devfile contexts, and 2 devfileURLs as this is a multi comp devfile - with revision specified",
+			clonePath:              "/tmp/testclone",
+			repo:                   "https://github.com/maysunfaisal/multi-components-deep",
+			revision:               "2a7b64d94453746579ae0898e44bcdd3d8575167",
 			expectedDevfileContext: []string{"python", "devfile-sample-java-springboot-basic"},
 			expectedDevfileURLContextMap: map[string]string{
 				"devfile-sample-java-springboot-basic": "https://raw.githubusercontent.com/maysunfaisal/multi-components-deep/main/devfile-sample-java-springboot-basic/.devfile/.devfile.yaml",
@@ -502,7 +517,7 @@ func TestScanRepo(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			logger = ctrl.Log.WithName("TestScanRepo")
-			err := util.CloneRepo(tt.clonePath, tt.repo, tt.token)
+			err := util.CloneRepo(tt.clonePath, tt.repo, tt.revision, tt.token)
 			source := appstudiov1alpha1.GitSource{
 				URL: tt.repo,
 			}
@@ -655,18 +670,11 @@ components:
       metadata:
         creationTimestamp: null
         labels:
-          app.kubernetes.io/created-by: application-service
-          app.kubernetes.io/instance: component-sample
-          app.kubernetes.io/managed-by: kustomize
-          app.kubernetes.io/name: backend
-          app.kubernetes.io/part-of: application-sample
           maysun: test
         name: deploy-sample
       spec:
         replicas: 1
-        selector:
-          matchLabels:
-            app.kubernetes.io/instance: component-sample
+        selector: {}
         strategy: {}
         template:
           metadata:
@@ -940,6 +948,78 @@ metadata:
   name: java-springboot
 schemaVersion: 2.2.0`
 
+	kubernetesInlinedDevfileRoute := `
+commands:
+- apply:
+    component: image-build
+  id: build-image
+- apply:
+    component: kubernetes-deploy
+  id: deployk8s
+- composite:
+    commands:
+    - build-image
+    - deployk8s
+    group:
+      isDefault: true
+      kind: deploy
+    parallel: false
+  id: deploy
+components:
+- image:
+    autoBuild: false
+    dockerfile:
+      buildContext: .
+      rootRequired: false
+      uri: docker/Dockerfile
+    imageName: java-springboot-image:latest
+  name: image-build
+- attributes:
+    api.devfile.io/k8sLikeComponent-originalURI: deploy.yaml
+    deployment/container-port: 5566
+    deployment/containerENV:
+    - name: FOO
+      value: foo11
+    - name: BAR
+      value: bar11
+    deployment/cpuLimit: "2"
+    deployment/cpuRequest: 701m
+    deployment/memoryLimit: 500Mi
+    deployment/memoryRequest: 401Mi
+    deployment/replicas: 5
+    deployment/route: route111222
+    deployment/storageLimit: 400Mi
+    deployment/storageRequest: 201Mi
+  kubernetes:
+    deployByDefault: false
+    endpoints:
+    - name: http-8081
+      path: /
+      secure: false
+      targetPort: 8081
+    inlined: |-
+      apiVersion: route.openshift.io/v1
+      kind: Route
+      metadata:
+        creationTimestamp: null
+        name: route-sample-2
+      spec:
+        host: route111
+        port:
+          targetPort: 1111
+        tls:
+          insecureEdgeTerminationPolicy: Redirect
+          termination: edge
+        to:
+          kind: Service
+          name: component-sample
+          weight: 100
+      status: {}
+  name: kubernetes-deploy
+metadata:
+  name: java-springboot
+schemaVersion: 2.2.0`
+
 	kubernetesInlinedDevfileSvc := `
 commands:
 - apply:
@@ -975,13 +1055,6 @@ components:
       kind: Service
       metadata:
         creationTimestamp: null
-        labels:
-          app.kubernetes.io/created-by: application-service
-          app.kubernetes.io/instance: component-sample
-          app.kubernetes.io/managed-by: kustomize
-          app.kubernetes.io/name: backend
-          app.kubernetes.io/part-of: application-sample
-          maysun: test
         name: service-sample
       spec:
         ports:
@@ -1532,11 +1605,13 @@ schemaVersion: 2.2.0`
 
 	replica := int32(5)
 	replicaUpdated := int32(1)
+	namespace := "testNamespace"
 
 	tests := []struct {
 		name          string
 		devfileString string
 		componentName string
+		appName       string
 		image         string
 		wantDeploy    appsv1.Deployment
 		wantService   corev1.Service
@@ -1547,6 +1622,7 @@ schemaVersion: 2.2.0`
 			name:          "Simple devfile from Inline",
 			devfileString: kubernetesInlinedDevfile,
 			componentName: "component-sample",
+			appName:       "application-sample",
 			image:         "image1",
 			wantDeploy: appsv1.Deployment{
 				TypeMeta: metav1.TypeMeta{
@@ -1554,12 +1630,13 @@ schemaVersion: 2.2.0`
 					APIVersion: "apps/v1",
 				},
 				ObjectMeta: metav1.ObjectMeta{
-					Name: "deploy-sample",
+					Name:      "component-sample",
+					Namespace: namespace,
 					Labels: map[string]string{
 						"app.kubernetes.io/created-by": "application-service",
 						"app.kubernetes.io/instance":   "component-sample",
 						"app.kubernetes.io/managed-by": "kustomize",
-						"app.kubernetes.io/name":       "backend",
+						"app.kubernetes.io/name":       "component-sample",
 						"app.kubernetes.io/part-of":    "application-sample",
 						"maysun":                       "test",
 					},
@@ -1648,12 +1725,13 @@ schemaVersion: 2.2.0`
 					APIVersion: "v1",
 				},
 				ObjectMeta: metav1.ObjectMeta{
-					Name: "service-sample",
+					Name:      "component-sample",
+					Namespace: namespace,
 					Labels: map[string]string{
 						"app.kubernetes.io/created-by": "application-service",
 						"app.kubernetes.io/instance":   "component-sample",
 						"app.kubernetes.io/managed-by": "kustomize",
-						"app.kubernetes.io/name":       "backend",
+						"app.kubernetes.io/name":       "component-sample",
 						"app.kubernetes.io/part-of":    "application-sample",
 						"maysun":                       "test",
 					},
@@ -1680,7 +1758,51 @@ schemaVersion: 2.2.0`
 					APIVersion: "route.openshift.io/v1",
 				},
 				ObjectMeta: metav1.ObjectMeta{
-					Name:        "http-8081",
+					Name:      "component-sample",
+					Namespace: namespace,
+					Labels: map[string]string{
+						"app.kubernetes.io/created-by": "application-service",
+						"app.kubernetes.io/instance":   "component-sample",
+						"app.kubernetes.io/managed-by": "kustomize",
+						"app.kubernetes.io/name":       "component-sample",
+						"app.kubernetes.io/part-of":    "application-sample",
+					},
+					Annotations: map[string]string{},
+				},
+				Spec: routev1.RouteSpec{
+					Host: "route111222",
+					Path: "/",
+					Port: &routev1.RoutePort{
+						TargetPort: intstr.FromInt(5566),
+					},
+					To: routev1.RouteTargetReference{
+						Kind: "Service",
+						Name: "component-sample",
+					},
+				},
+			},
+		},
+		{
+			name:          "Simple devfile from Inline with only route",
+			devfileString: kubernetesInlinedDevfileRoute,
+			componentName: "component-sample",
+			appName:       "application-sample",
+			image:         "image1",
+			wantRoute: routev1.Route{
+				TypeMeta: metav1.TypeMeta{
+					Kind:       "Route",
+					APIVersion: "route.openshift.io/v1",
+				},
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "component-sample",
+					Namespace: namespace,
+					Labels: map[string]string{
+						"app.kubernetes.io/created-by": "application-service",
+						"app.kubernetes.io/instance":   "component-sample",
+						"app.kubernetes.io/managed-by": "kustomize",
+						"app.kubernetes.io/name":       "component-sample",
+						"app.kubernetes.io/part-of":    "application-sample",
+					},
 					Annotations: map[string]string{},
 				},
 				Spec: routev1.RouteSpec{
@@ -1700,6 +1822,7 @@ schemaVersion: 2.2.0`
 			name:          "Simple devfile from Inline with only Svc",
 			devfileString: kubernetesInlinedDevfileSvc,
 			componentName: "component-sample",
+			appName:       "application-sample",
 			image:         "image1",
 			wantService: corev1.Service{
 				TypeMeta: metav1.TypeMeta{
@@ -1707,14 +1830,14 @@ schemaVersion: 2.2.0`
 					APIVersion: "v1",
 				},
 				ObjectMeta: metav1.ObjectMeta{
-					Name: "service-sample",
+					Name:      "component-sample",
+					Namespace: namespace,
 					Labels: map[string]string{
 						"app.kubernetes.io/created-by": "application-service",
 						"app.kubernetes.io/instance":   "component-sample",
 						"app.kubernetes.io/managed-by": "kustomize",
-						"app.kubernetes.io/name":       "backend",
+						"app.kubernetes.io/name":       "component-sample",
 						"app.kubernetes.io/part-of":    "application-sample",
-						"maysun":                       "test",
 					},
 				},
 				Spec: corev1.ServiceSpec{
@@ -1734,6 +1857,7 @@ schemaVersion: 2.2.0`
 			name:          "Simple devfile from Inline with Deploy",
 			devfileString: kubernetesInlinedDevfileDeploy,
 			componentName: "component-sample",
+			appName:       "application-sample",
 			image:         "image1",
 			wantDeploy: appsv1.Deployment{
 				TypeMeta: metav1.TypeMeta{
@@ -1741,12 +1865,13 @@ schemaVersion: 2.2.0`
 					APIVersion: "apps/v1",
 				},
 				ObjectMeta: metav1.ObjectMeta{
-					Name: "deploy-sample",
+					Name:      "component-sample",
+					Namespace: namespace,
 					Labels: map[string]string{
 						"app.kubernetes.io/created-by": "application-service",
 						"app.kubernetes.io/instance":   "component-sample",
 						"app.kubernetes.io/managed-by": "kustomize",
-						"app.kubernetes.io/name":       "backend",
+						"app.kubernetes.io/name":       "component-sample",
 						"app.kubernetes.io/part-of":    "application-sample",
 						"maysun":                       "test",
 					},
@@ -1828,7 +1953,15 @@ schemaVersion: 2.2.0`
 					APIVersion: "route.openshift.io/v1",
 				},
 				ObjectMeta: metav1.ObjectMeta{
-					Name:        "http-8081",
+					Name:      "component-sample",
+					Namespace: namespace,
+					Labels: map[string]string{
+						"app.kubernetes.io/created-by": "application-service",
+						"app.kubernetes.io/instance":   "component-sample",
+						"app.kubernetes.io/managed-by": "kustomize",
+						"app.kubernetes.io/name":       "component-sample",
+						"app.kubernetes.io/part-of":    "application-sample",
+					},
 					Annotations: map[string]string{},
 				},
 				Spec: routev1.RouteSpec{
@@ -1847,6 +1980,7 @@ schemaVersion: 2.2.0`
 			name:          "Simple devfile from Inline with Route Host missing",
 			devfileString: kubernetesInlinedDevfileRouteHostMissing,
 			componentName: "component-sample",
+			appName:       "application-sample",
 			image:         "image1",
 			wantDeploy: appsv1.Deployment{
 				TypeMeta: metav1.TypeMeta{
@@ -1854,12 +1988,13 @@ schemaVersion: 2.2.0`
 					APIVersion: "apps/v1",
 				},
 				ObjectMeta: metav1.ObjectMeta{
-					Name: "deploy-sample",
+					Name:      "component-sample",
+					Namespace: namespace,
 					Labels: map[string]string{
 						"app.kubernetes.io/created-by": "application-service",
 						"app.kubernetes.io/instance":   "component-sample",
 						"app.kubernetes.io/managed-by": "kustomize",
-						"app.kubernetes.io/name":       "backend",
+						"app.kubernetes.io/name":       "component-sample",
 						"app.kubernetes.io/part-of":    "application-sample",
 						"maysun":                       "test",
 					},
@@ -1944,7 +2079,15 @@ schemaVersion: 2.2.0`
 					APIVersion: "route.openshift.io/v1",
 				},
 				ObjectMeta: metav1.ObjectMeta{
-					Name:        "http-8081",
+					Name:      "component-sample",
+					Namespace: namespace,
+					Labels: map[string]string{
+						"app.kubernetes.io/created-by": "application-service",
+						"app.kubernetes.io/instance":   "component-sample",
+						"app.kubernetes.io/managed-by": "kustomize",
+						"app.kubernetes.io/name":       "component-sample",
+						"app.kubernetes.io/part-of":    "application-sample",
+					},
 					Annotations: map[string]string{},
 				},
 				Spec: routev1.RouteSpec{
@@ -2028,7 +2171,7 @@ schemaVersion: 2.2.0`
 			}
 			logger := ctrl.Log.WithName("TestGetResourceFromDevfile")
 
-			actualResources, err := GetResourceFromDevfile(logger, devfileData, deployAssociatedComponents, tt.componentName, tt.image)
+			actualResources, err := GetResourceFromDevfile(logger, devfileData, deployAssociatedComponents, tt.componentName, tt.appName, tt.image, namespace)
 			if tt.wantErr && (err == nil) {
 				t.Error("wanted error but got nil")
 			} else if !tt.wantErr && err != nil {

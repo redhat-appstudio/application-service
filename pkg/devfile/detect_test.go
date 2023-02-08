@@ -21,6 +21,7 @@ import (
 	"testing"
 
 	"github.com/redhat-appstudio/application-service/pkg/util"
+	"github.com/redhat-developer/alizer/go/pkg/apis/model"
 )
 
 func TestAnalyzeAndDetectDevfile(t *testing.T) {
@@ -31,6 +32,7 @@ func TestAnalyzeAndDetectDevfile(t *testing.T) {
 		name                string
 		clonePath           string
 		repo                string
+		revision            string
 		token               string
 		registryURL         string
 		wantDevfile         bool
@@ -41,6 +43,15 @@ func TestAnalyzeAndDetectDevfile(t *testing.T) {
 			name:                "Successfully detect a devfile from the registry",
 			clonePath:           "/tmp/java-springboot-basic",
 			repo:                "https://github.com/maysunfaisal/devfile-sample-java-springboot-basic-1",
+			registryURL:         DevfileStageRegistryEndpoint,
+			wantDevfile:         true,
+			wantDevfileEndpoint: "https://registry.stage.devfile.io/devfiles/java-springboot-basic",
+		},
+		{
+			name:                "Successfully detect a devfile from the registry using an alternate branch",
+			clonePath:           "/tmp/java-springboot-basic",
+			repo:                "https://github.com/devfile-samples/devfile-sample-java-springboot-basic",
+			revision:            "testbranch",
 			registryURL:         DevfileStageRegistryEndpoint,
 			wantDevfile:         true,
 			wantDevfileEndpoint: "https://registry.stage.devfile.io/devfiles/java-springboot-basic",
@@ -84,7 +95,7 @@ func TestAnalyzeAndDetectDevfile(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			err := util.CloneRepo(tt.clonePath, tt.repo, tt.token)
+			err := util.CloneRepo(tt.clonePath, tt.repo, tt.revision, tt.token)
 			if err != nil {
 				t.Errorf("got unexpected error %v", err)
 			} else {
@@ -100,6 +111,84 @@ func TestAnalyzeAndDetectDevfile(t *testing.T) {
 				}
 			}
 			os.RemoveAll(tt.clonePath)
+		})
+	}
+}
+
+func TestSelectDevfileFromTypes(t *testing.T) {
+
+	var alizerClient AlizerClient
+
+	tests := []struct {
+		name            string
+		clonePath       string
+		repo            string
+		devfileTypes    []model.DevFileType
+		wantErr         bool
+		wantDevfileType model.DevFileType
+	}{
+		{
+			name:      "Successfully detect a devfile from the registry",
+			clonePath: "/tmp/test-selected-devfile",
+			repo:      "https://github.com/maysunfaisal/devfile-sample-java-springboot-basic-1",
+			devfileTypes: []model.DevFileType{
+				{
+					Name: "nodejs-basic", Language: "JavaScript", ProjectType: "Node.js", Tags: []string{"Node.js", "Express"},
+				},
+				{
+					Name: "code-with-quarkus", Language: "Java", ProjectType: "Quarkus", Tags: []string{"Java", "Quarkus"},
+				},
+				{
+					Name: "java-springboot-basic", Language: "Java", ProjectType: "springboot", Tags: []string{"Java", "Spring"},
+				},
+				{
+					Name: "python-basic", Language: "Python", ProjectType: "Python", Tags: []string{"Python", "Pip", "Flask"},
+				},
+				{
+					Name: "go-basic", Language: "Go", ProjectType: "Go", Tags: []string{"Go"},
+				},
+				{
+					Name: "dotnet-basic", Language: ".NET", ProjectType: "dotnet", Tags: []string{".NET"},
+				},
+			},
+			wantErr: false,
+			wantDevfileType: model.DevFileType{
+				Name: "java-springboot-basic", Language: "Java", ProjectType: "springboot", Tags: []string{"Java", "Spring"},
+			},
+		},
+		{
+			name:      "Unable to detect a devfile from the registry",
+			clonePath: "/tmp/test-no-devfiles-selected",
+			repo:      "https://github.com/maysunfaisal/devfile-sample-java-springboot-basic-1",
+			devfileTypes: []model.DevFileType{
+				{
+					Name: "python-basic", Language: "Python", ProjectType: "Python", Tags: []string{"Python", "Pip", "Flask"},
+				},
+			},
+			wantErr: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			os.RemoveAll(tt.clonePath)
+			err := util.CloneRepo(tt.clonePath, tt.repo, "main", "")
+			if err != nil {
+				t.Errorf("got unexpected error %v", err)
+			}
+
+			devfileType, err := alizerClient.SelectDevFileFromTypes(tt.clonePath, tt.devfileTypes)
+			if !tt.wantErr && err != nil {
+				t.Errorf("Unexpected err: %+v", err)
+			} else if tt.wantErr && err == nil {
+				t.Errorf("Expected error but got nil")
+			}
+
+			if !tt.wantErr {
+				if !reflect.DeepEqual(devfileType, tt.wantDevfileType) {
+					t.Errorf("Expected devfileType: %v, got %v", tt.wantDevfileType, devfileType)
+				}
+			}
 		})
 	}
 }
