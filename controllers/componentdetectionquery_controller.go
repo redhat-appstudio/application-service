@@ -199,9 +199,8 @@ func (r *ComponentDetectionQueryReconciler) Reconcile(ctx context.Context, req c
 					log.Info(fmt.Sprintf("components detected %v... %v", components, req.NamespacedName))
 					// If no devfile and no dockerfile present in the root
 					// case 1: no components been detected by Alizer, might still has subfolders contains dockerfile. Need to scan repo
-					// case 2: more than 1 components been detected by Alizer, is certain a multi-component project. Need to scan repo
-					// case 3: one or more than 1 compinents been detected by Alizer, and the first one in the list is under sub-folder. Need to scan repo.
-					if len(components) != 1 || (len(components) != 0 && path.Clean(components[0].Path) != path.Clean(componentPath)) {
+					// case 2: one or more than 1 compinents been detected by Alizer, and the first one in the list is under sub-folder. Need to scan repo.
+					if len(components) == 0 || (len(components) != 0 && path.Clean(components[0].Path) != path.Clean(componentPath)) {
 						isMultiComponent = true
 					}
 				}
