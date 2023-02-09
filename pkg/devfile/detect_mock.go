@@ -67,6 +67,19 @@ func (a MockAlizerClient) DetectComponents(path string) ([]model.Component, erro
 				},
 			},
 		}, nil
+	} else if strings.Contains(path, "python-src-none") {
+		return []model.Component{
+			{
+				Path: path,
+				Languages: []model.Language{
+					{
+						Name:           "python",
+						Weight:         99,
+						CanBeComponent: true,
+					},
+				},
+			},
+		}, nil
 	} else if !strings.Contains(path, "springboot") && !strings.Contains(path, "python") {
 		return nil, nil
 	}
@@ -106,7 +119,7 @@ func (a MockAlizerClient) SelectDevFileFromTypes(path string, devFileTypes []mod
 		return model.DevFileType{
 			Name: "nodejs-basic",
 		}, nil
-	} else if strings.Contains(path, "python-basic") {
+	} else if strings.Contains(path, "python-basic") || strings.Contains(path, "python-src-none") {
 		return model.DevFileType{
 			Name: "python-basic",
 		}, nil
