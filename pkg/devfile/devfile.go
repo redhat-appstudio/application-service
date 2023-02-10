@@ -169,7 +169,21 @@ func GetResourceFromDevfile(log logr.Logger, devfileData data.DevfileData, deplo
 						}
 
 						if currentPort > 0 {
-							resources.Deployments[0].Spec.Template.Spec.Containers[0].Ports = append(resources.Deployments[0].Spec.Template.Spec.Containers[0].Ports, corev1.ContainerPort{ContainerPort: int32(currentPort)})
+							containerPort := corev1.ContainerPort{
+								ContainerPort: int32(currentPort),
+							}
+
+							isPresent := false
+							for _, port := range resources.Deployments[0].Spec.Template.Spec.Containers[0].Ports {
+								if port.ContainerPort == containerPort.ContainerPort {
+									isPresent = true
+									break
+								}
+							}
+
+							if !isPresent {
+								resources.Deployments[0].Spec.Template.Spec.Containers[0].Ports = append(resources.Deployments[0].Spec.Template.Spec.Containers[0].Ports, containerPort)
+							}
 
 							if resources.Deployments[0].Spec.Template.Spec.Containers[0].ReadinessProbe != nil && resources.Deployments[0].Spec.Template.Spec.Containers[0].ReadinessProbe.ProbeHandler.TCPSocket != nil {
 								resources.Deployments[0].Spec.Template.Spec.Containers[0].ReadinessProbe.ProbeHandler.TCPSocket.Port.IntVal = int32(currentPort)
@@ -320,10 +334,22 @@ func GetResourceFromDevfile(log logr.Logger, devfileData data.DevfileData, deplo
 					}
 
 					if currentPort > 0 {
-						resources.Services[0].Spec.Ports = append(resources.Services[0].Spec.Ports, corev1.ServicePort{
+						servicePort := corev1.ServicePort{
 							Port:       int32(currentPort),
 							TargetPort: intstr.FromInt(currentPort),
-						})
+						}
+
+						isPresent := false
+						for _, port := range resources.Services[0].Spec.Ports {
+							if port.Port == servicePort.Port {
+								isPresent = true
+								break
+							}
+						}
+
+						if !isPresent {
+							resources.Services[0].Spec.Ports = append(resources.Services[0].Spec.Ports, servicePort)
+						}
 					}
 				}
 				if len(resources.Routes) > 0 {
