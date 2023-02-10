@@ -20,6 +20,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"strings"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -268,8 +269,8 @@ metadata:
 		})
 	})
 
-	Context("Create Component Detection Query with multi comp repo", func() {
-		It("Should successfully get the devfiles", func() {
+	Context("Create Component Detection Query with multi comp repo with no devfiles", func() {
+		It("Should successfully get the correct devfiles and dockerfiles", func() {
 			ctx := context.Background()
 
 			queryName := HASCompDetQuery + "4"
@@ -353,6 +354,13 @@ metadata:
 			for devfileName, devfileDesc := range createdHasCompDetectionQuery.Status.ComponentDetected {
 				Expect(devfileName).Should(Or(ContainSubstring("java-springboot"), ContainSubstring("python")))
 				Expect(devfileDesc.ComponentStub.Source.GitSource.Context).Should(BeElementOf([]string{"devfile-sample-java-springboot-basic", "devfile-sample-python-basic"}))
+				if strings.Contains(devfileName, "java-springboot") {
+					Expect(devfileDesc.ComponentStub.Source.GitSource.DevfileURL).Should(Equal("https://raw.githubusercontent.com/devfile-samples/devfile-sample-java-springboot-basic/main/devfile.yaml"))
+					Expect(devfileDesc.ComponentStub.Source.GitSource.DockerfileURL).Should(Equal("https://raw.githubusercontent.com/devfile-samples/devfile-sample-java-springboot-basic/main/docker/Dockerfile"))
+				} else if strings.Contains(devfileName, "python") {
+					Expect(devfileDesc.ComponentStub.Source.GitSource.DevfileURL).Should(Equal("https://raw.githubusercontent.com/devfile-samples/devfile-sample-python-basic/main/devfile.yaml"))
+					Expect(devfileDesc.ComponentStub.Source.GitSource.DockerfileURL).Should(Equal("https://raw.githubusercontent.com/devfile-samples/devfile-sample-python-basic/main/docker/Dockerfile"))
+				}
 			}
 
 			// Delete the specified Detection Query resource
@@ -543,7 +551,7 @@ metadata:
 		It("Should match a devfile with alizer if it can be a component", func() {
 			ctx := context.Background()
 
-			queryName := "springboot" + HASCompDetQuery + "7" // this name is tied to mock fn in detect_mock.go
+			queryName := HASCompDetQuery + "7" // this name is tied to mock fn in detect_mock.go
 
 			hasCompDetectionQuery := &appstudiov1alpha1.ComponentDetectionQuery{
 				TypeMeta: metav1.TypeMeta{
@@ -623,8 +631,10 @@ metadata:
 			Expect(len(createdHasCompDetectionQuery.Status.ComponentDetected)).Should(Equal(1))
 
 			for devfileName, devfileDesc := range createdHasCompDetectionQuery.Status.ComponentDetected {
-				Expect([]string{devfileName}).Should(ContainElement(ContainSubstring("java-springboot")))
+				Expect([]string{devfileName}).Should(ContainElement(ContainSubstring("python-src-none")))
 				Expect(devfileDesc.ComponentStub.Source.GitSource.Context).Should(BeElementOf([]string{"./"}))
+				Expect(devfileDesc.ComponentStub.Source.GitSource.DevfileURL).Should(Equal("https://raw.githubusercontent.com/devfile-samples/devfile-sample-python-basic/main/devfile.yaml"))
+				Expect(devfileDesc.ComponentStub.Source.GitSource.DockerfileURL).Should(Equal("https://raw.githubusercontent.com/devfile-samples/devfile-sample-python-basic/main/docker/Dockerfile"))
 			}
 
 			// Delete the specified Detection Query resource
@@ -1229,8 +1239,8 @@ metadata:
 		})
 	})
 
-	Context("Create Component Detection Query with springboot repo that has no devfile", func() {
-		It("Should match a devfile", func() {
+	Context("Create Component Detection Query with springboot repo that has devfile", func() {
+		It("Should return a correct devfile", func() {
 			ctx := context.Background()
 
 			queryName := "springboot" + HASCompDetQuery + "16"
@@ -1313,7 +1323,7 @@ metadata:
 			Expect(len(createdHasCompDetectionQuery.Status.ComponentDetected)).Should(Equal(1))
 			for _, componentDesc := range createdHasCompDetectionQuery.Status.ComponentDetected {
 				Expect(componentDesc.ComponentStub.Source.GitSource).ShouldNot(BeNil())
-				Expect(componentDesc.ComponentStub.Source.GitSource.DevfileURL).ShouldNot(BeEmpty())
+				Expect(componentDesc.ComponentStub.Source.GitSource.DevfileURL).Should(Equal("https://raw.githubusercontent.com/maysunfaisal/devfile-sample-java-springboot-basic-1/main/devfile.yaml"))
 			}
 
 			// Delete the specified Detection Query resource
@@ -1593,7 +1603,7 @@ metadata:
 			Expect(createdHasCompDetectionQuery.Status.Conditions[1].Message).Should(ContainSubstring("ComponentDetectionQuery has successfully finished"))
 
 			// Make sure the devfiles are detected
-			Expect(len(createdHasCompDetectionQuery.Status.ComponentDetected)).Should(Equal(5))
+			Expect(len(createdHasCompDetectionQuery.Status.ComponentDetected)).Should(Equal(5)) // mocked, not accurate. check unit test for accurate detection that uses the alizer client instead of the mock client.
 			for _, componentDesc := range createdHasCompDetectionQuery.Status.ComponentDetected {
 				Expect(componentDesc.ComponentStub.Source.GitSource).ShouldNot(BeNil())
 			}

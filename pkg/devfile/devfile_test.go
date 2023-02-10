@@ -499,6 +499,8 @@ func TestGenerateDeploymentTemplate(t *testing.T) {
 
 func TestGetResourceFromDevfile(t *testing.T) {
 
+	weight := int32(100)
+
 	kubernetesInlinedDevfile := `
 commands:
 - apply:
@@ -872,17 +874,14 @@ components:
     deployment/storageRequest: 201Mi
   kubernetes:
     deployByDefault: false
-    endpoints:
-    - name: http-8081
-      path: /
-      secure: false
-      targetPort: 8081
     inlined: |-
       apiVersion: route.openshift.io/v1
       kind: Route
       metadata:
         creationTimestamp: null
         name: route-sample-2
+        labels:
+          test: test
       spec:
         host: route111
         port:
@@ -928,6 +927,7 @@ components:
   name: image-build
 - attributes:
     api.devfile.io/k8sLikeComponent-originalURI: deploy.yaml
+    deployment/container-port: 1111
   kubernetes:
     deployByDefault: false
     inlined: |-
@@ -940,8 +940,6 @@ components:
         ports:
         - port: 1111
           targetPort: 1111
-        selector:
-          app.kubernetes.io/instance: component-sample
       status:
         loadBalancer: {}
   name: kubernetes-deploy
@@ -977,6 +975,9 @@ components:
   name: image-build
 - attributes:
     api.devfile.io/k8sLikeComponent-originalURI: deploy.yaml
+    deployment/container-port: 1111
+    deployment/storageLimit: 401Mi
+    deployment/storageRequest: 201Mi
   kubernetes:
     deployByDefault: false
     endpoints:
@@ -989,13 +990,6 @@ components:
       kind: Deployment
       metadata:
         creationTimestamp: null
-        labels:
-          app.kubernetes.io/created-by: application-service
-          app.kubernetes.io/instance: component-sample
-          app.kubernetes.io/managed-by: kustomize
-          app.kubernetes.io/name: backend
-          app.kubernetes.io/part-of: application-sample
-          maysun: test
         name: deploy-sample
       spec:
         replicas: 1
@@ -1680,18 +1674,22 @@ schemaVersion: 2.2.0`
 						"app.kubernetes.io/managed-by": "kustomize",
 						"app.kubernetes.io/name":       "component-sample",
 						"app.kubernetes.io/part-of":    "application-sample",
+						"test":                         "test",
 					},
-					Annotations: map[string]string{},
 				},
 				Spec: routev1.RouteSpec{
 					Host: "route111222",
-					Path: "/",
 					Port: &routev1.RoutePort{
 						TargetPort: intstr.FromInt(5566),
 					},
 					To: routev1.RouteTargetReference{
-						Kind: "Service",
-						Name: "component-sample",
+						Kind:   "Service",
+						Name:   "component-sample",
+						Weight: &weight,
+					},
+					TLS: &routev1.TLSConfig{
+						Termination:                   routev1.TLSTerminationEdge,
+						InsecureEdgeTerminationPolicy: routev1.InsecureEdgeTerminationPolicyRedirect,
 					},
 				},
 			},
@@ -1751,7 +1749,6 @@ schemaVersion: 2.2.0`
 						"app.kubernetes.io/managed-by": "kustomize",
 						"app.kubernetes.io/name":       "component-sample",
 						"app.kubernetes.io/part-of":    "application-sample",
-						"maysun":                       "test",
 					},
 				},
 				Spec: appsv1.DeploymentSpec{
@@ -1811,12 +1808,12 @@ schemaVersion: 2.2.0`
 										Limits: corev1.ResourceList{
 											corev1.ResourceCPU:     resource.MustParse("2"),
 											corev1.ResourceMemory:  resource.MustParse("500Mi"),
-											corev1.ResourceStorage: resource.MustParse("400Mi"),
+											corev1.ResourceStorage: resource.MustParse("401Mi"),
 										},
 										Requests: corev1.ResourceList{
 											corev1.ResourceCPU:     resource.MustParse("700m"),
 											corev1.ResourceMemory:  resource.MustParse("400Mi"),
-											corev1.ResourceStorage: resource.MustParse("200Mi"),
+											corev1.ResourceStorage: resource.MustParse("201Mi"),
 										},
 									},
 								},
@@ -1845,7 +1842,7 @@ schemaVersion: 2.2.0`
 				Spec: routev1.RouteSpec{
 					Path: "/",
 					Port: &routev1.RoutePort{
-						TargetPort: intstr.FromString("8081"),
+						TargetPort: intstr.FromInt(1111),
 					},
 					To: routev1.RouteTargetReference{
 						Kind: "Service",

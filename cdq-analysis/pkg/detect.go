@@ -295,7 +295,18 @@ func AnalyzeAndDetectDevfile(a Alizer, path, devfileRegistryURL string) ([]byte,
 				// if a dir can be a component but we get an unrelated err, err out
 				return nil, "", "", err
 			} else if !reflect.DeepEqual(detectedType, model.DevFileType{}) {
-				detectedDevfileEndpoint := devfileRegistryURL + "/devfiles/" + detectedType.Name
+				// Note: Do not use the Devfile registry endpoint devfileRegistry/devfiles/detectedType.Name
+				// until the Devfile registry support uploads the Devfile Kubernetes component relative uri file
+				// as an artifact and made accessible via devfile/library or devfile/registry-support
+				sampleRepoURL, err := GetRepoFromRegistry(detectedType.Name, devfileRegistryURL)
+				if err != nil {
+					return nil, "", "", err
+				}
+				detectedDevfileEndpoint, err := UpdateGitLink(sampleRepoURL, "", DevfileName)
+				if err != nil {
+					return nil, "", "", err
+				}
+
 				devfileBytes, err = CurlEndpoint(detectedDevfileEndpoint)
 				if err != nil {
 					return nil, "", "", err

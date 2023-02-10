@@ -145,7 +145,7 @@ func TestScanRepo(t *testing.T) {
 			expectedDevfileContext: []string{"python", "devfile-sample-java-springboot-basic"},
 			expectedDevfileURLContextMap: map[string]string{
 				"devfile-sample-java-springboot-basic": "https://raw.githubusercontent.com/maysunfaisal/multi-components-deep/main/devfile-sample-java-springboot-basic/.devfile/.devfile.yaml",
-				"python":                               "https://registry.stage.devfile.io/devfiles/python-basic",
+				"python":                               "https://raw.githubusercontent.com/devfile-samples/devfile-sample-python-basic/main/devfile.yaml",
 			},
 			expectedDockerfileContextMap: map[string]string{
 				"devfile-sample-java-springboot-basic": "devfile-sample-java-springboot-basic/docker/Dockerfile",
@@ -160,8 +160,8 @@ func TestScanRepo(t *testing.T) {
 				"devfile-sample-java-springboot-basic": "https://raw.githubusercontent.com/maysunfaisal/multi-components-dockerfile/main/devfile-sample-java-springboot-basic/.devfile/.devfile.yaml",
 				"devfile-sample-nodejs-basic":          "https://raw.githubusercontent.com/maysunfaisal/multi-components-dockerfile/main/devfile-sample-nodejs-basic/devfile.yaml",
 				"devfile-sample-python-basic":          "https://raw.githubusercontent.com/maysunfaisal/multi-components-dockerfile/main/devfile-sample-python-basic/.devfile.yaml",
-				"python-src-none":                      "https://registry.stage.devfile.io/devfiles/python-basic",
-				"python-src-docker":                    "https://registry.stage.devfile.io/devfiles/python-basic",
+				"python-src-none":                      "https://raw.githubusercontent.com/devfile-samples/devfile-sample-python-basic/main/devfile.yaml",
+				"python-src-docker":                    "https://raw.githubusercontent.com/devfile-samples/devfile-sample-python-basic/main/devfile.yaml",
 			},
 			expectedDockerfileContextMap: map[string]string{
 				"python-src-docker":                    "python-src-docker/Dockerfile",
@@ -178,7 +178,7 @@ func TestScanRepo(t *testing.T) {
 			expectedDevfileContext: []string{"python", "devfile-sample-java-springboot-basic"},
 			expectedDevfileURLContextMap: map[string]string{
 				"devfile-sample-java-springboot-basic": "https://raw.githubusercontent.com/maysunfaisal/multi-components-deep/main/devfile-sample-java-springboot-basic/.devfile/.devfile.yaml",
-				"python":                               "https://registry.stage.devfile.io/devfiles/python-basic",
+				"python":                               "https://raw.githubusercontent.com/devfile-samples/devfile-sample-python-basic/main/devfile.yaml",
 			},
 			expectedDockerfileContextMap: map[string]string{
 				"devfile-sample-java-springboot-basic": "devfile-sample-java-springboot-basic/docker/Dockerfile",
