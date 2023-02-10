@@ -27,9 +27,16 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
-func (r *SnapshotEnvironmentBindingReconciler) SetConditionAndUpdateCR(ctx context.Context, req ctrl.Request, appSnapshotEnvBinding *appstudiov1alpha1.SnapshotEnvironmentBinding, patch client.Patch, createError error) {
+func (r *SnapshotEnvironmentBindingReconciler) SetConditionAndUpdateCR(ctx context.Context, req ctrl.Request, appSnapshotEnvBinding *appstudiov1alpha1.SnapshotEnvironmentBinding, createError error) {
 	log := r.Log.WithValues("SnapshotEnvironmentBinding", req.NamespacedName).WithValues("clusterName", req.ClusterName)
 
+	var currentSEB appstudiov1alpha1.SnapshotEnvironmentBinding
+	err := r.Get(ctx, req.NamespacedName, &currentSEB)
+	if err != nil {
+		return
+	}
+
+	patch := client.MergeFrom(currentSEB.DeepCopy())
 	condition := metav1.Condition{}
 	if createError == nil {
 		condition = metav1.Condition{
@@ -47,10 +54,11 @@ func (r *SnapshotEnvironmentBindingReconciler) SetConditionAndUpdateCR(ctx conte
 		}
 
 	}
-	meta.SetStatusCondition(&appSnapshotEnvBinding.Status.GitOpsRepoConditions, condition)
-	logutil.LogAPIResourceChangeEvent(log, appSnapshotEnvBinding.Name, "SnapshotEnvironmentBinding", logutil.ResourceCreate, createError)
+	meta.SetStatusCondition(&currentSEB.Status.GitOpsRepoConditions, condition)
+	logutil.LogAPIResourceChangeEvent(log, currentSEB.Name, "SnapshotEnvironmentBinding", logutil.ResourceCreate, createError)
+	currentSEB.Status.Components = appSnapshotEnvBinding.Status.Components
 
-	err := r.Client.Status().Patch(ctx, appSnapshotEnvBinding, patch)
+	err = r.Client.Status().Patch(ctx, &currentSEB, patch)
 	if err != nil {
 		log.Error(err, "Unable to update application snapshot environment binding")
 
