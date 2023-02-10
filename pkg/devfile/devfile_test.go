@@ -473,7 +473,7 @@ func TestScanRepo(t *testing.T) {
 			expectedDevfileContext: []string{"python", "devfile-sample-java-springboot-basic"},
 			expectedDevfileURLContextMap: map[string]string{
 				"devfile-sample-java-springboot-basic": "https://raw.githubusercontent.com/maysunfaisal/multi-components-deep/main/devfile-sample-java-springboot-basic/.devfile/.devfile.yaml",
-				"python":                               "https://registry.stage.devfile.io/devfiles/python-basic",
+				"python":                               "https://raw.githubusercontent.com/devfile-samples/devfile-sample-python-basic/main/devfile.yaml",
 			},
 			expectedDockerfileContextMap: map[string]string{
 				"devfile-sample-java-springboot-basic": "devfile-sample-java-springboot-basic/docker/Dockerfile",
@@ -487,7 +487,7 @@ func TestScanRepo(t *testing.T) {
 			expectedDevfileContext: []string{"python", "devfile-sample-java-springboot-basic"},
 			expectedDevfileURLContextMap: map[string]string{
 				"devfile-sample-java-springboot-basic": "https://raw.githubusercontent.com/maysunfaisal/multi-components-deep/main/devfile-sample-java-springboot-basic/.devfile/.devfile.yaml",
-				"python":                               "https://registry.stage.devfile.io/devfiles/python-basic",
+				"python":                               "https://raw.githubusercontent.com/devfile-samples/devfile-sample-python-basic/main/devfile.yaml",
 			},
 			expectedDockerfileContextMap: map[string]string{
 				"devfile-sample-java-springboot-basic": "devfile-sample-java-springboot-basic/docker/Dockerfile",
@@ -502,8 +502,8 @@ func TestScanRepo(t *testing.T) {
 				"devfile-sample-java-springboot-basic": "https://raw.githubusercontent.com/maysunfaisal/multi-components-dockerfile/main/devfile-sample-java-springboot-basic/.devfile/.devfile.yaml",
 				"devfile-sample-nodejs-basic":          "https://raw.githubusercontent.com/maysunfaisal/multi-components-dockerfile/main/devfile-sample-nodejs-basic/devfile.yaml",
 				"devfile-sample-python-basic":          "https://raw.githubusercontent.com/maysunfaisal/multi-components-dockerfile/main/devfile-sample-python-basic/.devfile.yaml",
-				"python-src-none":                      "https://registry.stage.devfile.io/devfiles/python-basic",
-				"python-src-docker":                    "https://registry.stage.devfile.io/devfiles/python-basic",
+				"python-src-none":                      "https://raw.githubusercontent.com/devfile-samples/devfile-sample-python-basic/main/devfile.yaml",
+				"python-src-docker":                    "https://raw.githubusercontent.com/devfile-samples/devfile-sample-python-basic/main/devfile.yaml",
 			},
 			expectedDockerfileContextMap: map[string]string{
 				"python-src-docker":                    "python-src-docker/Dockerfile",
@@ -615,6 +615,8 @@ func TestGenerateDeploymentTemplate(t *testing.T) {
 
 func TestGetResourceFromDevfile(t *testing.T) {
 
+	weight := int32(100)
+
 	kubernetesInlinedDevfile := `
 commands:
 - apply:
@@ -655,8 +657,6 @@ components:
     deployment/memoryRequest: 401Mi
     deployment/replicas: 5
     deployment/route: route111222
-    deployment/storageLimit: 400Mi
-    deployment/storageRequest: 201Mi
   kubernetes:
     deployByDefault: false
     endpoints:
@@ -708,11 +708,9 @@ components:
                 limits:
                   cpu: "2"
                   memory: 500Mi
-                  storage: 400Mi
                 requests:
                   cpu: 700m
                   memory: 400Mi
-                  storage: 200Mi
       status: {}
       ---
       apiVersion: apps/v1
@@ -992,17 +990,14 @@ components:
     deployment/storageRequest: 201Mi
   kubernetes:
     deployByDefault: false
-    endpoints:
-    - name: http-8081
-      path: /
-      secure: false
-      targetPort: 8081
     inlined: |-
       apiVersion: route.openshift.io/v1
       kind: Route
       metadata:
         creationTimestamp: null
         name: route-sample-2
+        labels:
+          test: test
       spec:
         host: route111
         port:
@@ -1048,6 +1043,7 @@ components:
   name: image-build
 - attributes:
     api.devfile.io/k8sLikeComponent-originalURI: deploy.yaml
+    deployment/container-port: 1111
   kubernetes:
     deployByDefault: false
     inlined: |-
@@ -1060,8 +1056,6 @@ components:
         ports:
         - port: 1111
           targetPort: 1111
-        selector:
-          app.kubernetes.io/instance: component-sample
       status:
         loadBalancer: {}
   name: kubernetes-deploy
@@ -1097,6 +1091,9 @@ components:
   name: image-build
 - attributes:
     api.devfile.io/k8sLikeComponent-originalURI: deploy.yaml
+    deployment/container-port: 1111
+    deployment/storageLimit: 401Mi
+    deployment/storageRequest: 201Mi
   kubernetes:
     deployByDefault: false
     endpoints:
@@ -1109,13 +1106,6 @@ components:
       kind: Deployment
       metadata:
         creationTimestamp: null
-        labels:
-          app.kubernetes.io/created-by: application-service
-          app.kubernetes.io/instance: component-sample
-          app.kubernetes.io/managed-by: kustomize
-          app.kubernetes.io/name: backend
-          app.kubernetes.io/part-of: application-sample
-          maysun: test
         name: deploy-sample
       spec:
         replicas: 1
@@ -1703,14 +1693,12 @@ schemaVersion: 2.2.0`
 									},
 									Resources: corev1.ResourceRequirements{
 										Limits: corev1.ResourceList{
-											corev1.ResourceCPU:     resource.MustParse("2"),
-											corev1.ResourceMemory:  resource.MustParse("500Mi"),
-											corev1.ResourceStorage: resource.MustParse("400Mi"),
+											corev1.ResourceCPU:    resource.MustParse("2"),
+											corev1.ResourceMemory: resource.MustParse("500Mi"),
 										},
 										Requests: corev1.ResourceList{
-											corev1.ResourceCPU:     resource.MustParse("701m"),
-											corev1.ResourceMemory:  resource.MustParse("401Mi"),
-											corev1.ResourceStorage: resource.MustParse("201Mi"),
+											corev1.ResourceCPU:    resource.MustParse("701m"),
+											corev1.ResourceMemory: resource.MustParse("401Mi"),
 										},
 									},
 								},
@@ -1802,18 +1790,22 @@ schemaVersion: 2.2.0`
 						"app.kubernetes.io/managed-by": "kustomize",
 						"app.kubernetes.io/name":       "component-sample",
 						"app.kubernetes.io/part-of":    "application-sample",
+						"test":                         "test",
 					},
-					Annotations: map[string]string{},
 				},
 				Spec: routev1.RouteSpec{
 					Host: "route111222",
-					Path: "/",
 					Port: &routev1.RoutePort{
 						TargetPort: intstr.FromInt(5566),
 					},
 					To: routev1.RouteTargetReference{
-						Kind: "Service",
-						Name: "component-sample",
+						Kind:   "Service",
+						Name:   "component-sample",
+						Weight: &weight,
+					},
+					TLS: &routev1.TLSConfig{
+						Termination:                   routev1.TLSTerminationEdge,
+						InsecureEdgeTerminationPolicy: routev1.InsecureEdgeTerminationPolicyRedirect,
 					},
 				},
 			},
@@ -1873,7 +1865,6 @@ schemaVersion: 2.2.0`
 						"app.kubernetes.io/managed-by": "kustomize",
 						"app.kubernetes.io/name":       "component-sample",
 						"app.kubernetes.io/part-of":    "application-sample",
-						"maysun":                       "test",
 					},
 				},
 				Spec: appsv1.DeploymentSpec{
@@ -1933,12 +1924,12 @@ schemaVersion: 2.2.0`
 										Limits: corev1.ResourceList{
 											corev1.ResourceCPU:     resource.MustParse("2"),
 											corev1.ResourceMemory:  resource.MustParse("500Mi"),
-											corev1.ResourceStorage: resource.MustParse("400Mi"),
+											corev1.ResourceStorage: resource.MustParse("401Mi"),
 										},
 										Requests: corev1.ResourceList{
 											corev1.ResourceCPU:     resource.MustParse("700m"),
 											corev1.ResourceMemory:  resource.MustParse("400Mi"),
-											corev1.ResourceStorage: resource.MustParse("200Mi"),
+											corev1.ResourceStorage: resource.MustParse("201Mi"),
 										},
 									},
 								},
@@ -1967,7 +1958,7 @@ schemaVersion: 2.2.0`
 				Spec: routev1.RouteSpec{
 					Path: "/",
 					Port: &routev1.RoutePort{
-						TargetPort: intstr.FromString("8081"),
+						TargetPort: intstr.FromInt(1111),
 					},
 					To: routev1.RouteTargetReference{
 						Kind: "Service",

@@ -169,7 +169,21 @@ func GetResourceFromDevfile(log logr.Logger, devfileData data.DevfileData, deplo
 						}
 
 						if currentPort > 0 {
-							resources.Deployments[0].Spec.Template.Spec.Containers[0].Ports = append(resources.Deployments[0].Spec.Template.Spec.Containers[0].Ports, corev1.ContainerPort{ContainerPort: int32(currentPort)})
+							containerPort := corev1.ContainerPort{
+								ContainerPort: int32(currentPort),
+							}
+
+							isPresent := false
+							for _, port := range resources.Deployments[0].Spec.Template.Spec.Containers[0].Ports {
+								if port.ContainerPort == containerPort.ContainerPort {
+									isPresent = true
+									break
+								}
+							}
+
+							if !isPresent {
+								resources.Deployments[0].Spec.Template.Spec.Containers[0].Ports = append(resources.Deployments[0].Spec.Template.Spec.Containers[0].Ports, containerPort)
+							}
 
 							if resources.Deployments[0].Spec.Template.Spec.Containers[0].ReadinessProbe != nil && resources.Deployments[0].Spec.Template.Spec.Containers[0].ReadinessProbe.ProbeHandler.TCPSocket != nil {
 								resources.Deployments[0].Spec.Template.Spec.Containers[0].ReadinessProbe.ProbeHandler.TCPSocket.Port.IntVal = int32(currentPort)
@@ -221,7 +235,7 @@ func GetResourceFromDevfile(log logr.Logger, devfileData data.DevfileData, deplo
 							containerLimits = make(corev1.ResourceList)
 						}
 
-						if cpuLimit != "" {
+						if cpuLimit != "" && cpuLimit != "0" {
 							cpuLimitQuantity, err := resource.ParseQuantity(cpuLimit)
 							if err != nil {
 								return parser.KubernetesResources{}, err
@@ -229,7 +243,7 @@ func GetResourceFromDevfile(log logr.Logger, devfileData data.DevfileData, deplo
 							containerLimits[corev1.ResourceCPU] = cpuLimitQuantity
 						}
 
-						if memoryLimit != "" {
+						if memoryLimit != "" && memoryLimit != "0" {
 							memoryLimitQuantity, err := resource.ParseQuantity(memoryLimit)
 							if err != nil {
 								return parser.KubernetesResources{}, err
@@ -237,7 +251,7 @@ func GetResourceFromDevfile(log logr.Logger, devfileData data.DevfileData, deplo
 							containerLimits[corev1.ResourceMemory] = memoryLimitQuantity
 						}
 
-						if storageLimit != "" {
+						if storageLimit != "" && storageLimit != "0" {
 							storageLimitQuantity, err := resource.ParseQuantity(storageLimit)
 							if err != nil {
 								return parser.KubernetesResources{}, err
@@ -274,7 +288,7 @@ func GetResourceFromDevfile(log logr.Logger, devfileData data.DevfileData, deplo
 							containerRequests = make(corev1.ResourceList)
 						}
 
-						if cpuRequest != "" {
+						if cpuRequest != "" && cpuRequest != "0" {
 							cpuRequestQuantity, err := resource.ParseQuantity(cpuRequest)
 							if err != nil {
 								return parser.KubernetesResources{}, err
@@ -282,7 +296,7 @@ func GetResourceFromDevfile(log logr.Logger, devfileData data.DevfileData, deplo
 							containerRequests[corev1.ResourceCPU] = cpuRequestQuantity
 						}
 
-						if memoryRequest != "" {
+						if memoryRequest != "" && memoryRequest != "0" {
 							memoryRequestQuantity, err := resource.ParseQuantity(memoryRequest)
 							if err != nil {
 								return parser.KubernetesResources{}, err
@@ -290,7 +304,7 @@ func GetResourceFromDevfile(log logr.Logger, devfileData data.DevfileData, deplo
 							containerRequests[corev1.ResourceMemory] = memoryRequestQuantity
 						}
 
-						if storageRequest != "" {
+						if storageRequest != "" && storageRequest != "0" {
 							storageRequestQuantity, err := resource.ParseQuantity(storageRequest)
 							if err != nil {
 								return parser.KubernetesResources{}, err
@@ -320,10 +334,22 @@ func GetResourceFromDevfile(log logr.Logger, devfileData data.DevfileData, deplo
 					}
 
 					if currentPort > 0 {
-						resources.Services[0].Spec.Ports = append(resources.Services[0].Spec.Ports, corev1.ServicePort{
+						servicePort := corev1.ServicePort{
 							Port:       int32(currentPort),
 							TargetPort: intstr.FromInt(currentPort),
-						})
+						}
+
+						isPresent := false
+						for _, port := range resources.Services[0].Spec.Ports {
+							if port.Port == servicePort.Port {
+								isPresent = true
+								break
+							}
+						}
+
+						if !isPresent {
+							resources.Services[0].Spec.Ports = append(resources.Services[0].Spec.Ports, servicePort)
+						}
 					}
 				}
 				if len(resources.Routes) > 0 {
