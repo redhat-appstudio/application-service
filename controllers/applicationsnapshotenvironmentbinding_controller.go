@@ -25,6 +25,7 @@ import (
 	gitopsgenv1alpha1 "github.com/redhat-developer/gitops-generator/api/v1alpha1"
 	gitopsgen "github.com/redhat-developer/gitops-generator/pkg"
 	"go.uber.org/zap/zapcore"
+	"golang.org/x/exp/maps"
 	corev1 "k8s.io/api/core/v1"
 
 	"github.com/go-logr/logr"
@@ -104,13 +105,18 @@ func (r *SnapshotEnvironmentBindingReconciler) Reconcile(ctx context.Context, re
 	components := appSnapshotEnvBinding.Spec.Components
 
 	// Check if the labels have been applied to the binding
+	requiredLabels := map[string]string{
+		"appstudio.application": applicationName,
+		"appstudio.environment": environmentName,
+	}
 	bindingLabels := appSnapshotEnvBinding.GetLabels()
 	if bindingLabels["appstudio.application"] == "" || bindingLabels["appstudio.environment"] == "" {
-		appSnapshotEnvBinding.SetLabels(map[string]string{
-			"appstudio.application": applicationName,
-			"appstudio.environment": environmentName,
-		})
-
+		if bindingLabels != nil {
+			maps.Copy(bindingLabels, requiredLabels)
+		} else {
+			bindingLabels = requiredLabels
+		}
+		appSnapshotEnvBinding.SetLabels(bindingLabels)
 		if err := r.Client.Update(ctx, &appSnapshotEnvBinding); err != nil {
 			return ctrl.Result{}, err
 		}
