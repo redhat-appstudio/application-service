@@ -24,30 +24,43 @@ import (
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	ctrl "sigs.k8s.io/controller-runtime"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 func (r *SnapshotEnvironmentBindingReconciler) SetConditionAndUpdateCR(ctx context.Context, req ctrl.Request, appSnapshotEnvBinding *appstudiov1alpha1.SnapshotEnvironmentBinding, createError error) {
 	log := r.Log.WithValues("SnapshotEnvironmentBinding", req.NamespacedName).WithValues("clusterName", req.ClusterName)
 
+	var currentSEB appstudiov1alpha1.SnapshotEnvironmentBinding
+	err := r.Get(ctx, req.NamespacedName, &currentSEB)
+	if err != nil {
+		return
+	}
+
+	patch := client.MergeFrom(currentSEB.DeepCopy())
+	condition := metav1.Condition{}
 	if createError == nil {
-		meta.SetStatusCondition(&appSnapshotEnvBinding.Status.GitOpsRepoConditions, metav1.Condition{
+		condition = metav1.Condition{
 			Type:    "GitOpsResourcesGenerated",
 			Status:  metav1.ConditionTrue,
 			Reason:  "OK",
 			Message: "GitOps repository sync successful",
-		})
+		}
 	} else {
-		meta.SetStatusCondition(&appSnapshotEnvBinding.Status.GitOpsRepoConditions, metav1.Condition{
+		condition = metav1.Condition{
 			Type:    "GitOpsResourcesGenerated",
 			Status:  metav1.ConditionFalse,
 			Reason:  "GenerateError",
 			Message: fmt.Sprintf("GitOps repository sync failed: %v", createError),
-		})
-		logutil.LogAPIResourceChangeEvent(log, appSnapshotEnvBinding.Name, "SnapshotEnvironmentBinding", logutil.ResourceCreate, createError)
-	}
+		}
 
-	err := r.Client.Status().Update(ctx, appSnapshotEnvBinding)
+	}
+	meta.SetStatusCondition(&currentSEB.Status.GitOpsRepoConditions, condition)
+	logutil.LogAPIResourceChangeEvent(log, currentSEB.Name, "SnapshotEnvironmentBinding", logutil.ResourceCreate, createError)
+	currentSEB.Status.Components = appSnapshotEnvBinding.Status.Components
+
+	err = r.Client.Status().Patch(ctx, &currentSEB, patch)
 	if err != nil {
 		log.Error(err, "Unable to update application snapshot environment binding")
+
 	}
 }

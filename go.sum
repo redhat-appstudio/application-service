@@ -1019,8 +1019,8 @@ github.com/redhat-appstudio/service-provider-integration-scm-file-retriever v0.8
 github.com/redhat-appstudio/service-provider-integration-scm-file-retriever v0.8.3/go.mod h1:nGIC0XrYoMm63q1qHS7h/7ktUliMzgQcOOd2XLpNDbA=
 github.com/redhat-developer/alizer/go v0.0.0-20230117135912-8f7afff3b7cd h1:GwlLVPuBkLft6iSq9NwVAABHN/qh/86EABLmx43Lo6A=
 github.com/redhat-developer/alizer/go v0.0.0-20230117135912-8f7afff3b7cd/go.mod h1:cdCGkfY9r1M1KkqHdpTt7QkQVGMMdohpGSILqL7laiQ=
-github.com/redhat-developer/gitops-generator v0.0.0-20230202231730-e63f1f811195 h1:C8sYKTW067BHQhXRLnXvtNgd/6OfEtAaUMiP7lrgKQA=
-github.com/redhat-developer/gitops-generator v0.0.0-20230202231730-e63f1f811195/go.mod h1:Et+rhPFOBHSBQCJv96CY7lTIQY2xfYYwvXsOqkQ7W1g=
+github.com/redhat-developer/gitops-generator v0.0.0-20230209215431-095561c4a909 h1:ukB1FrH8McsrnyeaIPnPCOozoWet/vCrzmU7UBCv4rU=
+github.com/redhat-developer/gitops-generator v0.0.0-20230209215431-095561c4a909/go.mod h1:Et+rhPFOBHSBQCJv96CY7lTIQY2xfYYwvXsOqkQ7W1g=
 github.com/rogpeppe/fastuuid v0.0.0-20150106093220-6724a57986af/go.mod h1:XWv6SoW27p1b0cqNHllgS5HIMJraePCO15w5zCzIWYg=
 github.com/rogpeppe/fastuuid v1.2.0/go.mod h1:jVj6XXZzXRy/MSR5jhDC/2q6DgLz+nrA6LYCDYWNEvQ=
 github.com/rogpeppe/go-internal v1.3.0/go.mod h1:M8bDsm7K2OlrFYOpmOWEs/qY81heoFRclV5y23lUDJ4=
@@ -1289,6 +1289,8 @@ golang.org/x/exp v0.0.0-20191227195350-da58074b4299/go.mod h1:2RIsYlXP63K8oxa1u0
 golang.org/x/exp v0.0.0-20200119233911-0405dc783f0a/go.mod h1:2RIsYlXP63K8oxa1u096TMicItID8zy7Y6sNkU49FU4=
 golang.org/x/exp v0.0.0-20200207192155-f17229e696bd/go.mod h1:J/WKrq2StrnmMY6+EHIKF9dgMWnmCNThgcyBT1FY9mM=
 golang.org/x/exp v0.0.0-20200224162631-6cc2880d07d6/go.mod h1:3jZMyOhIsHpP37uCMkUooju7aAi5cS1Q23tOzKc+0MU=
+golang.org/x/exp v0.0.0-20230206171751-46f607a40771 h1:xP7rWLUr1e1n2xkK5YB4LI0hPEy3LJC6Wk+D4pGlOJg=
+golang.org/x/exp v0.0.0-20230206171751-46f607a40771/go.mod h1:CxIveKay+FTh1D0yPZemJVgC/95VzuuOLq5Qi4xnoYc=
 golang.org/x/image v0.0.0-20190227222117-0694c2d4d067/go.mod h1:kZ7UVZpmo3dzQBMxlp+ypCbDeSB+sBbTgSJuh5dn5js=
 golang.org/x/image v0.0.0-20190802002840-cff245a6509b/go.mod h1:FeLwcggjj3mMvU+oOTbSwawSJRM1uh48EjtB4UJZlP0=
 golang.org/x/lint v0.0.0-20180702182130-06c8688daad7/go.mod h1:UVdnD1Gm6xHRNCYTkRU2/jEulfH38KcIWyp/GAMgvoE=

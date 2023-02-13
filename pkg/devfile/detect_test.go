@@ -45,7 +45,7 @@ func TestAnalyzeAndDetectDevfile(t *testing.T) {
 			repo:                "https://github.com/maysunfaisal/devfile-sample-java-springboot-basic-1",
 			registryURL:         DevfileStageRegistryEndpoint,
 			wantDevfile:         true,
-			wantDevfileEndpoint: "https://registry.stage.devfile.io/devfiles/java-springboot-basic",
+			wantDevfileEndpoint: "https://raw.githubusercontent.com/devfile-samples/devfile-sample-java-springboot-basic/main/devfile.yaml",
 		},
 		{
 			name:                "Successfully detect a devfile from the registry using an alternate branch",
@@ -54,7 +54,7 @@ func TestAnalyzeAndDetectDevfile(t *testing.T) {
 			revision:            "testbranch",
 			registryURL:         DevfileStageRegistryEndpoint,
 			wantDevfile:         true,
-			wantDevfileEndpoint: "https://registry.stage.devfile.io/devfiles/java-springboot-basic",
+			wantDevfileEndpoint: "https://raw.githubusercontent.com/devfile-samples/devfile-sample-java-springboot-basic/main/devfile.yaml",
 		},
 		{
 			name:        "Cannot detect a devfile for a Scala repository",
