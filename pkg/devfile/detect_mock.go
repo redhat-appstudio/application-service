@@ -123,6 +123,8 @@ func (a MockAlizerClient) DetectComponents(path string) ([]model.Component, erro
 				},
 			},
 		}, nil
+	} else if !strings.Contains(path, "springboot") && !strings.Contains(path, "python") {
+		return nil, nil
 	}
 
 	return []model.Component{
