@@ -171,6 +171,11 @@ var _ = Describe("SnapshotEnvironmentBinding controller", func() {
 			Expect(createdBinding.Status.Components[0].GitOpsRepository.Path).Should(Equal(fmt.Sprintf("components/%s/overlays/%s", componentName, environmentName)))
 			Expect(createdBinding.Status.Components[0].GitOpsRepository.URL).Should(Equal(hasComp.Status.GitOps.RepositoryURL))
 			Expect(createdBinding.Status.Components[0].GitOpsRepository.CommitID).Should(Equal("ca82a6dff817ec66f44342007202690a93763949"))
+			bindingLabels := createdBinding.GetLabels()
+			// If no prior labels exist, SEB controllers should only add 2 label entries
+			Expect(len(bindingLabels)).Should(Equal(2))
+			Expect(bindingLabels["appstudio.application"]).Should(Equal(applicationName))
+			Expect(bindingLabels["appstudio.environment"]).Should(Equal(environmentName))
 
 			// check the list of generated gitops resources to make sure we account for every one
 			for _, generatedResource := range createdBinding.Status.Components[0].GitOpsRepository.GeneratedResources {
@@ -979,6 +984,9 @@ var _ = Describe("SnapshotEnvironmentBinding controller", func() {
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      bindingName,
 					Namespace: HASAppNamespace,
+					Labels: map[string]string{
+						"test": "true",
+					},
 				},
 				Spec: appstudiov1alpha1.SnapshotEnvironmentBindingSpec{
 					Application: applicationName,
@@ -1014,6 +1022,13 @@ var _ = Describe("SnapshotEnvironmentBinding controller", func() {
 				k8sClient.Get(context.Background(), bindingLookupKey, createdBinding)
 				return len(createdBinding.Status.GitOpsRepoConditions) == 1 && len(createdBinding.Status.Components) == 1
 			}, timeout, interval).Should(BeTrue())
+
+			bindingLabels := createdBinding.GetLabels()
+			// SEB controller should preserve the existing labels
+			Expect(len(bindingLabels)).Should(Equal(3))
+			Expect(bindingLabels["test"]).Should(Equal("true"))
+			Expect(bindingLabels["appstudio.application"]).Should(Equal(applicationName))
+			Expect(bindingLabels["appstudio.environment"]).Should(Equal(environmentName))
 
 			createdBinding.Spec.Components[0].Configuration.Replicas = int(newReplicas)
 
