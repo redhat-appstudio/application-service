@@ -1247,7 +1247,7 @@ var _ = Describe("Component Detection Query controller", func() {
 					Expect(devfileName).Should(ContainSubstring("spring"))
 					Expect(devfileDesc.ComponentStub.Source.GitSource.Context).Should(ContainSubstring("./"))
 					Expect(devfileDesc.ComponentStub.Source.GitSource.Revision).Should(ContainSubstring("main"))
-					Expect(devfileDesc.ComponentStub.Source.GitSource.DevfileURL).Should(Equal("https://registry.stage.devfile.io/devfiles/java-springboot-basic"))
+					Expect(devfileDesc.ComponentStub.Source.GitSource.DevfileURL).Should(Equal("https://raw.githubusercontent.com/devfile-samples/devfile-sample-java-springboot-basic/main/devfile.yaml"))
 					Expect(devfileDesc.DevfileFound).Should(BeTrue())
 				}
 
