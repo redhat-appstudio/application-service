@@ -155,6 +155,11 @@ func main() {
 		log.Fatal("Unauthorized: No GitHub token present")
 	}
 
+	cdqToken := os.Getenv("CDQ_GITHUB_TOKEN")
+	if cdqToken == "" {
+		cdqToken = ghToken
+	}
+
 	// Retrieve the name of the GitHub org to use
 	ghOrg := os.Getenv("GITHUB_ORG")
 	if ghOrg == "" {
@@ -177,6 +182,10 @@ func main() {
 	ts := oauth2.StaticTokenSource(&oauth2.Token{AccessToken: ghToken})
 	tc := oauth2.NewClient(ctx, ts)
 	client := github.NewClient(tc)
+
+	cdqts := oauth2.StaticTokenSource(&oauth2.Token{AccessToken: cdqToken})
+	cdqtc := oauth2.NewClient(ctx, cdqts)
+	cdqClient := github.NewClient(cdqtc)
 
 	if err = (&controllers.ApplicationReconciler{
 		Client:       mgr.GetClient(),
@@ -208,7 +217,7 @@ func main() {
 		Log:                ctrl.Log.WithName("controllers").WithName("ComponentDetectionQuery").WithValues("appstudio-component", "HAS"),
 		SPIClient:          spi.SPIClient{},
 		AlizerClient:       devfile.AlizerClient{},
-		GitHubClient:       client,
+		GitHubClient:       cdqClient,
 		DevfileRegistryURL: devfileRegistryURL,
 		AppFS:              ioutils.NewFilesystem(),
 	}).SetupWithManager(mgr); err != nil {
