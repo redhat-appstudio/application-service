@@ -432,7 +432,7 @@ func TestGetBranchFromURL(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			branch, err := GetBranchFromURL(tt.repoURL, mockedClient, context.Background(), tt.branchName)
 
-			if tt.wantErr != (err != nil || branch == nil) {
+			if tt.wantErr != (err != nil) {
 				t.Errorf("TestGetBranchFromURL() unexpected error value: %v, branch %v", err, branch)
 			}
 			if !tt.wantErr && *branch.Name != tt.branchName {

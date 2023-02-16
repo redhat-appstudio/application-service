@@ -116,8 +116,8 @@ func GetDefaultBranchFromURL(repoURL string, client *github.Client, ctx context.
 	}
 
 	repo, _, err := client.Repositories.Get(ctx, orgName, repoName)
-	if err != nil {
-		return "", err
+	if err != nil || repo == nil {
+		return "", fmt.Errorf("failed to get repo %s under %s, error: %v", repoName, orgName, err)
 	}
 
 	return *repo.DefaultBranch, nil
@@ -131,8 +131,8 @@ func GetBranchFromURL(repoURL string, client *github.Client, ctx context.Context
 	}
 
 	branch, _, err := client.Repositories.GetBranch(ctx, orgName, repoName, branchName, false)
-	if err != nil {
-		return nil, err
+	if err != nil || branch == nil {
+		return nil, fmt.Errorf("failed to get branch %s from repo %s under %s, error: %v", branchName, repoName, orgName, err)
 	}
 
 	return branch, nil
