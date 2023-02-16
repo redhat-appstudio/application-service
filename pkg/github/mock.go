@@ -111,6 +111,27 @@ func GetMockedClient() *github.Client {
 				}
 			}),
 		),
+		mock.WithRequestMatchHandler(
+			mock.GetReposBranchesByOwnerByRepoByBranch,
+			http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
+				if strings.Contains(req.RequestURI, "test-repo-2") && strings.Contains(req.RequestURI, "master") {
+					/* #nosec G104 -- test code */
+					w.Write(mock.MustMarshal(github.Branch{
+						Name: github.String("master"),
+					}))
+				} else if strings.Contains(req.RequestURI, "test-repo-1") && strings.Contains(req.RequestURI, "main") {
+					/* #nosec G104 -- test code */
+					w.Write(mock.MustMarshal(github.Branch{
+						Name: github.String("main"),
+					}))
+				} else {
+					mock.WriteError(w,
+						http.StatusInternalServerError,
+						"github went belly up or something",
+					)
+				}
+			}),
+		),
 	)
 
 	return github.NewClient(mockedHTTPClient)

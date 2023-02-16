@@ -387,13 +387,56 @@ func TestGetDefaultBranchFromURL(t *testing.T) {
 		mockedClient := GetMockedClient()
 
 		t.Run(tt.name, func(t *testing.T) {
-			defaultBranch, err := GetDefaultBranchFromRepo(tt.repoURL, mockedClient, context.Background())
+			defaultBranch, err := GetDefaultBranchFromURL(tt.repoURL, mockedClient, context.Background())
 
 			if tt.wantErr != (err != nil) {
-				t.Errorf("TestGetDefaultBranchFromRepo() unexpected error value: %v", err)
+				t.Errorf("TestGetDefaultBranchFromURL() unexpected error value: %v", err)
 			}
 			if !tt.wantErr && defaultBranch != tt.want {
-				t.Errorf("TestGetDefaultBranchFromRepo() error: expected %v got %v", tt.want, defaultBranch)
+				t.Errorf("TestGetDefaultBranchFromURL() error: expected %v got %v", tt.want, defaultBranch)
+			}
+		})
+	}
+}
+
+func TestGetBranchFromURL(t *testing.T) {
+	tests := []struct {
+		name       string
+		repoURL    string
+		branchName string
+		wantErr    bool
+	}{
+		{
+			name:       "repo with main as default branch",
+			repoURL:    "https://github.com/redhat-appstudio-appdata/test-repo-1",
+			branchName: "main",
+			wantErr:    false,
+		},
+		{
+			name:       "repo with master as default branch",
+			repoURL:    "https://github.com/redhat-appstudio-appdata/test-repo-2.git",
+			branchName: "master",
+			wantErr:    false,
+		},
+		{
+			name:       "Simple repo name",
+			repoURL:    "https://github.com/redhat-appstudio-appdata/test-repo-2.git",
+			branchName: "main",
+			wantErr:    true,
+		},
+	}
+
+	for _, tt := range tests {
+		mockedClient := GetMockedClient()
+
+		t.Run(tt.name, func(t *testing.T) {
+			branch, err := GetBranchFromURL(tt.repoURL, mockedClient, context.Background(), tt.branchName)
+
+			if tt.wantErr != (err != nil || branch == nil) {
+				t.Errorf("TestGetBranchFromURL() unexpected error value: %v, branch %v", err, branch)
+			}
+			if !tt.wantErr && *branch.Name != tt.branchName {
+				t.Errorf("TestGetBranchFromURL() error: expected %v got %v", tt.branchName, *branch.Name)
 			}
 		})
 	}
