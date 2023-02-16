@@ -169,6 +169,7 @@ github.com/blang/semver/v4 v4.0.0 h1:1PFHFE6yCCTv8C1TeyNNarDzntLi7wMI5i/pzqYIsAM
 github.com/blang/semver/v4 v4.0.0/go.mod h1:IbckMUScFkM3pff0VJDNKRiT6TG/YpiHIM2yvyW5YoQ=
 github.com/bluekeyes/go-gitdiff v0.7.0 h1:w4SrRFcufU0/tEpWx3VurDBAnWfpxsmwS7yWr14meQk=
 github.com/bluekeyes/go-gitdiff v0.7.0/go.mod h1:QpfYYO1E0fTVHVZAZKiRjtSGY9823iCdvGXBcEzHGbM=
+github.com/bmizerany/assert v0.0.0-20160611221934-b7ed37b82869 h1:DDGfHa7BWjL4YnC6+E63dPcxHo2sUxDIu8g3QgEJdRY=
 github.com/bmizerany/assert v0.0.0-20160611221934-b7ed37b82869/go.mod h1:Ekp36dRnpXw/yCqJaO+ZrUyxD+3VXMFFr56k5XYrpB4=
 github.com/bradfitz/go-smtpd v0.0.0-20170404230938-deb6d6237625/go.mod h1:HYsPBTaaSFSlLx/70C2HPIMNZpVV8+vt/A+FMnYP11g=
 github.com/brianvoe/gofakeit/v6 v6.9.0 h1:UCGhPCKLiqBc910TKS7LcOGf74NozftibFCbGIS6GZQ=
@@ -1019,8 +1020,8 @@ github.com/redhat-appstudio/service-provider-integration-scm-file-retriever v0.8
 github.com/redhat-appstudio/service-provider-integration-scm-file-retriever v0.8.3/go.mod h1:nGIC0XrYoMm63q1qHS7h/7ktUliMzgQcOOd2XLpNDbA=
 github.com/redhat-developer/alizer/go v0.0.0-20230117135912-8f7afff3b7cd h1:GwlLVPuBkLft6iSq9NwVAABHN/qh/86EABLmx43Lo6A=
 github.com/redhat-developer/alizer/go v0.0.0-20230117135912-8f7afff3b7cd/go.mod h1:cdCGkfY9r1M1KkqHdpTt7QkQVGMMdohpGSILqL7laiQ=
-github.com/redhat-developer/gitops-generator v0.0.0-20230209215431-095561c4a909 h1:ukB1FrH8McsrnyeaIPnPCOozoWet/vCrzmU7UBCv4rU=
-github.com/redhat-developer/gitops-generator v0.0.0-20230209215431-095561c4a909/go.mod h1:Et+rhPFOBHSBQCJv96CY7lTIQY2xfYYwvXsOqkQ7W1g=
+github.com/redhat-developer/gitops-generator v0.0.0-20230213195503-fabf23de5236 h1:tO9R9FjPUKLKr5ZG4GdXrS7A7LdOzopaIlyyD+nHu5U=
+github.com/redhat-developer/gitops-generator v0.0.0-20230213195503-fabf23de5236/go.mod h1:tbBzeLRCAjc2+bdYsxADe4fY2B9Dk2t66gfNgv7ohLU=
 github.com/rogpeppe/fastuuid v0.0.0-20150106093220-6724a57986af/go.mod h1:XWv6SoW27p1b0cqNHllgS5HIMJraePCO15w5zCzIWYg=
 github.com/rogpeppe/fastuuid v1.2.0/go.mod h1:jVj6XXZzXRy/MSR5jhDC/2q6DgLz+nrA6LYCDYWNEvQ=
 github.com/rogpeppe/go-internal v1.3.0/go.mod h1:M8bDsm7K2OlrFYOpmOWEs/qY81heoFRclV5y23lUDJ4=
