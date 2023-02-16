@@ -17,6 +17,7 @@ package devfile
 
 import (
 	"fmt"
+	"path/filepath"
 	"strings"
 
 	"github.com/redhat-developer/alizer/go/pkg/apis/model"
@@ -80,6 +81,48 @@ func (a MockAlizerClient) DetectComponents(path string) ([]model.Component, erro
 				},
 			},
 		}, nil
+	} else if strings.Contains(path, "spring-boot-root-component") {
+		return []model.Component{
+			{
+				Path: path,
+				Languages: []model.Language{
+					{
+						Name: "Java",
+						Frameworks: []string{
+							"Spring",
+						},
+						Tools: []string{
+							"Maven",
+						},
+						Weight:         100,
+						CanBeComponent: true,
+					},
+				},
+			},
+			{
+				Path: filepath.Join(path, "src/main/resources/static"),
+				Languages: []model.Language{
+					{
+						Name: "JavaScript",
+						Aliases: []string{
+							"js",
+							"node",
+							"nodejs",
+							"TypeScript",
+						},
+						Frameworks: []string{
+							"Vue",
+						},
+						Tools: []string{
+							"NodeJs",
+							"Node.js",
+						},
+						Weight:         100,
+						CanBeComponent: true,
+					},
+				},
+			},
+		}, nil
 	} else if !strings.Contains(path, "springboot") && !strings.Contains(path, "python") {
 		return nil, nil
 	}
@@ -111,7 +154,7 @@ func (a MockAlizerClient) SelectDevFileFromTypes(path string, devFileTypes []mod
 		return model.DevFileType{
 			Name: "fake",
 		}, nil
-	} else if strings.Contains(path, "java-springboot-basic") || strings.Contains(path, "springboot") {
+	} else if strings.Contains(path, "java-springboot-basic") || strings.Contains(path, "springboot") || strings.Contains(path, "spring-boot-root-component") {
 		return model.DevFileType{
 			Name: "java-springboot-basic",
 		}, nil
