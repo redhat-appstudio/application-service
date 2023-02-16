@@ -416,8 +416,9 @@ func GetRouteFromEndpoint(name, serviceName, port, path string, secure bool, ann
 
 // DevfileSrc specifies the src of the Devfile
 type DevfileSrc struct {
-	Data string
-	URL  string
+	Data    string
+	URL     string
+	ByteAry []byte
 }
 
 // ParseDevfile calls the devfile library's parse and returns the devfile data.
@@ -435,6 +436,8 @@ func ParseDevfile(src DevfileSrc) (data.DevfileData, error) {
 		parserArgs.Data = []byte(src.Data)
 	} else if src.URL != "" {
 		parserArgs.URL = src.URL
+	} else if src.ByteAry != nil && len(src.ByteAry) > 0 {
+		parserArgs.Data = src.ByteAry
 	} else {
 		return nil, fmt.Errorf("cannot parse devfile without a src")
 	}
@@ -733,4 +736,82 @@ func UpdateLocalDockerfileURItoAbsolute(devfile data.DevfileData, dockerfileURL 
 	}
 
 	return devfile, err
+}
+
+func ValidateDevfile(log logr.Logger, devfilebytes []byte, url string) (shouldIgnoreDevfile bool, err error) {
+	shouldIgnoreDevfile = false
+	devfileSrc := DevfileSrc{
+		ByteAry: devfilebytes,
+	}
+	devfileData, err := ParseDevfile(devfileSrc)
+	if err != nil {
+		log.Error(err, fmt.Sprintf("failed to parse the devfile content from %s", url))
+		return shouldIgnoreDevfile, fmt.Errorf(fmt.Sprintf("err: %v, failed to parse the devfile content from %s", err, url))
+	}
+	kubeCompFilter := common.DevfileOptions{
+		ComponentOptions: common.ComponentOptions{
+			ComponentType: v1alpha2.KubernetesComponentType,
+		},
+	}
+	kubeComp, err := devfileData.GetComponents(kubeCompFilter)
+	if err != nil {
+		log.Error(err, fmt.Sprintf("failed to get kubernetes component from %s", url))
+		shouldIgnoreDevfile = true
+		return shouldIgnoreDevfile, nil
+	}
+	if len(kubeComp) == 0 {
+		shouldIgnoreDevfile = true
+		return shouldIgnoreDevfile, nil
+	} else {
+		deployCmdFilter := common.DevfileOptions{
+			CommandOptions: common.CommandOptions{
+				CommandGroupKind: v1alpha2.DeployCommandGroupKind,
+			},
+		}
+		deployCmd, err := devfileData.GetCommands(deployCmdFilter)
+		if err != nil {
+			log.Error(err, fmt.Sprintf("failed to get deploy commands from %s", url))
+			return shouldIgnoreDevfile, fmt.Errorf(fmt.Sprintf("err: %v, failed to get deploy commands from %s", err, url))
+		}
+		if len(deployCmd) == 0 {
+			if len(kubeComp) > 1 {
+				retErr := fmt.Errorf("found more than one kubernetest components, but no deploy command being defined in the devfile from %s", url)
+				log.Error(retErr, "failed to validate devfile")
+				return shouldIgnoreDevfile, retErr
+			}
+			// TODO: if only one kube component, should return a warning that no deploy command being defined
+		}
+	}
+	imageCompFilter := common.DevfileOptions{
+		ComponentOptions: common.ComponentOptions{
+			ComponentType: v1alpha2.ImageComponentType,
+		},
+	}
+	imageComp, err := devfileData.GetComponents(imageCompFilter)
+	if err != nil {
+		log.Error(err, fmt.Sprintf("failed to get image component from %s", url))
+		return shouldIgnoreDevfile, fmt.Errorf(fmt.Sprintf("err: %v, failed to get image component from %s", err, url))
+	}
+	if len(imageComp) != 0 {
+		applyCmdFilter := common.DevfileOptions{
+			CommandOptions: common.CommandOptions{
+				CommandType: v1alpha2.ApplyCommandType,
+			},
+		}
+		applyCmd, err := devfileData.GetCommands(applyCmdFilter)
+		if err != nil {
+			log.Error(err, fmt.Sprintf("failed to get apply commands from %s", url))
+			return shouldIgnoreDevfile, fmt.Errorf(fmt.Sprintf("err: %v, failed to get apply commands from %s", err, url))
+		}
+		if len(applyCmd) == 0 {
+			if len(imageComp) > 1 {
+				retErr := fmt.Errorf("found more than one image components, but no apply command being defined in the devfile from %s", url)
+				log.Error(retErr, "failed to validate devfile")
+				return shouldIgnoreDevfile, retErr
+			}
+			// TODO: if only one image component, should return a warning that no apply command being defined
+		}
+	}
+
+	return shouldIgnoreDevfile, nil
 }

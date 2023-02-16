@@ -157,6 +157,18 @@ func (r *ComponentDetectionQueryReconciler) Reconcile(ctx context.Context, req c
 
 			isDevfilePresent = len(devfileBytes) != 0
 			isDockerfilePresent = len(dockerfileBytes) != 0
+			updatedLink, err := devfile.UpdateGitLink(source.URL, source.Revision, path.Join(context, devfilePath))
+
+			if isDevfilePresent {
+				shouldIgnoreDevfile, err := devfile.ValidateDevfile(log, devfileBytes, updatedLink)
+				if err != nil {
+					r.SetCompleteConditionAndUpdateCR(ctx, req, &componentDetectionQuery, copiedCDQ, err)
+					return ctrl.Result{}, nil
+				}
+				if shouldIgnoreDevfile {
+					isDevfilePresent = false
+				}
+			}
 
 			if isDevfilePresent {
 				log.Info(fmt.Sprintf("Found a devfile, devfile to be analyzed to see if a Dockerfile is referenced %v", req.NamespacedName))
