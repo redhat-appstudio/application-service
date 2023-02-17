@@ -17,8 +17,6 @@ package github
 
 import (
 	"context"
-	"crypto/sha256"
-	"encoding/base64"
 	"fmt"
 	"net/url"
 	"strings"
@@ -42,12 +40,9 @@ func (e *ServerError) Error() string {
 
 // GenerateNewRepositoryName creates a new gitops repository name, based on the following format:
 // <display-name>-<partial-hash-of-clustername-and-namespace>-<random-word>-<random-word>
-func GenerateNewRepositoryName(displayName, namespace, clusterName string) string {
+func GenerateNewRepositoryName(displayName, uniqueHash string) string {
 	sanitizedName := util.SanitizeName(displayName)
-	h := sha256.New()
-	h.Write([]byte(clusterName + namespace))
-	namespaceClusterHash := base64.URLEncoding.EncodeToString(h.Sum(nil))[0:5]
-	repoName := sanitizedName + "-" + namespaceClusterHash + "-" + util.SanitizeName(gofakeit.Verb()) + "-" + util.SanitizeName(gofakeit.Verb())
+	repoName := sanitizedName + "-" + uniqueHash + "-" + util.SanitizeName(gofakeit.Verb()) + "-" + util.SanitizeName(gofakeit.Verb())
 	return repoName
 }
 

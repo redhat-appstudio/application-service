@@ -173,7 +173,8 @@ func (r *ComponentReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 	log.Info(fmt.Sprintf("Starting reconcile loop for %v", req.NamespacedName))
 
 	if component.Spec.ContainerImage == "" {
-		component.Spec.ContainerImage = r.ImageRepository + ":" + component.Namespace + "-" + component.Name
+		uniqueHash := util.GenerateUniqueHashForWorkloadImageTag(req.ClusterName, component.Namespace)
+		component.Spec.ContainerImage = r.ImageRepository + ":" + uniqueHash + "-" + component.Name
 		if err := r.Client.Update(ctx, &component); err != nil {
 			log.Error(err, fmt.Sprintf("Failed to set default component image: %s", component.Spec.ContainerImage))
 			return ctrl.Result{}, err

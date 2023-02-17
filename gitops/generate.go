@@ -30,6 +30,7 @@ const (
 	kustomizeFileName = "kustomization.yaml"
 )
 
+// GenerateTektonBuild writes a set of YAML configuration files into outputPath for the component.
 func GenerateTektonBuild(outputPath string, component appstudiov1alpha1.Component, appFs afero.Afero, context string, gitopsConfig prepare.GitopsConfig) error {
 	componentName := component.Name
 	repoPath := filepath.Join(outputPath, componentName)
