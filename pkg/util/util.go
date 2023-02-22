@@ -18,7 +18,6 @@ package util
 import (
 	"crypto/sha256"
 	"encoding/base64"
-	"errors"
 	"fmt"
 	"io/ioutil"
 	"math/rand"
@@ -110,7 +109,7 @@ func ConvertGitHubURL(URL string, revision string, context string) (string, erro
 
 	//check to make sure we do not accept a relative URL or a URL that does not start with http(s)
 	if url.Scheme == "" || url.Scheme != "https" && url.Scheme != "http" {
-		return "", errors.New(fmt.Sprintf("gitsource URL %s must be an absolute URL starting with an \"https/http\" scheme ", URL))
+		return "", fmt.Errorf("gitsource URL %s must be an absolute URL starting with an \"https/http\" scheme ", URL)
 	}
 
 	if url.Host == githubHost {
@@ -136,7 +135,7 @@ func ConvertGitHubURL(URL string, revision string, context string) (string, erro
 		URL = strings.Replace(URL, githubHost, githubReplacementString, 1)
 	} else {
 		//error out for non github.com URLs
-		return "", errors.New(fmt.Sprintf("gitsource URL %s does not have the \"github.com\" domain ", URL))
+		return "", fmt.Errorf("gitsource URL %s does not have the \"github.com\" domain ", URL)
 	}
 
 	return URL, nil
