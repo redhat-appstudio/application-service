@@ -18,6 +18,7 @@ package util
 import (
 	"crypto/sha256"
 	"encoding/base64"
+	"errors"
 	"fmt"
 	"io/ioutil"
 	"math/rand"
@@ -88,11 +89,14 @@ func ProcessGitOpsStatus(gitopsStatus appstudiov1alpha1.GitOpsStatus, gitToken s
 	return remoteURL, gitOpsBranch, gitOpsContext, nil
 }
 
+const githubHost = "github.com"
+const githubReplacementString = "raw.githubusercontent.com"
+
 // ConvertGitHubURL converts a git url to its raw format
 // adapted from https://github.com/redhat-developer/odo/blob/e63773cc156ade6174a533535cbaa0c79506ffdb/pkg/catalog/catalog.go#L72
 func ConvertGitHubURL(URL string, revision string, context string) (string, error) {
 	// If the URL ends with .git, remove it
-	// The regex will only instances of '.git' if it is at the end of the given string
+	// The regex will only match instances of '.git' if it is at the end of the given string
 	reg := regexp.MustCompile(".git$")
 	URL = reg.ReplaceAllString(URL, "")
 
@@ -104,7 +108,12 @@ func ConvertGitHubURL(URL string, revision string, context string) (string, erro
 		return "", err
 	}
 
-	if strings.Contains(url.Host, "github") && !strings.Contains(url.Host, "raw") {
+	//check to make sure we do not accept a relative URL or a URL that does not start with http(s)
+	if url.Scheme == "" || url.Scheme != "https" && url.Scheme != "http" {
+		return "", errors.New(fmt.Sprintf("gitsource URL %s must be an absolute URL starting with an \"https/http\" scheme ", URL))
+	}
+
+	if url.Host == githubHost {
 		// Convert path part of the URL
 		URLSlice := strings.Split(URL, "/")
 		if len(URLSlice) > 2 && URLSlice[len(URLSlice)-2] == "tree" {
@@ -124,9 +133,10 @@ func ConvertGitHubURL(URL string, revision string, context string) (string, erro
 		}
 
 		// Convert host part of the URL
-		if url.Host == "github.com" {
-			URL = strings.Replace(URL, "github.com", "raw.githubusercontent.com", 1)
-		}
+		URL = strings.Replace(URL, githubHost, githubReplacementString, 1)
+	} else {
+		//error out for non github.com URLs
+		return "", errors.New(fmt.Sprintf("gitsource URL %s does not have the \"github.com\" domain ", URL))
 	}
 
 	return URL, nil

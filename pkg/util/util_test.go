@@ -301,6 +301,11 @@ func TestConvertGitHubURL(t *testing.T) {
 			wantUrl: "https://raw.githubusercontent.com/devfile-samples/devfile-sample-java-springboot-basic/main",
 		},
 		{
+			name:    "Successfully convert a github url with with multiple .gits to raw url",
+			url:     "https://github.com/devfile-samples.git/devfile-sample-java-springboot-basic.git",
+			wantUrl: "https://raw.githubusercontent.com/devfile-samples.git/devfile-sample-java-springboot-basic/main",
+		},
+		{
 			name:     "Successfully convert a github url with revision to raw url",
 			url:      "https://github.com/devfile-samples/devfile-sample-java-springboot-basic",
 			revision: "testbranch",
@@ -346,18 +351,21 @@ func TestConvertGitHubURL(t *testing.T) {
 		{
 			name:    "A non github url",
 			url:     "https://some.url",
-			wantUrl: "https://some.url",
+			wantUrl: "",
+			wantErr: true,
 		},
 		{
 			name:    "A raw github url",
 			url:     "https://raw.githubusercontent.com/devfile-samples/devfile-sample-java-springboot-basic/main/devfile.yaml",
-			wantUrl: "https://raw.githubusercontent.com/devfile-samples/devfile-sample-java-springboot-basic/main/devfile.yaml",
+			wantUrl: "",
+			wantErr: true,
 		},
 		{
 			name:     "A raw github url with revision",
 			url:      "https://raw.githubusercontent.com/devfile-samples/devfile-sample-java-springboot-basic/testbranch/devfile.yaml",
 			revision: "testbranch",
-			wantUrl:  "https://raw.githubusercontent.com/devfile-samples/devfile-sample-java-springboot-basic/testbranch/devfile.yaml",
+			wantUrl:  "",
+			wantErr:  true,
 		},
 		{
 			name:    "A non-main branch github url",
@@ -365,8 +373,27 @@ func TestConvertGitHubURL(t *testing.T) {
 			wantUrl: "https://raw.githubusercontent.com/devfile/api/2.1.x",
 		},
 		{
+			name:    "Valid URL with http scheme",
+			url:     "http://github.com/devfile/api/tree/2.1.x",
+			wantUrl: "http://raw.githubusercontent.com/devfile/api/2.1.x",
+		},
+		{
+			name:     "Invalid URL",
+			url:      "//github.com0",
+			revision: "0",
+			wantUrl:  "",
+			wantErr:  true,
+		},
+		{
 			name:    "A non url",
 			url:     "\000x",
+			wantUrl: "",
+			wantErr: true,
+		},
+		{
+			name:    "A relative url",
+			url:     "/devfile",
+			wantUrl: "",
 			wantErr: true,
 		},
 	}
