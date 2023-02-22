@@ -42,6 +42,7 @@ import (
 	"github.com/redhat-appstudio/application-service/pkg/spi"
 	"github.com/redhat-appstudio/application-service/pkg/util"
 	"github.com/redhat-appstudio/application-service/pkg/util/ioutils"
+	"github.com/redhat-developer/alizer/go/pkg/apis/model"
 	"github.com/spf13/afero"
 )
 
@@ -122,7 +123,10 @@ func (r *ComponentDetectionQueryReconciler) Reconcile(ctx context.Context, req c
 		devfilesMap := make(map[string][]byte)
 		devfilesURLMap := make(map[string]string)
 		dockerfileContextMap := make(map[string]string)
+		componentPortsMap := make(map[string][]int)
 		context := source.Context
+		var components []model.Component
+
 		if context == "" {
 			context = "./"
 		}
@@ -190,7 +194,7 @@ func (r *ComponentDetectionQueryReconciler) Reconcile(ctx context.Context, req c
 				}
 
 				if !isDevfilePresent {
-					components, err := r.AlizerClient.DetectComponents(componentPath)
+					components, err = r.AlizerClient.DetectComponents(componentPath)
 					if err != nil {
 						log.Error(err, fmt.Sprintf("Unable to detect components using Alizer for repo %v, under path %v... %v ", source.URL, componentPath, req.NamespacedName))
 						r.SetCompleteConditionAndUpdateCR(ctx, req, &componentDetectionQuery, copiedCDQ, err)
@@ -210,7 +214,7 @@ func (r *ComponentDetectionQueryReconciler) Reconcile(ctx context.Context, req c
 			if isMultiComponent {
 				log.Info(fmt.Sprintf("Since this is a multi-component, attempt will be made to read only level 1 dir for devfiles... %v", req.NamespacedName))
 
-				devfilesMap, devfilesURLMap, dockerfileContextMap, err = devfile.ScanRepo(log, r.AlizerClient, componentPath, r.DevfileRegistryURL, source)
+				devfilesMap, devfilesURLMap, dockerfileContextMap, componentPortsMap, err = devfile.ScanRepo(log, r.AlizerClient, componentPath, r.DevfileRegistryURL, source)
 				if err != nil {
 					if _, ok := err.(*devfile.NoDevfileFound); !ok {
 						log.Error(err, fmt.Sprintf("Unable to find devfile(s) in repo %s due to an error %s, exiting reconcile loop %v", source.URL, err.Error(), req.NamespacedName))
@@ -220,7 +224,7 @@ func (r *ComponentDetectionQueryReconciler) Reconcile(ctx context.Context, req c
 				}
 			} else {
 				log.Info(fmt.Sprintf("Since this is not a multi-component, attempt will be made to read devfile at the root dir... %v", req.NamespacedName))
-				err := devfile.AnalyzePath(r.AlizerClient, componentPath, context, r.DevfileRegistryURL, devfilesMap, devfilesURLMap, dockerfileContextMap, isDevfilePresent, isDockerfilePresent)
+				err := devfile.AnalyzePath(r.AlizerClient, componentPath, context, r.DevfileRegistryURL, devfilesMap, devfilesURLMap, dockerfileContextMap, componentPortsMap, isDevfilePresent, isDockerfilePresent)
 				if err != nil {
 					log.Error(err, fmt.Sprintf("Unable to analyze path %s for a dockerfile/devfile %v", componentPath, req.NamespacedName))
 					r.SetCompleteConditionAndUpdateCR(ctx, req, &componentDetectionQuery, copiedCDQ, err)
@@ -277,7 +281,7 @@ func (r *ComponentDetectionQueryReconciler) Reconcile(ctx context.Context, req c
 			}
 		}
 
-		err = r.updateComponentStub(req, &componentDetectionQuery, devfilesMap, devfilesURLMap, dockerfileContextMap)
+		err = r.updateComponentStub(req, &componentDetectionQuery, devfilesMap, devfilesURLMap, dockerfileContextMap, componentPortsMap)
 		if err != nil {
 			log.Error(err, fmt.Sprintf("Unable to update the component stub %v", req.NamespacedName))
 			r.SetCompleteConditionAndUpdateCR(ctx, req, &componentDetectionQuery, copiedCDQ, err)

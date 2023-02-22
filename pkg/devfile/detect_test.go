@@ -99,7 +99,7 @@ func TestAnalyzeAndDetectDevfile(t *testing.T) {
 			if err != nil {
 				t.Errorf("got unexpected error %v", err)
 			} else {
-				devfileBytes, detectedDevfileEndpoint, _, err := AnalyzeAndDetectDevfile(mockClient, tt.clonePath, tt.registryURL)
+				devfileBytes, detectedDevfileEndpoint, _, _, err := AnalyzeAndDetectDevfile(mockClient, tt.clonePath, tt.registryURL)
 				if !tt.wantErr && err != nil {
 					t.Errorf("Unexpected err: %+v", err)
 				} else if tt.wantErr && err == nil {

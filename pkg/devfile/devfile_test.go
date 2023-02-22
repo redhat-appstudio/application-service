@@ -524,7 +524,7 @@ func TestScanRepo(t *testing.T) {
 			if err != nil {
 				t.Errorf("got unexpected error %v", err)
 			} else {
-				devfileMap, devfileURLMap, dockerfileMap, err := ScanRepo(logger, alizerClient, tt.clonePath, DevfileStageRegistryEndpoint, source)
+				devfileMap, devfileURLMap, dockerfileMap, _, err := ScanRepo(logger, alizerClient, tt.clonePath, DevfileStageRegistryEndpoint, source)
 				if tt.wantErr && (err == nil) {
 					t.Error("wanted error but got nil")
 				} else if !tt.wantErr && err != nil {

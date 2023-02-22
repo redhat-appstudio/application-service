@@ -1272,9 +1272,9 @@ func TestUpdateComponentStub(t *testing.T) {
 			}
 			var err error
 			if tt.isNil {
-				err = r.updateComponentStub(ctrl.Request{}, nil, devfilesMap, nil, nil)
+				err = r.updateComponentStub(ctrl.Request{}, nil, devfilesMap, nil, nil, nil)
 			} else {
-				err = r.updateComponentStub(ctrl.Request{}, &componentDetectionQuery, devfilesMap, tt.devfilesURLMap, tt.dockerfileURLMap)
+				err = r.updateComponentStub(ctrl.Request{}, &componentDetectionQuery, devfilesMap, tt.devfilesURLMap, tt.dockerfileURLMap, nil)
 			}
 
 			if tt.wantErr && (err == nil) {

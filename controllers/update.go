@@ -271,7 +271,7 @@ func (r *ComponentReconciler) updateApplicationDevfileModel(hasAppDevfileData da
 	return nil
 }
 
-func (r *ComponentDetectionQueryReconciler) updateComponentStub(req ctrl.Request, componentDetectionQuery *appstudiov1alpha1.ComponentDetectionQuery, devfilesMap map[string][]byte, devfilesURLMap map[string]string, dockerfileContextMap map[string]string) error {
+func (r *ComponentDetectionQueryReconciler) updateComponentStub(req ctrl.Request, componentDetectionQuery *appstudiov1alpha1.ComponentDetectionQuery, devfilesMap map[string][]byte, devfilesURLMap map[string]string, dockerfileContextMap map[string]string, componentPortsMap map[string][]int) error {
 
 	if componentDetectionQuery == nil {
 		return fmt.Errorf("componentDetectionQuery is nil")
@@ -327,6 +327,10 @@ func (r *ComponentDetectionQueryReconciler) updateComponentStub(req ctrl.Request
 			},
 		}
 
+		if len(componentPortsMap[context]) != 0 {
+			componentStub.TargetPort = componentPortsMap[context][0]
+		}
+
 		// Since a devfile can have N container components, we only try to populate the stub with the first Kubernetes component
 		if len(devfileKubernetesComponents) != 0 {
 			kubernetesComponentAttribute := devfileKubernetesComponents[0].Attributes
@@ -340,10 +344,12 @@ func (r *ComponentDetectionQueryReconciler) updateComponentStub(req ctrl.Request
 			}
 
 			// Devfile Port
-			componentStub.TargetPort = int(kubernetesComponentAttribute.GetNumber(devfile.ContainerImagePortKey, &err))
-			if err != nil {
-				if _, ok := err.(*attributes.KeyNotFoundError); !ok {
-					return err
+			if componentStub.TargetPort == 0 {
+				componentStub.TargetPort = int(kubernetesComponentAttribute.GetNumber(devfile.ContainerImagePortKey, &err))
+				if err != nil {
+					if _, ok := err.(*attributes.KeyNotFoundError); !ok {
+						return err
+					}
 				}
 			}
 
