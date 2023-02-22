@@ -73,6 +73,10 @@ The token that is used here must have the following permissions set:
 - `repo`
 - `delete_repo`
 
+You can also set an optional key-value pair for component detection query specifically, where the key is `cdq-token` and where the value points to a valid GitHub Personal Access Token. If the `cdq-token` does not exist, it will fall back to use `token` instead. 
+The token that is used here must have the following permissions set:
+- `repo`
+
 In addition to this, the GitHub token must be associated with an account that has write access to the GitHub organization you plan on using with HAS (see next section).
 
 For example, on OpenShift:
