@@ -366,6 +366,10 @@ var _ = Describe("Component controller", func() {
 			Expect(createdHasComp.Status.Conditions[len(createdHasComp.Status.Conditions)-1].Reason).Should(Equal("Error"))
 			Expect(createdHasComp.Status.Conditions[len(createdHasComp.Status.Conditions)-1].Message).Should(ContainSubstring(fmt.Sprintf("%q not found", hasComp.Spec.Application)))
 
+			compAnnotations := createdHasComp.GetAnnotations()
+			Expect(compAnnotations).ShouldNot(BeNil())
+			Expect(compAnnotations[applicationFailCounterAnnotation]).Should(Not(Equal("")))
+
 			// Now create the application resource that it references
 			createAndFetchSimpleApp(applicationName, HASAppNamespace, DisplayName, Description)
 

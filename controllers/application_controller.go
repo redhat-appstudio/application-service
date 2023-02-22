@@ -101,10 +101,10 @@ func (r *ApplicationReconciler) Reconcile(ctx context.Context, req ctrl.Request)
 		if containsString(application.GetFinalizers(), appFinalizerName) {
 			// A finalizer is present for the Application CR, so make sure we do the necessary cleanup steps
 			if err := r.Finalize(&application); err != nil {
-				finalizeCount, err := getFinalizeCount(&application)
-				if err == nil && finalizeCount < 5 {
+				finalizeCounter, err := getCounterAnnotation(finalizeCount, &application)
+				if err == nil && finalizeCounter < 5 {
 					// The Finalize function failed, so increment the finalize count and return
-					setFinalizeCount(&application, finalizeCount+1)
+					setCounterAnnotation(finalizeCount, &application, finalizeCounter+1)
 					err := r.Update(ctx, &application)
 					if err != nil {
 						log.Error(err, "Error incrementing finalizer count on resource")

@@ -74,6 +74,11 @@ type ComponentReconciler struct {
 	GitHubClient    *gh.Client
 }
 
+const (
+	applicationFailCounterAnnotation = "applicationFailCounter"
+	maxApplicationFailCount          = 5
+)
+
 //+kubebuilder:rbac:groups=appstudio.redhat.com,resources=components,verbs=get;list;watch;create;update;patch;delete
 //+kubebuilder:rbac:groups=appstudio.redhat.com,resources=components/status,verbs=get;update;patch
 //+kubebuilder:rbac:groups=appstudio.redhat.com,resources=components/finalizers,verbs=update
@@ -124,11 +129,21 @@ func (r *ComponentReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 
 	// If the Application CR devfile status is empty, requeue
 	if hasApplication.Status.Devfile == "" && !containsString(component.GetFinalizers(), compFinalizerName) {
-		log.Error(err, fmt.Sprintf("Application devfile model is empty. Before creating a Component, an instance of Application should be created. Requeueing %v", req.NamespacedName))
-		err := fmt.Errorf("application is either not ready or has failed to be created")
-		r.SetCreateConditionAndUpdateCR(ctx, req, &component, err)
-		return ctrl.Result{}, err
+		count, err := getCounterAnnotation(applicationFailCounterAnnotation, &component)
+		if count > 5 || err != nil {
+			log.Error(err, fmt.Sprintf("Application devfile model is empty. Before creating a Component, an instance of Application should be created. Requeueing %v", req.NamespacedName))
+			err := fmt.Errorf("application is either not ready or has failed to be created")
+			r.SetCreateConditionAndUpdateCR(ctx, req, &component, err)
+			return ctrl.Result{}, err
+		} else {
+			setCounterAnnotation(applicationFailCounterAnnotation, &component, count+1)
+			_ = r.Update(ctx, &component)
+			return ctrl.Result{RequeueAfter: time.Second}, err
+		}
+
 	}
+
+	setCounterAnnotation(applicationFailCounterAnnotation, &component, 0)
 
 	// Check if the Component CR is under deletion
 	// If so: Remove the project from the Application devfile, remove the component dir from the Gitops repo and remove the finalizer.
