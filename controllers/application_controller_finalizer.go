@@ -99,5 +99,5 @@ func setCounterAnnotation(annotation string, obj client.Object, count int) {
 	if objAnnotations == nil {
 		objAnnotations = make(map[string]string)
 	}
-	objAnnotations[applicationFailCounterAnnotation] = strconv.Itoa(count)
+	objAnnotations[annotation] = strconv.Itoa(count)
 }
