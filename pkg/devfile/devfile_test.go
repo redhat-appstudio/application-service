@@ -1280,11 +1280,9 @@ components:
       uri: docker/Dockerfile
     imageName: java-springboot-image:latest
   name: image-build
-- attributes:
-    api.devfile.io/k8sLikeComponent-originalURI: deploy.yaml
-  kubernetes:
+- kubernetes:
     deployByDefault: false
-    uri: uri
+    uri: ""
   name: kubernetes-deploy
 metadata:
   name: java-springboot

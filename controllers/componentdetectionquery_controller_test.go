@@ -425,7 +425,7 @@ var _ = Describe("Component Detection Query controller", func() {
 			}, timeout, interval).Should(BeTrue())
 
 			// Make sure the right err is set
-			Expect(createdHasCompDetectionQuery.Status.Conditions[1].Message).Should(ContainSubstring("unable to GET from https://registry.devfile.io/devfiles/fake"))
+			Expect(createdHasCompDetectionQuery.Status.Conditions[1].Message).Should(ContainSubstring("ComponentDetectionQuery failed: unable to GET"))
 
 			// Delete the specified Detection Query resource
 			deleteCompDetQueryCR(hasCompDetQueryLookupKey)
@@ -567,7 +567,7 @@ var _ = Describe("Component Detection Query controller", func() {
 
 			// index is 1 because of CDQ status condition Processing
 			Expect(createdHasCompDetectionQuery.Status.Conditions[1].Status).Should(Equal(metav1.ConditionFalse))
-			Expect(createdHasCompDetectionQuery.Status.Conditions[1].Message).Should(ContainSubstring("ComponentDetectionQuery failed: failed to clone the repo"))
+			Expect(createdHasCompDetectionQuery.Status.Conditions[1].Message).Should(ContainSubstring("error getting devfile info from url: failed to retrieve"))
 
 			// Delete the specified Detection Query resource
 			deleteCompDetQueryCR(hasCompDetQueryLookupKey)
@@ -626,7 +626,7 @@ var _ = Describe("Component Detection Query controller", func() {
 
 			// index is 1 because of CDQ status condition Processing
 			Expect(createdHasCompDetectionQuery.Status.Conditions[1].Status).Should(Equal(metav1.ConditionFalse))
-			Expect(createdHasCompDetectionQuery.Status.Conditions[1].Message).Should(ContainSubstring("ComponentDetectionQuery failed: failed to clone the repo"))
+			Expect(createdHasCompDetectionQuery.Status.Conditions[1].Message).Should(ContainSubstring("error getting devfile info from url: failed to retrieve"))
 
 			// Delete the specified Detection Query resource
 			deleteCompDetQueryCR(hasCompDetQueryLookupKey)
@@ -1197,7 +1197,7 @@ var _ = Describe("Component Detection Query controller", func() {
 
 				for devfileName, devfileDesc := range createdHasCompDetectionQuery.Status.ComponentDetected {
 					Expect(devfileName).Should(ContainSubstring("node"))
-					Expect(devfileDesc.ComponentStub.Source.GitSource.DevfileURL).Should(Equal("https://raw.githubusercontent.com/devfile-samples/node-express-hello-devfile-no-dockerfile/main/devfile.yaml"))
+					Expect(devfileDesc.ComponentStub.Source.GitSource.DevfileURL).Should(Equal("https://raw.githubusercontent.com/nodeshift-starters/devfile-sample/main/devfile.yaml"))
 					Expect(devfileDesc.ComponentStub.Source.GitSource.DockerfileURL).Should(Equal("https://raw.githubusercontent.com/nodeshift-starters/devfile-sample/main/Dockerfile"))
 				}
 

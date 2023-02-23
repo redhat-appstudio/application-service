@@ -416,9 +416,8 @@ func GetRouteFromEndpoint(name, serviceName, port, path string, secure bool, ann
 
 // DevfileSrc specifies the src of the Devfile
 type DevfileSrc struct {
-	Data    string
-	URL     string
-	ByteAry []byte
+	Data string
+	URL  string
 }
 
 // ParseDevfile calls the devfile library's parse and returns the devfile data.
@@ -436,8 +435,6 @@ func ParseDevfile(src DevfileSrc) (data.DevfileData, error) {
 		parserArgs.Data = []byte(src.Data)
 	} else if src.URL != "" {
 		parserArgs.URL = src.URL
-	} else if src.ByteAry != nil && len(src.ByteAry) > 0 {
-		parserArgs.Data = src.ByteAry
 	} else {
 		return nil, fmt.Errorf("cannot parse devfile without a src")
 	}
@@ -738,15 +735,25 @@ func UpdateLocalDockerfileURItoAbsolute(devfile data.DevfileData, dockerfileURL 
 	return devfile, err
 }
 
-func ValidateDevfile(log logr.Logger, devfilebytes []byte, url string) (shouldIgnoreDevfile bool, err error) {
+// ValidateDevfile parse and validate a devfile from it's URL, returns if the devfile should be ignored, and an error if devfile is invalid
+// If the devfile failed to parse, or the kubernetes uri is invalid or kubernetes file content is invalid. return an error.
+// If no kubernetes components being defined in devfile, then it's not a valid outerloop devfile, the devfile should be ignored.
+// If more than one kubernetes components in the devfile, but no deploy commands being defined. return an error
+// If more than one image components in the devfile, but no apply commands being defined. return an error
+func ValidateDevfile(log logr.Logger, url string) (shouldIgnoreDevfile bool, devfileBytes []byte, err error) {
+	log.Info(fmt.Sprintf("Validating devfile from %s...", url))
 	shouldIgnoreDevfile = false
 	devfileSrc := DevfileSrc{
-		ByteAry: devfilebytes,
+		URL: url,
 	}
 	devfileData, err := ParseDevfile(devfileSrc)
 	if err != nil {
 		log.Error(err, fmt.Sprintf("failed to parse the devfile content from %s", url))
-		return shouldIgnoreDevfile, fmt.Errorf(fmt.Sprintf("err: %v, failed to parse the devfile content from %s", err, url))
+		return shouldIgnoreDevfile, nil, fmt.Errorf(fmt.Sprintf("err: %v, failed to parse the devfile content from %s", err, url))
+	}
+	devfileBytes, err = yaml.Marshal(devfileData)
+	if err != nil {
+		return shouldIgnoreDevfile, nil, err
 	}
 	kubeCompFilter := common.DevfileOptions{
 		ComponentOptions: common.ComponentOptions{
@@ -757,11 +764,12 @@ func ValidateDevfile(log logr.Logger, devfilebytes []byte, url string) (shouldIg
 	if err != nil {
 		log.Error(err, fmt.Sprintf("failed to get kubernetes component from %s", url))
 		shouldIgnoreDevfile = true
-		return shouldIgnoreDevfile, nil
+		return shouldIgnoreDevfile, devfileBytes, nil
 	}
 	if len(kubeComp) == 0 {
+		log.Info(fmt.Sprintf("Found 0 kubernetes components being defined in devfile from %s, it is not a valid outerloop definition, the devfile will be ignored. A devfile will be matched from registry...", url))
 		shouldIgnoreDevfile = true
-		return shouldIgnoreDevfile, nil
+		return shouldIgnoreDevfile, devfileBytes, nil
 	} else {
 		deployCmdFilter := common.DevfileOptions{
 			CommandOptions: common.CommandOptions{
@@ -771,13 +779,13 @@ func ValidateDevfile(log logr.Logger, devfilebytes []byte, url string) (shouldIg
 		deployCmd, err := devfileData.GetCommands(deployCmdFilter)
 		if err != nil {
 			log.Error(err, fmt.Sprintf("failed to get deploy commands from %s", url))
-			return shouldIgnoreDevfile, fmt.Errorf(fmt.Sprintf("err: %v, failed to get deploy commands from %s", err, url))
+			return shouldIgnoreDevfile, nil, fmt.Errorf(fmt.Sprintf("err: %v, failed to get deploy commands from %s", err, url))
 		}
 		if len(deployCmd) == 0 {
 			if len(kubeComp) > 1 {
-				retErr := fmt.Errorf("found more than one kubernetest components, but no deploy command being defined in the devfile from %s", url)
-				log.Error(retErr, "failed to validate devfile")
-				return shouldIgnoreDevfile, retErr
+				err = fmt.Errorf("found more than one kubernetest components, but no deploy command being defined in the devfile from %s", url)
+				log.Error(err, "failed to validate devfile")
+				return shouldIgnoreDevfile, nil, err
 			}
 			// TODO: if only one kube component, should return a warning that no deploy command being defined
 		}
@@ -790,7 +798,7 @@ func ValidateDevfile(log logr.Logger, devfilebytes []byte, url string) (shouldIg
 	imageComp, err := devfileData.GetComponents(imageCompFilter)
 	if err != nil {
 		log.Error(err, fmt.Sprintf("failed to get image component from %s", url))
-		return shouldIgnoreDevfile, fmt.Errorf(fmt.Sprintf("err: %v, failed to get image component from %s", err, url))
+		return shouldIgnoreDevfile, nil, fmt.Errorf(fmt.Sprintf("err: %v, failed to get image component from %s", err, url))
 	}
 	if len(imageComp) != 0 {
 		applyCmdFilter := common.DevfileOptions{
@@ -801,17 +809,17 @@ func ValidateDevfile(log logr.Logger, devfilebytes []byte, url string) (shouldIg
 		applyCmd, err := devfileData.GetCommands(applyCmdFilter)
 		if err != nil {
 			log.Error(err, fmt.Sprintf("failed to get apply commands from %s", url))
-			return shouldIgnoreDevfile, fmt.Errorf(fmt.Sprintf("err: %v, failed to get apply commands from %s", err, url))
+			return shouldIgnoreDevfile, nil, fmt.Errorf(fmt.Sprintf("err: %v, failed to get apply commands from %s", err, url))
 		}
 		if len(applyCmd) == 0 {
 			if len(imageComp) > 1 {
-				retErr := fmt.Errorf("found more than one image components, but no apply command being defined in the devfile from %s", url)
-				log.Error(retErr, "failed to validate devfile")
-				return shouldIgnoreDevfile, retErr
+				err = fmt.Errorf("found more than one image components, but no apply command being defined in the devfile from %s", url)
+				log.Error(err, "failed to validate devfile")
+				return shouldIgnoreDevfile, nil, err
 			}
 			// TODO: if only one image component, should return a warning that no apply command being defined
 		}
 	}
 
-	return shouldIgnoreDevfile, nil
+	return shouldIgnoreDevfile, devfileBytes, nil
 }
