@@ -14,17 +14,13 @@ spec:
       value: "{{revision}}"
     - name: output-image
       value: 'quay.io/redhat-appstudio/application-service:{{revision}}'
-    - name: path-context
-      value: .
-    - name: dockerfile
-      value: Dockerfile
     - name: infra-deployment-update-script
       value: |
-        sed -i -e 's|\(https://github.com/redhat-appstudio/application-service/.*?ref=\)\(.*\)|\1{{ revision }}|' -e 's/\(newTag: \).*/\1{{ revision }}/' components/has/kustomization.yaml
+        sed -i -e 's|\(https://github.com/redhat-appstudio/application-service/.*?ref=\)\(.*\)|\1{{ revision }}|' -e 's/\(newTag: \).*/\1{{ revision }}/' components/has/base/kustomization.yaml
         sed -i -e 's|\(https://github.com/redhat-appstudio/application-service/config/monitoring/?ref=\)\(.*\)|\1{{ revision }}|' -e 's/\(newTag: \).*/\1{{ revision }}/' components/monitoring/grafana/base/has/kustomization.yaml
   pipelineRef:
     name: docker-build
-    bundle: quay.io/redhat-appstudio/hacbs-core-service-templates-bundle:latest
+    bundle: quay.io/redhat-appstudio-tekton-catalog/pipeline-core-services-docker-build:latest
   workspaces:
     - name: workspace
       volumeClaimTemplate:

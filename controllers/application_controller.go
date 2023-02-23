@@ -42,6 +42,7 @@ import (
 	devfile "github.com/redhat-appstudio/application-service/pkg/devfile"
 	github "github.com/redhat-appstudio/application-service/pkg/github"
 	logutil "github.com/redhat-appstudio/application-service/pkg/log"
+	util "github.com/redhat-appstudio/application-service/pkg/util"
 )
 
 // ApplicationReconciler reconciles a Application object
@@ -134,7 +135,8 @@ func (r *ApplicationReconciler) Reconcile(ctx context.Context, req ctrl.Request)
 		appModelRepo := application.Spec.AppModelRepository.URL
 		if gitOpsRepo == "" {
 			// If both repositories are blank, just generate a single shared repository
-			repoName := github.GenerateNewRepositoryName(application.Name, application.Namespace, req.ClusterName)
+			uniqueHash := util.GenerateUniqueHashForWorkloadImageTag(req.ClusterName, application.Namespace)
+			repoName := github.GenerateNewRepositoryName(application.Name, uniqueHash)
 
 			// Generate the git repo in the redhat-appstudio-appdata org
 			repoUrl, err := github.GenerateNewRepository(r.GitHubClient, ctx, r.GitHubOrg, repoName, "GitOps Repository")

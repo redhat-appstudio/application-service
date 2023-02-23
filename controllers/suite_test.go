@@ -1,5 +1,5 @@
 /*
-Copyright 2021-2022 Red Hat, Inc.
+Copyright 2021-2023 Red Hat, Inc.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -128,6 +128,7 @@ var _ = BeforeSuite(func() {
 		Log:                ctrl.Log.WithName("controllers").WithName("ComponentDetectionQuery"),
 		SPIClient:          spi.MockSPIClient{},
 		AlizerClient:       devfile.MockAlizerClient{},
+		GitHubClient:       github.GetMockedClient(),
 		DevfileRegistryURL: devfile.DevfileStageRegistryEndpoint, // Use the staging devfile registry for tests
 		AppFS:              ioutils.NewMemoryFilesystem(),
 	}).SetupWithManager(k8sManager)

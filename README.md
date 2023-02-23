@@ -53,11 +53,11 @@ The following section outlines the steps to deploy HAS on a physical Kubernetes 
 * Install `OpenShift GitOps` from the in-cluster Operator Marketplace.
 * `oc -n openshift-gitops apply -f https://raw.githubusercontent.com/redhat-appstudio/infra-deployments/main/argo-cd-apps/base/build.yaml`
 
-As a user, upon creation of Component, Tekton resources would be created by the controller. 
+As a user, upon creation of Component, Tekton resources would be created by the controller.
 
 If you wish to get 'working' PipelineRuns,
 * Create an image pull secret named `redhat-appstudio-registry-pull-secret`. See [Kubernetes docs](https://kubernetes.io/docs/tasks/configure-pod-container/pull-image-private-registry/#registry-secret-existing-credentials) for more information on how to create
-`Secrets` containing registry credentials. 
+`Secrets` containing registry credentials.
 * Configure the default image repository to which Pipelines would push images to by defining the environment variable `IMAGE_REPOSITORY` for the operator deployment.
 Defaults to `quay.io/redhat-appstudio/user-workload`.
 
@@ -72,6 +72,10 @@ Before deploying the operator, you must ensure that a secret, `has-github-token`
 The token that is used here must have the following permissions set:
 - `repo`
 - `delete_repo`
+
+You can also set an optional key-value pair for component detection query specifically, where the key is `cdq-token` and where the value points to a valid GitHub Personal Access Token. If the `cdq-token` does not exist, it will fall back to use `token` instead. 
+The token that is used here must have the following permissions set:
+- `repo`
 
 In addition to this, the GitHub token must be associated with an account that has write access to the GitHub organization you plan on using with HAS (see next section).
 
@@ -115,6 +119,7 @@ Webhooks require self-signed certificates to validate the resources. To disable 
 
 ### Useful links:
 * [HAS Project information page](https://docs.google.com/document/d/1axzNOhRBSkly3M2Y32Pxr1MBpBif2ljb-ufj0_aEt74/edit?usp=sharing)
+* Every Prow job executed by the CI system generates an artifacts directory containing information about that execution and its results. This [document](https://docs.ci.openshift.org/docs/how-tos/artifacts/) describes the contents of this directory and how they can be used to investigate the steps by the job.
 
 ## Contributions
 

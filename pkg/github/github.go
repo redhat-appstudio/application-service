@@ -17,8 +17,6 @@ package github
 
 import (
 	"context"
-	"crypto/sha256"
-	"encoding/base64"
 	"fmt"
 	"net/url"
 	"strings"
@@ -42,12 +40,9 @@ func (e *ServerError) Error() string {
 
 // GenerateNewRepositoryName creates a new gitops repository name, based on the following format:
 // <display-name>-<partial-hash-of-clustername-and-namespace>-<random-word>-<random-word>
-func GenerateNewRepositoryName(displayName, namespace, clusterName string) string {
+func GenerateNewRepositoryName(displayName, uniqueHash string) string {
 	sanitizedName := util.SanitizeName(displayName)
-	h := sha256.New()
-	h.Write([]byte(clusterName + namespace))
-	namespaceClusterHash := base64.URLEncoding.EncodeToString(h.Sum(nil))[0:5]
-	repoName := sanitizedName + "-" + namespaceClusterHash + "-" + util.SanitizeName(gofakeit.Verb()) + "-" + util.SanitizeName(gofakeit.Verb())
+	repoName := sanitizedName + "-" + uniqueHash + "-" + util.SanitizeName(gofakeit.Verb()) + "-" + util.SanitizeName(gofakeit.Verb())
 	return repoName
 }
 
@@ -106,6 +101,36 @@ func GetRepoAndOrgFromURL(repoURL string) (string, string, error) {
 		return "", "", fmt.Errorf("error: unable to retrieve repository name from URL: %v", repoURL)
 	}
 	return repoName, orgName, nil
+}
+
+// GetDefaultBranchFromURL returns the default branch of a given repoURL
+func GetDefaultBranchFromURL(repoURL string, client *github.Client, ctx context.Context) (string, error) {
+	repoName, orgName, err := GetRepoAndOrgFromURL(repoURL)
+	if err != nil {
+		return "", err
+	}
+
+	repo, _, err := client.Repositories.Get(ctx, orgName, repoName)
+	if err != nil || repo == nil {
+		return "", fmt.Errorf("failed to get repo %s under %s, error: %v", repoName, orgName, err)
+	}
+
+	return *repo.DefaultBranch, nil
+}
+
+// GetBranchFromURL returns the requested branch of a given repoURL
+func GetBranchFromURL(repoURL string, client *github.Client, ctx context.Context, branchName string) (*github.Branch, error) {
+	repoName, orgName, err := GetRepoAndOrgFromURL(repoURL)
+	if err != nil {
+		return nil, err
+	}
+
+	branch, _, err := client.Repositories.GetBranch(ctx, orgName, repoName, branchName, false)
+	if err != nil || branch == nil {
+		return nil, fmt.Errorf("failed to get branch %s from repo %s under %s, error: %v", branchName, repoName, orgName, err)
+	}
+
+	return branch, nil
 }
 
 // GetLatestCommitSHAFromRepository gets the latest Commit SHA from the repository

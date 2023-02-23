@@ -1,5 +1,5 @@
 //
-// Copyright 2021 Red Hat, Inc.
+// Copyright 2021-2023 Red Hat, Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -17,8 +17,6 @@ package github
 
 import (
 	"context"
-	"crypto/sha256"
-	"encoding/base64"
 	"strings"
 	"testing"
 
@@ -49,12 +47,10 @@ func TestGenerateNewRepositoryName(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			sanitizedName := util.SanitizeName(tt.displayName)
-			h := sha256.New()
-			h.Write([]byte(tt.clusterName + tt.namespace))
-			namespaceClusterHash := base64.URLEncoding.EncodeToString(h.Sum(nil))[0:5]
-			generatedRepo := GenerateNewRepositoryName(tt.displayName, tt.namespace, tt.clusterName)
+			uniqueHash := util.GenerateUniqueHashForWorkloadImageTag(tt.clusterName, tt.namespace)
+			generatedRepo := GenerateNewRepositoryName(tt.displayName, uniqueHash)
 
-			if !strings.Contains(generatedRepo, sanitizedName) || !strings.Contains(generatedRepo, namespaceClusterHash) {
+			if !strings.Contains(generatedRepo, sanitizedName) || !strings.Contains(generatedRepo, uniqueHash) {
 				t.Errorf("TestSanitizeDisplayName() error: expected %v got %v", tt.want, sanitizedName)
 			}
 		})
@@ -352,6 +348,91 @@ func TestGetLatestCommitSHAFromRepository(t *testing.T) {
 			}
 			if !tt.wantErr && commitSHA != tt.want {
 				t.Errorf("TestGetLatestCommitSHAFromRepository() error: expected %v got %v", tt.want, commitSHA)
+			}
+		})
+	}
+}
+
+func TestGetDefaultBranchFromURL(t *testing.T) {
+	tests := []struct {
+		name    string
+		repoURL string
+		want    string
+		wantErr bool
+	}{
+		{
+			name:    "repo with main as default branch",
+			repoURL: "https://github.com/redhat-appstudio-appdata/test-repo-1",
+			want:    "main",
+			wantErr: false,
+		},
+		{
+			name:    "repo with master as default branch",
+			repoURL: "https://github.com/redhat-appstudio-appdata/test-repo-2.git",
+			want:    "master",
+			wantErr: false,
+		},
+		{
+			name:    "Simple repo name",
+			repoURL: "https://github.com/some-org/test-error-response",
+			wantErr: true,
+		},
+	}
+
+	for _, tt := range tests {
+		mockedClient := GetMockedClient()
+
+		t.Run(tt.name, func(t *testing.T) {
+			defaultBranch, err := GetDefaultBranchFromURL(tt.repoURL, mockedClient, context.Background())
+
+			if tt.wantErr != (err != nil) {
+				t.Errorf("TestGetDefaultBranchFromURL() unexpected error value: %v", err)
+			}
+			if !tt.wantErr && defaultBranch != tt.want {
+				t.Errorf("TestGetDefaultBranchFromURL() error: expected %v got %v", tt.want, defaultBranch)
+			}
+		})
+	}
+}
+
+func TestGetBranchFromURL(t *testing.T) {
+	tests := []struct {
+		name       string
+		repoURL    string
+		branchName string
+		wantErr    bool
+	}{
+		{
+			name:       "repo with main as default branch",
+			repoURL:    "https://github.com/redhat-appstudio-appdata/test-repo-1",
+			branchName: "main",
+			wantErr:    false,
+		},
+		{
+			name:       "repo with master as default branch",
+			repoURL:    "https://github.com/redhat-appstudio-appdata/test-repo-2.git",
+			branchName: "master",
+			wantErr:    false,
+		},
+		{
+			name:       "Simple repo name",
+			repoURL:    "https://github.com/redhat-appstudio-appdata/test-repo-2.git",
+			branchName: "main",
+			wantErr:    true,
+		},
+	}
+
+	for _, tt := range tests {
+		mockedClient := GetMockedClient()
+
+		t.Run(tt.name, func(t *testing.T) {
+			branch, err := GetBranchFromURL(tt.repoURL, mockedClient, context.Background(), tt.branchName)
+
+			if tt.wantErr != (err != nil) {
+				t.Errorf("TestGetBranchFromURL() unexpected error value: %v, branch %v", err, branch)
+			}
+			if !tt.wantErr && *branch.Name != tt.branchName {
+				t.Errorf("TestGetBranchFromURL() error: expected %v got %v", tt.branchName, *branch.Name)
 			}
 		})
 	}
