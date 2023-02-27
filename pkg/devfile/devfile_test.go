@@ -26,7 +26,9 @@ import (
 	"github.com/devfile/api/v2/pkg/apis/workspaces/v1alpha2"
 	"github.com/devfile/api/v2/pkg/attributes"
 	"github.com/devfile/api/v2/pkg/devfile"
+	devfilePkg "github.com/devfile/library/v2/pkg/devfile"
 	devfileParser "github.com/devfile/library/v2/pkg/devfile/parser"
+	parser "github.com/devfile/library/v2/pkg/devfile/parser"
 	data "github.com/devfile/library/v2/pkg/devfile/parser/data"
 	v2 "github.com/devfile/library/v2/pkg/devfile/parser/data/v2"
 	"github.com/devfile/library/v2/pkg/devfile/parser/data/v2/common"
@@ -2449,6 +2451,85 @@ func TestUpdateLocalDockerfileURItoAbsolute(t *testing.T) {
 			if !tt.wantErr && !reflect.DeepEqual(devfile, tt.wantDevfile) {
 				t.Errorf("devfile content did not match, got %v, wanted %v", devfile, tt.wantDevfile)
 			}
+		})
+	}
+}
+
+func TestValidateDevfile(t *testing.T) {
+	logger := ctrl.Log.WithName("TestValidateDevfile")
+	httpTimeout := 10
+	convert := true
+	parserArgs := parser.ParserArgs{
+		HTTPTimeout:                   &httpTimeout,
+		ConvertKubernetesContentInUri: &convert,
+	}
+
+	springDevfileParser := parserArgs
+	springDevfileParser.URL = "https://raw.githubusercontent.com/devfile-samples/devfile-sample-java-springboot-basic/main/devfile.yaml"
+
+	springDevfileObj, _, err := devfilePkg.ParseDevfileAndValidate(springDevfileParser)
+	if err != nil {
+		t.Errorf("TestValidateDevfile() unexpected error: %v", err)
+	}
+	springDevfileBytes, err := yaml.Marshal(springDevfileObj.Data)
+	if err != nil {
+		t.Errorf("TestValidateDevfile() unexpected error: %v", err)
+	}
+	tests := []struct {
+		name             string
+		url              string
+		wantDevfileBytes []byte
+		wantIgnore       bool
+		wantErr          bool
+	}{
+		{
+			name:             "should success with valid deploy.yaml URI references",
+			url:              springDevfileParser.URL,
+			wantDevfileBytes: springDevfileBytes,
+			wantIgnore:       false,
+			wantErr:          false,
+		},
+		{
+			name:       "devfile.yaml with invalid deploy.yaml reference",
+			url:        "https://raw.githubusercontent.com/yangcao77/go-basic-no-deploy-file/main/devfile.yaml",
+			wantIgnore: false,
+			wantErr:    true,
+		},
+		{
+			name:       "devfile.yaml should be ignored if no kubernetes components defined",
+			url:        "https://raw.githubusercontent.com/devfile/registry/main/stacks/java-springboot/1.2.0/devfile.yaml",
+			wantIgnore: true,
+			wantErr:    false,
+		},
+		{
+			name:       "should error out with multiple kubernetes components but no deploy command",
+			url:        "https://raw.githubusercontent.com/yangcao77/spring-multi-kubecomps-no-deploycmd/main/devfile.yaml",
+			wantIgnore: false,
+			wantErr:    true,
+		},
+		{
+			name:       "should error out with multiple image components but no apply command",
+			url:        "https://raw.githubusercontent.com/yangcao77/spring-multi-imagecomps-no-applycmd/main/devfile.yaml",
+			wantIgnore: false,
+			wantErr:    true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			shouldIgnoreDevfile, devfileBytes, err := ValidateDevfile(logger, tt.url)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("TestValidateDevfile() unexpected error: %v", err)
+			}
+			if !tt.wantErr {
+				if shouldIgnoreDevfile != tt.wantIgnore {
+					t.Errorf("TestValidateDevfile() wantIgnore is %v, got %v", tt.wantIgnore, shouldIgnoreDevfile)
+				}
+				if !tt.wantIgnore && !reflect.DeepEqual(devfileBytes, tt.wantDevfileBytes) {
+					t.Errorf("devfile content did not match, got %v, wanted %v", string(devfileBytes), string(tt.wantDevfileBytes))
+				}
+			}
+
 		})
 	}
 }

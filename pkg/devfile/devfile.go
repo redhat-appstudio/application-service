@@ -735,7 +735,7 @@ func UpdateLocalDockerfileURItoAbsolute(devfile data.DevfileData, dockerfileURL 
 	return devfile, err
 }
 
-// ValidateDevfile parse and validate a devfile from it's URL, returns if the devfile should be ignored, and an error if devfile is invalid
+// ValidateDevfile parse and validate a devfile from it's URL, returns if the devfile should be ignored, the devfile raw content and an error if devfile is invalid
 // If the devfile failed to parse, or the kubernetes uri is invalid or kubernetes file content is invalid. return an error.
 // If no kubernetes components being defined in devfile, then it's not a valid outerloop devfile, the devfile should be ignored.
 // If more than one kubernetes components in the devfile, but no deploy commands being defined. return an error
@@ -764,12 +764,12 @@ func ValidateDevfile(log logr.Logger, url string) (shouldIgnoreDevfile bool, dev
 	if err != nil {
 		log.Error(err, fmt.Sprintf("failed to get kubernetes component from %s", url))
 		shouldIgnoreDevfile = true
-		return shouldIgnoreDevfile, devfileBytes, nil
+		return shouldIgnoreDevfile, nil, nil
 	}
 	if len(kubeComp) == 0 {
 		log.Info(fmt.Sprintf("Found 0 kubernetes components being defined in devfile from %s, it is not a valid outerloop definition, the devfile will be ignored. A devfile will be matched from registry...", url))
 		shouldIgnoreDevfile = true
-		return shouldIgnoreDevfile, devfileBytes, nil
+		return shouldIgnoreDevfile, nil, nil
 	} else {
 		deployCmdFilter := common.DevfileOptions{
 			CommandOptions: common.CommandOptions{
