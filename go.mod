@@ -9,6 +9,7 @@ require (
 	github.com/devfile/registry-support/index/generator v0.0.0-20221018203505-df96d34d4273
 	github.com/devfile/registry-support/registry-library v0.0.0-20221018213054-47b3ffaeadba
 	github.com/go-logr/logr v1.2.3
+	github.com/gofri/go-github-ratelimit v1.0.2
 	github.com/golang/mock v1.6.0
 	github.com/google/go-github/v41 v41.0.0
 	github.com/kcp-dev/kcp/pkg/apis v0.7.0
@@ -80,7 +81,6 @@ require (
 	github.com/go-openapi/swag v0.22.3 // indirect
 	github.com/go-task/slim-sprig v0.0.0-20210107165309-348f09dbbbc0 // indirect
 	github.com/gobwas/glob v0.2.3 // indirect
-	github.com/gofri/go-github-ratelimit v1.0.2 // indirect
 	github.com/gogo/protobuf v1.3.2 // indirect
 	github.com/golang-jwt/jwt/v4 v4.4.3 // indirect
 	github.com/golang/groupcache v0.0.0-20210331224755-41bb18bfe9da // indirect
