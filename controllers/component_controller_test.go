@@ -359,12 +359,12 @@ var _ = Describe("Component controller", func() {
 			Eventually(func() bool {
 				k8sClient.Get(context.Background(), hasCompLookupKey, createdHasComp)
 				return len(createdHasComp.Status.Conditions) > 0
-			}, timeout, interval).Should(BeTrue())
+			}, 5*timeout, interval).Should(BeTrue())
 
 			// Make sure the err was set
 			Expect(createdHasComp.Status.Devfile).Should(Equal(""))
 			Expect(createdHasComp.Status.Conditions[len(createdHasComp.Status.Conditions)-1].Reason).Should(Equal("Error"))
-			Expect(createdHasComp.Status.Conditions[len(createdHasComp.Status.Conditions)-1].Message).Should(ContainSubstring(fmt.Sprintf("%q not found", hasComp.Spec.Application)))
+			Expect(createdHasComp.Status.Conditions[len(createdHasComp.Status.Conditions)-1].Message).Should(ContainSubstring(fmt.Sprintf("unable to get the Application %s", hasComp.Spec.Application)))
 
 			compAnnotations := createdHasComp.GetAnnotations()
 			Expect(compAnnotations).ShouldNot(BeNil())
@@ -377,7 +377,7 @@ var _ = Describe("Component controller", func() {
 			Eventually(func() bool {
 				k8sClient.Get(context.Background(), hasCompLookupKey, createdHasComp)
 				return len(createdHasComp.Status.Conditions) > 0 && createdHasComp.Status.Conditions[0].Reason == "OK"
-			}, timeout, interval).Should(BeTrue())
+			}, 4*timeout, interval).Should(BeTrue())
 
 			// Delete the specified HASComp resource
 			deleteHASAppCR(types.NamespacedName{Name: applicationName, Namespace: HASAppNamespace})

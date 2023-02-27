@@ -122,25 +122,14 @@ func (r *ComponentReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 	err = r.Get(ctx, types.NamespacedName{Name: component.Spec.Application, Namespace: component.Namespace}, &hasApplication)
 	if err != nil && !containsString(component.GetFinalizers(), compFinalizerName) {
 		// only requeue if there is no finalizer attached ie; first time component create
-		log.Error(err, fmt.Sprintf("Unable to get the Application %s, requeueing %v", component.Spec.Application, req.NamespacedName))
-		r.SetCreateConditionAndUpdateCR(ctx, req, &component, err)
-		return ctrl.Result{}, err
+		err = fmt.Errorf("unable to get the Application %s, requeueing %v", component.Spec.Application, req.NamespacedName)
+		return r.incrementCounterAndRequeue(log, ctx, req, &component, err)
 	}
 
 	// If the Application CR devfile status is empty, requeue
 	if hasApplication.Status.Devfile == "" && !containsString(component.GetFinalizers(), compFinalizerName) {
-		count, err := getCounterAnnotation(applicationFailCounterAnnotation, &component)
-		if count > 5 || err != nil {
-			log.Error(err, fmt.Sprintf("Application devfile model is empty. Before creating a Component, an instance of Application should be created. Requeueing %v", req.NamespacedName))
-			err := fmt.Errorf("application is either not ready or has failed to be created")
-			r.SetCreateConditionAndUpdateCR(ctx, req, &component, err)
-			return ctrl.Result{}, err
-		} else {
-			setCounterAnnotation(applicationFailCounterAnnotation, &component, count+1)
-			_ = r.Update(ctx, &component)
-			return ctrl.Result{RequeueAfter: time.Second}, err
-		}
-
+		err = fmt.Errorf("application devfile model is empty. Before creating a Component, an instance of Application should be created %v", req.NamespacedName)
+		return r.incrementCounterAndRequeue(log, ctx, req, &component, err)
 	}
 
 	setCounterAnnotation(applicationFailCounterAnnotation, &component, 0)
@@ -663,4 +652,23 @@ func (r *ComponentReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		},
 	}).
 		Complete(r)
+}
+
+func (r *ComponentReconciler) incrementCounterAndRequeue(log logr.Logger, ctx context.Context, req ctrl.Request, component *appstudiov1alpha1.Component, componentErr error) (ctrl.Result, error) {
+	if component.GetAnnotations() == nil {
+		component.ObjectMeta.Annotations = make(map[string]string)
+	}
+	count, err := getCounterAnnotation(applicationFailCounterAnnotation, component)
+	if count > 2 || err != nil {
+		log.Error(err, "")
+		r.SetCreateConditionAndUpdateCR(ctx, req, component, componentErr)
+		return ctrl.Result{}, componentErr
+	} else {
+		setCounterAnnotation(applicationFailCounterAnnotation, component, count+1)
+		err = r.Update(ctx, component)
+		if err != nil {
+			log.Error(err, "error updating component's counter annotation")
+		}
+		return ctrl.Result{RequeueAfter: 500 * time.Millisecond}, componentErr
+	}
 }
