@@ -1260,7 +1260,7 @@ var _ = Describe("Component Detection Query controller", func() {
 			It("Should only return one component, with target port set", func() {
 				ctx := context.Background()
 
-				queryName := HASCompDetQuery + "26"
+				queryName := HASCompDetQuery + "devfile-sample-nodejs-basic" + "26"
 
 				hasCompDetectionQuery := &appstudiov1alpha1.ComponentDetectionQuery{
 					TypeMeta: metav1.TypeMeta{
