@@ -229,12 +229,6 @@ func AnalyzePath(a Alizer, localpath, context, devfileRegistryURL string, devfil
 // SearchForDockerfile searches for a dockerfile from a devfile image component.
 // If no dockerfile is found, nil will be returned.
 func SearchForDockerfile(devfileBytes []byte) (*v1alpha2.DockerfileImage, error) {
-	// if devfileURL == "" {
-	// 	return nil, nil
-	// }
-	// devfileSrc := DevfileSrc{
-	// 	URL: devfileURL,
-	// }
 	if len(devfileBytes) == 0 {
 		return nil, nil
 	}

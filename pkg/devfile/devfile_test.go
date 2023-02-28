@@ -529,6 +529,19 @@ func TestScanRepo(t *testing.T) {
 				"python":                               "https://raw.githubusercontent.com/devfile-samples/devfile-sample-python-basic/main/docker/Dockerfile"},
 		},
 		{
+			name:                   "Should return 2 devfile contexts, and 2 devfileURLs with multi-component but no outerloop definition",
+			clonePath:              "/tmp/testclone",
+			repo:                   "https://github.com/yangcao77/multi-components-with-no-kubecomps",
+			expectedDevfileContext: []string{"python", "devfile-sample-java-springboot-basic"},
+			expectedDevfileURLContextMap: map[string]string{
+				"devfile-sample-java-springboot-basic": "https://raw.githubusercontent.com/devfile-samples/devfile-sample-java-springboot-basic/main/devfile.yaml",
+				"python":                               "https://raw.githubusercontent.com/devfile-samples/devfile-sample-python-basic/main/devfile.yaml",
+			},
+			expectedDockerfileContextMap: map[string]string{
+				"devfile-sample-java-springboot-basic": "https://raw.githubusercontent.com/devfile-samples/devfile-sample-java-springboot-basic/main/docker/Dockerfile",
+				"python":                               "https://raw.githubusercontent.com/devfile-samples/devfile-sample-python-basic/main/docker/Dockerfile"},
+		},
+		{
 			name:                   "Should return 4 devfiles, 5 devfile url and 5 dockerfile uri as this is a multi comp devfile",
 			clonePath:              "/tmp/testclone",
 			repo:                   "https://github.com/maysunfaisal/multi-components-dockerfile",

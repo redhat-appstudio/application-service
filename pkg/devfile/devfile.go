@@ -795,7 +795,7 @@ func ValidateDevfile(log logr.Logger, url string) (shouldIgnoreDevfile bool, dev
 		}
 		if len(deployCmd) == 0 {
 			if len(kubeComp) > 1 {
-				err = fmt.Errorf("found more than one kubernetest components, but no deploy command being defined in the devfile from %s", url)
+				err = fmt.Errorf("found more than one kubernetes components, but no deploy command being defined in the devfile from %s", url)
 				log.Error(err, "failed to validate devfile")
 				return shouldIgnoreDevfile, nil, err
 			}
