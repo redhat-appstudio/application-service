@@ -70,17 +70,13 @@ func search(log logr.Logger, a Alizer, localpath string, devfileRegistryURL stri
 				if f.Name() == DevfileName || f.Name() == HiddenDevfileName {
 					// Check for devfile.yaml or .devfile.yaml
 					/* #nosec G304 -- false positive, filename is not based on user input*/
-					devfileBytes, err := ioutil.ReadFile(path.Join(curPath, f.Name()))
-					if err != nil {
-						return nil, nil, nil, err
-					}
-
+					devfilePath := path.Join(curPath, f.Name())
 					// Set the proper devfile URL for the detected devfile
 					updatedLink, err := UpdateGitLink(source.URL, source.Revision, path.Join(source.Context, path.Join(context, f.Name())))
 					if err != nil {
 						return nil, nil, nil, err
 					}
-					shouldIgnoreDevfile, devfileBytes, err := ValidateDevfile(log, updatedLink)
+					shouldIgnoreDevfile, devfileBytes, err := ValidateDevfile(log, devfilePath)
 					if err != nil {
 						return nil, nil, nil, err
 					}
@@ -104,17 +100,14 @@ func search(log logr.Logger, a Alizer, localpath string, devfileRegistryURL stri
 						if f.Name() == DevfileName || f.Name() == HiddenDevfileName {
 							// Check for devfile.yaml or .devfile.yaml
 							/* #nosec G304 -- false positive, filename is not based on user input*/
-							devfileBytes, err := ioutil.ReadFile(path.Join(hiddenDirPath, f.Name()))
-							if err != nil {
-								return nil, nil, nil, err
-							}
+							devfilePath := path.Join(hiddenDirPath, f.Name())
 
 							// Set the proper devfile URL for the detected devfile
 							updatedLink, err := UpdateGitLink(source.URL, source.Revision, path.Join(source.Context, path.Join(context, HiddenDevfileDir, f.Name())))
 							if err != nil {
 								return nil, nil, nil, err
 							}
-							shouldIgnoreDevfile, devfileBytes, err := ValidateDevfile(log, updatedLink)
+							shouldIgnoreDevfile, devfileBytes, err := ValidateDevfile(log, devfilePath)
 							if err != nil {
 								return nil, nil, nil, err
 							}

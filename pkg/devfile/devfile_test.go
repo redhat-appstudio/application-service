@@ -16,10 +16,12 @@
 package devfile
 
 import (
+	"io/ioutil"
 	"net"
 	"net/http"
 	"net/http/httptest"
 	"os"
+	"path"
 	"reflect"
 	"testing"
 
@@ -27,7 +29,6 @@ import (
 	"github.com/devfile/api/v2/pkg/attributes"
 	"github.com/devfile/api/v2/pkg/devfile"
 	devfilePkg "github.com/devfile/library/v2/pkg/devfile"
-	devfileParser "github.com/devfile/library/v2/pkg/devfile/parser"
 	parser "github.com/devfile/library/v2/pkg/devfile/parser"
 	data "github.com/devfile/library/v2/pkg/devfile/parser/data"
 	v2 "github.com/devfile/library/v2/pkg/devfile/parser/data/v2"
@@ -80,10 +81,29 @@ schemaVersion: 2.2.0`
 	testServer.Start()
 	defer testServer.Close()
 
+	localPath := "/tmp/testDir"
+	localDevfilePath := path.Join(localPath, "devfile.yaml")
+	// prepare for local file
+	err = os.MkdirAll(localPath, 0755)
+	if err != nil {
+		t.Errorf("TestParseDevfileModel() error: failed to create folder: %v, error: %v", localPath, err)
+	}
+	err = ioutil.WriteFile(localDevfilePath, []byte(simpleDevfile), 0644)
+	if err != nil {
+		t.Errorf("TestParseDevfileModel() error: fail to write to file: %v", err)
+	}
+
+	if err != nil {
+		t.Error(err)
+	}
+
+	defer os.RemoveAll(localPath)
+
 	tests := []struct {
 		name              string
 		devfileString     string
 		devfileURL        string
+		devfilePath       string
 		wantDevfile       *v2.DevfileV2
 		wantMetadata      devfile.DevfileMetadata
 		wantSchemaVersion string
@@ -106,6 +126,15 @@ schemaVersion: 2.2.0`
 			},
 			wantSchemaVersion: string(data.APISchemaVersion220),
 		},
+		{
+			name:        "Simple devfile from PATH",
+			devfilePath: localDevfilePath,
+			wantMetadata: devfile.DevfileMetadata{
+				Name:       "petclinic",
+				Attributes: attributes.Attributes{}.PutString("gitOpsRepository.url", "https://github.com/testorg/petclinic-gitops").PutString("appModelRepository.url", "https://github.com/testorg/petclinic-app"),
+			},
+			wantSchemaVersion: string(data.APISchemaVersion220),
+		},
 	}
 
 	for _, tt := range tests {
@@ -118,6 +147,10 @@ schemaVersion: 2.2.0`
 			} else if tt.devfileURL != "" {
 				devfileSrc = DevfileSrc{
 					URL: tt.devfileURL,
+				}
+			} else if tt.devfilePath != "" {
+				devfileSrc = DevfileSrc{
+					Path: tt.devfilePath,
 				}
 			}
 			devfile, err := ParseDevfile(devfileSrc)
@@ -485,7 +518,7 @@ func TestScanRepo(t *testing.T) {
 			name:                   "Should return 2 devfile contexts, and 2 devfileURLs as this is a multi comp devfile - with revision specified",
 			clonePath:              "/tmp/testclone",
 			repo:                   "https://github.com/maysunfaisal/multi-components-deep",
-			revision:               "2a7b64d94453746579ae0898e44bcdd3d8575167",
+			revision:               "34494f3d53dda0ca75b9e3fa6f6ec290177a20b3",
 			expectedDevfileContext: []string{"python", "devfile-sample-java-springboot-basic"},
 			expectedDevfileURLContextMap: map[string]string{
 				"devfile-sample-java-springboot-basic": "https://raw.githubusercontent.com/maysunfaisal/multi-components-deep/main/devfile-sample-java-springboot-basic/.devfile/.devfile.yaml",
@@ -2156,7 +2189,7 @@ schemaVersion: 2.2.0`
 			if err != nil {
 				t.Errorf("TestGetResourceFromDevfile() unexpected parse error: %v", err)
 			}
-			deployAssociatedComponents, err := devfileParser.GetDeployComponents(devfileData)
+			deployAssociatedComponents, err := parser.GetDeployComponents(devfileData)
 			if err != nil {
 				t.Errorf("TestGetResourceFromDevfile() unexpected get deploy components error: %v", err)
 			}

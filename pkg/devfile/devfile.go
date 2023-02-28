@@ -17,6 +17,7 @@ package devfile
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/devfile/api/v2/pkg/apis/workspaces/v1alpha2"
 	"github.com/devfile/api/v2/pkg/attributes"
@@ -418,6 +419,7 @@ func GetRouteFromEndpoint(name, serviceName, port, path string, secure bool, ann
 type DevfileSrc struct {
 	Data string
 	URL  string
+	Path string
 }
 
 // ParseDevfile calls the devfile library's parse and returns the devfile data.
@@ -435,6 +437,8 @@ func ParseDevfile(src DevfileSrc) (data.DevfileData, error) {
 		parserArgs.Data = []byte(src.Data)
 	} else if src.URL != "" {
 		parserArgs.URL = src.URL
+	} else if src.Path != "" {
+		parserArgs.Path = src.Path
 	} else {
 		return nil, fmt.Errorf("cannot parse devfile without a src")
 	}
@@ -743,9 +747,17 @@ func UpdateLocalDockerfileURItoAbsolute(devfile data.DevfileData, dockerfileURL 
 func ValidateDevfile(log logr.Logger, url string) (shouldIgnoreDevfile bool, devfileBytes []byte, err error) {
 	log.Info(fmt.Sprintf("Validating devfile from %s...", url))
 	shouldIgnoreDevfile = false
-	devfileSrc := DevfileSrc{
-		URL: url,
+	var devfileSrc DevfileSrc
+	if strings.HasPrefix(url, "http://") || strings.HasPrefix(url, "https://") {
+		devfileSrc = DevfileSrc{
+			URL: url,
+		}
+	} else {
+		devfileSrc = DevfileSrc{
+			Path: url,
+		}
 	}
+
 	devfileData, err := ParseDevfile(devfileSrc)
 	if err != nil {
 		log.Error(err, fmt.Sprintf("failed to parse the devfile content from %s", url))
