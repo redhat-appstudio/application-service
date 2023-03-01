@@ -48,8 +48,6 @@ import (
 	logicalcluster "github.com/kcp-dev/logicalcluster/v2"
 
 	appstudiov1alpha1 "github.com/redhat-appstudio/application-api/api/v1alpha1"
-	appservicegitops "github.com/redhat-appstudio/application-service/gitops"
-	"github.com/redhat-appstudio/application-service/gitops/prepare"
 	devfile "github.com/redhat-appstudio/application-service/pkg/devfile"
 	"github.com/redhat-appstudio/application-service/pkg/github"
 	logutil "github.com/redhat-appstudio/application-service/pkg/log"
@@ -539,7 +537,6 @@ func (r *ComponentReconciler) generateGitops(ctx context.Context, req ctrl.Reque
 	}
 
 	// Generate and push the gitops resources
-	gitopsConfig := prepare.PrepareGitopsConfig(ctx, r.Client, *component)
 	mappedGitOpsComponent := util.GetMappedGitOpsComponent(*component, kubernetesResources)
 
 	err = r.Generator.CloneGenerateAndPush(tempDir, gitOpsURL, mappedGitOpsComponent, r.AppFS, gitOpsBranch, gitOpsContext, false)
@@ -548,14 +545,8 @@ func (r *ComponentReconciler) generateGitops(ctx context.Context, req ctrl.Reque
 		return err
 	}
 
-	// GenerateTektonBuild returns a sanitized error message
-	err = appservicegitops.GenerateTektonBuild(tempDir, *component, r.AppFS, gitOpsContext, gitopsConfig)
-	if err != nil {
-		log.Error(err, "unable to generate gitops build resources due to error")
-		return err
-	}
 	//Gitops functions return sanitized error messages
-	err = r.Generator.CommitAndPush(tempDir, "", gitOpsURL, mappedGitOpsComponent.Name, gitOpsBranch, "Generating Tekton resources")
+	err = r.Generator.CommitAndPush(tempDir, "", gitOpsURL, mappedGitOpsComponent.Name, gitOpsBranch, "Generating GitOps resources")
 	if err != nil {
 		log.Error(err, "unable to commit and push gitops resources due to error")
 		return err
