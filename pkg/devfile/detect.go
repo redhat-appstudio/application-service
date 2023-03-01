@@ -162,7 +162,6 @@ func search(log logr.Logger, a Alizer, localpath string, devfileRegistryURL stri
 func AnalyzePath(a Alizer, localpath, context, devfileRegistryURL string, devfileMapFromRepo map[string][]byte, devfilesURLMapFromRepo, dockerfileContextMapFromRepo map[string]string, isDevfilePresent, isDockerfilePresent bool) error {
 	if isDevfilePresent {
 		// If devfile is present, check to see if we can determine a Dockerfile from it
-		//devfileURL := devfilesURLMapFromRepo[context]
 		devfileBytes := devfileMapFromRepo[context]
 		dockerfileImage, err := SearchForDockerfile(devfileBytes)
 		if err != nil {
@@ -319,10 +318,6 @@ func AnalyzeAndDetectDevfile(a Alizer, path, devfileRegistryURL string) ([]byte,
 					return nil, "", "", err
 				}
 
-				// devfileBytes, err = util.CurlEndpoint(detectedDevfileEndpoint)
-				// if err != nil {
-				// 	return nil, "", "", err
-				// }
 				devfileSrc := DevfileSrc{
 					URL: detectedDevfileEndpoint,
 				}
