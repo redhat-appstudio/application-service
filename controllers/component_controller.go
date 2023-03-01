@@ -654,6 +654,10 @@ func (r *ComponentReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		Complete(r)
 }
 
+// incrementCounterAndRequeue will increment the "application error counter" on the Component resource and requeue
+// If the counter is less than 3, the Component will be requeued (with a half second delay) without any error message returned
+// If the counter is greater than or equal to 3, an error message will be set on the Component's status and it will be requeud
+// 3 attemps were chosen along with the half second requeue delay to allow certain transient errors when the application CR isn't ready, to resolve themself.
 func (r *ComponentReconciler) incrementCounterAndRequeue(log logr.Logger, ctx context.Context, req ctrl.Request, component *appstudiov1alpha1.Component, componentErr error) (ctrl.Result, error) {
 	if component.GetAnnotations() == nil {
 		component.ObjectMeta.Annotations = make(map[string]string)

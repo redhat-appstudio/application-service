@@ -359,7 +359,7 @@ var _ = Describe("Component controller", func() {
 			Eventually(func() bool {
 				k8sClient.Get(context.Background(), hasCompLookupKey, createdHasComp)
 				return len(createdHasComp.Status.Conditions) > 0
-			}, 5*timeout, interval).Should(BeTrue())
+			}, timeout40s, interval).Should(BeTrue())
 
 			// Make sure the err was set
 			Expect(createdHasComp.Status.Devfile).Should(Equal(""))
@@ -377,7 +377,7 @@ var _ = Describe("Component controller", func() {
 			Eventually(func() bool {
 				k8sClient.Get(context.Background(), hasCompLookupKey, createdHasComp)
 				return len(createdHasComp.Status.Conditions) > 0 && createdHasComp.Status.Conditions[0].Reason == "OK"
-			}, 4*timeout, interval).Should(BeTrue())
+			}, timeout40s, interval).Should(BeTrue())
 
 			// Delete the specified HASComp resource
 			deleteHASAppCR(types.NamespacedName{Name: applicationName, Namespace: HASAppNamespace})
