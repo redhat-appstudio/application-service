@@ -633,7 +633,7 @@ func (r *ComponentReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&appstudiov1alpha1.Component{}, builder.WithPredicates(predicate.GenerationChangedPredicate{})).
 		WithOptions(controller.Options{
-			RateLimiter: workqueue.NewItemExponentialFailureRateLimiter(time.Duration(500*time.Millisecond), time.Duration(60*time.Second)),
+			RateLimiter: workqueue.NewItemExponentialFailureRateLimiter(time.Duration(500*time.Millisecond), time.Duration(1000*time.Second)),
 		}).WithEventFilter(predicate.Funcs{
 		CreateFunc: func(e event.CreateEvent) bool {
 			log := log.WithValues("Namespace", e.Object.GetNamespace()).WithValues("clusterName", logicalcluster.From(e.Object).String())
@@ -673,6 +673,6 @@ func (r *ComponentReconciler) incrementCounterAndRequeue(log logr.Logger, ctx co
 		if err != nil {
 			log.Error(err, "error updating component's counter annotation")
 		}
-		return ctrl.Result{RequeueAfter: 500 * time.Millisecond}, componentErr
+		return ctrl.Result{}, componentErr
 	}
 }
