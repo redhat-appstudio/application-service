@@ -1294,7 +1294,7 @@ var _ = Describe("Component Detection Query controller", func() {
 				Expect(len(createdHasCompDetectionQuery.Status.ComponentDetected)).Should(Equal(1))
 
 				for devfileName, devfileDesc := range createdHasCompDetectionQuery.Status.ComponentDetected {
-					Expect(devfileName).Should(ContainSubstring("nodejs"))
+					Expect(devfileName).Should(ContainSubstring("multi-component-port-detected"))
 					Expect(devfileDesc.ComponentStub.Source.GitSource.Context).Should(ContainSubstring("nodejs"))
 					Expect(devfileDesc.ComponentStub.Source.GitSource.Revision).Should(ContainSubstring("main"))
 					Expect(devfileDesc.ComponentStub.Source.GitSource.DevfileURL).Should(Equal("https://raw.githubusercontent.com/nodeshift-starters/devfile-sample/main/devfile.yaml"))
