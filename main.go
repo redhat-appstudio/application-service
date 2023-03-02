@@ -192,7 +192,12 @@ func main() {
 
 	cdqts := oauth2.StaticTokenSource(&oauth2.Token{AccessToken: cdqToken})
 	cdqtc := oauth2.NewClient(ctx, cdqts)
-	cdqClient := github.NewClient(cdqtc)
+	cdqRateLimiter, err := github_ratelimit.NewRateLimitWaiterClient(cdqtc.Transport, github_ratelimit.WithSingleSleepLimit(time.Minute, nil))
+	if err != nil {
+		setupLog.Error(err, "unable to add triggers api to the scheme")
+		os.Exit(1)
+	}
+	cdqClient := github.NewClient(cdqRateLimiter)
 
 	if err = (&controllers.ApplicationReconciler{
 		Client:       mgr.GetClient(),
