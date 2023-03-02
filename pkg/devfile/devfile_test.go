@@ -470,7 +470,7 @@ func TestScanRepo(t *testing.T) {
 		{
 			name:                   "Should return one context with one devfile, along with one port detected",
 			clonePath:              "/tmp/testclonenode-devfile-sample-nodejs-basic",
-			repo:                   "https://github.com/devfile-resources/multi-component-port-detected",
+			repo:                   "https://github.com/devfile-resources/single-component-port-detected",
 			expectedDevfileContext: []string{"nodejs"},
 			expectedDevfileURLContextMap: map[string]string{
 				"nodejs": "https://raw.githubusercontent.com/nodeshift-starters/devfile-sample/main/devfile.yaml",

@@ -1273,8 +1273,9 @@ var _ = Describe("Component Detection Query controller", func() {
 					},
 					Spec: appstudiov1alpha1.ComponentDetectionQuerySpec{
 						GitSource: appstudiov1alpha1.GitSource{
-							URL:      "https://github.com/devfile-resources/multi-component-port-detected",
+							URL:      "https://github.com/devfile-resources/single-component-port-detected",
 							Revision: "main",
+							Context:  "nodejs",
 						},
 					},
 				}
@@ -1294,7 +1295,7 @@ var _ = Describe("Component Detection Query controller", func() {
 				Expect(len(createdHasCompDetectionQuery.Status.ComponentDetected)).Should(Equal(1))
 
 				for devfileName, devfileDesc := range createdHasCompDetectionQuery.Status.ComponentDetected {
-					Expect(devfileName).Should(ContainSubstring("multi-component-port-detected"))
+					Expect(devfileName).Should(ContainSubstring("nodejs"))
 					Expect(devfileDesc.ComponentStub.Source.GitSource.Context).Should(ContainSubstring("nodejs"))
 					Expect(devfileDesc.ComponentStub.Source.GitSource.Revision).Should(ContainSubstring("main"))
 					Expect(devfileDesc.ComponentStub.Source.GitSource.DevfileURL).Should(Equal("https://raw.githubusercontent.com/nodeshift-starters/devfile-sample/main/devfile.yaml"))
