@@ -77,7 +77,7 @@ func GetResourceFromDevfile(log logr.Logger, devfileData data.DevfileData, deplo
 	matchLabels := getMatchLabel(compName)
 
 	if len(kubernetesComponents) == 0 {
-		return parser.KubernetesResources{}, fmt.Errorf("The devfile has no kubernetes components defined, missing outerloop definition")
+		return parser.KubernetesResources{}, fmt.Errorf("the devfile has no kubernetes components defined, missing outerloop definition")
 	} else if len(kubernetesComponents) == 1 && len(deployAssociatedComponents) == 0 {
 		// only one kubernetes components defined, but no deploy cmd associated
 		deployAssociatedComponents[kubernetesComponents[0].Name] = "place-holder"
