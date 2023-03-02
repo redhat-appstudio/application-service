@@ -1593,6 +1593,96 @@ metadata:
   version: 1.2.1
 schemaVersion: 2.2.0`
 
+	noKubernetesCompDevfile := `
+commands:
+- apply:
+    component: image-build
+  id: build-image
+- composite:
+    commands:
+    - build-image
+    group:
+      isDefault: true
+      kind: deploy
+    parallel: false
+  id: deploy
+components:
+- image:
+    autoBuild: false
+    dockerfile:
+      buildContext: .
+      rootRequired: false
+      uri: docker/Dockerfile
+    imageName: java-springboot-image:latest
+  name: image-build
+metadata:
+  name: java-springboot
+schemaVersion: 2.2.0`
+
+	multipleKubernetesCompsDevfile := `
+commands:
+- apply:
+    component: image-build
+  id: build-image
+- apply:
+    component: kubernetes-deploy
+  id: deployk8s
+- composite:
+    commands:
+    - build-image
+    - deployk8s
+    group:
+      isDefault: true
+      kind: deploy
+    parallel: false
+  id: deploy
+components:
+- image:
+    autoBuild: false
+    dockerfile:
+      buildContext: .
+      rootRequired: false
+      uri: docker/Dockerfile
+    imageName: java-springboot-image:latest
+  name: image-build
+- attributes:
+    deployment/container-port: 1111
+  kubernetes:
+    deployByDefault: false
+    inlined: |-
+      apiVersion: v1
+      kind: Service
+      metadata:
+        creationTimestamp: null
+        name: service-sample
+      spec:
+        ports:
+        - port: 1111
+          targetPort: 1111
+      status:
+        loadBalancer: {}
+  name: kubernetes-deploy
+- attributes:
+    deployment/container-port: 1111
+  kubernetes:
+    deployByDefault: false
+    inlined: |-
+      apiVersion: v1
+      kind: Service
+      metadata:
+        creationTimestamp: null
+        name: service-sample2
+      spec:
+        ports:
+        - port: 1111
+          targetPort: 1111
+      status:
+        loadBalancer: {}
+  name: kubernetes-deploy2
+metadata:
+  name: java-springboot
+schemaVersion: 2.2.0`
+
 	replica := int32(5)
 	replicaUpdated := int32(1)
 	namespace := "testNamespace"
@@ -2098,6 +2188,48 @@ schemaVersion: 2.2.0`
 			devfileString: kubernetesWithoutInline,
 			componentName: "component-sample",
 			image:         "image1",
+		},
+		{
+			name:          "Simple devfile from Inline with multiple kubernetes components and only one is referenced by deploy command",
+			devfileString: multipleKubernetesCompsDevfile,
+			componentName: "component-sample",
+			appName:       "application-sample",
+			image:         "image1",
+			wantService: corev1.Service{
+				TypeMeta: metav1.TypeMeta{
+					Kind:       "Service",
+					APIVersion: "v1",
+				},
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "component-sample",
+					Namespace: namespace,
+					Labels: map[string]string{
+						"app.kubernetes.io/created-by": "application-service",
+						"app.kubernetes.io/instance":   "component-sample",
+						"app.kubernetes.io/managed-by": "kustomize",
+						"app.kubernetes.io/name":       "component-sample",
+						"app.kubernetes.io/part-of":    "application-sample",
+					},
+				},
+				Spec: corev1.ServiceSpec{
+					Ports: []corev1.ServicePort{
+						{
+							Port:       int32(1111),
+							TargetPort: intstr.FromInt(1111),
+						},
+					},
+					Selector: map[string]string{
+						"app.kubernetes.io/instance": "component-sample",
+					},
+				},
+			},
+		},
+		{
+			name:          "No kubernetes components defined.",
+			devfileString: noKubernetesCompDevfile,
+			componentName: "component-sample",
+			image:         "image1",
+			wantErr:       true,
 		},
 		{
 			name:          "Bad Memory Limit",
