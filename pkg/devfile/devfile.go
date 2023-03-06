@@ -763,6 +763,11 @@ func ValidateDevfile(log logr.Logger, url string) (shouldIgnoreDevfile bool, dev
 		log.Error(err, fmt.Sprintf("failed to parse the devfile content from %s", url))
 		return shouldIgnoreDevfile, nil, fmt.Errorf(fmt.Sprintf("err: %v, failed to parse the devfile content from %s", err, url))
 	}
+	deployCompMap, err := parser.GetDeployComponents(devfileData)
+	if err != nil {
+		log.Error(err, fmt.Sprintf("failed to get deploy components from %s", url))
+		return shouldIgnoreDevfile, nil, fmt.Errorf(fmt.Sprintf("err: %v, failed to get deploy components from %s", err, url))
+	}
 	devfileBytes, err = yaml.Marshal(devfileData)
 	if err != nil {
 		return shouldIgnoreDevfile, nil, err
@@ -783,24 +788,21 @@ func ValidateDevfile(log logr.Logger, url string) (shouldIgnoreDevfile bool, dev
 		shouldIgnoreDevfile = true
 		return shouldIgnoreDevfile, nil, nil
 	} else {
-		deployCmdFilter := common.DevfileOptions{
-			CommandOptions: common.CommandOptions{
-				CommandGroupKind: v1alpha2.DeployCommandGroupKind,
-			},
-		}
-		deployCmd, err := devfileData.GetCommands(deployCmdFilter)
-		if err != nil {
-			log.Error(err, fmt.Sprintf("failed to get deploy commands from %s", url))
-			return shouldIgnoreDevfile, nil, fmt.Errorf(fmt.Sprintf("err: %v, failed to get deploy commands from %s", err, url))
-		}
-		if len(deployCmd) == 0 {
-			if len(kubeComp) > 1 {
-				err = fmt.Errorf("found more than one kubernetes components, but no deploy command being defined in the devfile from %s", url)
+		if len(kubeComp) > 1 {
+			found := false
+			for _, component := range kubeComp {
+				if _, ok := deployCompMap[component.Name]; ok {
+					found = true
+					break
+				}
+			}
+			if !found {
+				err = fmt.Errorf("found more than one kubernetes components, but no deploy command associated with any being defined in the devfile from %s", url)
 				log.Error(err, "failed to validate devfile")
 				return shouldIgnoreDevfile, nil, err
 			}
-			// TODO: if only one kube component, should return a warning that no deploy command being defined
 		}
+		// TODO: if only one kube component, should return a warning that no deploy command being defined
 	}
 	imageCompFilter := common.DevfileOptions{
 		ComponentOptions: common.ComponentOptions{
@@ -812,25 +814,26 @@ func ValidateDevfile(log logr.Logger, url string) (shouldIgnoreDevfile bool, dev
 		log.Error(err, fmt.Sprintf("failed to get image component from %s", url))
 		return shouldIgnoreDevfile, nil, fmt.Errorf(fmt.Sprintf("err: %v, failed to get image component from %s", err, url))
 	}
-	if len(imageComp) != 0 {
-		applyCmdFilter := common.DevfileOptions{
-			CommandOptions: common.CommandOptions{
-				CommandType: v1alpha2.ApplyCommandType,
-			},
-		}
-		applyCmd, err := devfileData.GetCommands(applyCmdFilter)
-		if err != nil {
-			log.Error(err, fmt.Sprintf("failed to get apply commands from %s", url))
-			return shouldIgnoreDevfile, nil, fmt.Errorf(fmt.Sprintf("err: %v, failed to get apply commands from %s", err, url))
-		}
-		if len(applyCmd) == 0 {
-			if len(imageComp) > 1 {
-				err = fmt.Errorf("found more than one image components, but no apply command being defined in the devfile from %s", url)
+	if len(imageComp) == 0 {
+		log.Info(fmt.Sprintf("Found 0 image components being defined in devfile from %s, it is not a valid outerloop definition, the devfile will be ignored. A devfile will be matched from registry...", url))
+		shouldIgnoreDevfile = true
+		return shouldIgnoreDevfile, nil, nil
+	} else {
+		if len(imageComp) > 1 {
+			found := false
+			for _, component := range imageComp {
+				if _, ok := deployCompMap[component.Name]; ok {
+					found = true
+					break
+				}
+			}
+			if !found {
+				err = fmt.Errorf("found more than one image components, but no deploy command associated with any being defined in the devfile from %s", url)
 				log.Error(err, "failed to validate devfile")
 				return shouldIgnoreDevfile, nil, err
 			}
-			// TODO: if only one image component, should return a warning that no apply command being defined
 		}
+		// TODO: if only one image component, should return a warning that no apply command being defined
 	}
 
 	return shouldIgnoreDevfile, devfileBytes, nil

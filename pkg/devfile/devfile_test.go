@@ -548,7 +548,7 @@ func TestScanRepo(t *testing.T) {
 			expectedDevfileContext: []string{"devfile-sample-java-springboot-basic", "devfile-sample-nodejs-basic", "devfile-sample-python-basic", "python-src-none"},
 			expectedDevfileURLContextMap: map[string]string{
 				"devfile-sample-java-springboot-basic": "https://raw.githubusercontent.com/maysunfaisal/multi-components-dockerfile/main/devfile-sample-java-springboot-basic/.devfile/.devfile.yaml",
-				"devfile-sample-nodejs-basic":          "https://raw.githubusercontent.com/maysunfaisal/multi-components-dockerfile/main/devfile-sample-nodejs-basic/devfile.yaml",
+				"devfile-sample-nodejs-basic":          "https://raw.githubusercontent.com/nodeshift-starters/devfile-sample/main/devfile.yaml",
 				"devfile-sample-python-basic":          "https://raw.githubusercontent.com/maysunfaisal/multi-components-dockerfile/main/devfile-sample-python-basic/.devfile.yaml",
 				"python-src-none":                      "https://raw.githubusercontent.com/devfile-samples/devfile-sample-python-basic/main/devfile.yaml",
 				"python-src-docker":                    "https://raw.githubusercontent.com/devfile-samples/devfile-sample-python-basic/main/devfile.yaml",
@@ -2544,6 +2544,12 @@ func TestValidateDevfile(t *testing.T) {
 		{
 			name:       "devfile.yaml should be ignored if no kubernetes components defined",
 			url:        "https://raw.githubusercontent.com/devfile/registry/main/stacks/java-springboot/1.2.0/devfile.yaml",
+			wantIgnore: true,
+			wantErr:    false,
+		},
+		{
+			name:       "devfile.yaml should be ignored if no image components defined",
+			url:        "https://raw.githubusercontent.com/yangcao77/spring-sample-no-image-comp/main/devfile.yaml",
 			wantIgnore: true,
 			wantErr:    false,
 		},
