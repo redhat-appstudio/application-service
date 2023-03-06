@@ -103,6 +103,36 @@ func GetRepoAndOrgFromURL(repoURL string) (string, string, error) {
 	return repoName, orgName, nil
 }
 
+// GetDefaultBranchFromURL returns the default branch of a given repoURL
+func GetDefaultBranchFromURL(repoURL string, client *github.Client, ctx context.Context) (string, error) {
+	repoName, orgName, err := GetRepoAndOrgFromURL(repoURL)
+	if err != nil {
+		return "", err
+	}
+
+	repo, _, err := client.Repositories.Get(ctx, orgName, repoName)
+	if err != nil || repo == nil {
+		return "", fmt.Errorf("failed to get repo %s under %s, error: %v", repoName, orgName, err)
+	}
+
+	return *repo.DefaultBranch, nil
+}
+
+// GetBranchFromURL returns the requested branch of a given repoURL
+func GetBranchFromURL(repoURL string, client *github.Client, ctx context.Context, branchName string) (*github.Branch, error) {
+	repoName, orgName, err := GetRepoAndOrgFromURL(repoURL)
+	if err != nil {
+		return nil, err
+	}
+
+	branch, _, err := client.Repositories.GetBranch(ctx, orgName, repoName, branchName, false)
+	if err != nil || branch == nil {
+		return nil, fmt.Errorf("failed to get branch %s from repo %s under %s, error: %v", branchName, repoName, orgName, err)
+	}
+
+	return branch, nil
+}
+
 // GetLatestCommitSHAFromRepository gets the latest Commit SHA from the repository
 func GetLatestCommitSHAFromRepository(client *github.Client, ctx context.Context, repoName string, orgName string, branch string) (string, error) {
 	commitSHA, _, err := client.Repositories.GetCommitSHA1(ctx, orgName, repoName, branch, "")

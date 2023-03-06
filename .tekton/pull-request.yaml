@@ -16,7 +16,7 @@ spec:
       value: "quay.io/redhat-appstudio/pull-request-builds:has-{{revision}}"
   pipelineRef:
     name: docker-build
-    bundle: quay.io/redhat-appstudio/hacbs-core-service-templates-bundle:latest
+    bundle: quay.io/redhat-appstudio-tekton-catalog/pipeline-core-services-docker-build:latest
   workspaces:
     - name: workspace
       volumeClaimTemplate:
