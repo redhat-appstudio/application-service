@@ -9,6 +9,7 @@ require (
 	github.com/devfile/registry-support/index/generator v0.0.0-20221018203505-df96d34d4273
 	github.com/devfile/registry-support/registry-library v0.0.0-20221018213054-47b3ffaeadba
 	github.com/go-logr/logr v1.2.3
+	github.com/gofri/go-github-ratelimit v1.0.2
 	github.com/golang/mock v1.6.0
 	github.com/google/go-github/v41 v41.0.0
 	github.com/kcp-dev/kcp/pkg/apis v0.7.0
