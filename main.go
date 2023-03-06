@@ -23,6 +23,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"time"
 
 	gitopsgen "github.com/redhat-developer/gitops-generator/pkg"
 
@@ -46,6 +47,7 @@ import (
 
 	routev1 "github.com/openshift/api/route/v1"
 
+	"github.com/gofri/go-github-ratelimit/github_ratelimit"
 	"github.com/google/go-github/v41/github"
 
 	appstudiov1alpha1 "github.com/redhat-appstudio/application-api/api/v1alpha1"
@@ -181,11 +183,21 @@ func main() {
 
 	ts := oauth2.StaticTokenSource(&oauth2.Token{AccessToken: ghToken})
 	tc := oauth2.NewClient(ctx, ts)
-	client := github.NewClient(tc)
+	rateLimiter, err := github_ratelimit.NewRateLimitWaiterClient(tc.Transport, github_ratelimit.WithSingleSleepLimit(time.Minute, nil))
+	if err != nil {
+		setupLog.Error(err, "unable to add triggers api to the scheme")
+		os.Exit(1)
+	}
+	client := github.NewClient(rateLimiter)
 
 	cdqts := oauth2.StaticTokenSource(&oauth2.Token{AccessToken: cdqToken})
 	cdqtc := oauth2.NewClient(ctx, cdqts)
-	cdqClient := github.NewClient(cdqtc)
+	cdqRateLimiter, err := github_ratelimit.NewRateLimitWaiterClient(cdqtc.Transport, github_ratelimit.WithSingleSleepLimit(time.Minute, nil))
+	if err != nil {
+		setupLog.Error(err, "unable to add triggers api to the scheme")
+		os.Exit(1)
+	}
+	cdqClient := github.NewClient(cdqRateLimiter)
 
 	if err = (&controllers.ApplicationReconciler{
 		Client:       mgr.GetClient(),
