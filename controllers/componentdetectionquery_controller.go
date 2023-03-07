@@ -20,7 +20,6 @@ import (
 	"context"
 	"fmt"
 	"path"
-	"strings"
 
 	"go.uber.org/zap/zapcore"
 	corev1 "k8s.io/api/core/v1"
@@ -261,22 +260,6 @@ func (r *ComponentDetectionQueryReconciler) Reconcile(ctx context.Context, req c
 				log.Error(err, fmt.Sprintf("Unable to remove the clonepath %s %v", clonePath, req.NamespacedName))
 				r.SetCompleteConditionAndUpdateCR(ctx, req, &componentDetectionQuery, copiedCDQ, err)
 				return ctrl.Result{}, nil
-			}
-		}
-
-		for context, link := range dockerfileContextMap {
-			// If the returned context/link is a local path, update the git link for the dockerfile accordingly
-			// Otherwise
-			if !strings.HasPrefix(link, "http") {
-				updatedContext := path.Join(context, link)
-
-				updatedLink, err := devfile.UpdateGitLink(source.URL, source.Revision, updatedContext)
-				if err != nil {
-					log.Error(err, fmt.Sprintf("Unable to update the dockerfile link %v", req.NamespacedName))
-					r.SetCompleteConditionAndUpdateCR(ctx, req, &componentDetectionQuery, copiedCDQ, err)
-					return ctrl.Result{}, nil
-				}
-				dockerfileContextMap[context] = updatedLink
 			}
 		}
 
