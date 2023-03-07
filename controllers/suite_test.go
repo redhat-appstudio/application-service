@@ -117,7 +117,6 @@ var _ = BeforeSuite(func() {
 		Log:               ctrl.Log.WithName("controllers").WithName("Component"),
 		Generator:         gitops.NewMockGenerator(),
 		AppFS:             ioutils.NewMemoryFilesystem(),
-		ImageRepository:   "docker.io/foo/customized",
 		SPIClient:         spi.MockSPIClient{},
 		GitHubTokenClient: mockGhTokenClient,
 	}).SetupWithManager(k8sManager)

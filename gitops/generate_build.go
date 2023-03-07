@@ -38,26 +38,12 @@ const (
 	buildWebhookRouteFileName    = "build-webhook-route.yaml"
 	buildRepositoryFileName      = "pac-repository.yaml"
 
-	DefaultImageRepo = "quay.io/redhat-appstudio/user-workload"
-
 	PaCAnnotation                     = "pipelinesascode"
 	GitProviderAnnotationName         = "git-provider"
 	PipelinesAsCodeWebhooksSecretName = "pipelines-as-code-webhooks-secret"
 	PipelinesAsCode_githubAppIdKey    = "github-application-id"
 	PipelinesAsCode_githubPrivateKey  = "github-private-key"
 )
-
-var (
-	imageRegistry = DefaultImageRepo
-)
-
-func GetDefaultImageRepo() string {
-	return imageRegistry
-}
-
-func SetDefaultImageRepo(repo string) {
-	imageRegistry = repo
-}
 
 func GenerateBuild(fs afero.Fs, outputFolder string, component appstudiov1alpha1.Component, gitopsConfig gitopsprepare.GitopsConfig) error {
 	repository, err := GeneratePACRepository(component, gitopsConfig.PipelinesAsCodeCredentials)

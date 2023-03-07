@@ -65,7 +65,6 @@ type ComponentReconciler struct {
 	Log               logr.Logger
 	GitToken          string
 	GitHubOrg         string
-	ImageRepository   string
 	Generator         gitopsgen.Generator
 	AppFS             afero.Afero
 	SPIClient         spi.SPI
@@ -179,17 +178,6 @@ func (r *ComponentReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 	}
 
 	log.Info(fmt.Sprintf("Starting reconcile loop for %v", req.NamespacedName))
-
-	if component.Spec.ContainerImage == "" {
-		uniqueHash := util.GenerateUniqueHashForWorkloadImageTag(req.ClusterName, component.Namespace)
-		component.Spec.ContainerImage = r.ImageRepository + ":" + uniqueHash + "-" + component.Name
-		if err := r.Client.Update(ctx, &component); err != nil {
-			log.Error(err, fmt.Sprintf("Failed to set default component image: %s", component.Spec.ContainerImage))
-			return ctrl.Result{}, err
-		}
-		log.Info(fmt.Sprintf("Set component image to default value: %s", component.Spec.ContainerImage))
-		return ctrl.Result{Requeue: true}, nil
-	}
 
 	// Check if GitOps generation has failed on a reconcile
 	// Attempt to generate GitOps and set appropriate conditions accordingly
