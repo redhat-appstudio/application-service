@@ -17,6 +17,8 @@ package devfile
 
 import (
 	"fmt"
+	"net/url"
+	"path"
 	"strings"
 
 	"github.com/devfile/api/v2/pkg/apis/workspaces/v1alpha2"
@@ -27,6 +29,7 @@ import (
 	parser "github.com/devfile/library/v2/pkg/devfile/parser"
 	data "github.com/devfile/library/v2/pkg/devfile/parser/data"
 	"github.com/devfile/library/v2/pkg/devfile/parser/data/v2/common"
+	parserUtil "github.com/devfile/library/v2/pkg/util"
 	"golang.org/x/exp/maps"
 
 	appstudiov1alpha1 "github.com/redhat-appstudio/application-api/api/v1alpha1"
@@ -744,29 +747,29 @@ func UpdateLocalDockerfileURItoAbsolute(devfile data.DevfileData, dockerfileURL 
 // If no kubernetes components being defined in devfile, then it's not a valid outerloop devfile, the devfile should be ignored.
 // If more than one kubernetes components in the devfile, but no deploy commands being defined. return an error
 // If more than one image components in the devfile, but no apply commands being defined. return an error
-func ValidateDevfile(log logr.Logger, url string) (shouldIgnoreDevfile bool, devfileBytes []byte, err error) {
-	log.Info(fmt.Sprintf("Validating devfile from %s...", url))
+func ValidateDevfile(log logr.Logger, URL string) (shouldIgnoreDevfile bool, devfileBytes []byte, err error) {
+	log.Info(fmt.Sprintf("Validating devfile from %s...", URL))
 	shouldIgnoreDevfile = false
 	var devfileSrc DevfileSrc
-	if strings.HasPrefix(url, "http://") || strings.HasPrefix(url, "https://") {
+	if strings.HasPrefix(URL, "http://") || strings.HasPrefix(URL, "https://") {
 		devfileSrc = DevfileSrc{
-			URL: url,
+			URL: URL,
 		}
 	} else {
 		devfileSrc = DevfileSrc{
-			Path: url,
+			Path: URL,
 		}
 	}
 
 	devfileData, err := ParseDevfile(devfileSrc)
 	if err != nil {
-		log.Error(err, fmt.Sprintf("failed to parse the devfile content from %s", url))
-		return shouldIgnoreDevfile, nil, fmt.Errorf(fmt.Sprintf("err: %v, failed to parse the devfile content from %s", err, url))
+		log.Error(err, fmt.Sprintf("failed to parse the devfile content from %s", URL))
+		return shouldIgnoreDevfile, nil, fmt.Errorf(fmt.Sprintf("err: %v, failed to parse the devfile content from %s", err, URL))
 	}
 	deployCompMap, err := parser.GetDeployComponents(devfileData)
 	if err != nil {
-		log.Error(err, fmt.Sprintf("failed to get deploy components from %s", url))
-		return shouldIgnoreDevfile, nil, fmt.Errorf(fmt.Sprintf("err: %v, failed to get deploy components from %s", err, url))
+		log.Error(err, fmt.Sprintf("failed to get deploy components from %s", URL))
+		return shouldIgnoreDevfile, nil, fmt.Errorf(fmt.Sprintf("err: %v, failed to get deploy components from %s", err, URL))
 	}
 	devfileBytes, err = yaml.Marshal(devfileData)
 	if err != nil {
@@ -779,12 +782,12 @@ func ValidateDevfile(log logr.Logger, url string) (shouldIgnoreDevfile bool, dev
 	}
 	kubeComp, err := devfileData.GetComponents(kubeCompFilter)
 	if err != nil {
-		log.Error(err, fmt.Sprintf("failed to get kubernetes component from %s", url))
+		log.Error(err, fmt.Sprintf("failed to get kubernetes component from %s", URL))
 		shouldIgnoreDevfile = true
 		return shouldIgnoreDevfile, nil, nil
 	}
 	if len(kubeComp) == 0 {
-		log.Info(fmt.Sprintf("Found 0 kubernetes components being defined in devfile from %s, it is not a valid outerloop definition, the devfile will be ignored. A devfile will be matched from registry...", url))
+		log.Info(fmt.Sprintf("Found 0 kubernetes components being defined in devfile from %s, it is not a valid outerloop definition, the devfile will be ignored. A devfile will be matched from registry...", URL))
 		shouldIgnoreDevfile = true
 		return shouldIgnoreDevfile, nil, nil
 	} else {
@@ -797,7 +800,7 @@ func ValidateDevfile(log logr.Logger, url string) (shouldIgnoreDevfile bool, dev
 				}
 			}
 			if !found {
-				err = fmt.Errorf("found more than one kubernetes components, but no deploy command associated with any being defined in the devfile from %s", url)
+				err = fmt.Errorf("found more than one kubernetes components, but no deploy command associated with any being defined in the devfile from %s", URL)
 				log.Error(err, "failed to validate devfile")
 				return shouldIgnoreDevfile, nil, err
 			}
@@ -811,24 +814,52 @@ func ValidateDevfile(log logr.Logger, url string) (shouldIgnoreDevfile bool, dev
 	}
 	imageComp, err := devfileData.GetComponents(imageCompFilter)
 	if err != nil {
-		log.Error(err, fmt.Sprintf("failed to get image component from %s", url))
-		return shouldIgnoreDevfile, nil, fmt.Errorf(fmt.Sprintf("err: %v, failed to get image component from %s", err, url))
+		log.Error(err, fmt.Sprintf("failed to get image component from %s", URL))
+		return shouldIgnoreDevfile, nil, fmt.Errorf(fmt.Sprintf("err: %v, failed to get image component from %s", err, URL))
 	}
 	if len(imageComp) == 0 {
-		log.Info(fmt.Sprintf("Found 0 image components being defined in devfile from %s, it is not a valid outerloop definition, the devfile will be ignored. A devfile will be matched from registry...", url))
+		log.Info(fmt.Sprintf("Found 0 image components being defined in devfile from %s, it is not a valid outerloop definition, the devfile will be ignored. A devfile will be matched from registry...", URL))
 		shouldIgnoreDevfile = true
 		return shouldIgnoreDevfile, nil, nil
 	} else {
 		if len(imageComp) > 1 {
 			found := false
 			for _, component := range imageComp {
+				if component.Image != nil && component.Image.Dockerfile != nil && component.Image.Dockerfile.DockerfileSrc.Uri != "" {
+					dockerfileURI := component.Image.Dockerfile.DockerfileSrc.Uri
+					absoluteURI := strings.HasPrefix(dockerfileURI, "http://") || strings.HasPrefix(dockerfileURI, "https://")
+					if absoluteURI {
+						// image uri
+						_, err = util.CurlEndpoint(dockerfileURI)
+					} else {
+						if devfileSrc.Path != "" {
+							// local devfile src with relative dockerfile uri
+							dockerfileURI = path.Join(path.Dir(URL), dockerfileURI)
+							err = parserUtil.ValidateFile(dockerfileURI)
+						} else {
+							// remote devfile src with relative dockerfile uri
+							u, err := url.Parse(URL)
+							if err != nil {
+								log.Error(err, fmt.Sprintf("failed to parse from %s", URL))
+								return shouldIgnoreDevfile, nil, fmt.Errorf(fmt.Sprintf("failed to parse from %s", URL))
+							}
+							u.Path = path.Join(u.Path, dockerfileURI)
+							dockerfileURI = u.String()
+							_, err = util.CurlEndpoint(dockerfileURI)
+						}
+					}
+					if err != nil {
+						log.Error(err, fmt.Sprintf("failed to curl from the dockerfile URI %s, invalid image component: %s", URL, component.Name))
+						return shouldIgnoreDevfile, nil, fmt.Errorf(fmt.Sprintf("failed to get dockerfile from the URI %s, invalid image component: %s", URL, component.Name))
+					}
+				}
 				if _, ok := deployCompMap[component.Name]; ok {
 					found = true
 					break
 				}
 			}
 			if !found {
-				err = fmt.Errorf("found more than one image components, but no deploy command associated with any being defined in the devfile from %s", url)
+				err = fmt.Errorf("found more than one image components, but no deploy command associated with any being defined in the devfile from %s", URL)
 				log.Error(err, "failed to validate devfile")
 				return shouldIgnoreDevfile, nil, err
 			}

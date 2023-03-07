@@ -2521,6 +2521,18 @@ func TestValidateDevfile(t *testing.T) {
 	if err != nil {
 		t.Errorf("TestValidateDevfile() unexpected error: %v", err)
 	}
+
+	springDevfileWithAbsoluteDockerfileParser := parserArgs
+	springDevfileWithAbsoluteDockerfileParser.URL = "https://raw.githubusercontent.com/yangcao77/spring-sample-with-absolute-dockerfileURI/main/devfile.yaml"
+	springDevfileObjWithAbsoluteDockerfile, _, err := devfilePkg.ParseDevfileAndValidate(springDevfileWithAbsoluteDockerfileParser)
+	if err != nil {
+		t.Errorf("TestValidateDevfile() unexpected error: %v", err)
+	}
+	springDevfileWithAbsoluteDockerfileBytes, err := yaml.Marshal(springDevfileObjWithAbsoluteDockerfile.Data)
+	if err != nil {
+		t.Errorf("TestValidateDevfile() unexpected error: %v", err)
+	}
+
 	tests := []struct {
 		name             string
 		url              string
@@ -2529,9 +2541,16 @@ func TestValidateDevfile(t *testing.T) {
 		wantErr          bool
 	}{
 		{
-			name:             "should success with valid deploy.yaml URI references",
+			name:             "should success with valid deploy.yaml URI and relative dockerfile URI references",
 			url:              springDevfileParser.URL,
 			wantDevfileBytes: springDevfileBytes,
+			wantIgnore:       false,
+			wantErr:          false,
+		},
+		{
+			name:             "should success with valid dockerfile absolute URL references",
+			url:              springDevfileWithAbsoluteDockerfileParser.URL,
+			wantDevfileBytes: springDevfileWithAbsoluteDockerfileBytes,
 			wantIgnore:       false,
 			wantErr:          false,
 		},
