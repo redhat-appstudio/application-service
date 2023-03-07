@@ -838,7 +838,8 @@ func ValidateDevfile(log logr.Logger, URL string) (shouldIgnoreDevfile bool, dev
 							err = parserUtil.ValidateFile(dockerfileURI)
 						} else {
 							// remote devfile src with relative dockerfile uri
-							u, err := url.Parse(URL)
+							var u *url.URL
+							u, err = url.Parse(URL)
 							if err != nil {
 								log.Error(err, fmt.Sprintf("failed to parse from %s", URL))
 								return shouldIgnoreDevfile, nil, fmt.Errorf(fmt.Sprintf("failed to parse from %s", URL))
