@@ -45,6 +45,7 @@ type AlizerClient struct {
 // Map 1 returns a context to the devfile bytes if present.
 // Map 2 returns a context to the matched devfileURL from the github repository. If no devfile was present, then a link to a matching devfile in the devfile registry will be used instead.
 // Map 3 returns a context to the dockerfile uri or a matched dockerfileURL from the devfile registry if no dockerfile is present in the context
+// Map 4 returns a context to the list of ports that were detected by alizer in the source code, at that given context
 func search(log logr.Logger, a Alizer, localpath string, devfileRegistryURL string, source appstudiov1alpha1.GitSource) (map[string][]byte, map[string]string, map[string]string, map[string][]int, error) {
 
 	devfileMapFromRepo := make(map[string][]byte)
@@ -152,6 +153,11 @@ func search(log logr.Logger, a Alizer, localpath string, devfileRegistryURL stri
 }
 
 // AnalyzePath checks if a devfile or a dockerfile can be found in the localpath for the given context, this is a helper func used by the CDQ controller
+// In addition to returning an error, the following maps may be updated:
+// devfileMapFromRepo: a context to the devfile bytes if present
+// devfilesURLMapFromRepo: a context to the matched devfileURL from the github repository. If no devfile was present, then a link to a matching devfile in the devfile registry will be used instead.
+// dockerfileContextMapFromRepo: a context to the dockerfile uri or a matched dockerfileURL from the devfile registry if no dockerfile is present in the context
+// componentPortsMapFromRepo: a context to the list of ports that were detected by alizer in the source code, at that given context
 func AnalyzePath(a Alizer, localpath, context, devfileRegistryURL string, devfileMapFromRepo map[string][]byte, devfilesURLMapFromRepo, dockerfileContextMapFromRepo map[string]string, componentPortsMapFromRepo map[string][]int, isDevfilePresent, isDockerfilePresent bool) error {
 	if isDevfilePresent {
 		// If devfile is present, check to see if we can determine a Dockerfile from it
@@ -271,6 +277,11 @@ func (a AlizerClient) DetectComponents(path string) ([]model.Component, error) {
 }
 
 // AnalyzeAndDetectDevfile analyzes and attempts to detect a devfile from the devfile registry for a given local path
+// The following values are returned, in addition to an error
+// 1. the detected devfile, in bytes
+// 2. the detected endpoints in the devfile
+// 3. the detected type of the source code
+// 4. the detected ports found in the source code
 func AnalyzeAndDetectDevfile(a Alizer, path, devfileRegistryURL string) ([]byte, string, string, []int, error) {
 	var devfileBytes []byte
 	alizerDevfileTypes, err := getAlizerDevfileTypes(devfileRegistryURL)
