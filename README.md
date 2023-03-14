@@ -134,6 +134,7 @@ Webhooks require self-signed certificates to validate the resources. To disable 
 * Every Prow job executed by the CI system generates an artifacts directory containing information about that execution and its results. This [document](https://docs.ci.openshift.org/docs/how-tos/artifacts/) describes the contents of this directory and how they can be used to investigate the steps by the job.
 * For more information on the GitOps resource generation, please refer to the [gitops-generation](./docs/gitops-generation.md) documentation
 * Contract testing using a Pact framework is part of unit tests. Follow [this documentation](pactTests.md) to learn more.
+* For more information on application-service serviceability like logs, debugging, common problems and FAQs; please refer to the [serviceability](./docs/serviceability.md) documentation
 
 ## Contributions
 
