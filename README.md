@@ -67,17 +67,13 @@ Pipelines would use the credentials in the image pull secret `redhat-appstudio-r
 
 ### Creating a GitHub Secret for HAS
 
-Before deploying the operator, you must ensure that a secret, `has-github-token`, exists in the namespace where HAS will be deployed. This secret must contain a key-value pair, where the key is `token` and where the value points to a valid GitHub Personal Access Token.
+Before deploying the operator, you must ensure that a secret, `has-github-token`, exists in the namespace where HAS will be deployed. This secret must contain a key-value pair, where the key is `tokens` and where the value points to a comma separated list, without spaces, of valid (classic) GitHub Personal Access Token(s).
 
 The token that is used here must have the following permissions set:
 - `repo`
 - `delete_repo`
 
-You can also set an optional key-value pair for component detection query specifically, where the key is `cdq-token` and where the value points to a valid GitHub Personal Access Token. If the `cdq-token` does not exist, it will fall back to use `token` instead. 
-The token that is used here must have the following permissions set:
-- `repo`
-
-In addition to this, the GitHub token must be associated with an account that has write access to the GitHub organization you plan on using with HAS (see next section).
+In addition to this, each GitHub token must be associated with an account that has write access to the GitHub organization you plan on using with HAS (see next section).
 
 For example, on OpenShift:
 <img width="862" alt="Screen Shot 2021-12-14 at 1 08 43 AM" src="https://user-images.githubusercontent.com/6880023/145942734-63422532-6fad-4017-9d26-79436fe241b8.png">
