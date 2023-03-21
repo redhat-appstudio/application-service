@@ -1,5 +1,5 @@
 /*
-Copyright 2022 Red Hat, Inc.
+Copyright 2022-2023 Red Hat, Inc.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -21,7 +21,6 @@ import (
 	"fmt"
 	"path/filepath"
 
-	gh "github.com/google/go-github/v41/github"
 	gitopsgenv1alpha1 "github.com/redhat-developer/gitops-generator/api/v1alpha1"
 	gitopsgen "github.com/redhat-developer/gitops-generator/pkg"
 	"go.uber.org/zap/zapcore"
@@ -52,12 +51,12 @@ import (
 // SnapshotEnvironmentBindingReconciler reconciles a SnapshotEnvironmentBinding object
 type SnapshotEnvironmentBindingReconciler struct {
 	client.Client
-	Scheme       *runtime.Scheme
-	Log          logr.Logger
-	AppFS        afero.Afero
-	Generator    gitopsgen.Generator
-	GitHubClient *gh.Client
-	GitToken     string
+	Scheme            *runtime.Scheme
+	Log               logr.Logger
+	AppFS             afero.Afero
+	Generator         gitopsgen.Generator
+	GitHubTokenClient github.GitHubToken
+	GitToken          string
 }
 
 //+kubebuilder:rbac:groups=appstudio.redhat.com,resources=snapshotenvironmentbindings,verbs=get;list;watch;create;update;patch;delete
@@ -98,6 +97,11 @@ func (r *SnapshotEnvironmentBindingReconciler) Reconcile(ctx context.Context, re
 	}
 
 	log.Info(fmt.Sprintf("Starting reconcile loop for %v %v", appSnapshotEnvBinding.Name, req.NamespacedName))
+
+	ghClient, err := r.GitHubTokenClient.GetNewGitHubClient()
+	if err != nil {
+		log.Error(err, "Unable to create Go-GitHub client due to error")
+	}
 
 	applicationName := appSnapshotEnvBinding.Spec.Application
 	environmentName := appSnapshotEnvBinding.Spec.Environment
@@ -268,7 +272,7 @@ func (r *SnapshotEnvironmentBindingReconciler) Reconcile(ctx context.Context, re
 			r.SetConditionAndUpdateCR(ctx, req, &appSnapshotEnvBinding, gitOpsErr)
 			return ctrl.Result{}, gitOpsErr
 		}
-		commitID, err = github.GetLatestCommitSHAFromRepository(r.GitHubClient, ctx, repoName, orgName, gitOpsBranch)
+		commitID, err = github.GetLatestCommitSHAFromRepository(ghClient, ctx, repoName, orgName, gitOpsBranch)
 		if err != nil {
 			gitOpsErr := &GitOpsCommitIdError{err}
 			log.Error(gitOpsErr, "")

@@ -61,15 +61,15 @@ import (
 // ComponentReconciler reconciles a Component object
 type ComponentReconciler struct {
 	client.Client
-	Scheme          *runtime.Scheme
-	Log             logr.Logger
-	GitToken        string
-	GitHubOrg       string
-	ImageRepository string
-	Generator       gitopsgen.Generator
-	AppFS           afero.Afero
-	SPIClient       spi.SPI
-	GitHubClient    *gh.Client
+	Scheme            *runtime.Scheme
+	Log               logr.Logger
+	GitToken          string
+	GitHubOrg         string
+	ImageRepository   string
+	Generator         gitopsgen.Generator
+	AppFS             afero.Afero
+	SPIClient         spi.SPI
+	GitHubTokenClient github.GitHubToken
 }
 
 const (
@@ -131,6 +131,11 @@ func (r *ComponentReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 	}
 
 	setCounterAnnotation(applicationFailCounterAnnotation, &component, 0)
+
+	ghClient, err := r.GitHubTokenClient.GetNewGitHubClient()
+	if err != nil {
+		log.Error(err, "Unable to create Go-GitHub client due to error")
+	}
 
 	// Check if the Component CR is under deletion
 	// If so: Remove the project from the Application devfile, remove the component dir from the Gitops repo and remove the finalizer.
@@ -203,7 +208,7 @@ func (r *ComponentReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 				r.SetGitOpsGeneratedConditionAndUpdateCR(ctx, &component, fmt.Errorf("%v: %v", errMsg, err))
 				return ctrl.Result{}, err
 			}
-			if err := r.generateGitops(ctx, req, &component, compDevfileData); err != nil {
+			if err := r.generateGitops(ctx, ghClient, req, &component, compDevfileData); err != nil {
 				errMsg := fmt.Sprintf("Unable to generate gitops resources for component %v", req.NamespacedName)
 				log.Error(err, errMsg)
 				r.SetGitOpsGeneratedConditionAndUpdateCR(ctx, &component, fmt.Errorf("%v: %v", errMsg, err))
@@ -417,7 +422,7 @@ func (r *ComponentReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 
 			// Generate and push the gitops resources
 			if !component.Spec.SkipGitOpsResourceGeneration {
-				if err := r.generateGitops(ctx, req, &component, compDevfileData); err != nil {
+				if err := r.generateGitops(ctx, ghClient, req, &component, compDevfileData); err != nil {
 					errMsg := fmt.Sprintf("Unable to generate gitops resources for component %v", req.NamespacedName)
 					log.Error(err, errMsg)
 					r.SetGitOpsGeneratedConditionAndUpdateCR(ctx, &component, fmt.Errorf("%v: %v", errMsg, err))
@@ -490,7 +495,7 @@ func (r *ComponentReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 
 			// Generate and push the gitops resources, if necessary.
 			if !component.Spec.SkipGitOpsResourceGeneration {
-				if err := r.generateGitops(ctx, req, &component, hasCompDevfileData); err != nil {
+				if err := r.generateGitops(ctx, ghClient, req, &component, hasCompDevfileData); err != nil {
 					errMsg := fmt.Sprintf("Unable to generate gitops resources for component %v", req.NamespacedName)
 					log.Error(err, errMsg)
 					r.SetGitOpsGeneratedConditionAndUpdateCR(ctx, &component, fmt.Errorf("%v: %v", errMsg, err))
@@ -513,7 +518,7 @@ func (r *ComponentReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 
 // generateGitops retrieves the necessary information about a Component's gitops repository (URL, branch, context)
 // and attempts to use the GitOps package to generate gitops resources based on that component
-func (r *ComponentReconciler) generateGitops(ctx context.Context, req ctrl.Request, component *appstudiov1alpha1.Component, compDevfileData data.DevfileData) error {
+func (r *ComponentReconciler) generateGitops(ctx context.Context, ghClient *gh.Client, req ctrl.Request, component *appstudiov1alpha1.Component, compDevfileData data.DevfileData) error {
 	log := r.Log.WithValues("Component", req.NamespacedName).WithValues("clusterName", req.ClusterName)
 
 	gitOpsURL, gitOpsBranch, gitOpsContext, err := util.ProcessGitOpsStatus(component.Status.GitOps, r.GitToken)
@@ -564,7 +569,7 @@ func (r *ComponentReconciler) generateGitops(ctx context.Context, req ctrl.Reque
 		log.Error(gitOpsErr, "")
 		return gitOpsErr
 	}
-	commitID, err = github.GetLatestCommitSHAFromRepository(r.GitHubClient, ctx, repoName, orgName, gitOpsBranch)
+	commitID, err = github.GetLatestCommitSHAFromRepository(ghClient, ctx, repoName, orgName, gitOpsBranch)
 	if err != nil {
 		gitOpsErr := &GitOpsCommitIdError{err}
 		log.Error(gitOpsErr, "")
