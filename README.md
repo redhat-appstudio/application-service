@@ -67,16 +67,22 @@ Pipelines would use the credentials in the image pull secret `redhat-appstudio-r
 
 ### Creating a GitHub Secret for HAS
 
-Before deploying the operator, you must ensure that a secret, `has-github-token`, exists in the namespace where HAS will be deployed. This secret must contain a key-value pair, where the key is `tokens` and where the value points to a comma separated list, without spaces, of valid (classic) GitHub Personal Access Token(s).
+Before deploying the operator, you must ensure that a secret, `has-github-token`, exists in the namespace where HAS will be deployed. This secret must contain a key, `tokens`, whose value points to a comma separated list, without spaces, of key-value pairs of token names and tokens, delimited by a colon. 
 
-The token that is used here must have the following permissions set:
+For example, on OpenShift:
+<img width="801" alt="Screenshot 2023-03-22 at 3 53 11 PM" src="https://user-images.githubusercontent.com/6880023/227020767-30b3db08-e191-4ec1-81df-81ae2df55d79.png">
+
+Or via command-line:
+```bash
+application-service % kubectl create secret generic has-github-token --from-literal=tokens=token1:ghp_faketoken,token2:ghp_anothertoken,token3:ghp_thirdtoken
+```
+
+Any token that is used here must have the following permissions set:
 - `repo`
 - `delete_repo`
 
 In addition to this, each GitHub token must be associated with an account that has write access to the GitHub organization you plan on using with HAS (see next section).
 
-For example, on OpenShift:
-<img width="862" alt="Screen Shot 2021-12-14 at 1 08 43 AM" src="https://user-images.githubusercontent.com/6880023/145942734-63422532-6fad-4017-9d26-79436fe241b8.png">
 
 ### Using Private Git Repos
 
