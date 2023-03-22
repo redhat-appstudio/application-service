@@ -1418,7 +1418,7 @@ func TestGetComponentName(t *testing.T) {
 			gitSource: &appstudiov1alpha1.GitSource{
 				URL: "https://github.com/devfile-samples/123-testdevfilego--ImportRepository--withaverylongreporitoryname-test-validation-and-generation",
 			},
-			expectedName: "123-testdevfilego--importrepository--withaverylongreporito",
+			expectedName: "comp-123-testdevfilego--importrepository--withaverylongrep",
 		},
 		{
 			name: "numeric repo name",
