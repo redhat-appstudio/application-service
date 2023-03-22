@@ -15,14 +15,12 @@
 
 package github
 
-import (
-	"github.com/google/go-github/v41/github"
-)
-
 type MockGitHubTokenClient struct {
 }
 
 // GetNewGitHubClient returns a mocked Go-GitHub client. No actual tokens are passed in or used when this function is called
-func (g MockGitHubTokenClient) GetNewGitHubClient() (*github.Client, string, error) {
-	return GetMockedClient(), "", nil
+func (g MockGitHubTokenClient) GetNewGitHubClient() (GitHubClient, error) {
+	return GitHubClient{
+		Client: GetMockedClient(),
+	}, nil
 }

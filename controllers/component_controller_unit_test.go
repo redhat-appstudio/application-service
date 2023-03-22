@@ -556,8 +556,10 @@ func TestGenerateGitops(t *testing.T) {
 			}
 			mockKubernetesComponents := mockDevfileData.EXPECT().GetComponents(kubernetesComponentFilter)
 			mockKubernetesComponents.Return(kubernetesComponents, nil).AnyTimes()
-
-			err := tt.reconciler.generateGitops(ctx, github.GetMockedClient(), ctrl.Request{}, tt.component, mockDevfileData)
+			mockedClient := github.GitHubClient{
+				Client: github.GetMockedClient(),
+			}
+			err := tt.reconciler.generateGitops(ctx, mockedClient, ctrl.Request{}, tt.component, mockDevfileData)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("TestGenerateGitops() unexpected error: %v", err)
 			}

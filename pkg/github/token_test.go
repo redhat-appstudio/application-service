@@ -172,10 +172,10 @@ func TestGetNewGitHubClient(t *testing.T) {
 			}
 
 			_ = ParseGitHubTokens()
-			_, tokenName, err := tt.client.GetNewGitHubClient()
+			ghClient, err := tt.client.GetNewGitHubClient()
 			if tt.name != "Mock client" && !tt.wantErr {
-				if Tokens[tokenName] == "" {
-					t.Errorf("TestGetNewGitHubClient() error: expected token value %v with key %v", Tokens[tokenName], tokenName)
+				if Tokens[ghClient.TokenName] == "" {
+					t.Errorf("TestGetNewGitHubClient() error: expected token value %v with key %v", Tokens[ghClient.TokenName], ghClient.TokenName)
 				}
 			}
 			if tt.wantErr != (err != nil) {

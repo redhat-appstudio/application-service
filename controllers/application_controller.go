@@ -88,7 +88,7 @@ func (r *ApplicationReconciler) Reconcile(ctx context.Context, req ctrl.Request)
 		return reconcile.Result{}, err
 	}
 
-	ghClient, _, err := r.GitHubTokenClient.GetNewGitHubClient()
+	ghClient, err := r.GitHubTokenClient.GetNewGitHubClient()
 	if err != nil {
 		log.Error(err, "Unable to create Go-GitHub client due to error")
 		return reconcile.Result{}, err
@@ -144,7 +144,7 @@ func (r *ApplicationReconciler) Reconcile(ctx context.Context, req ctrl.Request)
 			repoName := github.GenerateNewRepositoryName(application.Name, uniqueHash)
 
 			// Generate the git repo in the redhat-appstudio-appdata org
-			repoUrl, err := github.GenerateNewRepository(ghClient, ctx, r.GitHubOrg, repoName, "GitOps Repository")
+			repoUrl, err := ghClient.GenerateNewRepository(ctx, r.GitHubOrg, repoName, "GitOps Repository")
 			if err != nil {
 				log.Error(err, fmt.Sprintf("Unable to create repository %v", repoUrl))
 				r.SetCreateConditionAndUpdateCR(ctx, req, &application, err)

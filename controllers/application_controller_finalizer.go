@@ -21,7 +21,6 @@ import (
 	"strconv"
 	"strings"
 
-	gh "github.com/google/go-github/v41/github"
 	appstudiov1alpha1 "github.com/redhat-appstudio/application-api/api/v1alpha1"
 	devfile "github.com/redhat-appstudio/application-service/pkg/devfile"
 	github "github.com/redhat-appstudio/application-service/pkg/github"
@@ -47,7 +46,7 @@ func (r *ApplicationReconciler) AddFinalizer(ctx context.Context, application *a
 }
 
 // Finalize deletes the corresponding GitOps repo for the given Application CR.
-func (r *ApplicationReconciler) Finalize(application *appstudiov1alpha1.Application, client *gh.Client) error {
+func (r *ApplicationReconciler) Finalize(application *appstudiov1alpha1.Application, ghClient github.GitHubClient) error {
 	// Get the GitOps repository URL
 	devfileSrc := devfile.DevfileSrc{
 		Data: application.Status.Devfile,
@@ -68,7 +67,7 @@ func (r *ApplicationReconciler) Finalize(application *appstudiov1alpha1.Applicat
 		if err != nil {
 			return err
 		}
-		return github.DeleteRepository(client, context.Background(), r.GitHubOrg, repoName)
+		return ghClient.DeleteRepository(context.Background(), r.GitHubOrg, repoName)
 	}
 	return nil
 }

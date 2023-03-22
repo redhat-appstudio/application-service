@@ -99,7 +99,7 @@ func (r *SnapshotEnvironmentBindingReconciler) Reconcile(ctx context.Context, re
 
 	log.Info(fmt.Sprintf("Starting reconcile loop for %v %v", appSnapshotEnvBinding.Name, req.NamespacedName))
 
-	ghClient, _, err := r.GitHubTokenClient.GetNewGitHubClient()
+	ghClient, err := r.GitHubTokenClient.GetNewGitHubClient()
 	if err != nil {
 		log.Error(err, "Unable to create Go-GitHub client due to error")
 		return reconcile.Result{}, err
@@ -274,7 +274,7 @@ func (r *SnapshotEnvironmentBindingReconciler) Reconcile(ctx context.Context, re
 			r.SetConditionAndUpdateCR(ctx, req, &appSnapshotEnvBinding, gitOpsErr)
 			return ctrl.Result{}, gitOpsErr
 		}
-		commitID, err = github.GetLatestCommitSHAFromRepository(ghClient, ctx, repoName, orgName, gitOpsBranch)
+		commitID, err = ghClient.GetLatestCommitSHAFromRepository(ctx, repoName, orgName, gitOpsBranch)
 		if err != nil {
 			gitOpsErr := &GitOpsCommitIdError{err}
 			log.Error(gitOpsErr, "")

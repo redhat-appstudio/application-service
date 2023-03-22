@@ -29,7 +29,7 @@ import (
 )
 
 type GitHubToken interface {
-	GetNewGitHubClient() (*github.Client, string, error)
+	GetNewGitHubClient() (GitHubClient, error)
 }
 
 type GitHubTokenClient struct {
@@ -104,19 +104,23 @@ func getRandomToken() (string, string, error) {
 // GetNewGitHubClient intializes a new Go-GitHub client from a randomly selected GitHub token available to HAS
 // It returns the GitHub client, and the name of the token used for the client
 // If an error is encountered retrieving the token, or initializing the client, an error is returned
-func (g GitHubTokenClient) GetNewGitHubClient() (*github.Client, string, error) {
+func (g GitHubTokenClient) GetNewGitHubClient() (GitHubClient, error) {
 	ghToken, ghTokenName, err := getRandomToken()
 	if err != nil {
-		return nil, "", err
+		return GitHubClient{}, err
 	}
 
 	ts := oauth2.StaticTokenSource(&oauth2.Token{AccessToken: ghToken})
 	tc := oauth2.NewClient(context.Background(), ts)
 	rateLimiter, err := github_ratelimit.NewRateLimitWaiterClient(tc.Transport, github_ratelimit.WithSingleSleepLimit(time.Minute, nil))
 	if err != nil {
-		return nil, "", err
+		return GitHubClient{}, err
 	}
 	client := github.NewClient(rateLimiter)
+	githubClient := GitHubClient{
+		TokenName: ghTokenName,
+		Client:    client,
+	}
 
-	return client, ghTokenName, nil
+	return githubClient, nil
 }

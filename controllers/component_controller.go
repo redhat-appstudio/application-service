@@ -45,7 +45,6 @@ import (
 	devfileParser "github.com/devfile/library/v2/pkg/devfile/parser"
 	data "github.com/devfile/library/v2/pkg/devfile/parser/data"
 	"github.com/go-logr/logr"
-	gh "github.com/google/go-github/v41/github"
 	logicalcluster "github.com/kcp-dev/logicalcluster/v2"
 
 	appstudiov1alpha1 "github.com/redhat-appstudio/application-api/api/v1alpha1"
@@ -133,7 +132,7 @@ func (r *ComponentReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 
 	setCounterAnnotation(applicationFailCounterAnnotation, &component, 0)
 
-	ghClient, _, err := r.GitHubTokenClient.GetNewGitHubClient()
+	ghClient, err := r.GitHubTokenClient.GetNewGitHubClient()
 	if err != nil {
 		log.Error(err, "Unable to create Go-GitHub client due to error")
 		return reconcile.Result{}, err
@@ -520,7 +519,7 @@ func (r *ComponentReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 
 // generateGitops retrieves the necessary information about a Component's gitops repository (URL, branch, context)
 // and attempts to use the GitOps package to generate gitops resources based on that component
-func (r *ComponentReconciler) generateGitops(ctx context.Context, ghClient *gh.Client, req ctrl.Request, component *appstudiov1alpha1.Component, compDevfileData data.DevfileData) error {
+func (r *ComponentReconciler) generateGitops(ctx context.Context, ghClient github.GitHubClient, req ctrl.Request, component *appstudiov1alpha1.Component, compDevfileData data.DevfileData) error {
 	log := r.Log.WithValues("Component", req.NamespacedName).WithValues("clusterName", req.ClusterName)
 
 	gitOpsURL, gitOpsBranch, gitOpsContext, err := util.ProcessGitOpsStatus(component.Status.GitOps, r.GitToken)
@@ -571,7 +570,7 @@ func (r *ComponentReconciler) generateGitops(ctx context.Context, ghClient *gh.C
 		log.Error(gitOpsErr, "")
 		return gitOpsErr
 	}
-	commitID, err = github.GetLatestCommitSHAFromRepository(ghClient, ctx, repoName, orgName, gitOpsBranch)
+	commitID, err = ghClient.GetLatestCommitSHAFromRepository(ctx, repoName, orgName, gitOpsBranch)
 	if err != nil {
 		gitOpsErr := &GitOpsCommitIdError{err}
 		log.Error(gitOpsErr, "")
