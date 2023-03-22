@@ -70,9 +70,11 @@ Pipelines would use the credentials in the image pull secret `redhat-appstudio-r
 Before deploying the operator, you must ensure that a secret, `has-github-token`, exists in the namespace where HAS will be deployed. This secret must contain a key, `tokens`, whose value points to a comma separated list, without spaces, of key-value pairs of token names and tokens, delimited by a colon. 
 
 For example, on OpenShift:
+
 <img width="801" alt="Screenshot 2023-03-22 at 3 53 11 PM" src="https://user-images.githubusercontent.com/6880023/227020767-30b3db08-e191-4ec1-81df-81ae2df55d79.png">
 
 Or via command-line:
+
 ```bash
 application-service % kubectl create secret generic has-github-token --from-literal=tokens=token1:ghp_faketoken,token2:ghp_anothertoken,token3:ghp_thirdtoken
 ```
