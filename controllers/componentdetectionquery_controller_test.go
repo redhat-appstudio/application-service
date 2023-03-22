@@ -1226,7 +1226,7 @@ var _ = Describe("Component Detection Query controller", func() {
 					},
 					Spec: appstudiov1alpha1.ComponentDetectionQuerySpec{
 						GitSource: appstudiov1alpha1.GitSource{
-							URL:      "https://github.com/devfile-resources/todo-spring-boot",
+							URL:      "https://github.com/devfile-resources/todo-spring-boot/",
 							Revision: "main",
 						},
 					},
