@@ -29,7 +29,7 @@ import (
 )
 
 type GitHubToken interface {
-	GetNewGitHubClient() (*github.Client, error)
+	GetNewGitHubClient() (*github.Client, string, error)
 }
 
 type GitHubTokenClient struct {
@@ -44,7 +44,7 @@ func ParseGitHubTokens() error {
 	githubToken := os.Getenv("GITHUB_AUTH_TOKEN")
 	githubTokenList := os.Getenv("GITHUB_TOKEN_LIST")
 	if githubToken == "" && githubTokenList == "" {
-		return fmt.Errorf("no GitHub tokens were provided. Either GITHUB_TOKENS or GITHUB_AUTH_TOKEN (legacy) must be set")
+		return fmt.Errorf("no GitHub tokens were provided. Either GITHUB_TOKEN_LIST or GITHUB_AUTH_TOKEN (legacy) must be set")
 	}
 
 	Tokens = make(map[string]string)
@@ -81,43 +81,42 @@ func ParseGitHubTokens() error {
 }
 
 // getRandomToken randomly retrieves a token from all of the tokens available to HAS
-func getRandomToken() (string, error) {
+// It returns the token and the name/key of the token
+func getRandomToken() (string, string, error) {
 	if len(Tokens) == 0 {
-		return "", fmt.Errorf("no GitHub tokens initialized")
+		return "", "", fmt.Errorf("no GitHub tokens initialized")
 	}
-	var index int
-	if len(Tokens) == 1 {
-		index = 0
-	} else {
-		index = rand.Intn(len(Tokens) - 1)
-	}
+	/* #nosec G404 -- not used for cryptographic purposes*/
+	index := rand.Intn(len(Tokens))
 
 	i := 0
-	var token string
-	for _, t := range Tokens {
+	var tokenName, token string
+	for k, v := range Tokens {
 		if i == index {
-			token = t
+			tokenName = k
+			token = v
 		}
 		i++
 	}
-	return token, nil
+	return token, tokenName, nil
 }
 
 // GetNewGitHubClient intializes a new Go-GitHub client from a randomly selected GitHub token available to HAS
+// It returns the GitHub client, and the name of the token used for the client
 // If an error is encountered retrieving the token, or initializing the client, an error is returned
-func (g GitHubTokenClient) GetNewGitHubClient() (*github.Client, error) {
-	ghToken, err := getRandomToken()
+func (g GitHubTokenClient) GetNewGitHubClient() (*github.Client, string, error) {
+	ghToken, ghTokenName, err := getRandomToken()
 	if err != nil {
-		return nil, err
+		return nil, "", err
 	}
 
 	ts := oauth2.StaticTokenSource(&oauth2.Token{AccessToken: ghToken})
 	tc := oauth2.NewClient(context.Background(), ts)
 	rateLimiter, err := github_ratelimit.NewRateLimitWaiterClient(tc.Transport, github_ratelimit.WithSingleSleepLimit(time.Minute, nil))
 	if err != nil {
-		return nil, err
+		return nil, "", err
 	}
 	client := github.NewClient(rateLimiter)
 
-	return client, nil
+	return client, ghTokenName, nil
 }

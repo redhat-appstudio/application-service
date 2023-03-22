@@ -135,7 +135,7 @@ func (r *ComponentDetectionQueryReconciler) Reconcile(ctx context.Context, req c
 		}
 		if source.Revision == "" {
 			// Create a Go-GitHub client for checking the default branch
-			ghClient, err := r.GitHubTokenClient.GetNewGitHubClient()
+			ghClient, _, err := r.GitHubTokenClient.GetNewGitHubClient()
 			if err != nil {
 				log.Error(err, "Unable to create Go-GitHub client due to error")
 				return reconcile.Result{}, err
