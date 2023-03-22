@@ -1418,7 +1418,7 @@ func TestGetComponentName(t *testing.T) {
 			gitSource: &appstudiov1alpha1.GitSource{
 				URL: "https://github.com/devfile-samples/123-testdevfilego--ImportRepository--withaverylongreporitoryname-test-validation-and-generation",
 			},
-			expectedName: "123-testdevfilego--importrepository--withaverylongreporito",
+			expectedName: "comp-123-testdevfilego--importrepository--withaverylongrep",
 		},
 		{
 			name: "numeric repo name",
@@ -1495,6 +1495,11 @@ func TestSanitizeComponentName(t *testing.T) {
 			name:          "simple component name, all numbers",
 			componentName: "123412341234",
 			want:          "comp-123412341234",
+		},
+		{
+			name:          "simple component name, start with a number",
+			componentName: "123-testcomp",
+			want:          "comp-123-testcomp",
 		},
 		{
 			name:          "Empty string, should have a name generated for it",

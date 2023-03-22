@@ -128,6 +128,11 @@ func (r *ComponentDetectionQueryReconciler) Reconcile(ctx context.Context, req c
 		if context == "" {
 			context = "./"
 		}
+		sourceURL := source.URL
+		// If the repository URL ends in a forward slash, remove it to avoid issues with default branch lookup
+		if string(sourceURL[len(sourceURL)-1]) == "/" {
+			sourceURL = sourceURL[0 : len(sourceURL)-1]
+		}
 		if source.Revision == "" {
 			// Create a Go-GitHub client for checking the default branch
 			ghClient, err := r.GitHubTokenClient.GetNewGitHubClient()
@@ -137,10 +142,10 @@ func (r *ComponentDetectionQueryReconciler) Reconcile(ctx context.Context, req c
 			}
 
 			log.Info(fmt.Sprintf("Look for default branch of repo %s... %v", source.URL, req.NamespacedName))
-			source.Revision, err = github.GetDefaultBranchFromURL(source.URL, ghClient, ctx)
+			source.Revision, err = github.GetDefaultBranchFromURL(sourceURL, ghClient, ctx)
 			if err != nil {
 				log.Error(err, fmt.Sprintf("Unable to get default branch of Github Repo %v, try to fall back to main branch... %v", source.URL, req.NamespacedName))
-				_, err := github.GetBranchFromURL(source.URL, ghClient, ctx, "main")
+				_, err := github.GetBranchFromURL(sourceURL, ghClient, ctx, "main")
 				if err != nil {
 					log.Error(err, fmt.Sprintf("Unable to get main branch of Github Repo %v ... %v", source.URL, req.NamespacedName))
 					retErr := fmt.Errorf("unable to get default branch of Github Repo %v, try to fall back to main branch, failed to get main branch... %v", source.URL, req.NamespacedName)
