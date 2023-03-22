@@ -19,8 +19,8 @@ package controllers
 import (
 	"fmt"
 	"regexp"
-	"strconv"
 	"strings"
+	"unicode"
 
 	"github.com/brianvoe/gofakeit/v6"
 	devfileAPIV1 "github.com/devfile/api/v2/pkg/apis/workspaces/v1alpha2"
@@ -535,7 +535,7 @@ func getComponentName(gitSource *appstudiov1alpha1.GitSource) string {
 // sanitizeComponentName sanitizes component name with the following requirements:
 // - Contain at most 63 characters
 // - Contain only lowercase alphanumeric characters or ‘-’
-// - Start with an alphanumeric character
+// - Start with an alphabet character
 // - End with an alphanumeric character
 // - Must not contain all numeric values
 func sanitizeComponentName(name string) string {
@@ -546,14 +546,11 @@ func sanitizeComponentName(name string) string {
 	if name == "" {
 		name = gofakeit.Noun()
 	}
-	_, err := strconv.ParseFloat(name, 64)
-	if err != nil {
-		// convert all Uppercase chars to lowercase
-		name = strings.ToLower(name)
-	} else {
-		// contains only numeric values, prefix a character
+	if unicode.IsDigit(rune(name[0])) {
+		// starts with numeric values, prefix a character
 		name = fmt.Sprintf("comp-%s", name)
 	}
+	name = strings.ToLower(name)
 	if len(name) > 58 {
 		name = name[0:58]
 	}
