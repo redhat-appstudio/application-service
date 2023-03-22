@@ -1497,6 +1497,11 @@ func TestSanitizeComponentName(t *testing.T) {
 			want:          "comp-123412341234",
 		},
 		{
+			name:          "simple component name, start with a number",
+			componentName: "123-testcomp",
+			want:          "comp-123-testcomp",
+		},
+		{
 			name:          "Empty string, should have a name generated for it",
 			componentName: "",
 		},
