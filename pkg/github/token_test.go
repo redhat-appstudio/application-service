@@ -26,7 +26,7 @@ func TestParseGitHubTokens(t *testing.T) {
 		name               string
 		githubTokenEnv     string
 		githubTokenListEnv string
-		want               []string
+		want               map[string]string
 		wantErr            bool
 	}{
 		{
@@ -36,24 +36,60 @@ func TestParseGitHubTokens(t *testing.T) {
 		{
 			name:           "Only one token, stored in GITHUB_AUTH_TOKEN",
 			githubTokenEnv: "some_token",
-			want:           []string{"some_token"},
+			want: map[string]string{
+				"GITHUB_AUTH_TOKEN": "some_token",
+			},
 		},
 		{
 			name:               "Only one token, stored in GITHUB_TOKEN_LIST",
-			githubTokenListEnv: "list_token",
-			want:               []string{"list_token"},
+			githubTokenListEnv: "token1:list_token",
+			want: map[string]string{
+				"token1": "list_token",
+			},
 		},
 		{
 			name:               "Two tokens, one each stored in GITHUB_AUTH_TOKEN and GITHUB_TOKEN_LIST",
 			githubTokenEnv:     "some_token",
-			githubTokenListEnv: "list_token",
-			want:               []string{"some_token", "list_token"},
+			githubTokenListEnv: "token1:list_token",
+			want: map[string]string{
+				"GITHUB_AUTH_TOKEN": "some_token",
+				"token1":            "list_token",
+			},
 		},
 		{
 			name:               "Multiple tokens",
 			githubTokenEnv:     "some_token",
-			githubTokenListEnv: "list_token,another_token,third_token",
-			want:               []string{"some_token", "list_token", "another_token", "third_token"},
+			githubTokenListEnv: "token1:list_token,token2:another_token,token3:third_token",
+			want: map[string]string{
+				"GITHUB_AUTH_TOKEN": "some_token",
+				"token1":            "list_token",
+				"token2":            "another_token",
+				"token3":            "third_token",
+			},
+		},
+		{
+			name:               "Error parsing tokens",
+			githubTokenEnv:     "some_token",
+			githubTokenListEnv: "token1:list_token,token2:another_token,token3",
+			wantErr:            true,
+		},
+		{
+			name:               "Error parsing tokens - invalid key separator",
+			githubTokenEnv:     "some_token",
+			githubTokenListEnv: "token1:list_token,token2:another_token:",
+			wantErr:            true,
+		},
+		{
+			name:               "Error parsing tokens - duplicate keys",
+			githubTokenEnv:     "some_token",
+			githubTokenListEnv: "token1:list_token,token1:another_token",
+			wantErr:            true,
+		},
+		{
+			name:               "Error parsing tokens - duplicate keys",
+			githubTokenEnv:     "some_token",
+			githubTokenListEnv: "token1:list_token,token1:another_token",
+			wantErr:            true,
 		},
 	}
 
@@ -106,14 +142,14 @@ func TestGetNewGitHubClient(t *testing.T) {
 			name:               "Multiple tokens, should return client",
 			client:             ghTokenClient,
 			githubTokenEnv:     "some_token",
-			githubTokenListEnv: "another_token,third_token",
+			githubTokenListEnv: "token1:another_token,token2:third_token",
 			wantErr:            false,
 		},
 		{
 			name:               "Multiple tokens, should return client",
 			client:             ghTokenClient,
 			githubTokenEnv:     "some_token",
-			githubTokenListEnv: "another_token,third_token",
+			githubTokenListEnv: "token1:another_token,token:2third_token",
 			wantErr:            false,
 		},
 		{
@@ -135,9 +171,7 @@ func TestGetNewGitHubClient(t *testing.T) {
 				os.Setenv("GITHUB_TOKEN_LIST", tt.githubTokenListEnv)
 			}
 
-			if !tt.wantErr {
-				_ = ParseGitHubTokens()
-			}
+			_ = ParseGitHubTokens()
 			_, err := tt.client.GetNewGitHubClient()
 			if tt.wantErr != (err != nil) {
 				t.Errorf("TestGetNewGitHubClient() error: unexpected error value %v", err)

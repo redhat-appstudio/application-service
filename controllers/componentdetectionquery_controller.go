@@ -32,6 +32,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/event"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 	"sigs.k8s.io/controller-runtime/pkg/predicate"
+	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
 	"github.com/go-logr/logr"
 	logicalcluster "github.com/kcp-dev/logicalcluster/v2"
@@ -132,6 +133,7 @@ func (r *ComponentDetectionQueryReconciler) Reconcile(ctx context.Context, req c
 			ghClient, err := r.GitHubTokenClient.GetNewGitHubClient()
 			if err != nil {
 				log.Error(err, "Unable to create Go-GitHub client due to error")
+				return reconcile.Result{}, err
 			}
 
 			log.Info(fmt.Sprintf("Look for default branch of repo %s... %v", source.URL, req.NamespacedName))

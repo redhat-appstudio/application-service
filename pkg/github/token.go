@@ -35,7 +35,8 @@ type GitHubToken interface {
 type GitHubTokenClient struct {
 }
 
-var Tokens []string
+// Tokens is mapping of token names to GitHub tokens
+var Tokens map[string]string
 
 // ParseGitHubTokens parses all of the possible GitHub tokens available to HAS and makes them available within the "github" package
 // This function should *only* be called once: at operator startup.
@@ -46,33 +47,64 @@ func ParseGitHubTokens() error {
 		return fmt.Errorf("no GitHub tokens were provided. Either GITHUB_TOKENS or GITHUB_AUTH_TOKEN (legacy) must be set")
 	}
 
-	var tokenList []string
+	Tokens = make(map[string]string)
 	if githubToken != "" {
-		tokenList = append(tokenList, githubToken)
-	}
-	if githubTokenList != "" {
-		splitTokenList := strings.Split(githubTokenList, ",")
-		tokenList = append(tokenList, splitTokenList...)
+		// The old token format, stored in 'GITHUB_AUTH_TOKEN', didn't require a key/'name' for the token
+		// So use the key 'GITHUB_AUTH_TOKEN' for it
+		Tokens["GITHUB_AUTH_TOKEN"] = githubToken
 	}
 
-	Tokens = tokenList
+	// Parse any tokens passed in through the 'GITHUB_TOKEN_LIST' environment variable
+	// e.g. GITHUB_TOKEN_LIST=token1:ghp_faketoken,token2:ghp_anothertoken
+	if githubTokenList != "" {
+		// Each token key-value pair is separated by a comma, so split the string based on commas and loop over each key-value pair
+		tokenKeyValuePairs := strings.Split(githubTokenList, ",")
+		for _, tokenKeyValuePair := range tokenKeyValuePairs {
+			// Each token key-value pair is separated by a colon, so split the key-value pair and
+			// If the key-value pair doesn't split cleanly (i.e. only two strings returned), return an error
+			// If the key has already been added, return an error
+			splitTokenKeyValuePair := strings.Split(tokenKeyValuePair, ":")
+			if len(splitTokenKeyValuePair) != 2 {
+				return fmt.Errorf("unable to parse github token from key-value pair. Please ensure the GitHub secret is formatted correctly according to the documentation")
+			}
+			tokenKey := splitTokenKeyValuePair[0]
+			tokenValue := splitTokenKeyValuePair[1]
+
+			if Tokens[tokenKey] != "" {
+				return fmt.Errorf("a token with the key '%s' already exists. Each token must have a unique key", tokenKey)
+			}
+			Tokens[tokenKey] = tokenValue
+		}
+	}
 
 	return nil
 }
 
-// getRandomToken randomly retrieves
+// getRandomToken randomly retrieves a token from all of the tokens available to HAS
 func getRandomToken() (string, error) {
 	if len(Tokens) == 0 {
 		return "", fmt.Errorf("no GitHub tokens initialized")
 	}
+	var index int
 	if len(Tokens) == 1 {
-		return Tokens[0], nil
+		index = 0
+	} else {
+		index = rand.Intn(len(Tokens) - 1)
 	}
-	return Tokens[rand.Intn(len(Tokens)-1)], nil
+
+	i := 0
+	var token string
+	for _, t := range Tokens {
+		if i == index {
+			token = t
+		}
+		i++
+	}
+	return token, nil
 }
 
-// GetNewGitHubClient intializes a new Go-GitHub client from a randomly selecte GitHub token available to HAS
-// If an error is encountered retrieveing the token, or initializing the client, an error is returned
+// GetNewGitHubClient intializes a new Go-GitHub client from a randomly selected GitHub token available to HAS
+// If an error is encountered retrieving the token, or initializing the client, an error is returned
 func (g GitHubTokenClient) GetNewGitHubClient() (*github.Client, error) {
 	ghToken, err := getRandomToken()
 	if err != nil {

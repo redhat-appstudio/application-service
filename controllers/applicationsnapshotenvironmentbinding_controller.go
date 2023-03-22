@@ -45,6 +45,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/handler"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 	"sigs.k8s.io/controller-runtime/pkg/predicate"
+	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 	"sigs.k8s.io/controller-runtime/pkg/source"
 )
 
@@ -101,6 +102,7 @@ func (r *SnapshotEnvironmentBindingReconciler) Reconcile(ctx context.Context, re
 	ghClient, err := r.GitHubTokenClient.GetNewGitHubClient()
 	if err != nil {
 		log.Error(err, "Unable to create Go-GitHub client due to error")
+		return reconcile.Result{}, err
 	}
 
 	applicationName := appSnapshotEnvBinding.Spec.Application

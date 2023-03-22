@@ -22,8 +22,7 @@ import (
 type MockGitHubTokenClient struct {
 }
 
-// GetNewGitHubClient intializes a new Go-GitHub client from a randomly selecte GitHub token available to HAS
-// If an error is encountered retrieveing the token, or initializing the client, an error is returned
+// GetNewGitHubClient returns a mocked Go-GitHub client. No actual tokens are passed in or used when this function is called
 func (g MockGitHubTokenClient) GetNewGitHubClient() (*github.Client, error) {
 	return GetMockedClient(), nil
 }

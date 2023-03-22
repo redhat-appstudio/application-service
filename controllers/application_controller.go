@@ -91,6 +91,7 @@ func (r *ApplicationReconciler) Reconcile(ctx context.Context, req ctrl.Request)
 	ghClient, err := r.GitHubTokenClient.GetNewGitHubClient()
 	if err != nil {
 		log.Error(err, "Unable to create Go-GitHub client due to error")
+		return reconcile.Result{}, err
 	}
 
 	// Check if the Application CR is under deletion
