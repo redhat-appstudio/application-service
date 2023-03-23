@@ -66,6 +66,12 @@ spec:
               name: has-github-token
               key: token
               optional: true
+        - name: GITHUB_TOKEN_LIST
+          valueFrom:
+            secretKeyRef:
+              name: has-github-token
+              key: tokens
+              optional: true
         - name: CDQ_GITHUB_TOKEN
           valueFrom:
             secretKeyRef:

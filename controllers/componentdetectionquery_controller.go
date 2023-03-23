@@ -32,9 +32,9 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/event"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 	"sigs.k8s.io/controller-runtime/pkg/predicate"
+	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
 	"github.com/go-logr/logr"
-	gh "github.com/google/go-github/v41/github"
 	logicalcluster "github.com/kcp-dev/logicalcluster/v2"
 	appstudiov1alpha1 "github.com/redhat-appstudio/application-api/api/v1alpha1"
 	devfile "github.com/redhat-appstudio/application-service/pkg/devfile"
@@ -53,7 +53,7 @@ type ComponentDetectionQueryReconciler struct {
 	SPIClient          spi.SPI
 	AlizerClient       devfile.Alizer
 	Log                logr.Logger
-	GitHubClient       *gh.Client
+	GitHubTokenClient  github.GitHubToken
 	DevfileRegistryURL string
 	AppFS              afero.Afero
 }
@@ -134,11 +134,18 @@ func (r *ComponentDetectionQueryReconciler) Reconcile(ctx context.Context, req c
 			sourceURL = sourceURL[0 : len(sourceURL)-1]
 		}
 		if source.Revision == "" {
+			// Create a Go-GitHub client for checking the default branch
+			ghClient, err := r.GitHubTokenClient.GetNewGitHubClient()
+			if err != nil {
+				log.Error(err, "Unable to create Go-GitHub client due to error")
+				return reconcile.Result{}, err
+			}
+
 			log.Info(fmt.Sprintf("Look for default branch of repo %s... %v", source.URL, req.NamespacedName))
-			source.Revision, err = github.GetDefaultBranchFromURL(sourceURL, r.GitHubClient, ctx)
+			source.Revision, err = ghClient.GetDefaultBranchFromURL(sourceURL, ctx)
 			if err != nil {
 				log.Error(err, fmt.Sprintf("Unable to get default branch of Github Repo %v, try to fall back to main branch... %v", source.URL, req.NamespacedName))
-				_, err := github.GetBranchFromURL(sourceURL, r.GitHubClient, ctx, "main")
+				_, err := ghClient.GetBranchFromURL(sourceURL, ctx, "main")
 				if err != nil {
 					log.Error(err, fmt.Sprintf("Unable to get main branch of Github Repo %v ... %v", source.URL, req.NamespacedName))
 					retErr := fmt.Errorf("unable to get default branch of Github Repo %v, try to fall back to main branch, failed to get main branch... %v", source.URL, req.NamespacedName)

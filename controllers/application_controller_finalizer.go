@@ -46,7 +46,7 @@ func (r *ApplicationReconciler) AddFinalizer(ctx context.Context, application *a
 }
 
 // Finalize deletes the corresponding GitOps repo for the given Application CR.
-func (r *ApplicationReconciler) Finalize(application *appstudiov1alpha1.Application) error {
+func (r *ApplicationReconciler) Finalize(application *appstudiov1alpha1.Application, ghClient github.GitHubClient) error {
 	// Get the GitOps repository URL
 	devfileSrc := devfile.DevfileSrc{
 		Data: application.Status.Devfile,
@@ -67,7 +67,7 @@ func (r *ApplicationReconciler) Finalize(application *appstudiov1alpha1.Applicat
 		if err != nil {
 			return err
 		}
-		return github.DeleteRepository(r.GitHubClient, context.Background(), r.GitHubOrg, repoName)
+		return ghClient.DeleteRepository(context.Background(), r.GitHubOrg, repoName)
 	}
 	return nil
 }
