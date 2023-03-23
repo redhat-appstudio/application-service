@@ -72,6 +72,11 @@ type ComponentReconciler struct {
 	GitHubClient    *gh.Client
 }
 
+const (
+	applicationFailCounterAnnotation = "applicationFailCounter"
+	maxApplicationFailCount          = 5
+)
+
 //+kubebuilder:rbac:groups=appstudio.redhat.com,resources=components,verbs=get;list;watch;create;update;patch;delete
 //+kubebuilder:rbac:groups=appstudio.redhat.com,resources=components/status,verbs=get;update;patch
 //+kubebuilder:rbac:groups=appstudio.redhat.com,resources=components/finalizers,verbs=update
@@ -115,18 +120,17 @@ func (r *ComponentReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 	err = r.Get(ctx, types.NamespacedName{Name: component.Spec.Application, Namespace: component.Namespace}, &hasApplication)
 	if err != nil && !containsString(component.GetFinalizers(), compFinalizerName) {
 		// only requeue if there is no finalizer attached ie; first time component create
-		log.Error(err, fmt.Sprintf("Unable to get the Application %s, requeueing %v", component.Spec.Application, req.NamespacedName))
-		r.SetCreateConditionAndUpdateCR(ctx, req, &component, err)
-		return ctrl.Result{}, err
+		err = fmt.Errorf("unable to get the Application %s, requeueing %v", component.Spec.Application, req.NamespacedName)
+		return r.incrementCounterAndRequeue(log, ctx, req, &component, err)
 	}
 
 	// If the Application CR devfile status is empty, requeue
 	if hasApplication.Status.Devfile == "" && !containsString(component.GetFinalizers(), compFinalizerName) {
-		log.Error(err, fmt.Sprintf("Application devfile model is empty. Before creating a Component, an instance of Application should be created. Requeueing %v", req.NamespacedName))
-		err := fmt.Errorf("application is either not ready or has failed to be created")
-		r.SetCreateConditionAndUpdateCR(ctx, req, &component, err)
-		return ctrl.Result{}, err
+		err = fmt.Errorf("application devfile model is empty. Before creating a Component, an instance of Application should be created %v", req.NamespacedName)
+		return r.incrementCounterAndRequeue(log, ctx, req, &component, err)
 	}
+
+	setCounterAnnotation(applicationFailCounterAnnotation, &component, 0)
 
 	// Check if the Component CR is under deletion
 	// If so: Remove the project from the Application devfile, remove the component dir from the Gitops repo and remove the finalizer.
@@ -620,7 +624,7 @@ func (r *ComponentReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&appstudiov1alpha1.Component{}, builder.WithPredicates(predicate.GenerationChangedPredicate{})).
 		WithOptions(controller.Options{
-			RateLimiter: workqueue.NewItemExponentialFailureRateLimiter(time.Duration(500*time.Millisecond), time.Duration(60*time.Second)),
+			RateLimiter: workqueue.NewItemExponentialFailureRateLimiter(time.Duration(500*time.Millisecond), time.Duration(1000*time.Second)),
 		}).WithEventFilter(predicate.Funcs{
 		CreateFunc: func(e event.CreateEvent) bool {
 			log := log.WithValues("Namespace", e.Object.GetNamespace()).WithValues("clusterName", logicalcluster.From(e.Object).String())
@@ -639,4 +643,27 @@ func (r *ComponentReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		},
 	}).
 		Complete(r)
+}
+
+// incrementCounterAndRequeue will increment the "application error counter" on the Component resource and requeue
+// If the counter is less than 3, the Component will be requeued (with a half second delay) without any error message returned
+// If the counter is greater than or equal to 3, an error message will be set on the Component's status and it will be requeud
+// 3 attemps were chosen along with the half second requeue delay to allow certain transient errors when the application CR isn't ready, to resolve themself.
+func (r *ComponentReconciler) incrementCounterAndRequeue(log logr.Logger, ctx context.Context, req ctrl.Request, component *appstudiov1alpha1.Component, componentErr error) (ctrl.Result, error) {
+	if component.GetAnnotations() == nil {
+		component.ObjectMeta.Annotations = make(map[string]string)
+	}
+	count, err := getCounterAnnotation(applicationFailCounterAnnotation, component)
+	if count > 2 || err != nil {
+		log.Error(err, "")
+		r.SetCreateConditionAndUpdateCR(ctx, req, component, componentErr)
+		return ctrl.Result{}, componentErr
+	} else {
+		setCounterAnnotation(applicationFailCounterAnnotation, component, count+1)
+		err = r.Update(ctx, component)
+		if err != nil {
+			log.Error(err, "error updating component's counter annotation")
+		}
+		return ctrl.Result{}, componentErr
+	}
 }

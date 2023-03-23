@@ -120,6 +120,7 @@ Webhooks require self-signed certificates to validate the resources. To disable 
 ### Useful links:
 * [HAS Project information page](https://docs.google.com/document/d/1axzNOhRBSkly3M2Y32Pxr1MBpBif2ljb-ufj0_aEt74/edit?usp=sharing)
 * Every Prow job executed by the CI system generates an artifacts directory containing information about that execution and its results. This [document](https://docs.ci.openshift.org/docs/how-tos/artifacts/) describes the contents of this directory and how they can be used to investigate the steps by the job.
+* For more information on the GitOps resource generation, please refer to the [gitops-generation](./docs/gitops-generation.md) documentation
 
 ## Contributions
 

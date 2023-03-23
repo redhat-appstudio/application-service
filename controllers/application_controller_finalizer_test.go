@@ -205,7 +205,7 @@ func createAndFetchSimpleAppWithRepo(name string, namespace string, display stri
 	return fetchedHasApp
 }
 
-func TestGetFinalizeCount(t *testing.T) {
+func TestGetCounterAnnotation(t *testing.T) {
 	tests := []struct {
 		name        string
 		application appstudiov1alpha1.Application
@@ -231,19 +231,19 @@ func TestGetFinalizeCount(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			count, err := getFinalizeCount(&tt.application)
+			count, err := getCounterAnnotation(finalizeCount, &tt.application)
 			if err != nil {
-				t.Errorf("TestGetFinalizeCount() unexpected error: %v", err)
+				t.Errorf("TestGetCounterAnnotation() unexpected error: %v", err)
 			}
 			if count != tt.want {
-				t.Errorf("TestGetFinalizeCount() error: expected %v got %v", tt.want, count)
+				t.Errorf("TestGetCounterAnnotation() error: expected %v got %v", tt.want, count)
 			}
 		})
 	}
 
 }
 
-func TestSetFinalizeCount(t *testing.T) {
+func TestSetCounterAnnotation(t *testing.T) {
 	tests := []struct {
 		name        string
 		application appstudiov1alpha1.Application
@@ -272,13 +272,13 @@ func TestSetFinalizeCount(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			setFinalizeCount(&tt.application, tt.count)
-			count, err := getFinalizeCount(&tt.application)
+			setCounterAnnotation(finalizeCount, &tt.application, tt.count)
+			count, err := getCounterAnnotation(finalizeCount, &tt.application)
 			if err != nil {
-				t.Errorf("TestGetFinalizeCount() unexpected error: %v", err)
+				t.Errorf("TestSetCounterAnnotation() unexpected error: %v", err)
 			}
 			if count != tt.want {
-				t.Errorf("TestGetFinalizeCount() error: expected %v got %v", tt.want, count)
+				t.Errorf("TestSetCounterAnnotation() error: expected %v got %v", tt.want, count)
 			}
 		})
 	}
