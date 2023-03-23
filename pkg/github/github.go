@@ -32,6 +32,7 @@ const AppStudioAppDataOrg = "redhat-appstudio-appdata"
 // GitHubClient represents a Go-GitHub client, along with the name of the GitHub token that was used to initialize it
 type GitHubClient struct {
 	TokenName string
+	Token     string
 	Client    *github.Client
 }
 

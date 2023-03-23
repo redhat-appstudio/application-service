@@ -22,6 +22,7 @@ import (
 
 	appstudiov1alpha1 "github.com/redhat-appstudio/application-api/api/v1alpha1"
 	devfile "github.com/redhat-appstudio/application-service/pkg/devfile"
+	github "github.com/redhat-appstudio/application-service/pkg/github"
 	"github.com/redhat-appstudio/application-service/pkg/util"
 	"github.com/redhat-appstudio/application-service/pkg/util/ioutils"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
@@ -38,7 +39,7 @@ func (r *ComponentReconciler) AddFinalizer(ctx context.Context, component *appst
 
 // Finalize deletes the corresponding devfile project or the devfile attribute entry from the Application CR and also deletes the corresponding GitOps repo's Component dir
 // & updates the parent kustomize for the given Component CR.
-func (r *ComponentReconciler) Finalize(ctx context.Context, component *appstudiov1alpha1.Component, application *appstudiov1alpha1.Application) error {
+func (r *ComponentReconciler) Finalize(ctx context.Context, component *appstudiov1alpha1.Component, application *appstudiov1alpha1.Application, ghClient github.GitHubClient) error {
 	// Get the Application CR devfile
 	devfileSrc := devfile.DevfileSrc{
 		Data: application.Status.Devfile,
@@ -71,7 +72,7 @@ func (r *ComponentReconciler) Finalize(ctx context.Context, component *appstudio
 
 	application.Status.Devfile = string(yamldevfileObj)
 
-	gitOpsURL, gitOpsBranch, gitOpsContext, err := util.ProcessGitOpsStatus(component.Status.GitOps, r.GitToken)
+	gitOpsURL, gitOpsBranch, gitOpsContext, err := util.ProcessGitOpsStatus(component.Status.GitOps, ghClient.Token)
 	if err != nil {
 		return err
 	}

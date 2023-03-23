@@ -119,6 +119,7 @@ func (g GitHubTokenClient) GetNewGitHubClient() (GitHubClient, error) {
 	client := github.NewClient(rateLimiter)
 	githubClient := GitHubClient{
 		TokenName: ghTokenName,
+		Token:     ghToken,
 		Client:    client,
 	}
 

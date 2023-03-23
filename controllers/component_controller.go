@@ -161,7 +161,7 @@ func (r *ComponentReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 		if hasApplication.Status.Devfile != "" && len(component.Status.Conditions) > 0 && component.Status.Conditions[len(component.Status.Conditions)-1].Status == metav1.ConditionTrue && containsString(component.GetFinalizers(), compFinalizerName) {
 			// only attempt to finalize and update the gitops repo if an Application is present & the previous Component status is good
 			// A finalizer is present for the Component CR, so make sure we do the necessary cleanup steps
-			if err := r.Finalize(ctx, &component, &hasApplication); err != nil {
+			if err := r.Finalize(ctx, &component, &hasApplication, ghClient); err != nil {
 				// if fail to delete the external dependency here, log the error, but don't return error
 				// Don't want to get stuck in a cycle of repeatedly trying to update the repository and failing
 				log.Error(err, "Unable to update GitOps repository for component %v in namespace %v", component.GetName(), component.GetNamespace())
@@ -522,7 +522,7 @@ func (r *ComponentReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 func (r *ComponentReconciler) generateGitops(ctx context.Context, ghClient github.GitHubClient, req ctrl.Request, component *appstudiov1alpha1.Component, compDevfileData data.DevfileData) error {
 	log := r.Log.WithValues("Component", req.NamespacedName).WithValues("clusterName", req.ClusterName)
 
-	gitOpsURL, gitOpsBranch, gitOpsContext, err := util.ProcessGitOpsStatus(component.Status.GitOps, r.GitToken)
+	gitOpsURL, gitOpsBranch, gitOpsContext, err := util.ProcessGitOpsStatus(component.Status.GitOps, ghClient.Token)
 	if err != nil {
 		return err
 	}
