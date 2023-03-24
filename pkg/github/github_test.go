@@ -1,5 +1,5 @@
 //
-// Copyright 2021 Red Hat, Inc.
+// Copyright 2021-2023 Red Hat, Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -109,10 +109,12 @@ func TestGenerateNewRepository(t *testing.T) {
 
 	numTests := len(tests)
 	for _, tt := range tests {
-		mockedClient := GetMockedClient()
+		mockedClient := GitHubClient{
+			Client: GetMockedClient(),
+		}
 
 		t.Run(tt.name, func(t *testing.T) {
-			repoURL, err := GenerateNewRepository(mockedClient, context.Background(), tt.orgName, tt.repoName, "")
+			repoURL, err := mockedClient.GenerateNewRepository(context.Background(), tt.orgName, tt.repoName, "")
 
 			if err != nil && tt.wantErr {
 				if _, ok := err.(*ServerError); ok {
@@ -169,10 +171,12 @@ func TestDeleteRepository(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		mockedClient := GetMockedClient()
+		mockedClient := GitHubClient{
+			Client: GetMockedClient(),
+		}
 
 		t.Run(tt.name, func(t *testing.T) {
-			err := DeleteRepository(mockedClient, context.Background(), tt.orgName, tt.repoName)
+			err := mockedClient.DeleteRepository(context.Background(), tt.orgName, tt.repoName)
 
 			if tt.wantErr != (err != nil) {
 				t.Errorf("TestDeleteRepository() error: expected %v, got %v", err, tt.wantErr)
@@ -338,16 +342,117 @@ func TestGetLatestCommitSHAFromRepository(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		mockedClient := GetMockedClient()
+		mockedClient := GitHubClient{
+			Client: GetMockedClient(),
+		}
 
 		t.Run(tt.name, func(t *testing.T) {
-			commitSHA, err := GetLatestCommitSHAFromRepository(mockedClient, context.Background(), tt.orgName, tt.repoName, "main")
+			commitSHA, err := mockedClient.GetLatestCommitSHAFromRepository(context.Background(), tt.orgName, tt.repoName, "main")
 
 			if tt.wantErr != (err != nil) {
 				t.Errorf("TestGetLatestCommitSHAFromRepository() unexpected error value: %v", err)
 			}
 			if !tt.wantErr && commitSHA != tt.want {
 				t.Errorf("TestGetLatestCommitSHAFromRepository() error: expected %v got %v", tt.want, commitSHA)
+			}
+		})
+	}
+}
+
+func TestGetDefaultBranchFromURL(t *testing.T) {
+	tests := []struct {
+		name    string
+		repoURL string
+		want    string
+		wantErr bool
+	}{
+		{
+			name:    "repo with main as default branch",
+			repoURL: "https://github.com/redhat-appstudio-appdata/test-repo-1",
+			want:    "main",
+			wantErr: false,
+		},
+		{
+			name:    "repo with master as default branch",
+			repoURL: "https://github.com/redhat-appstudio-appdata/test-repo-2.git",
+			want:    "master",
+			wantErr: false,
+		},
+		{
+			name:    "Simple repo name",
+			repoURL: "https://github.com/some-org/test-error-response",
+			wantErr: true,
+		},
+		{
+			name:    "Unparseable URL",
+			repoURL: "http://github.com/?org\nrepo",
+			wantErr: true,
+		},
+	}
+
+	for _, tt := range tests {
+		mockedClient := GitHubClient{
+			Client: GetMockedClient(),
+		}
+
+		t.Run(tt.name, func(t *testing.T) {
+			defaultBranch, err := mockedClient.GetDefaultBranchFromURL(tt.repoURL, context.Background())
+
+			if tt.wantErr != (err != nil) {
+				t.Errorf("TestGetDefaultBranchFromURL() unexpected error value: %v", err)
+			}
+			if !tt.wantErr && defaultBranch != tt.want {
+				t.Errorf("TestGetDefaultBranchFromURL() error: expected %v got %v", tt.want, defaultBranch)
+			}
+		})
+	}
+}
+
+func TestGetBranchFromURL(t *testing.T) {
+	tests := []struct {
+		name       string
+		repoURL    string
+		branchName string
+		wantErr    bool
+	}{
+		{
+			name:       "repo with main as default branch",
+			repoURL:    "https://github.com/redhat-appstudio-appdata/test-repo-1",
+			branchName: "main",
+			wantErr:    false,
+		},
+		{
+			name:       "repo with master as default branch",
+			repoURL:    "https://github.com/redhat-appstudio-appdata/test-repo-2.git",
+			branchName: "master",
+			wantErr:    false,
+		},
+		{
+			name:       "Simple repo name",
+			repoURL:    "https://github.com/redhat-appstudio-appdata/test-repo-2.git",
+			branchName: "main",
+			wantErr:    true,
+		},
+		{
+			name:    "Unparseable URL",
+			repoURL: "http://github.com/?org\nrepo",
+			wantErr: true,
+		},
+	}
+
+	for _, tt := range tests {
+		mockedClient := GitHubClient{
+			Client: GetMockedClient(),
+		}
+
+		t.Run(tt.name, func(t *testing.T) {
+			branch, err := mockedClient.GetBranchFromURL(tt.repoURL, context.Background(), tt.branchName)
+
+			if tt.wantErr != (err != nil) {
+				t.Errorf("TestGetBranchFromURL() unexpected error value: %v, branch %v", err, branch)
+			}
+			if !tt.wantErr && *branch.Name != tt.branchName {
+				t.Errorf("TestGetBranchFromURL() error: expected %v got %v", tt.branchName, *branch.Name)
 			}
 		})
 	}

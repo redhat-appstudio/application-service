@@ -1,5 +1,5 @@
 /*
-Copyright 2021-2022 Red Hat, Inc.
+Copyright 2021-2023 Red Hat, Inc.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -100,25 +100,26 @@ var _ = BeforeSuite(func() {
 	})
 	Expect(err).ToNot(HaveOccurred())
 
+	mockGhTokenClient := github.MockGitHubTokenClient{}
 	// To Do: Set up reconcilers for the other controllers
 	err = (&ApplicationReconciler{
-		Client:       k8sManager.GetClient(),
-		Scheme:       k8sManager.GetScheme(),
-		Log:          ctrl.Log.WithName("controllers").WithName("Application"),
-		GitHubClient: github.GetMockedClient(),
-		GitHubOrg:    github.AppStudioAppDataOrg,
+		Client:            k8sManager.GetClient(),
+		Scheme:            k8sManager.GetScheme(),
+		Log:               ctrl.Log.WithName("controllers").WithName("Application"),
+		GitHubTokenClient: mockGhTokenClient,
+		GitHubOrg:         github.AppStudioAppDataOrg,
 	}).SetupWithManager(k8sManager)
 	Expect(err).ToNot(HaveOccurred())
 
 	err = (&ComponentReconciler{
-		Client:          k8sManager.GetClient(),
-		Scheme:          k8sManager.GetScheme(),
-		Log:             ctrl.Log.WithName("controllers").WithName("Component"),
-		Generator:       gitops.NewMockGenerator(),
-		AppFS:           ioutils.NewMemoryFilesystem(),
-		ImageRepository: "docker.io/foo/customized",
-		SPIClient:       spi.MockSPIClient{},
-		GitHubClient:    github.GetMockedClient(),
+		Client:            k8sManager.GetClient(),
+		Scheme:            k8sManager.GetScheme(),
+		Log:               ctrl.Log.WithName("controllers").WithName("Component"),
+		Generator:         gitops.NewMockGenerator(),
+		AppFS:             ioutils.NewMemoryFilesystem(),
+		ImageRepository:   "docker.io/foo/customized",
+		SPIClient:         spi.MockSPIClient{},
+		GitHubTokenClient: mockGhTokenClient,
 	}).SetupWithManager(k8sManager)
 	Expect(err).ToNot(HaveOccurred())
 
@@ -128,18 +129,19 @@ var _ = BeforeSuite(func() {
 		Log:                ctrl.Log.WithName("controllers").WithName("ComponentDetectionQuery"),
 		SPIClient:          spi.MockSPIClient{},
 		AlizerClient:       devfile.MockAlizerClient{},
+		GitHubTokenClient:  mockGhTokenClient,
 		DevfileRegistryURL: devfile.DevfileStageRegistryEndpoint, // Use the staging devfile registry for tests
 		AppFS:              ioutils.NewMemoryFilesystem(),
 	}).SetupWithManager(k8sManager)
 	Expect(err).ToNot(HaveOccurred())
 
 	err = (&SnapshotEnvironmentBindingReconciler{
-		Client:       k8sManager.GetClient(),
-		Scheme:       k8sManager.GetScheme(),
-		Log:          ctrl.Log.WithName("controllers").WithName("SnapshotEnvironmentBinding"),
-		Generator:    gitops.NewMockGenerator(),
-		AppFS:        ioutils.NewMemoryFilesystem(),
-		GitHubClient: github.GetMockedClient(),
+		Client:            k8sManager.GetClient(),
+		Scheme:            k8sManager.GetScheme(),
+		Log:               ctrl.Log.WithName("controllers").WithName("SnapshotEnvironmentBinding"),
+		Generator:         gitops.NewMockGenerator(),
+		AppFS:             ioutils.NewMemoryFilesystem(),
+		GitHubTokenClient: mockGhTokenClient,
 	}).SetupWithManager(k8sManager)
 	Expect(err).ToNot(HaveOccurred())
 

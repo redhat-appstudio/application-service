@@ -38,18 +38,16 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/event"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 	"sigs.k8s.io/controller-runtime/pkg/predicate"
+	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 	"sigs.k8s.io/yaml"
 
 	"github.com/devfile/api/v2/pkg/attributes"
 	devfileParser "github.com/devfile/library/v2/pkg/devfile/parser"
 	data "github.com/devfile/library/v2/pkg/devfile/parser/data"
 	"github.com/go-logr/logr"
-	gh "github.com/google/go-github/v41/github"
 	logicalcluster "github.com/kcp-dev/logicalcluster/v2"
 
 	appstudiov1alpha1 "github.com/redhat-appstudio/application-api/api/v1alpha1"
-	appservicegitops "github.com/redhat-appstudio/application-service/gitops"
-	"github.com/redhat-appstudio/application-service/gitops/prepare"
 	devfile "github.com/redhat-appstudio/application-service/pkg/devfile"
 	"github.com/redhat-appstudio/application-service/pkg/github"
 	logutil "github.com/redhat-appstudio/application-service/pkg/log"
@@ -63,16 +61,21 @@ import (
 // ComponentReconciler reconciles a Component object
 type ComponentReconciler struct {
 	client.Client
-	Scheme          *runtime.Scheme
-	Log             logr.Logger
-	GitToken        string
-	GitHubOrg       string
-	ImageRepository string
-	Generator       gitopsgen.Generator
-	AppFS           afero.Afero
-	SPIClient       spi.SPI
-	GitHubClient    *gh.Client
+	Scheme            *runtime.Scheme
+	Log               logr.Logger
+	GitToken          string
+	GitHubOrg         string
+	ImageRepository   string
+	Generator         gitopsgen.Generator
+	AppFS             afero.Afero
+	SPIClient         spi.SPI
+	GitHubTokenClient github.GitHubToken
 }
+
+const (
+	applicationFailCounterAnnotation = "applicationFailCounter"
+	maxApplicationFailCount          = 5
+)
 
 //+kubebuilder:rbac:groups=appstudio.redhat.com,resources=components,verbs=get;list;watch;create;update;patch;delete
 //+kubebuilder:rbac:groups=appstudio.redhat.com,resources=components/status,verbs=get;update;patch
@@ -117,17 +120,22 @@ func (r *ComponentReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 	err = r.Get(ctx, types.NamespacedName{Name: component.Spec.Application, Namespace: component.Namespace}, &hasApplication)
 	if err != nil && !containsString(component.GetFinalizers(), compFinalizerName) {
 		// only requeue if there is no finalizer attached ie; first time component create
-		log.Error(err, fmt.Sprintf("Unable to get the Application %s, requeueing %v", component.Spec.Application, req.NamespacedName))
-		r.SetCreateConditionAndUpdateCR(ctx, req, &component, err)
-		return ctrl.Result{}, err
+		err = fmt.Errorf("unable to get the Application %s, requeueing %v", component.Spec.Application, req.NamespacedName)
+		return r.incrementCounterAndRequeue(log, ctx, req, &component, err)
 	}
 
 	// If the Application CR devfile status is empty, requeue
 	if hasApplication.Status.Devfile == "" && !containsString(component.GetFinalizers(), compFinalizerName) {
-		log.Error(err, fmt.Sprintf("Application devfile model is empty. Before creating a Component, an instance of Application should be created. Requeueing %v", req.NamespacedName))
-		err := fmt.Errorf("application is either not ready or has failed to be created")
-		r.SetCreateConditionAndUpdateCR(ctx, req, &component, err)
-		return ctrl.Result{}, err
+		err = fmt.Errorf("application devfile model is empty. Before creating a Component, an instance of Application should be created %v", req.NamespacedName)
+		return r.incrementCounterAndRequeue(log, ctx, req, &component, err)
+	}
+
+	setCounterAnnotation(applicationFailCounterAnnotation, &component, 0)
+
+	ghClient, err := r.GitHubTokenClient.GetNewGitHubClient()
+	if err != nil {
+		log.Error(err, "Unable to create Go-GitHub client due to error")
+		return reconcile.Result{}, err
 	}
 
 	// Check if the Component CR is under deletion
@@ -153,7 +161,7 @@ func (r *ComponentReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 		if hasApplication.Status.Devfile != "" && len(component.Status.Conditions) > 0 && component.Status.Conditions[len(component.Status.Conditions)-1].Status == metav1.ConditionTrue && containsString(component.GetFinalizers(), compFinalizerName) {
 			// only attempt to finalize and update the gitops repo if an Application is present & the previous Component status is good
 			// A finalizer is present for the Component CR, so make sure we do the necessary cleanup steps
-			if err := r.Finalize(ctx, &component, &hasApplication); err != nil {
+			if err := r.Finalize(ctx, &component, &hasApplication, ghClient); err != nil {
 				// if fail to delete the external dependency here, log the error, but don't return error
 				// Don't want to get stuck in a cycle of repeatedly trying to update the repository and failing
 				log.Error(err, "Unable to update GitOps repository for component %v in namespace %v", component.GetName(), component.GetNamespace())
@@ -201,7 +209,7 @@ func (r *ComponentReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 				r.SetGitOpsGeneratedConditionAndUpdateCR(ctx, &component, fmt.Errorf("%v: %v", errMsg, err))
 				return ctrl.Result{}, err
 			}
-			if err := r.generateGitops(ctx, req, &component, compDevfileData); err != nil {
+			if err := r.generateGitops(ctx, ghClient, req, &component, compDevfileData); err != nil {
 				errMsg := fmt.Sprintf("Unable to generate gitops resources for component %v", req.NamespacedName)
 				log.Error(err, errMsg)
 				r.SetGitOpsGeneratedConditionAndUpdateCR(ctx, &component, fmt.Errorf("%v: %v", errMsg, err))
@@ -415,7 +423,7 @@ func (r *ComponentReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 
 			// Generate and push the gitops resources
 			if !component.Spec.SkipGitOpsResourceGeneration {
-				if err := r.generateGitops(ctx, req, &component, compDevfileData); err != nil {
+				if err := r.generateGitops(ctx, ghClient, req, &component, compDevfileData); err != nil {
 					errMsg := fmt.Sprintf("Unable to generate gitops resources for component %v", req.NamespacedName)
 					log.Error(err, errMsg)
 					r.SetGitOpsGeneratedConditionAndUpdateCR(ctx, &component, fmt.Errorf("%v: %v", errMsg, err))
@@ -488,7 +496,7 @@ func (r *ComponentReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 
 			// Generate and push the gitops resources, if necessary.
 			if !component.Spec.SkipGitOpsResourceGeneration {
-				if err := r.generateGitops(ctx, req, &component, hasCompDevfileData); err != nil {
+				if err := r.generateGitops(ctx, ghClient, req, &component, hasCompDevfileData); err != nil {
 					errMsg := fmt.Sprintf("Unable to generate gitops resources for component %v", req.NamespacedName)
 					log.Error(err, errMsg)
 					r.SetGitOpsGeneratedConditionAndUpdateCR(ctx, &component, fmt.Errorf("%v: %v", errMsg, err))
@@ -511,10 +519,10 @@ func (r *ComponentReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 
 // generateGitops retrieves the necessary information about a Component's gitops repository (URL, branch, context)
 // and attempts to use the GitOps package to generate gitops resources based on that component
-func (r *ComponentReconciler) generateGitops(ctx context.Context, req ctrl.Request, component *appstudiov1alpha1.Component, compDevfileData data.DevfileData) error {
+func (r *ComponentReconciler) generateGitops(ctx context.Context, ghClient github.GitHubClient, req ctrl.Request, component *appstudiov1alpha1.Component, compDevfileData data.DevfileData) error {
 	log := r.Log.WithValues("Component", req.NamespacedName).WithValues("clusterName", req.ClusterName)
 
-	gitOpsURL, gitOpsBranch, gitOpsContext, err := util.ProcessGitOpsStatus(component.Status.GitOps, r.GitToken)
+	gitOpsURL, gitOpsBranch, gitOpsContext, err := util.ProcessGitOpsStatus(component.Status.GitOps, ghClient.Token)
 	if err != nil {
 		return err
 	}
@@ -539,7 +547,6 @@ func (r *ComponentReconciler) generateGitops(ctx context.Context, req ctrl.Reque
 	}
 
 	// Generate and push the gitops resources
-	gitopsConfig := prepare.PrepareGitopsConfig(ctx, r.Client, *component)
 	mappedGitOpsComponent := util.GetMappedGitOpsComponent(*component, kubernetesResources)
 
 	err = r.Generator.CloneGenerateAndPush(tempDir, gitOpsURL, mappedGitOpsComponent, r.AppFS, gitOpsBranch, gitOpsContext, false)
@@ -548,14 +555,8 @@ func (r *ComponentReconciler) generateGitops(ctx context.Context, req ctrl.Reque
 		return err
 	}
 
-	// GenerateTektonBuild returns a sanitized error message
-	err = appservicegitops.GenerateTektonBuild(tempDir, *component, r.AppFS, gitOpsContext, gitopsConfig)
-	if err != nil {
-		log.Error(err, "unable to generate gitops build resources due to error")
-		return err
-	}
 	//Gitops functions return sanitized error messages
-	err = r.Generator.CommitAndPush(tempDir, "", gitOpsURL, mappedGitOpsComponent.Name, gitOpsBranch, "Generating Tekton resources")
+	err = r.Generator.CommitAndPush(tempDir, "", gitOpsURL, mappedGitOpsComponent.Name, gitOpsBranch, "Generating GitOps resources")
 	if err != nil {
 		log.Error(err, "unable to commit and push gitops resources due to error")
 		return err
@@ -569,7 +570,7 @@ func (r *ComponentReconciler) generateGitops(ctx context.Context, req ctrl.Reque
 		log.Error(gitOpsErr, "")
 		return gitOpsErr
 	}
-	commitID, err = github.GetLatestCommitSHAFromRepository(r.GitHubClient, ctx, repoName, orgName, gitOpsBranch)
+	commitID, err = ghClient.GetLatestCommitSHAFromRepository(ctx, repoName, orgName, gitOpsBranch)
 	if err != nil {
 		gitOpsErr := &GitOpsCommitIdError{err}
 		log.Error(gitOpsErr, "")
@@ -629,7 +630,7 @@ func (r *ComponentReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&appstudiov1alpha1.Component{}, builder.WithPredicates(predicate.GenerationChangedPredicate{})).
 		WithOptions(controller.Options{
-			RateLimiter: workqueue.NewItemExponentialFailureRateLimiter(time.Duration(500*time.Millisecond), time.Duration(60*time.Second)),
+			RateLimiter: workqueue.NewItemExponentialFailureRateLimiter(time.Duration(500*time.Millisecond), time.Duration(1000*time.Second)),
 		}).WithEventFilter(predicate.Funcs{
 		CreateFunc: func(e event.CreateEvent) bool {
 			log := log.WithValues("Namespace", e.Object.GetNamespace()).WithValues("clusterName", logicalcluster.From(e.Object).String())
@@ -648,4 +649,27 @@ func (r *ComponentReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		},
 	}).
 		Complete(r)
+}
+
+// incrementCounterAndRequeue will increment the "application error counter" on the Component resource and requeue
+// If the counter is less than 3, the Component will be requeued (with a half second delay) without any error message returned
+// If the counter is greater than or equal to 3, an error message will be set on the Component's status and it will be requeud
+// 3 attemps were chosen along with the half second requeue delay to allow certain transient errors when the application CR isn't ready, to resolve themself.
+func (r *ComponentReconciler) incrementCounterAndRequeue(log logr.Logger, ctx context.Context, req ctrl.Request, component *appstudiov1alpha1.Component, componentErr error) (ctrl.Result, error) {
+	if component.GetAnnotations() == nil {
+		component.ObjectMeta.Annotations = make(map[string]string)
+	}
+	count, err := getCounterAnnotation(applicationFailCounterAnnotation, component)
+	if count > 2 || err != nil {
+		log.Error(err, "")
+		r.SetCreateConditionAndUpdateCR(ctx, req, component, componentErr)
+		return ctrl.Result{}, componentErr
+	} else {
+		setCounterAnnotation(applicationFailCounterAnnotation, component, count+1)
+		err = r.Update(ctx, component)
+		if err != nil {
+			log.Error(err, "error updating component's counter annotation")
+		}
+		return ctrl.Result{}, componentErr
+	}
 }

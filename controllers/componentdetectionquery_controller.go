@@ -33,11 +33,13 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/event"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 	"sigs.k8s.io/controller-runtime/pkg/predicate"
+	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
 	"github.com/go-logr/logr"
 	logicalcluster "github.com/kcp-dev/logicalcluster/v2"
 	appstudiov1alpha1 "github.com/redhat-appstudio/application-api/api/v1alpha1"
 	devfile "github.com/redhat-appstudio/application-service/pkg/devfile"
+	"github.com/redhat-appstudio/application-service/pkg/github"
 	logutil "github.com/redhat-appstudio/application-service/pkg/log"
 	"github.com/redhat-appstudio/application-service/pkg/spi"
 	"github.com/redhat-appstudio/application-service/pkg/util"
@@ -53,6 +55,7 @@ type ComponentDetectionQueryReconciler struct {
 	SPIClient          spi.SPI
 	AlizerClient       devfile.Alizer
 	Log                logr.Logger
+	GitHubTokenClient  github.GitHubToken
 	DevfileRegistryURL string
 	AppFS              afero.Afero
 }
@@ -130,6 +133,36 @@ func (r *ComponentDetectionQueryReconciler) Reconcile(ctx context.Context, req c
 		if context == "" {
 			context = "./"
 		}
+		// remove leading and trailing spaces of the repo URL
+		source.URL = strings.TrimSpace(source.URL)
+		sourceURL := source.URL
+		// If the repository URL ends in a forward slash, remove it to avoid issues with default branch lookup
+		if string(sourceURL[len(sourceURL)-1]) == "/" {
+			sourceURL = sourceURL[0 : len(sourceURL)-1]
+		}
+		if source.Revision == "" {
+			// Create a Go-GitHub client for checking the default branch
+			ghClient, err := r.GitHubTokenClient.GetNewGitHubClient()
+			if err != nil {
+				log.Error(err, "Unable to create Go-GitHub client due to error")
+				return reconcile.Result{}, err
+			}
+
+			log.Info(fmt.Sprintf("Look for default branch of repo %s... %v", source.URL, req.NamespacedName))
+			source.Revision, err = ghClient.GetDefaultBranchFromURL(sourceURL, ctx)
+			if err != nil {
+				log.Error(err, fmt.Sprintf("Unable to get default branch of Github Repo %v, try to fall back to main branch... %v", source.URL, req.NamespacedName))
+				_, err := ghClient.GetBranchFromURL(sourceURL, ctx, "main")
+				if err != nil {
+					log.Error(err, fmt.Sprintf("Unable to get main branch of Github Repo %v ... %v", source.URL, req.NamespacedName))
+					retErr := fmt.Errorf("unable to get default branch of Github Repo %v, try to fall back to main branch, failed to get main branch... %v", source.URL, req.NamespacedName)
+					r.SetCompleteConditionAndUpdateCR(ctx, req, &componentDetectionQuery, copiedCDQ, retErr)
+					return ctrl.Result{}, nil
+				} else {
+					source.Revision = "main"
+				}
+			}
+		}
 
 		if source.DevfileURL == "" {
 			isMultiComponent := false
@@ -149,11 +182,7 @@ func (r *ComponentDetectionQueryReconciler) Reconcile(ctx context.Context, req c
 			} else {
 				// Use SPI to retrieve the devfile from the private repository
 				// TODO - maysunfaisal also search for Dockerfile
-				revision := source.Revision
-				if revision == "" {
-					revision = "main"
-				}
-				devfileBytes, err = spi.DownloadDevfileUsingSPI(r.SPIClient, ctx, componentDetectionQuery.Namespace, source.URL, revision, context)
+				devfileBytes, err = spi.DownloadDevfileUsingSPI(r.SPIClient, ctx, componentDetectionQuery.Namespace, source.URL, source.Revision, context)
 				if err != nil {
 					log.Error(err, fmt.Sprintf("Unable to curl for any known devfile locations from %s %v", source.URL, req.NamespacedName))
 				}
@@ -250,22 +279,6 @@ func (r *ComponentDetectionQueryReconciler) Reconcile(ctx context.Context, req c
 				log.Error(err, fmt.Sprintf("Unable to remove the clonepath %s %v", clonePath, req.NamespacedName))
 				r.SetCompleteConditionAndUpdateCR(ctx, req, &componentDetectionQuery, copiedCDQ, err)
 				return ctrl.Result{}, nil
-			}
-		}
-
-		for context, link := range dockerfileContextMap {
-			// If the returned context/link is a local path, update the git link for the dockerfile accordingly
-			// Otherwise
-			if !strings.HasPrefix(link, "http") {
-				updatedContext := path.Join(context, link)
-
-				updatedLink, err := devfile.UpdateGitLink(source.URL, source.Revision, updatedContext)
-				if err != nil {
-					log.Error(err, fmt.Sprintf("Unable to update the dockerfile link %v", req.NamespacedName))
-					r.SetCompleteConditionAndUpdateCR(ctx, req, &componentDetectionQuery, copiedCDQ, err)
-					return ctrl.Result{}, nil
-				}
-				dockerfileContextMap[context] = updatedLink
 			}
 		}
 

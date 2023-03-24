@@ -264,7 +264,8 @@ var _ = Describe("Component Detection Query controller", func() {
 				},
 				Spec: appstudiov1alpha1.ComponentDetectionQuerySpec{
 					GitSource: appstudiov1alpha1.GitSource{
-						URL: "https://github.com/octocat/Hello-World",
+						URL:      "https://github.com/octocat/Hello-World",
+						Revision: "master",
 					},
 				},
 			}
@@ -449,7 +450,8 @@ var _ = Describe("Component Detection Query controller", func() {
 				},
 				Spec: appstudiov1alpha1.ComponentDetectionQuerySpec{
 					GitSource: appstudiov1alpha1.GitSource{
-						URL: "https://github.com/redhat-appstudio-appdata/!@#$%U%I$F    DFDN##",
+						URL:      "https://github.com/redhat-appstudio-appdata/!@#$%U%I$F    DFDN##",
+						Revision: "main",
 					},
 				},
 			}
@@ -669,7 +671,8 @@ var _ = Describe("Component Detection Query controller", func() {
 				Spec: appstudiov1alpha1.ComponentDetectionQuerySpec{
 					Secret: queryName,
 					GitSource: appstudiov1alpha1.GitSource{
-						URL: "https://github.com/test-repo/test-error-response",
+						URL:      "https://github.com/test-repo/test-error-response",
+						Revision: "main",
 					},
 				},
 			}
@@ -779,7 +782,7 @@ var _ = Describe("Component Detection Query controller", func() {
 	})
 
 	Context("Create Component Detection Query with springboot repo that has devfile", func() {
-		It("Should return a correct devfile", func() {
+		It("Should return a correct devfile when repo URL has leading and trailing spaces", func() {
 			ctx := context.Background()
 
 			queryName := "springboot" + HASCompDetQuery + "16"
@@ -795,7 +798,7 @@ var _ = Describe("Component Detection Query controller", func() {
 				},
 				Spec: appstudiov1alpha1.ComponentDetectionQuerySpec{
 					GitSource: appstudiov1alpha1.GitSource{
-						URL: "https://github.com/maysunfaisal/devfile-sample-java-springboot-basic-1",
+						URL: "   https://github.com/maysunfaisal/devfile-sample-java-springboot-basic-1   ",
 					},
 				},
 			}
@@ -1010,7 +1013,7 @@ var _ = Describe("Component Detection Query controller", func() {
 				for _, componentDesc := range createdHasCompDetectionQuery.Status.ComponentDetected {
 					Expect(componentDesc.ComponentStub.Source.GitSource).ShouldNot(BeNil())
 					Expect(componentDesc.ComponentStub.Source.GitSource.DockerfileURL).ShouldNot(BeEmpty())
-					Expect(componentDesc.ComponentStub.Source.GitSource.DockerfileURL).Should(Equal("https://raw.githubusercontent.com/maysunfaisal/python-src-docker/main/Dockerfile"))
+					Expect(componentDesc.ComponentStub.Source.GitSource.DockerfileURL).Should(Equal("./Dockerfile"))
 				}
 
 				// Delete the specified Detection Query resource
@@ -1223,7 +1226,7 @@ var _ = Describe("Component Detection Query controller", func() {
 					},
 					Spec: appstudiov1alpha1.ComponentDetectionQuerySpec{
 						GitSource: appstudiov1alpha1.GitSource{
-							URL:      "https://github.com/devfile-resources/todo-spring-boot",
+							URL:      "https://github.com/devfile-resources/todo-spring-boot/",
 							Revision: "main",
 						},
 					},

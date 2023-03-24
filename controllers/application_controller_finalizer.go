@@ -24,6 +24,7 @@ import (
 	appstudiov1alpha1 "github.com/redhat-appstudio/application-api/api/v1alpha1"
 	devfile "github.com/redhat-appstudio/application-service/pkg/devfile"
 	github "github.com/redhat-appstudio/application-service/pkg/github"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 )
 
@@ -45,7 +46,7 @@ func (r *ApplicationReconciler) AddFinalizer(ctx context.Context, application *a
 }
 
 // Finalize deletes the corresponding GitOps repo for the given Application CR.
-func (r *ApplicationReconciler) Finalize(application *appstudiov1alpha1.Application) error {
+func (r *ApplicationReconciler) Finalize(application *appstudiov1alpha1.Application, ghClient github.GitHubClient) error {
 	// Get the GitOps repository URL
 	devfileSrc := devfile.DevfileSrc{
 		Data: application.Status.Devfile,
@@ -66,7 +67,7 @@ func (r *ApplicationReconciler) Finalize(application *appstudiov1alpha1.Applicat
 		if err != nil {
 			return err
 		}
-		return github.DeleteRepository(r.GitHubClient, context.Background(), r.GitHubOrg, repoName)
+		return ghClient.DeleteRepository(context.Background(), r.GitHubOrg, repoName)
 	}
 	return nil
 }
@@ -81,22 +82,22 @@ func containsString(slice []string, s string) bool {
 	return false
 }
 
-// getFinalizeCount gets the finalize count for the Application CR
-func getFinalizeCount(application *appstudiov1alpha1.Application) (int, error) {
-	applicationAnnotations := application.GetAnnotations()
-	if applicationAnnotations == nil {
-		applicationAnnotations = make(map[string]string)
-		applicationAnnotations[finalizeCount] = "0"
+// getApplicationFailCount gets the given counter annotation on the resource (defaults to 0 if unset)
+func getCounterAnnotation(annotation string, obj client.Object) (int, error) {
+	objAnnotations := obj.GetAnnotations()
+	if objAnnotations == nil || objAnnotations[annotation] == "" {
+		objAnnotations = make(map[string]string)
+		objAnnotations[annotation] = "0"
 	}
-	finalizeCountAnnotation := applicationAnnotations[finalizeCount]
-	return strconv.Atoi(finalizeCountAnnotation)
+	counterAnnotation := objAnnotations[annotation]
+	return strconv.Atoi(counterAnnotation)
 }
 
-// setCompFinalizeCount sets the finalize count for the Application CR
-func setFinalizeCount(application *appstudiov1alpha1.Application, count int) {
-	applicationAnnotations := application.GetAnnotations()
-	if applicationAnnotations == nil {
-		applicationAnnotations = make(map[string]string)
+// setApplicationFailCount sets the given counter annotation on the resource to the specified value
+func setCounterAnnotation(annotation string, obj client.Object, count int) {
+	objAnnotations := obj.GetAnnotations()
+	if objAnnotations == nil {
+		objAnnotations = make(map[string]string)
 	}
-	applicationAnnotations[finalizeCount] = strconv.Itoa(count)
+	objAnnotations[annotation] = strconv.Itoa(count)
 }

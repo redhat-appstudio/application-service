@@ -161,24 +161,24 @@ func TestGenerateGitops(t *testing.T) {
 	fakeClient := fake.NewClientBuilder().Build()
 
 	r := &ComponentReconciler{
-		Log:          ctrl.Log.WithName("controllers").WithName("Component"),
-		GitHubOrg:    github.AppStudioAppDataOrg,
-		GitToken:     "fake-token",
-		Generator:    gitops.NewMockGenerator(),
-		Client:       fakeClient,
-		GitHubClient: github.GetMockedClient(),
+		Log:               ctrl.Log.WithName("controllers").WithName("Component"),
+		GitHubOrg:         github.AppStudioAppDataOrg,
+		GitToken:          "fake-token",
+		Generator:         gitops.NewMockGenerator(),
+		Client:            fakeClient,
+		GitHubTokenClient: github.MockGitHubTokenClient{},
 	}
 
 	// Create a second reconciler for testing error scenarios
 	errGen := gitops.NewMockGenerator()
 	errGen.Errors.Push(errors.New("Fatal error"))
 	errReconciler := &ComponentReconciler{
-		Log:          ctrl.Log.WithName("controllers").WithName("Component"),
-		GitHubOrg:    github.AppStudioAppDataOrg,
-		GitToken:     "fake-token",
-		Generator:    errGen,
-		Client:       fakeClient,
-		GitHubClient: github.GetMockedClient(),
+		Log:               ctrl.Log.WithName("controllers").WithName("Component"),
+		GitHubOrg:         github.AppStudioAppDataOrg,
+		GitToken:          "fake-token",
+		Generator:         errGen,
+		Client:            fakeClient,
+		GitHubTokenClient: github.MockGitHubTokenClient{},
 	}
 
 	componentSpec := appstudiov1alpha1.ComponentSpec{
@@ -556,8 +556,10 @@ func TestGenerateGitops(t *testing.T) {
 			}
 			mockKubernetesComponents := mockDevfileData.EXPECT().GetComponents(kubernetesComponentFilter)
 			mockKubernetesComponents.Return(kubernetesComponents, nil).AnyTimes()
-
-			err := tt.reconciler.generateGitops(ctx, ctrl.Request{}, tt.component, mockDevfileData)
+			mockedClient := github.GitHubClient{
+				Client: github.GetMockedClient(),
+			}
+			err := tt.reconciler.generateGitops(ctx, mockedClient, ctrl.Request{}, tt.component, mockDevfileData)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("TestGenerateGitops() unexpected error: %v", err)
 			}
