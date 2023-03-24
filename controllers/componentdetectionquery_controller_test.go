@@ -782,7 +782,7 @@ var _ = Describe("Component Detection Query controller", func() {
 	})
 
 	Context("Create Component Detection Query with springboot repo that has devfile", func() {
-		It("Should return a correct devfile", func() {
+		It("Should return a correct devfile when repo URL has leading and trailing spaces", func() {
 			ctx := context.Background()
 
 			queryName := "springboot" + HASCompDetQuery + "16"
@@ -798,7 +798,7 @@ var _ = Describe("Component Detection Query controller", func() {
 				},
 				Spec: appstudiov1alpha1.ComponentDetectionQuerySpec{
 					GitSource: appstudiov1alpha1.GitSource{
-						URL: "https://github.com/maysunfaisal/devfile-sample-java-springboot-basic-1",
+						URL: "   https://github.com/maysunfaisal/devfile-sample-java-springboot-basic-1   ",
 					},
 				},
 			}

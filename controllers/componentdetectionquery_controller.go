@@ -20,6 +20,7 @@ import (
 	"context"
 	"fmt"
 	"path"
+	"strings"
 
 	"go.uber.org/zap/zapcore"
 	corev1 "k8s.io/api/core/v1"
@@ -128,6 +129,8 @@ func (r *ComponentDetectionQueryReconciler) Reconcile(ctx context.Context, req c
 		if context == "" {
 			context = "./"
 		}
+		// remove leading and trailing spaces of the repo URL
+		source.URL = strings.TrimSpace(source.URL)
 		sourceURL := source.URL
 		// If the repository URL ends in a forward slash, remove it to avoid issues with default branch lookup
 		if string(sourceURL[len(sourceURL)-1]) == "/" {
