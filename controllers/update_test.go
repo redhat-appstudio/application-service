@@ -613,7 +613,7 @@ func TestUpdateComponentStub(t *testing.T) {
 				Kubernetes: &devfileAPIV1.KubernetesComponent{
 					K8sLikeComponent: devfileAPIV1.K8sLikeComponent{
 						K8sLikeComponentLocation: devfileAPIV1.K8sLikeComponentLocation{
-							Uri: "testLocation",
+							Uri: "https://raw.githubusercontent.com/yangcao77/devfile-sample-java-springboot-basic/main/deploy.yaml",
 						},
 					},
 				},
