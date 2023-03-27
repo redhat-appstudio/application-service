@@ -842,8 +842,8 @@ func ValidateDevfile(log logr.Logger, URL string) (shouldIgnoreDevfile bool, dev
 							var u *url.URL
 							u, err = url.Parse(URL)
 							if err != nil {
-								log.Error(err, fmt.Sprintf("failed to parse from %s", URL))
-								return shouldIgnoreDevfile, nil, fmt.Errorf(fmt.Sprintf("failed to parse from %s", URL))
+								log.Error(err, fmt.Sprintf("failed to parse URL from %s", URL))
+								return shouldIgnoreDevfile, nil, fmt.Errorf(fmt.Sprintf("failed to parse URL from %s", URL))
 							}
 							u.Path = path.Join(u.Path, dockerfileURI)
 							dockerfileURI = u.String()
@@ -851,7 +851,7 @@ func ValidateDevfile(log logr.Logger, URL string) (shouldIgnoreDevfile bool, dev
 						}
 					}
 					if err != nil {
-						log.Error(err, fmt.Sprintf("failed to curl from the dockerfile URI %s, invalid image component: %s", URL, component.Name))
+						log.Error(err, fmt.Sprintf("failed to get dockerfile from the URI %s, invalid image component: %s", URL, component.Name))
 						return shouldIgnoreDevfile, nil, fmt.Errorf(fmt.Sprintf("failed to get dockerfile from the URI %s, invalid image component: %s", URL, component.Name))
 					}
 				}
