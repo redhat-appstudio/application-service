@@ -24,7 +24,6 @@ import (
 	"github.com/go-logr/logr"
 	"go.uber.org/zap/zapcore"
 
-	gh "github.com/google/go-github/v41/github"
 	k8sErrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
 	ctrl "sigs.k8s.io/controller-runtime"
@@ -48,10 +47,10 @@ import (
 // ApplicationReconciler reconciles a Application object
 type ApplicationReconciler struct {
 	client.Client
-	Scheme       *runtime.Scheme
-	Log          logr.Logger
-	GitHubClient *gh.Client
-	GitHubOrg    string
+	Scheme            *runtime.Scheme
+	Log               logr.Logger
+	GitHubTokenClient github.GitHubToken
+	GitHubOrg         string
 }
 
 //+kubebuilder:rbac:groups=appstudio.redhat.com,resources=applications,verbs=get;list;watch;create;update;patch;delete
@@ -89,6 +88,12 @@ func (r *ApplicationReconciler) Reconcile(ctx context.Context, req ctrl.Request)
 		return reconcile.Result{}, err
 	}
 
+	ghClient, err := r.GitHubTokenClient.GetNewGitHubClient()
+	if err != nil {
+		log.Error(err, "Unable to create Go-GitHub client due to error")
+		return reconcile.Result{}, err
+	}
+
 	// Check if the Application CR is under deletion
 	// If so: Remove the GitOps repo (if generated) and remove the finalizer.
 	if application.ObjectMeta.DeletionTimestamp.IsZero() {
@@ -100,11 +105,11 @@ func (r *ApplicationReconciler) Reconcile(ctx context.Context, req ctrl.Request)
 	} else {
 		if containsString(application.GetFinalizers(), appFinalizerName) {
 			// A finalizer is present for the Application CR, so make sure we do the necessary cleanup steps
-			if err := r.Finalize(&application); err != nil {
-				finalizeCount, err := getFinalizeCount(&application)
-				if err == nil && finalizeCount < 5 {
+			if err := r.Finalize(&application, ghClient); err != nil {
+				finalizeCounter, err := getCounterAnnotation(finalizeCount, &application)
+				if err == nil && finalizeCounter < 5 {
 					// The Finalize function failed, so increment the finalize count and return
-					setFinalizeCount(&application, finalizeCount+1)
+					setCounterAnnotation(finalizeCount, &application, finalizeCounter+1)
 					err := r.Update(ctx, &application)
 					if err != nil {
 						log.Error(err, "Error incrementing finalizer count on resource")
@@ -139,7 +144,7 @@ func (r *ApplicationReconciler) Reconcile(ctx context.Context, req ctrl.Request)
 			repoName := github.GenerateNewRepositoryName(application.Name, uniqueHash)
 
 			// Generate the git repo in the redhat-appstudio-appdata org
-			repoUrl, err := github.GenerateNewRepository(r.GitHubClient, ctx, r.GitHubOrg, repoName, "GitOps Repository")
+			repoUrl, err := ghClient.GenerateNewRepository(ctx, r.GitHubOrg, repoName, "GitOps Repository")
 			if err != nil {
 				log.Error(err, fmt.Sprintf("Unable to create repository %v", repoUrl))
 				r.SetCreateConditionAndUpdateCR(ctx, req, &application, err)

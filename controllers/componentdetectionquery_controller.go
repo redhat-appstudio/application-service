@@ -33,9 +33,9 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/event"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 	"sigs.k8s.io/controller-runtime/pkg/predicate"
+	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
 	"github.com/go-logr/logr"
-	gh "github.com/google/go-github/v41/github"
 	logicalcluster "github.com/kcp-dev/logicalcluster/v2"
 	appstudiov1alpha1 "github.com/redhat-appstudio/application-api/api/v1alpha1"
 	devfile "github.com/redhat-appstudio/application-service/pkg/devfile"
@@ -44,6 +44,7 @@ import (
 	"github.com/redhat-appstudio/application-service/pkg/spi"
 	"github.com/redhat-appstudio/application-service/pkg/util"
 	"github.com/redhat-appstudio/application-service/pkg/util/ioutils"
+	"github.com/redhat-developer/alizer/go/pkg/apis/model"
 	"github.com/spf13/afero"
 )
 
@@ -54,7 +55,7 @@ type ComponentDetectionQueryReconciler struct {
 	SPIClient          spi.SPI
 	AlizerClient       devfile.Alizer
 	Log                logr.Logger
-	GitHubClient       *gh.Client
+	GitHubTokenClient  github.GitHubToken
 	DevfileRegistryURL string
 	AppFS              afero.Afero
 }
@@ -125,16 +126,33 @@ func (r *ComponentDetectionQueryReconciler) Reconcile(ctx context.Context, req c
 		devfilesMap := make(map[string][]byte)
 		devfilesURLMap := make(map[string]string)
 		dockerfileContextMap := make(map[string]string)
+		componentPortsMap := make(map[string][]int)
 		context := source.Context
+		var components []model.Component
+
 		if context == "" {
 			context = "./"
 		}
+		// remove leading and trailing spaces of the repo URL
+		source.URL = strings.TrimSpace(source.URL)
+		sourceURL := source.URL
+		// If the repository URL ends in a forward slash, remove it to avoid issues with default branch lookup
+		if string(sourceURL[len(sourceURL)-1]) == "/" {
+			sourceURL = sourceURL[0 : len(sourceURL)-1]
+		}
 		if source.Revision == "" {
+			// Create a Go-GitHub client for checking the default branch
+			ghClient, err := r.GitHubTokenClient.GetNewGitHubClient()
+			if err != nil {
+				log.Error(err, "Unable to create Go-GitHub client due to error")
+				return reconcile.Result{}, err
+			}
+
 			log.Info(fmt.Sprintf("Look for default branch of repo %s... %v", source.URL, req.NamespacedName))
-			source.Revision, err = github.GetDefaultBranchFromURL(source.URL, r.GitHubClient, ctx)
+			source.Revision, err = ghClient.GetDefaultBranchFromURL(sourceURL, ctx)
 			if err != nil {
 				log.Error(err, fmt.Sprintf("Unable to get default branch of Github Repo %v, try to fall back to main branch... %v", source.URL, req.NamespacedName))
-				_, err := github.GetBranchFromURL(source.URL, r.GitHubClient, ctx, "main")
+				_, err := ghClient.GetBranchFromURL(sourceURL, ctx, "main")
 				if err != nil {
 					log.Error(err, fmt.Sprintf("Unable to get main branch of Github Repo %v ... %v", source.URL, req.NamespacedName))
 					retErr := fmt.Errorf("unable to get default branch of Github Repo %v, try to fall back to main branch, failed to get main branch... %v", source.URL, req.NamespacedName)
@@ -220,7 +238,7 @@ func (r *ComponentDetectionQueryReconciler) Reconcile(ctx context.Context, req c
 				}
 
 				if !isDevfilePresent {
-					components, err := r.AlizerClient.DetectComponents(componentPath)
+					components, err = r.AlizerClient.DetectComponents(componentPath)
 					if err != nil {
 						log.Error(err, fmt.Sprintf("Unable to detect components using Alizer for repo %v, under path %v... %v ", source.URL, componentPath, req.NamespacedName))
 						r.SetCompleteConditionAndUpdateCR(ctx, req, &componentDetectionQuery, copiedCDQ, err)
@@ -240,7 +258,7 @@ func (r *ComponentDetectionQueryReconciler) Reconcile(ctx context.Context, req c
 			if isMultiComponent {
 				log.Info(fmt.Sprintf("Since this is a multi-component, attempt will be made to read only level 1 dir for devfiles... %v", req.NamespacedName))
 
-				devfilesMap, devfilesURLMap, dockerfileContextMap, err = devfile.ScanRepo(log, r.AlizerClient, componentPath, r.DevfileRegistryURL, source)
+				devfilesMap, devfilesURLMap, dockerfileContextMap, componentPortsMap, err = devfile.ScanRepo(log, r.AlizerClient, componentPath, r.DevfileRegistryURL, source)
 				if err != nil {
 					if _, ok := err.(*devfile.NoDevfileFound); !ok {
 						log.Error(err, fmt.Sprintf("Unable to find devfile(s) in repo %s due to an error %s, exiting reconcile loop %v", source.URL, err.Error(), req.NamespacedName))
@@ -250,7 +268,7 @@ func (r *ComponentDetectionQueryReconciler) Reconcile(ctx context.Context, req c
 				}
 			} else {
 				log.Info(fmt.Sprintf("Since this is not a multi-component, attempt will be made to read devfile at the root dir... %v", req.NamespacedName))
-				err := devfile.AnalyzePath(r.AlizerClient, componentPath, context, r.DevfileRegistryURL, devfilesMap, devfilesURLMap, dockerfileContextMap, isDevfilePresent, isDockerfilePresent)
+				err := devfile.AnalyzePath(r.AlizerClient, componentPath, context, r.DevfileRegistryURL, devfilesMap, devfilesURLMap, dockerfileContextMap, componentPortsMap, isDevfilePresent, isDockerfilePresent)
 				if err != nil {
 					log.Error(err, fmt.Sprintf("Unable to analyze path %s for a dockerfile/devfile %v", componentPath, req.NamespacedName))
 					r.SetCompleteConditionAndUpdateCR(ctx, req, &componentDetectionQuery, copiedCDQ, err)
@@ -288,22 +306,6 @@ func (r *ComponentDetectionQueryReconciler) Reconcile(ctx context.Context, req c
 			}
 		}
 
-		for context, link := range dockerfileContextMap {
-			// If the returned context/link is a local path, update the git link for the dockerfile accordingly
-			// Otherwise
-			if !strings.HasPrefix(link, "http") {
-				updatedContext := path.Join(context, link)
-
-				updatedLink, err := devfile.UpdateGitLink(source.URL, source.Revision, updatedContext)
-				if err != nil {
-					log.Error(err, fmt.Sprintf("Unable to update the dockerfile link %v", req.NamespacedName))
-					r.SetCompleteConditionAndUpdateCR(ctx, req, &componentDetectionQuery, copiedCDQ, err)
-					return ctrl.Result{}, nil
-				}
-				dockerfileContextMap[context] = updatedLink
-			}
-		}
-
 		for context := range devfilesMap {
 			if _, ok := devfilesURLMap[context]; !ok {
 				updatedLink, err := devfile.UpdateGitLink(source.URL, source.Revision, path.Join(context, devfilePath))
@@ -316,7 +318,7 @@ func (r *ComponentDetectionQueryReconciler) Reconcile(ctx context.Context, req c
 			}
 		}
 
-		err = r.updateComponentStub(req, &componentDetectionQuery, devfilesMap, devfilesURLMap, dockerfileContextMap)
+		err = r.updateComponentStub(req, &componentDetectionQuery, devfilesMap, devfilesURLMap, dockerfileContextMap, componentPortsMap)
 		if err != nil {
 			log.Error(err, fmt.Sprintf("Unable to update the component stub %v", req.NamespacedName))
 			r.SetCompleteConditionAndUpdateCR(ctx, req, &componentDetectionQuery, copiedCDQ, err)

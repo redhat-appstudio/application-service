@@ -23,14 +23,12 @@ import (
 	"log"
 	"net/http"
 	"os"
-	"time"
 
 	gitopsgen "github.com/redhat-developer/gitops-generator/pkg"
 
 	// Import all Kubernetes client auth plugins (e.g. Azure, GCP, OIDC, etc.)
 	// to ensure that exec-entrypoint and run can make use of them.
 	"go.uber.org/zap/zapcore"
-	"golang.org/x/oauth2"
 	"k8s.io/client-go/discovery"
 	_ "k8s.io/client-go/plugin/pkg/client/auth"
 	"k8s.io/client-go/rest"
@@ -47,13 +45,11 @@ import (
 
 	routev1 "github.com/openshift/api/route/v1"
 
-	"github.com/gofri/go-github-ratelimit/github_ratelimit"
-	"github.com/google/go-github/v41/github"
-
 	appstudiov1alpha1 "github.com/redhat-appstudio/application-api/api/v1alpha1"
 	"github.com/redhat-appstudio/application-service/controllers"
 	appservicegitops "github.com/redhat-appstudio/application-service/gitops"
 	"github.com/redhat-appstudio/application-service/pkg/devfile"
+	"github.com/redhat-appstudio/application-service/pkg/github"
 	"github.com/redhat-appstudio/application-service/pkg/spi"
 	"github.com/redhat-appstudio/application-service/pkg/util/ioutils"
 
@@ -151,16 +147,6 @@ func main() {
 		setupLog.Error(err, "unable to add triggers api to the scheme")
 		os.Exit(1)
 	}
-	// Retrieve the GitHub Auth Token to use, error out if not found
-	ghToken := os.Getenv("GITHUB_AUTH_TOKEN")
-	if ghToken == "" {
-		log.Fatal("Unauthorized: No GitHub token present")
-	}
-
-	cdqToken := os.Getenv("CDQ_GITHUB_TOKEN")
-	if cdqToken == "" {
-		cdqToken = ghToken
-	}
 
 	// Retrieve the name of the GitHub org to use
 	ghOrg := os.Getenv("GITHUB_ORG")
@@ -181,44 +167,33 @@ func main() {
 		devfileRegistryURL = devfile.DevfileRegistryEndpoint
 	}
 
-	ts := oauth2.StaticTokenSource(&oauth2.Token{AccessToken: ghToken})
-	tc := oauth2.NewClient(ctx, ts)
-	rateLimiter, err := github_ratelimit.NewRateLimitWaiterClient(tc.Transport, github_ratelimit.WithSingleSleepLimit(time.Minute, nil))
+	// Parse any passed in tokens and set up a client for handling the github tokens
+	err = github.ParseGitHubTokens()
 	if err != nil {
-		setupLog.Error(err, "unable to add triggers api to the scheme")
+		setupLog.Error(err, "unable to set up github tokens")
 		os.Exit(1)
 	}
-	client := github.NewClient(rateLimiter)
-
-	cdqts := oauth2.StaticTokenSource(&oauth2.Token{AccessToken: cdqToken})
-	cdqtc := oauth2.NewClient(ctx, cdqts)
-	cdqRateLimiter, err := github_ratelimit.NewRateLimitWaiterClient(cdqtc.Transport, github_ratelimit.WithSingleSleepLimit(time.Minute, nil))
-	if err != nil {
-		setupLog.Error(err, "unable to add triggers api to the scheme")
-		os.Exit(1)
-	}
-	cdqClient := github.NewClient(cdqRateLimiter)
+	ghTokenClient := github.GitHubTokenClient{}
 
 	if err = (&controllers.ApplicationReconciler{
-		Client:       mgr.GetClient(),
-		Scheme:       mgr.GetScheme(),
-		Log:          ctrl.Log.WithName("controllers").WithName("Application").WithValues("appstudio-component", "HAS"),
-		GitHubClient: client,
-		GitHubOrg:    ghOrg,
+		Client:            mgr.GetClient(),
+		Scheme:            mgr.GetScheme(),
+		Log:               ctrl.Log.WithName("controllers").WithName("Application").WithValues("appstudio-component", "HAS"),
+		GitHubTokenClient: ghTokenClient,
+		GitHubOrg:         ghOrg,
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "Application")
 		os.Exit(1)
 	}
 	if err = (&controllers.ComponentReconciler{
-		Client:          mgr.GetClient(),
-		Scheme:          mgr.GetScheme(),
-		Log:             ctrl.Log.WithName("controllers").WithName("Component").WithValues("appstudio-component", "HAS"),
-		Generator:       gitopsgen.NewGitopsGen(),
-		AppFS:           ioutils.NewFilesystem(),
-		GitToken:        ghToken,
-		ImageRepository: imageRepository,
-		SPIClient:       spi.SPIClient{},
-		GitHubClient:    client,
+		Client:            mgr.GetClient(),
+		Scheme:            mgr.GetScheme(),
+		Log:               ctrl.Log.WithName("controllers").WithName("Component").WithValues("appstudio-component", "HAS"),
+		Generator:         gitopsgen.NewGitopsGen(),
+		AppFS:             ioutils.NewFilesystem(),
+		GitHubTokenClient: ghTokenClient,
+		ImageRepository:   imageRepository,
+		SPIClient:         spi.SPIClient{},
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "Component")
 		os.Exit(1)
@@ -229,7 +204,7 @@ func main() {
 		Log:                ctrl.Log.WithName("controllers").WithName("ComponentDetectionQuery").WithValues("appstudio-component", "HAS"),
 		SPIClient:          spi.SPIClient{},
 		AlizerClient:       devfile.AlizerClient{},
-		GitHubClient:       cdqClient,
+		GitHubTokenClient:  ghTokenClient,
 		DevfileRegistryURL: devfileRegistryURL,
 		AppFS:              ioutils.NewFilesystem(),
 	}).SetupWithManager(mgr); err != nil {
@@ -250,13 +225,12 @@ func main() {
 	}
 
 	if err = (&controllers.SnapshotEnvironmentBindingReconciler{
-		Client:       mgr.GetClient(),
-		Scheme:       mgr.GetScheme(),
-		Log:          ctrl.Log.WithName("controllers").WithName("SnapshotEnvironmentBinding").WithValues("appstudio-component", "HAS"),
-		Generator:    gitopsgen.NewGitopsGen(),
-		AppFS:        ioutils.NewFilesystem(),
-		GitToken:     ghToken,
-		GitHubClient: client,
+		Client:            mgr.GetClient(),
+		Scheme:            mgr.GetScheme(),
+		Log:               ctrl.Log.WithName("controllers").WithName("SnapshotEnvironmentBinding").WithValues("appstudio-component", "HAS"),
+		Generator:         gitopsgen.NewGitopsGen(),
+		AppFS:             ioutils.NewFilesystem(),
+		GitHubTokenClient: ghTokenClient,
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "SnapshotEnvironmentBinding")
 		os.Exit(1)

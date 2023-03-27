@@ -19,8 +19,8 @@ package controllers
 import (
 	"fmt"
 	"regexp"
-	"strconv"
 	"strings"
+	"unicode"
 
 	"github.com/brianvoe/gofakeit/v6"
 	devfileAPIV1 "github.com/devfile/api/v2/pkg/apis/workspaces/v1alpha2"
@@ -271,7 +271,7 @@ func (r *ComponentReconciler) updateApplicationDevfileModel(hasAppDevfileData da
 	return nil
 }
 
-func (r *ComponentDetectionQueryReconciler) updateComponentStub(req ctrl.Request, componentDetectionQuery *appstudiov1alpha1.ComponentDetectionQuery, devfilesMap map[string][]byte, devfilesURLMap map[string]string, dockerfileContextMap map[string]string) error {
+func (r *ComponentDetectionQueryReconciler) updateComponentStub(req ctrl.Request, componentDetectionQuery *appstudiov1alpha1.ComponentDetectionQuery, devfilesMap map[string][]byte, devfilesURLMap map[string]string, dockerfileContextMap map[string]string, componentPortsMap map[string][]int) error {
 
 	if componentDetectionQuery == nil {
 		return fmt.Errorf("componentDetectionQuery is nil")
@@ -326,6 +326,10 @@ func (r *ComponentDetectionQueryReconciler) updateComponentStub(req ctrl.Request
 			},
 		}
 
+		if len(componentPortsMap[context]) != 0 {
+			componentStub.TargetPort = componentPortsMap[context][0]
+		}
+
 		// Since a devfile can have N container components, we only try to populate the stub with the first Kubernetes component
 		if len(devfileKubernetesComponents) != 0 {
 			kubernetesComponentAttribute := devfileKubernetesComponents[0].Attributes
@@ -339,10 +343,12 @@ func (r *ComponentDetectionQueryReconciler) updateComponentStub(req ctrl.Request
 			}
 
 			// Devfile Port
-			componentStub.TargetPort = int(kubernetesComponentAttribute.GetNumber(devfile.ContainerImagePortKey, &err))
-			if err != nil {
-				if _, ok := err.(*attributes.KeyNotFoundError); !ok {
-					return err
+			if componentStub.TargetPort == 0 {
+				componentStub.TargetPort = int(kubernetesComponentAttribute.GetNumber(devfile.ContainerImagePortKey, &err))
+				if err != nil {
+					if _, ok := err.(*attributes.KeyNotFoundError); !ok {
+						return err
+					}
 				}
 			}
 
@@ -534,7 +540,7 @@ func getComponentName(gitSource *appstudiov1alpha1.GitSource) string {
 // sanitizeComponentName sanitizes component name with the following requirements:
 // - Contain at most 63 characters
 // - Contain only lowercase alphanumeric characters or ‘-’
-// - Start with an alphanumeric character
+// - Start with an alphabet character
 // - End with an alphanumeric character
 // - Must not contain all numeric values
 func sanitizeComponentName(name string) string {
@@ -545,14 +551,11 @@ func sanitizeComponentName(name string) string {
 	if name == "" {
 		name = gofakeit.Noun()
 	}
-	_, err := strconv.ParseFloat(name, 64)
-	if err != nil {
-		// convert all Uppercase chars to lowercase
-		name = strings.ToLower(name)
-	} else {
-		// contains only numeric values, prefix a character
+	if unicode.IsDigit(rune(name[0])) {
+		// starts with numeric values, prefix a character
 		name = fmt.Sprintf("comp-%s", name)
 	}
+	name = strings.ToLower(name)
 	if len(name) > 58 {
 		name = name[0:58]
 	}

@@ -602,6 +602,25 @@ func TestUpdateComponentStub(t *testing.T) {
 		},
 	}
 
+	componentsValidWithPort := []devfileAPIV1.Component{
+		{
+			Name: "component1",
+			Attributes: envAttributes.PutInteger(devfilePkg.ReplicaKey, 1).PutString(devfilePkg.RouteKey, "route1").PutInteger(
+				devfilePkg.ContainerImagePortKey, 8080).PutString(devfilePkg.CpuLimitKey, "2").PutString(devfilePkg.CpuRequestKey, "700m").PutString(
+				devfilePkg.MemoryLimitKey, "500Mi").PutString(devfilePkg.MemoryRequestKey, "400Mi").PutString(
+				devfilePkg.StorageLimitKey, "400Mi").PutString(devfilePkg.StorageRequestKey, "200Mi"),
+			ComponentUnion: devfileAPIV1.ComponentUnion{
+				Kubernetes: &devfileAPIV1.KubernetesComponent{
+					K8sLikeComponent: devfileAPIV1.K8sLikeComponent{
+						K8sLikeComponentLocation: devfileAPIV1.K8sLikeComponentLocation{
+							Uri: "testLocation",
+						},
+					},
+				},
+			},
+		},
+	}
+
 	componentsReplicaErr := []devfileAPIV1.Component{
 		{
 			Name: "component1",
@@ -781,12 +800,13 @@ func TestUpdateComponentStub(t *testing.T) {
 	}
 
 	tests := []struct {
-		name             string
-		devfilesDataMap  map[string]*v2.DevfileV2
-		devfilesURLMap   map[string]string
-		dockerfileURLMap map[string]string
-		isNil            bool
-		wantErr          bool
+		name              string
+		devfilesDataMap   map[string]*v2.DevfileV2
+		devfilesURLMap    map[string]string
+		dockerfileURLMap  map[string]string
+		componentPortsMap map[string][]int
+		isNil             bool
+		wantErr           bool
 	}{
 		{
 			name: "Kubernetes Components present",
@@ -808,6 +828,31 @@ func TestUpdateComponentStub(t *testing.T) {
 						},
 					},
 				},
+			},
+		},
+		{
+			name: "Detected ports present",
+			devfilesDataMap: map[string]*v2.DevfileV2{
+				"./": {
+					Devfile: devfileAPIV1.Devfile{
+						DevfileHeader: devfile.DevfileHeader{
+							SchemaVersion: "2.2.0",
+							Metadata: devfile.DevfileMetadata{
+								Name:        "test-devfile",
+								Language:    "language",
+								ProjectType: "project",
+							},
+						},
+						DevWorkspaceTemplateSpec: devfileAPIV1.DevWorkspaceTemplateSpec{
+							DevWorkspaceTemplateSpecContent: devfileAPIV1.DevWorkspaceTemplateSpecContent{
+								Components: componentsValidWithPort,
+							},
+						},
+					},
+				},
+			},
+			componentPortsMap: map[string][]int{
+				"./": {8080},
 			},
 		},
 		{
@@ -1314,9 +1359,9 @@ func TestUpdateComponentStub(t *testing.T) {
 			}
 			var err error
 			if tt.isNil {
-				err = r.updateComponentStub(ctrl.Request{}, nil, devfilesMap, nil, nil)
+				err = r.updateComponentStub(ctrl.Request{}, nil, devfilesMap, nil, nil, nil)
 			} else {
-				err = r.updateComponentStub(ctrl.Request{}, &componentDetectionQuery, devfilesMap, tt.devfilesURLMap, tt.dockerfileURLMap)
+				err = r.updateComponentStub(ctrl.Request{}, &componentDetectionQuery, devfilesMap, tt.devfilesURLMap, tt.dockerfileURLMap, tt.componentPortsMap)
 			}
 
 			if tt.wantErr && (err == nil) {
@@ -1460,7 +1505,7 @@ func TestGetComponentName(t *testing.T) {
 			gitSource: &appstudiov1alpha1.GitSource{
 				URL: "https://github.com/devfile-samples/123-testdevfilego--ImportRepository--withaverylongreporitoryname-test-validation-and-generation",
 			},
-			expectedName: "123-testdevfilego--importrepository--withaverylongreporito",
+			expectedName: "comp-123-testdevfilego--importrepository--withaverylongrep",
 		},
 		{
 			name: "numeric repo name",
@@ -1537,6 +1582,11 @@ func TestSanitizeComponentName(t *testing.T) {
 			name:          "simple component name, all numbers",
 			componentName: "123412341234",
 			want:          "comp-123412341234",
+		},
+		{
+			name:          "simple component name, start with a number",
+			componentName: "123-testcomp",
+			want:          "comp-123-testcomp",
 		},
 		{
 			name:          "Empty string, should have a name generated for it",

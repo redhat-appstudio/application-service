@@ -714,7 +714,8 @@ func DownloadDevfileAndDockerfile(url string) ([]byte, string, []byte) {
 // Map 1 returns a context to the devfile bytes if present.
 // Map 2 returns a context to the matched devfileURL from the devfile registry if no devfile is present in the context.
 // Map 3 returns a context to the dockerfile uri or a matched dockerfileURL from the devfile registry if no dockerfile is present in the context
-func ScanRepo(log logr.Logger, a Alizer, localpath string, devfileRegistryURL string, source appstudiov1alpha1.GitSource) (map[string][]byte, map[string]string, map[string]string, error) {
+// Map 4 returns a context to the list of ports that were detected by alizer in the source code, at that given context
+func ScanRepo(log logr.Logger, a Alizer, localpath string, devfileRegistryURL string, source appstudiov1alpha1.GitSource) (map[string][]byte, map[string]string, map[string]string, map[string][]int, error) {
 	return search(log, a, localpath, devfileRegistryURL, source)
 }
 
