@@ -41,6 +41,7 @@ func (a MockAlizerClient) DetectComponents(path string) ([]model.Component, erro
 						CanBeComponent: true,
 					},
 				},
+				Ports: []int{8080},
 			},
 		}, nil
 	} else if strings.Contains(path, "nodejs-no-dockerfile") {
