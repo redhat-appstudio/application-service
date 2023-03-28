@@ -503,6 +503,65 @@ func TestScanRepo(t *testing.T) {
 		expectedPortsMap             map[string][]int
 	}{
 		{
+			name:                   "Should return 2 devfile contexts, and 2 devfileURLs as this is a multi comp devfile",
+			clonePath:              "/tmp/testclone",
+			repo:                   "https://github.com/maysunfaisal/multi-components-deep",
+			expectedDevfileContext: []string{"python", "devfile-sample-java-springboot-basic"},
+			expectedDevfileURLContextMap: map[string]string{
+				"devfile-sample-java-springboot-basic": "https://raw.githubusercontent.com/maysunfaisal/multi-components-deep/main/devfile-sample-java-springboot-basic/.devfile/.devfile.yaml",
+				"python":                               "https://raw.githubusercontent.com/devfile-samples/devfile-sample-python-basic/main/devfile.yaml",
+			},
+			expectedDockerfileContextMap: map[string]string{
+				"devfile-sample-java-springboot-basic": "devfile-sample-java-springboot-basic/docker/Dockerfile",
+				"python":                               "https://raw.githubusercontent.com/devfile-samples/devfile-sample-python-basic/main/docker/Dockerfile"},
+		},
+		{
+			name:                   "Should return 2 devfile contexts, and 2 devfileURLs as this is a multi comp devfile - with revision specified",
+			clonePath:              "/tmp/testclone",
+			repo:                   "https://github.com/maysunfaisal/multi-components-deep",
+			revision:               "main",
+			expectedDevfileContext: []string{"python", "devfile-sample-java-springboot-basic"},
+			expectedDevfileURLContextMap: map[string]string{
+				"devfile-sample-java-springboot-basic": "https://raw.githubusercontent.com/maysunfaisal/multi-components-deep/main/devfile-sample-java-springboot-basic/.devfile/.devfile.yaml",
+				"python":                               "https://raw.githubusercontent.com/devfile-samples/devfile-sample-python-basic/main/devfile.yaml",
+			},
+			expectedDockerfileContextMap: map[string]string{
+				"devfile-sample-java-springboot-basic": "devfile-sample-java-springboot-basic/docker/Dockerfile",
+				"python":                               "https://raw.githubusercontent.com/devfile-samples/devfile-sample-python-basic/main/docker/Dockerfile"},
+		},
+		{
+			name:                   "Should return 2 devfile contexts, and 2 devfileURLs with multi-component but no outerloop definition",
+			clonePath:              "/tmp/testclone",
+			repo:                   "https://github.com/yangcao77/multi-components-with-no-kubecomps",
+			expectedDevfileContext: []string{"python", "devfile-sample-java-springboot-basic"},
+			expectedDevfileURLContextMap: map[string]string{
+				"devfile-sample-java-springboot-basic": "https://raw.githubusercontent.com/devfile-samples/devfile-sample-java-springboot-basic/main/devfile.yaml",
+				"python":                               "https://raw.githubusercontent.com/devfile-samples/devfile-sample-python-basic/main/devfile.yaml",
+			},
+			expectedDockerfileContextMap: map[string]string{
+				"devfile-sample-java-springboot-basic": "https://raw.githubusercontent.com/devfile-samples/devfile-sample-java-springboot-basic/main/docker/Dockerfile",
+				"python":                               "https://raw.githubusercontent.com/devfile-samples/devfile-sample-python-basic/main/docker/Dockerfile"},
+		},
+		{
+			name:                   "Should return 4 devfiles, 5 devfile url and 5 dockerfile uri as this is a multi comp devfile",
+			clonePath:              "/tmp/testclone",
+			repo:                   "https://github.com/maysunfaisal/multi-components-dockerfile",
+			expectedDevfileContext: []string{"devfile-sample-java-springboot-basic", "devfile-sample-nodejs-basic", "devfile-sample-python-basic", "python-src-none"},
+			expectedDevfileURLContextMap: map[string]string{
+				"devfile-sample-java-springboot-basic": "https://raw.githubusercontent.com/maysunfaisal/multi-components-dockerfile/main/devfile-sample-java-springboot-basic/.devfile/.devfile.yaml",
+				"devfile-sample-nodejs-basic":          "https://raw.githubusercontent.com/nodeshift-starters/devfile-sample/main/devfile.yaml",
+				"devfile-sample-python-basic":          "https://raw.githubusercontent.com/maysunfaisal/multi-components-dockerfile/main/devfile-sample-python-basic/.devfile.yaml",
+				"python-src-none":                      "https://raw.githubusercontent.com/devfile-samples/devfile-sample-python-basic/main/devfile.yaml",
+				"python-src-docker":                    "https://raw.githubusercontent.com/devfile-samples/devfile-sample-python-basic/main/devfile.yaml",
+			},
+			expectedDockerfileContextMap: map[string]string{
+				"python-src-docker":                    "python-src-docker/Dockerfile",
+				"devfile-sample-nodejs-basic":          "https://raw.githubusercontent.com/nodeshift-starters/devfile-sample/main/Dockerfile",
+				"devfile-sample-java-springboot-basic": "devfile-sample-java-springboot-basic/docker/Dockerfile",
+				"python-src-none":                      "https://raw.githubusercontent.com/devfile-samples/devfile-sample-python-basic/main/docker/Dockerfile",
+				"devfile-sample-python-basic":          "https://raw.githubusercontent.com/maysunfaisal/multi-components-dockerfile/main/devfile-sample-python-basic/Dockerfile"},
+		},
+		{
 			name:                   "Should return one context with one devfile, along with one port detected",
 			clonePath:              "/tmp/testclonenode-devfile-sample-nodejs-basic",
 			repo:                   "https://github.com/devfile-resources/single-component-port-detected",
