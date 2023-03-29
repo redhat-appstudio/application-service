@@ -22,6 +22,8 @@ import (
 	"path"
 	"strings"
 
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/redhat-appstudio/application-service/pkg/metrics"
 	"go.uber.org/zap/zapcore"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -60,6 +62,8 @@ type ComponentDetectionQueryReconciler struct {
 	AppFS              afero.Afero
 }
 
+const cdqName = "ComponentDetectionQuery"
+
 //+kubebuilder:rbac:groups=appstudio.redhat.com,resources=componentdetectionqueries,verbs=get;list;watch;create;update;patch;delete
 //+kubebuilder:rbac:groups=appstudio.redhat.com,resources=componentdetectionqueries/status,verbs=get;update;patch
 //+kubebuilder:rbac:groups=appstudio.redhat.com,resources=componentdetectionqueries/finalizers,verbs=update
@@ -74,7 +78,7 @@ type ComponentDetectionQueryReconciler struct {
 // For more details, check Reconcile and its Result here:
 // - https://pkg.go.dev/sigs.k8s.io/controller-runtime@v0.9.2/pkg/reconcile
 func (r *ComponentDetectionQueryReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
-	log := r.Log.WithValues("ComponentDetectionQuery", req.NamespacedName).WithValues("clusterName", req.ClusterName)
+	log := r.Log.WithValues(cdqName, req.NamespacedName).WithValues("clusterName", req.ClusterName)
 
 	// if we're running on kcp, we need to include workspace in context
 	if req.ClusterName != "" {
@@ -149,11 +153,17 @@ func (r *ComponentDetectionQueryReconciler) Reconcile(ctx context.Context, req c
 			}
 
 			log.Info(fmt.Sprintf("Look for default branch of repo %s... %v", source.URL, req.NamespacedName))
+			metricsLabel := prometheus.Labels{"controller": cdqName, "tokenName": ghClient.TokenName, "operation": "GetDefaultBranchFromURL"}
+			metrics.ControllerGitRequest.With(metricsLabel).Inc()
 			source.Revision, err = ghClient.GetDefaultBranchFromURL(sourceURL, ctx)
+			metrics.HandleRateLimitMetrics(err, metricsLabel)
 			if err != nil {
 				log.Error(err, fmt.Sprintf("Unable to get default branch of Github Repo %v, try to fall back to main branch... %v", source.URL, req.NamespacedName))
+				metricsLabel := prometheus.Labels{"controller": cdqName, "tokenName": ghClient.TokenName, "operation": "GetBranchFromURL"}
+				metrics.ControllerGitRequest.With(metricsLabel).Inc()
 				_, err := ghClient.GetBranchFromURL(sourceURL, ctx, "main")
 				if err != nil {
+					metrics.HandleRateLimitMetrics(err, metricsLabel)
 					log.Error(err, fmt.Sprintf("Unable to get main branch of Github Repo %v ... %v", source.URL, req.NamespacedName))
 					retErr := fmt.Errorf("unable to get default branch of Github Repo %v, try to fall back to main branch, failed to get main branch... %v", source.URL, req.NamespacedName)
 					r.SetCompleteConditionAndUpdateCR(ctx, req, &componentDetectionQuery, copiedCDQ, retErr)

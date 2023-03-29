@@ -19,6 +19,8 @@ package controllers
 import (
 	"context"
 	"fmt"
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/redhat-appstudio/application-service/pkg/metrics"
 
 	gofakeit "github.com/brianvoe/gofakeit/v6"
 	"github.com/go-logr/logr"
@@ -53,6 +55,8 @@ type ApplicationReconciler struct {
 	GitHubOrg         string
 }
 
+const applicationName = "Application"
+
 //+kubebuilder:rbac:groups=appstudio.redhat.com,resources=applications,verbs=get;list;watch;create;update;patch;delete
 //+kubebuilder:rbac:groups=appstudio.redhat.com,resources=applications/status,verbs=get;update;patch
 //+kubebuilder:rbac:groups=appstudio.redhat.com,resources=applications/finalizers,verbs=update
@@ -67,7 +71,7 @@ type ApplicationReconciler struct {
 // For more details, check Reconcile and its Result here:
 // - https://pkg.go.dev/sigs.k8s.io/controller-runtime@v0.9.2/pkg/reconcile
 func (r *ApplicationReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
-	log := r.Log.WithValues("Application", req.NamespacedName).WithValues("clusterName", req.ClusterName)
+	log := r.Log.WithValues(applicationName, req.NamespacedName).WithValues("clusterName", req.ClusterName)
 
 	// if we're running on kcp, we need to include workspace in context
 	if req.ClusterName != "" {
@@ -144,8 +148,12 @@ func (r *ApplicationReconciler) Reconcile(ctx context.Context, req ctrl.Request)
 			repoName := github.GenerateNewRepositoryName(application.Name, uniqueHash)
 
 			// Generate the git repo in the redhat-appstudio-appdata org
+			// Not an SLI metric.  Used for determining the number of git operation requests
+			metricsLabel := prometheus.Labels{"controller": applicationName, "tokenName": ghClient.TokenName, "operation": "GenerateNewRepository"}
+			metrics.ControllerGitRequest.With(metricsLabel).Inc()
 			repoUrl, err := ghClient.GenerateNewRepository(ctx, r.GitHubOrg, repoName, "GitOps Repository")
 			if err != nil {
+				metrics.HandleRateLimitMetrics(err, metricsLabel)
 				log.Error(err, fmt.Sprintf("Unable to create repository %v", repoUrl))
 				r.SetCreateConditionAndUpdateCR(ctx, req, &application, err)
 				return reconcile.Result{}, err
