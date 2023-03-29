@@ -492,6 +492,7 @@ func (r *ComponentDetectionQueryReconciler) updateComponentStub(req ctrl.Request
 		gitSource := &appstudiov1alpha1.GitSource{
 			Context:       context,
 			URL:           componentDetectionQuery.Spec.GitSource.URL,
+			Revision:      componentDetectionQuery.Spec.GitSource.Revision,
 			DockerfileURL: link,
 		}
 		componentName := getComponentName(gitSource)
