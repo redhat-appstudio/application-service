@@ -74,7 +74,7 @@ type ComponentDetectionQueryReconciler struct {
 // For more details, check Reconcile and its Result here:
 // - https://pkg.go.dev/sigs.k8s.io/controller-runtime@v0.9.2/pkg/reconcile
 func (r *ComponentDetectionQueryReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
-	log := r.Log.WithValues("ComponentDetectionQuery", req.NamespacedName).WithValues("clusterName", req.ClusterName)
+	log := r.Log.WithValues("kind", "ComponentDetectionQuery").WithValues("resource", req.NamespacedName.Name).WithValues("namespace", req.NamespacedName.Namespace)
 
 	// if we're running on kcp, we need to include workspace in context
 	if req.ClusterName != "" {
@@ -321,22 +321,22 @@ func (r *ComponentDetectionQueryReconciler) SetupWithManager(mgr ctrl.Manager) e
 		TimeEncoder: zapcore.ISO8601TimeEncoder,
 	}
 	ctrl.SetLogger(zap.New(zap.UseFlagOptions(&opts)))
-	log := ctrl.Log.WithName("controllers").WithName("ComponentDetectionQuery").WithValues("appstudio-component", "HAS")
+	log := ctrl.Log.WithName("controllers").WithName("ComponentDetectionQuery")
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&appstudiov1alpha1.ComponentDetectionQuery{},
 			builder.WithPredicates(predicate.GenerationChangedPredicate{})).WithEventFilter(predicate.Funcs{
 		CreateFunc: func(e event.CreateEvent) bool {
-			log := log.WithValues("Namespace", e.Object.GetNamespace()).WithValues("clusterName", logicalcluster.From(e.Object).String())
+			log := log.WithValues("namespace", e.Object.GetNamespace())
 			logutil.LogAPIResourceChangeEvent(log, e.Object.GetName(), "ComponentDetectionQuery", logutil.ResourceCreate, nil)
 			return true
 		},
 		UpdateFunc: func(e event.UpdateEvent) bool {
-			log := log.WithValues("Namespace", e.ObjectNew.GetNamespace()).WithValues("clusterName", logicalcluster.From(e.ObjectNew).String())
+			log := log.WithValues("namespace", e.ObjectNew.GetNamespace())
 			logutil.LogAPIResourceChangeEvent(log, e.ObjectNew.GetName(), "ComponentDetectionQuery", logutil.ResourceUpdate, nil)
 			return true
 		},
 		DeleteFunc: func(e event.DeleteEvent) bool {
-			log := log.WithValues("Namespace", e.Object.GetNamespace()).WithValues("clusterName", logicalcluster.From(e.Object).String())
+			log := log.WithValues("namespace", e.Object.GetNamespace())
 			logutil.LogAPIResourceChangeEvent(log, e.Object.GetName(), "ComponentDetectionQuery", logutil.ResourceDelete, nil)
 			return false
 		},

@@ -67,7 +67,7 @@ type ApplicationReconciler struct {
 // For more details, check Reconcile and its Result here:
 // - https://pkg.go.dev/sigs.k8s.io/controller-runtime@v0.9.2/pkg/reconcile
 func (r *ApplicationReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
-	log := r.Log.WithValues("Application", req.NamespacedName).WithValues("clusterName", req.ClusterName)
+	log := r.Log.WithValues("kind", "Application").WithValues("resource", req.NamespacedName.Name).WithValues("namespace", req.NamespacedName.Namespace)
 
 	// if we're running on kcp, we need to include workspace in context
 	if req.ClusterName != "" {
@@ -230,21 +230,22 @@ func (r *ApplicationReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		TimeEncoder: zapcore.ISO8601TimeEncoder,
 	}
 	ctrl.SetLogger(zap.New(zap.UseFlagOptions(&opts)))
-	log := ctrl.Log.WithName("controllers").WithName("Application").WithValues("appstudio-component", "HAS")
+	log := ctrl.Log.WithName("controllers").WithName("Application")
+
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&appstudiov1alpha1.Application{}).WithEventFilter(predicate.Funcs{
 		CreateFunc: func(e event.CreateEvent) bool {
-			log := log.WithValues("Namespace", e.Object.GetNamespace()).WithValues("clusterName", logicalcluster.From(e.Object).String())
+			log := log.WithValues("namespace", e.Object.GetNamespace())
 			logutil.LogAPIResourceChangeEvent(log, e.Object.GetName(), "Application", logutil.ResourceCreate, nil)
 			return true
 		},
 		UpdateFunc: func(e event.UpdateEvent) bool {
-			log := log.WithValues("Namespace", e.ObjectNew.GetNamespace()).WithValues("clusterName", logicalcluster.From(e.ObjectNew).String())
+			log := log.WithValues("namespace", e.ObjectNew.GetNamespace())
 			logutil.LogAPIResourceChangeEvent(log, e.ObjectNew.GetName(), "Application", logutil.ResourceUpdate, nil)
 			return true
 		},
 		DeleteFunc: func(e event.DeleteEvent) bool {
-			log := log.WithValues("Namespace", e.Object.GetNamespace()).WithValues("clusterName", logicalcluster.From(e.Object).String())
+			log := log.WithValues("namespace", e.Object.GetNamespace())
 			logutil.LogAPIResourceChangeEvent(log, e.Object.GetName(), "Application", logutil.ResourceDelete, nil)
 			return false
 		},

@@ -98,7 +98,7 @@ func main() {
 	ctx := ctrl.SetupSignalHandler()
 
 	restConfig := ctrl.GetConfigOrDie()
-	setupLog = setupLog.WithValues("api-export-name", apiExportName).WithValues("appstudio-component", "HAS")
+	setupLog = setupLog.WithValues("kind", apiExportName)
 
 	// Set up pprof if needed
 	if os.Getenv("ENABLE_PPROF") == "true" {
@@ -107,7 +107,6 @@ func main() {
 			log.Println(http.ListenAndServe("localhost:6060", nil))
 		}()
 	}
-
 	var mgr ctrl.Manager
 	var err error
 	options := ctrl.Options{
@@ -178,7 +177,7 @@ func main() {
 	if err = (&controllers.ApplicationReconciler{
 		Client:            mgr.GetClient(),
 		Scheme:            mgr.GetScheme(),
-		Log:               ctrl.Log.WithName("controllers").WithName("Application").WithValues("appstudio-component", "HAS"),
+		Log:               ctrl.Log.WithName("controllers").WithName("Application"),
 		GitHubTokenClient: ghTokenClient,
 		GitHubOrg:         ghOrg,
 	}).SetupWithManager(mgr); err != nil {
@@ -188,7 +187,7 @@ func main() {
 	if err = (&controllers.ComponentReconciler{
 		Client:            mgr.GetClient(),
 		Scheme:            mgr.GetScheme(),
-		Log:               ctrl.Log.WithName("controllers").WithName("Component").WithValues("appstudio-component", "HAS"),
+		Log:               ctrl.Log.WithName("controllers").WithName("Component"),
 		Generator:         gitopsgen.NewGitopsGen(),
 		AppFS:             ioutils.NewFilesystem(),
 		GitHubTokenClient: ghTokenClient,
@@ -201,7 +200,7 @@ func main() {
 	if err = (&controllers.ComponentDetectionQueryReconciler{
 		Client:             mgr.GetClient(),
 		Scheme:             mgr.GetScheme(),
-		Log:                ctrl.Log.WithName("controllers").WithName("ComponentDetectionQuery").WithValues("appstudio-component", "HAS"),
+		Log:                ctrl.Log.WithName("controllers").WithName("ComponentDetectionQuery"),
 		SPIClient:          spi.SPIClient{},
 		AlizerClient:       devfile.AlizerClient{},
 		GitHubTokenClient:  ghTokenClient,
@@ -227,7 +226,7 @@ func main() {
 	if err = (&controllers.SnapshotEnvironmentBindingReconciler{
 		Client:            mgr.GetClient(),
 		Scheme:            mgr.GetScheme(),
-		Log:               ctrl.Log.WithName("controllers").WithName("SnapshotEnvironmentBinding").WithValues("appstudio-component", "HAS"),
+		Log:               ctrl.Log.WithName("controllers").WithName("SnapshotEnvironmentBinding"),
 		Generator:         gitopsgen.NewGitopsGen(),
 		AppFS:             ioutils.NewFilesystem(),
 		GitHubTokenClient: ghTokenClient,

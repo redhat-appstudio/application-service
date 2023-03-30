@@ -1,5 +1,5 @@
 //
-// Copyright 2022 Red Hat, Inc.
+// Copyright 2022-2023 Red Hat, Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -28,7 +28,7 @@ import (
 )
 
 func (r *SnapshotEnvironmentBindingReconciler) SetConditionAndUpdateCR(ctx context.Context, req ctrl.Request, appSnapshotEnvBinding *appstudiov1alpha1.SnapshotEnvironmentBinding, createError error) {
-	log := r.Log.WithValues("SnapshotEnvironmentBinding", req.NamespacedName).WithValues("clusterName", req.ClusterName)
+	log := r.Log.WithValues("namespace", req.NamespacedName.Namespace)
 
 	var currentSEB appstudiov1alpha1.SnapshotEnvironmentBinding
 	err := r.Get(ctx, req.NamespacedName, &currentSEB)

@@ -36,8 +36,7 @@ import (
 )
 
 func (r *ComponentReconciler) updateComponentDevfileModel(req ctrl.Request, hasCompDevfileData data.DevfileData, component appstudiov1alpha1.Component) error {
-
-	log := r.Log.WithValues("Component", req.NamespacedName).WithValues("clusterName", req.ClusterName)
+	log := r.Log.WithValues("kind", "Component").WithValues("resource", req.NamespacedName.Name).WithValues("namespace", req.NamespacedName.Namespace)
 
 	// If DockerfileURL is set and the devfile contains references to a Dockerfile then update the devfile
 	source := component.Spec.Source
@@ -276,8 +275,7 @@ func (r *ComponentDetectionQueryReconciler) updateComponentStub(req ctrl.Request
 	if componentDetectionQuery == nil {
 		return fmt.Errorf("componentDetectionQuery is nil")
 	}
-
-	log := r.Log.WithValues("ComponentDetectionQuery", req.NamespacedName).WithValues("clusterName", req.ClusterName)
+	log := r.Log.WithValues("kind", "ComponentDetectionQuery").WithValues("resource", req.NamespacedName.Name).WithValues("namespace", req.NamespacedName.Namespace)
 
 	if len(componentDetectionQuery.Status.ComponentDetected) == 0 {
 		componentDetectionQuery.Status.ComponentDetected = make(appstudiov1alpha1.ComponentDetectionMap)

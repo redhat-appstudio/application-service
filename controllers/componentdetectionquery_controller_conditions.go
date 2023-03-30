@@ -1,5 +1,5 @@
 /*
-Copyright 2022 Red Hat, Inc.
+Copyright 2022-2023 Red Hat, Inc.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -30,7 +30,7 @@ import (
 )
 
 func (r *ComponentDetectionQueryReconciler) SetDetectingConditionAndUpdateCR(ctx context.Context, req ctrl.Request, componentDetectionQuery *appstudiov1alpha1.ComponentDetectionQuery) {
-	log := r.Log.WithValues("ComponentDetectionQuery", req.NamespacedName).WithValues("clusterName", req.ClusterName)
+	log := r.Log.WithValues("kind", "ComponentDetectionQuery").WithValues("resource", req.NamespacedName.Name).WithValues("namespace", req.NamespacedName.Namespace)
 
 	patch := client.MergeFrom(componentDetectionQuery.DeepCopy())
 
@@ -48,7 +48,7 @@ func (r *ComponentDetectionQueryReconciler) SetDetectingConditionAndUpdateCR(ctx
 }
 
 func (r *ComponentDetectionQueryReconciler) SetCompleteConditionAndUpdateCR(ctx context.Context, req ctrl.Request, componentDetectionQuery *appstudiov1alpha1.ComponentDetectionQuery, originalCDQ *appstudiov1alpha1.ComponentDetectionQuery, completeError error) {
-	log := r.Log.WithValues("ComponentDetectionQuery", req.NamespacedName).WithValues("clusterName", req.ClusterName)
+	log := r.Log.WithValues("namespace", req.NamespacedName.Namespace)
 
 	patch := client.MergeFrom(originalCDQ.DeepCopy())
 

@@ -94,7 +94,7 @@ const (
 // For more details, check Reconcile and its Result here:
 // - https://pkg.go.dev/sigs.k8s.io/controller-runtime@v0.9.2/pkg/reconcile
 func (r *ComponentReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
-	log := r.Log.WithValues("Component", req.NamespacedName).WithValues("clusterName", req.ClusterName)
+	log := r.Log.WithValues("kind", "Component").WithValues("resource", req.NamespacedName.Name).WithValues("namespace", req.NamespacedName.Namespace)
 
 	// if we're running on kcp, we need to include workspace in context
 	if req.ClusterName != "" {
@@ -206,17 +206,17 @@ func (r *ComponentReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 			if err != nil {
 				errMsg := fmt.Sprintf("Unable to parse the devfile from Component status and re-attempt GitOps generation, exiting reconcile loop %v", req.NamespacedName)
 				log.Error(err, errMsg)
-				r.SetGitOpsGeneratedConditionAndUpdateCR(ctx, &component, fmt.Errorf("%v: %v", errMsg, err))
+				r.SetGitOpsGeneratedConditionAndUpdateCR(ctx, req, &component, fmt.Errorf("%v: %v", errMsg, err))
 				return ctrl.Result{}, err
 			}
 			if err := r.generateGitops(ctx, ghClient, req, &component, compDevfileData); err != nil {
 				errMsg := fmt.Sprintf("Unable to generate gitops resources for component %v", req.NamespacedName)
 				log.Error(err, errMsg)
-				r.SetGitOpsGeneratedConditionAndUpdateCR(ctx, &component, fmt.Errorf("%v: %v", errMsg, err))
+				r.SetGitOpsGeneratedConditionAndUpdateCR(ctx, req, &component, fmt.Errorf("%v: %v", errMsg, err))
 				return ctrl.Result{}, err
 			} else {
 				log.Info(fmt.Sprintf("GitOps re-generation successful for %s", component.Name))
-				r.SetGitOpsGeneratedConditionAndUpdateCR(ctx, &component, nil)
+				r.SetGitOpsGeneratedConditionAndUpdateCR(ctx, req, &component, nil)
 				isGitOpsRegenSuccessful = true
 			}
 		} else if condition.Type == "Updated" && condition.Reason == "Error" && condition.Status == metav1.ConditionFalse {
@@ -426,11 +426,11 @@ func (r *ComponentReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 				if err := r.generateGitops(ctx, ghClient, req, &component, compDevfileData); err != nil {
 					errMsg := fmt.Sprintf("Unable to generate gitops resources for component %v", req.NamespacedName)
 					log.Error(err, errMsg)
-					r.SetGitOpsGeneratedConditionAndUpdateCR(ctx, &component, fmt.Errorf("%v: %v", errMsg, err))
+					r.SetGitOpsGeneratedConditionAndUpdateCR(ctx, req, &component, fmt.Errorf("%v: %v", errMsg, err))
 					r.SetCreateConditionAndUpdateCR(ctx, req, &component, fmt.Errorf("%v: %v", errMsg, err))
 					return ctrl.Result{}, err
 				} else {
-					r.SetGitOpsGeneratedConditionAndUpdateCR(ctx, &component, nil)
+					r.SetGitOpsGeneratedConditionAndUpdateCR(ctx, req, &component, nil)
 				}
 			}
 
@@ -499,11 +499,11 @@ func (r *ComponentReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 				if err := r.generateGitops(ctx, ghClient, req, &component, hasCompDevfileData); err != nil {
 					errMsg := fmt.Sprintf("Unable to generate gitops resources for component %v", req.NamespacedName)
 					log.Error(err, errMsg)
-					r.SetGitOpsGeneratedConditionAndUpdateCR(ctx, &component, fmt.Errorf("%v: %v", errMsg, err))
+					r.SetGitOpsGeneratedConditionAndUpdateCR(ctx, req, &component, fmt.Errorf("%v: %v", errMsg, err))
 					r.SetUpdateConditionAndUpdateCR(ctx, req, &component, fmt.Errorf("%v: %v", errMsg, err))
 					return ctrl.Result{}, err
 				} else {
-					r.SetGitOpsGeneratedConditionAndUpdateCR(ctx, &component, nil)
+					r.SetGitOpsGeneratedConditionAndUpdateCR(ctx, req, &component, nil)
 				}
 			}
 			r.SetUpdateConditionAndUpdateCR(ctx, req, &component, nil)
@@ -520,7 +520,7 @@ func (r *ComponentReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 // generateGitops retrieves the necessary information about a Component's gitops repository (URL, branch, context)
 // and attempts to use the GitOps package to generate gitops resources based on that component
 func (r *ComponentReconciler) generateGitops(ctx context.Context, ghClient github.GitHubClient, req ctrl.Request, component *appstudiov1alpha1.Component, compDevfileData data.DevfileData) error {
-	log := r.Log.WithValues("Component", req.NamespacedName).WithValues("clusterName", req.ClusterName)
+	log := r.Log.WithValues("kind", "Component").WithValues("resource", req.NamespacedName.Name).WithValues("namespace", req.NamespacedName.Namespace)
 
 	gitOpsURL, gitOpsBranch, gitOpsContext, err := util.ProcessGitOpsStatus(component.Status.GitOps, ghClient.Token)
 	if err != nil {
@@ -626,24 +626,24 @@ func (r *ComponentReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		TimeEncoder: zapcore.ISO8601TimeEncoder,
 	}
 	ctrl.SetLogger(zap.New(zap.UseFlagOptions(&opts)))
-	log := ctrl.Log.WithName("controllers").WithName("Component").WithValues("appstudio-component", "HAS")
+	log := ctrl.Log.WithName("controllers").WithName("Component")
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&appstudiov1alpha1.Component{}, builder.WithPredicates(predicate.GenerationChangedPredicate{})).
 		WithOptions(controller.Options{
 			RateLimiter: workqueue.NewItemExponentialFailureRateLimiter(time.Duration(500*time.Millisecond), time.Duration(1000*time.Second)),
 		}).WithEventFilter(predicate.Funcs{
 		CreateFunc: func(e event.CreateEvent) bool {
-			log := log.WithValues("Namespace", e.Object.GetNamespace()).WithValues("clusterName", logicalcluster.From(e.Object).String())
+			log := log.WithValues("namespace", e.Object.GetNamespace())
 			logutil.LogAPIResourceChangeEvent(log, e.Object.GetName(), "Component", logutil.ResourceCreate, nil)
 			return true
 		},
 		UpdateFunc: func(e event.UpdateEvent) bool {
-			log := log.WithValues("Namespace", e.ObjectNew.GetNamespace()).WithValues("clusterName", logicalcluster.From(e.ObjectNew).String())
+			log := log.WithValues("namespace", e.ObjectNew.GetNamespace())
 			logutil.LogAPIResourceChangeEvent(log, e.ObjectNew.GetName(), "Component", logutil.ResourceUpdate, nil)
 			return true
 		},
 		DeleteFunc: func(e event.DeleteEvent) bool {
-			log := log.WithValues("Namespace", e.Object.GetNamespace()).WithValues("clusterName", logicalcluster.From(e.Object).String())
+			log := log.WithValues("namespace", e.Object.GetNamespace())
 			logutil.LogAPIResourceChangeEvent(log, e.Object.GetName(), "Component", logutil.ResourceDelete, nil)
 			return false
 		},

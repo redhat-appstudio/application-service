@@ -1,5 +1,5 @@
 //
-// Copyright 2022 Red Hat, Inc.
+// Copyright 2022-2023 Red Hat, Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -38,7 +38,7 @@ func LogAPIResourceChangeEvent(log logr.Logger, resourceName string, resource st
 		log.Error(nil, "resource passed to LogAPIResourceChangeEvent was empty")
 		return
 	}
-	log = log.WithValues("name", resourceName).WithValues("resource", resource).WithValues("action", resourceChangeType)
+	log = log.WithValues("resource", resourceName).WithValues("kind", resource).WithValues("action", resourceChangeType)
 	if err != nil {
 		log.Info(fmt.Sprintf("API Resource change event failed: %s, error: %v", string(resourceChangeType), err))
 	} else {

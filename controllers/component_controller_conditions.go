@@ -1,5 +1,5 @@
 /*
-Copyright 2021 Red Hat, Inc.
+Copyright 2021-2023 Red Hat, Inc.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -29,7 +29,7 @@ import (
 )
 
 func (r *ComponentReconciler) SetCreateConditionAndUpdateCR(ctx context.Context, req ctrl.Request, component *appstudiov1alpha1.Component, createError error) {
-	log := r.Log.WithValues("Component", req.NamespacedName).WithValues("clusterName", req.ClusterName)
+	log := r.Log.WithValues("namespace", req.NamespacedName.Namespace)
 
 	if createError == nil {
 		meta.SetStatusCondition(&component.Status.Conditions, metav1.Condition{
@@ -55,7 +55,7 @@ func (r *ComponentReconciler) SetCreateConditionAndUpdateCR(ctx context.Context,
 }
 
 func (r *ComponentReconciler) SetUpdateConditionAndUpdateCR(ctx context.Context, req ctrl.Request, component *appstudiov1alpha1.Component, updateError error) {
-	log := r.Log.WithValues("Component", req.NamespacedName).WithValues("clusterName", req.ClusterName)
+	log := r.Log.WithValues("namespace", req.NamespacedName.Namespace)
 
 	if updateError == nil {
 		meta.SetStatusCondition(&component.Status.Conditions, metav1.Condition{
@@ -80,8 +80,8 @@ func (r *ComponentReconciler) SetUpdateConditionAndUpdateCR(ctx context.Context,
 	}
 }
 
-func (r *ComponentReconciler) SetGitOpsGeneratedConditionAndUpdateCR(ctx context.Context, component *appstudiov1alpha1.Component, generateError error) {
-	log := r.Log.WithValues("Component", component.Name)
+func (r *ComponentReconciler) SetGitOpsGeneratedConditionAndUpdateCR(ctx context.Context, req ctrl.Request, component *appstudiov1alpha1.Component, generateError error) {
+	log := r.Log.WithValues("namespace", req.NamespacedName.Namespace)
 
 	if generateError == nil {
 		meta.SetStatusCondition(&component.Status.Conditions, metav1.Condition{
