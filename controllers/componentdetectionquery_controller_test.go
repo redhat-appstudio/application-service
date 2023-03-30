@@ -989,7 +989,8 @@ var _ = Describe("Component Detection Query controller", func() {
 					},
 					Spec: appstudiov1alpha1.ComponentDetectionQuerySpec{
 						GitSource: appstudiov1alpha1.GitSource{
-							URL: "https://github.com/maysunfaisal/python-src-docker",
+							URL:      "https://github.com/devfile-resources/python-src-docker",
+							Revision: "testbranch",
 						},
 					},
 				}
@@ -1014,6 +1015,7 @@ var _ = Describe("Component Detection Query controller", func() {
 					Expect(componentDesc.ComponentStub.Source.GitSource).ShouldNot(BeNil())
 					Expect(componentDesc.ComponentStub.Source.GitSource.DockerfileURL).ShouldNot(BeEmpty())
 					Expect(componentDesc.ComponentStub.Source.GitSource.DockerfileURL).Should(Equal("./Dockerfile"))
+					Expect(componentDesc.ComponentStub.Source.GitSource.Revision).Should(Equal("testbranch"))
 				}
 
 				// Delete the specified Detection Query resource
