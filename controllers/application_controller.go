@@ -19,6 +19,7 @@ package controllers
 import (
 	"context"
 	"fmt"
+
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/redhat-appstudio/application-service/pkg/metrics"
 

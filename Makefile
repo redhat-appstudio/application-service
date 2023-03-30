@@ -113,11 +113,15 @@ check_fmt:
   endif
 
 	  if [[ $$(find . -not -path '*/\.*' -not -name '*zz_generated*.go' -name '*.go' -exec goimports -l {} \;) != "" ]]; then \
-	    echo "Files not formatted; run 'make fmt'"; exit 1 ;\
+	    echo "Files not formatted; run 'make fmt_goimports'"; exit 1 ;\
 	  fi ;\
 	  if ! addlicense -check -f license_header.txt $$(find . -not -path '*/\.*' -name '*.go'); then \
 	    echo "Licenses are not formatted; run 'make fmt_license'"; exit 1 ;\
 	  fi \
+
+### fmt_goimports: run goimports locally to format your files and fix imports
+fmt_goimports:
+	find . -not -path '*/\.*' -not -name '*zz_generated*.go' -name '*.go' -exec goimports -w {} \;
 
 vet: ## Run go vet against code.
 	go vet ./...
