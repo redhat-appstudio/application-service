@@ -172,12 +172,12 @@ func (r *ComponentDetectionQueryReconciler) Reconcile(ctx context.Context, req c
 			// check if the project is multi-component or single-component
 			if gitToken == "" {
 				gitURL, err := util.ConvertGitHubURL(source.URL, source.Revision, context)
-				log.Info(fmt.Sprintf("Look for devfile or dockerfile at the URL %s... %v", gitURL, req.NamespacedName))
 				if err != nil {
 					log.Error(err, fmt.Sprintf("Unable to convert Github URL to raw format, exiting reconcile loop %v", req.NamespacedName))
 					r.SetCompleteConditionAndUpdateCR(ctx, req, &componentDetectionQuery, copiedCDQ, err)
 					return ctrl.Result{}, nil
 				}
+				log.Info(fmt.Sprintf("Look for devfile or dockerfile at the URL %s... %v", gitURL, req.NamespacedName))
 				devfileBytes, devfilePath, dockerfileBytes = devfile.DownloadDevfileAndDockerfile(gitURL)
 			} else {
 				// Use SPI to retrieve the devfile from the private repository
@@ -190,10 +190,25 @@ func (r *ComponentDetectionQueryReconciler) Reconcile(ctx context.Context, req c
 
 			isDevfilePresent = len(devfileBytes) != 0
 			isDockerfilePresent = len(dockerfileBytes) != 0
-
 			if isDevfilePresent {
-				log.Info(fmt.Sprintf("Found a devfile, devfile to be analyzed to see if a Dockerfile is referenced %v", req.NamespacedName))
-				devfilesMap[context] = devfileBytes
+				updatedLink, err := devfile.UpdateGitLink(source.URL, source.Revision, path.Join(context, devfilePath))
+				if err != nil {
+					log.Error(err, fmt.Sprintf("Unable to update the devfile link %v", req.NamespacedName))
+					r.SetCompleteConditionAndUpdateCR(ctx, req, &componentDetectionQuery, copiedCDQ, err)
+					return ctrl.Result{}, nil
+				}
+				shouldIgnoreDevfile, devfileBytes, err := devfile.ValidateDevfile(log, updatedLink)
+				if err != nil {
+					r.SetCompleteConditionAndUpdateCR(ctx, req, &componentDetectionQuery, copiedCDQ, err)
+					return ctrl.Result{}, nil
+				}
+				if shouldIgnoreDevfile {
+					isDevfilePresent = false
+				} else {
+					log.Info(fmt.Sprintf("Found a devfile, devfile to be analyzed to see if a Dockerfile is referenced %v", req.NamespacedName))
+					devfilesMap[context] = devfileBytes
+					devfilesURLMap[context] = updatedLink
+				}
 			} else if isDockerfilePresent {
 				log.Info(fmt.Sprintf("Determined that this is a Dockerfile only component  %v", req.NamespacedName))
 				dockerfileContextMap[context] = "./Dockerfile"
@@ -262,7 +277,8 @@ func (r *ComponentDetectionQueryReconciler) Reconcile(ctx context.Context, req c
 			}
 		} else {
 			log.Info(fmt.Sprintf("devfile was explicitly specified at %s %v", source.DevfileURL, req.NamespacedName))
-			devfileBytes, err = util.CurlEndpoint(source.DevfileURL)
+
+			shouldIgnoreDevfile, devfileBytes, err := devfile.ValidateDevfile(log, source.DevfileURL)
 			if err != nil {
 				// if a direct devfileURL is provided and errors out, we dont do an alizer detection
 				log.Error(err, fmt.Sprintf("Unable to GET %s, exiting reconcile loop %v", source.DevfileURL, req.NamespacedName))
@@ -270,7 +286,15 @@ func (r *ComponentDetectionQueryReconciler) Reconcile(ctx context.Context, req c
 				r.SetCompleteConditionAndUpdateCR(ctx, req, &componentDetectionQuery, copiedCDQ, err)
 				return ctrl.Result{}, nil
 			}
+			if shouldIgnoreDevfile {
+				// if a direct devfileURL is provided and errors out, we dont do an alizer detection
+				log.Error(err, fmt.Sprintf("the provided devfileURL %s does not contain a valid outerloop definition, exiting reconcile loop %v", source.DevfileURL, req.NamespacedName))
+				err := fmt.Errorf("the provided devfileURL %s does not contain a valid outerloop definition", source.DevfileURL)
+				r.SetCompleteConditionAndUpdateCR(ctx, req, &componentDetectionQuery, copiedCDQ, err)
+				return ctrl.Result{}, nil
+			}
 			devfilesMap[context] = devfileBytes
+			devfilesURLMap[context] = source.DevfileURL
 		}
 
 		// Remove the cloned path if present
