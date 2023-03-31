@@ -67,20 +67,24 @@ Pipelines would use the credentials in the image pull secret `redhat-appstudio-r
 
 ### Creating a GitHub Secret for HAS
 
-Before deploying the operator, you must ensure that a secret, `has-github-token`, exists in the namespace where HAS will be deployed. This secret must contain a key-value pair, where the key is `token` and where the value points to a valid GitHub Personal Access Token.
+Before deploying the operator, you must ensure that a secret, `has-github-token`, exists in the namespace where HAS will be deployed. This secret must contain a key, `tokens`, whose value points to a comma separated list, without spaces, of key-value pairs of token names and tokens, delimited by a colon. 
 
-The token that is used here must have the following permissions set:
+For example, on OpenShift:
+
+<img width="801" alt="Screenshot 2023-03-22 at 3 53 11 PM" src="https://user-images.githubusercontent.com/6880023/227020767-30b3db08-e191-4ec1-81df-81ae2df55d79.png">
+
+Or via command-line:
+
+```bash
+application-service % kubectl create secret generic has-github-token --from-literal=tokens=token1:ghp_faketoken,token2:ghp_anothertoken,token3:ghp_thirdtoken
+```
+
+Any token that is used here must have the following permissions set:
 - `repo`
 - `delete_repo`
 
-You can also set an optional key-value pair for component detection query specifically, where the key is `cdq-token` and where the value points to a valid GitHub Personal Access Token. If the `cdq-token` does not exist, it will fall back to use `token` instead. 
-The token that is used here must have the following permissions set:
-- `repo`
+In addition to this, each GitHub token must be associated with an account that has write access to the GitHub organization you plan on using with HAS (see next section).
 
-In addition to this, the GitHub token must be associated with an account that has write access to the GitHub organization you plan on using with HAS (see next section).
-
-For example, on OpenShift:
-<img width="862" alt="Screen Shot 2021-12-14 at 1 08 43 AM" src="https://user-images.githubusercontent.com/6880023/145942734-63422532-6fad-4017-9d26-79436fe241b8.png">
 
 ### Using Private Git Repos
 
@@ -120,6 +124,7 @@ Webhooks require self-signed certificates to validate the resources. To disable 
 ### Useful links:
 * [HAS Project information page](https://docs.google.com/document/d/1axzNOhRBSkly3M2Y32Pxr1MBpBif2ljb-ufj0_aEt74/edit?usp=sharing)
 * Every Prow job executed by the CI system generates an artifacts directory containing information about that execution and its results. This [document](https://docs.ci.openshift.org/docs/how-tos/artifacts/) describes the contents of this directory and how they can be used to investigate the steps by the job.
+* For more information on the GitOps resource generation, please refer to the [gitops-generation](./docs/gitops-generation.md) documentation
 
 ## Contributions
 
