@@ -23,6 +23,7 @@ import (
 	"os"
 	"path"
 	"reflect"
+	"strings"
 	"testing"
 
 	"github.com/devfile/api/v2/pkg/apis/workspaces/v1alpha2"
@@ -2036,6 +2037,128 @@ schemaVersion: 2.2.0`
 			},
 		},
 		{
+			name:          "Devfile with long component name - route name should be trimmed",
+			devfileString: kubernetesInlinedDevfileDeploy,
+			componentName: "component-sample-component-sample-component-sample",
+			appName:       "application-sample",
+			image:         "image1",
+			wantDeploy: appsv1.Deployment{
+				TypeMeta: metav1.TypeMeta{
+					Kind:       "Deployment",
+					APIVersion: "apps/v1",
+				},
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "component-sample-component-sample-component-sample",
+					Namespace: namespace,
+					Labels: map[string]string{
+						"app.kubernetes.io/created-by": "application-service",
+						"app.kubernetes.io/instance":   "component-sample-component-sample-component-sample",
+						"app.kubernetes.io/managed-by": "kustomize",
+						"app.kubernetes.io/name":       "component-sample-component-sample-component-sample",
+						"app.kubernetes.io/part-of":    "application-sample",
+					},
+				},
+				Spec: appsv1.DeploymentSpec{
+					Replicas: &replicaUpdated,
+					Selector: &metav1.LabelSelector{
+						MatchLabels: map[string]string{
+							"app.kubernetes.io/instance": "component-sample-component-sample-component-sample",
+						},
+					},
+					Template: corev1.PodTemplateSpec{
+						ObjectMeta: metav1.ObjectMeta{
+							Labels: map[string]string{
+								"app.kubernetes.io/instance": "component-sample-component-sample-component-sample",
+							},
+						},
+						Spec: corev1.PodSpec{
+							Containers: []corev1.Container{
+								{
+									Name: "container-image",
+									Env: []corev1.EnvVar{
+										{
+											Name:  "FOOFOO",
+											Value: "foo1",
+										},
+										{
+											Name:  "BARBAR",
+											Value: "bar1",
+										},
+									},
+									Image:           "image1",
+									ImagePullPolicy: corev1.PullAlways,
+									LivenessProbe: &corev1.Probe{
+										ProbeHandler: corev1.ProbeHandler{
+											HTTPGet: &corev1.HTTPGetAction{
+												Path: "/",
+												Port: intstr.FromInt(1111),
+											},
+										},
+										InitialDelaySeconds: int32(10),
+										PeriodSeconds:       int32(10),
+									},
+									Ports: []corev1.ContainerPort{
+										{
+											ContainerPort: int32(1111),
+										},
+									},
+									ReadinessProbe: &corev1.Probe{
+										ProbeHandler: corev1.ProbeHandler{
+											TCPSocket: &corev1.TCPSocketAction{
+												Port: intstr.FromInt(1111),
+											},
+										},
+										InitialDelaySeconds: int32(10),
+										PeriodSeconds:       int32(10),
+									},
+									Resources: corev1.ResourceRequirements{
+										Limits: corev1.ResourceList{
+											corev1.ResourceCPU:     resource.MustParse("2"),
+											corev1.ResourceMemory:  resource.MustParse("500Mi"),
+											corev1.ResourceStorage: resource.MustParse("401Mi"),
+										},
+										Requests: corev1.ResourceList{
+											corev1.ResourceCPU:     resource.MustParse("700m"),
+											corev1.ResourceMemory:  resource.MustParse("400Mi"),
+											corev1.ResourceStorage: resource.MustParse("201Mi"),
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+			wantRoute: routev1.Route{
+				TypeMeta: metav1.TypeMeta{
+					Kind:       "Route",
+					APIVersion: "route.openshift.io/v1",
+				},
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "component-sample-component-sample-component-sample",
+					Namespace: namespace,
+					Labels: map[string]string{
+						"app.kubernetes.io/created-by": "application-service",
+						"app.kubernetes.io/instance":   "component-sample-component-sample-component-sample",
+						"app.kubernetes.io/managed-by": "kustomize",
+						"app.kubernetes.io/name":       "component-sample-component-sample-component-sample",
+						"app.kubernetes.io/part-of":    "application-sample",
+					},
+					Annotations: map[string]string{},
+				},
+				Spec: routev1.RouteSpec{
+					Path: "/",
+					Port: &routev1.RoutePort{
+						TargetPort: intstr.FromInt(1111),
+					},
+					To: routev1.RouteTargetReference{
+						Kind: "Service",
+						Name: "component-sample-component-sample-component-sample",
+					},
+				},
+			},
+		},
+		{
 			name:          "Simple devfile from Inline with Route Host missing",
 			devfileString: kubernetesInlinedDevfileRouteHostMissing,
 			componentName: "component-sample",
@@ -2245,7 +2368,17 @@ schemaVersion: 2.2.0`
 				}
 
 				if len(actualResources.Routes) > 0 {
-					assert.Equal(t, tt.wantRoute, actualResources.Routes[0], "First Route did not match")
+					if tt.name == "Devfile with long component name - route name should be trimmed" {
+						if len(actualResources.Routes[0].Name) <= 30 {
+							t.Errorf("Expected trimmed route name with length 30, but got %v", len(actualResources.Routes[0].Name))
+						}
+						if !strings.Contains(actualResources.Routes[0].Name, "component-sample-comp") {
+							t.Errorf("Expected route name to contain %v, but got %v", "component-sample-comp", actualResources.Routes[0].Name)
+						}
+					} else {
+						assert.Equal(t, tt.wantRoute, actualResources.Routes[0], "First Route did not match")
+					}
+
 				}
 			}
 		})
