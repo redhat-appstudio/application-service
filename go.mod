@@ -5,7 +5,7 @@ go 1.18
 require (
 	github.com/brianvoe/gofakeit/v6 v6.9.0
 	github.com/devfile/api/v2 v2.2.0
-	github.com/devfile/library/v2 v2.2.1-0.20221207223615-7beda0850228
+	github.com/devfile/library/v2 v2.2.1-0.20230222170110-539d4b199ef3
 	github.com/devfile/registry-support/index/generator v0.0.0-20221018203505-df96d34d4273
 	github.com/devfile/registry-support/registry-library v0.0.0-20221018213054-47b3ffaeadba
 	github.com/go-logr/logr v1.2.3

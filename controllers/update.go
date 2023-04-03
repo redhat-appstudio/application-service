@@ -287,7 +287,6 @@ func (r *ComponentDetectionQueryReconciler) updateComponentStub(req ctrl.Request
 
 	for context, devfileBytes := range devfilesMap {
 		log.Info(fmt.Sprintf("Currently reading the devfile for context %v", context))
-
 		// Parse the Component Devfile
 		devfileSrc := devfile.DevfileSrc{
 			Data: string(devfileBytes),
@@ -492,6 +491,7 @@ func (r *ComponentDetectionQueryReconciler) updateComponentStub(req ctrl.Request
 		gitSource := &appstudiov1alpha1.GitSource{
 			Context:       context,
 			URL:           componentDetectionQuery.Spec.GitSource.URL,
+			Revision:      componentDetectionQuery.Spec.GitSource.Revision,
 			DockerfileURL: link,
 		}
 		componentName := getComponentName(gitSource)
