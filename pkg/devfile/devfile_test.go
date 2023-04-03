@@ -2369,8 +2369,8 @@ schemaVersion: 2.2.0`
 
 				if len(actualResources.Routes) > 0 {
 					if tt.name == "Devfile with long component name - route name should be trimmed" {
-						if len(actualResources.Routes[0].Name) <= 30 {
-							t.Errorf("Expected trimmed route name with length 30, but got %v", len(actualResources.Routes[0].Name))
+						if len(actualResources.Routes[0].Name) > 30 {
+							t.Errorf("Expected trimmed route name with length < 30, but got %v", len(actualResources.Routes[0].Name))
 						}
 						if !strings.Contains(actualResources.Routes[0].Name, "component-sample-comp") {
 							t.Errorf("Expected route name to contain %v, but got %v", "component-sample-comp", actualResources.Routes[0].Name)
