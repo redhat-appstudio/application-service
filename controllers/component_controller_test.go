@@ -1493,7 +1493,7 @@ var _ = Describe("Component controller", func() {
 				Expect(component.Name).Should(BeElementOf([]string{"dockerfile-build", "kubernetes-deploy"}))
 				if component.Image != nil && component.Image.Dockerfile != nil {
 					Expect(component.Image.Dockerfile.Uri).Should(Equal(hasComp.Spec.Source.GitSource.DockerfileURL))
-					Expect(component.Image.Dockerfile.BuildContext).Should(Equal(hasComp.Spec.Source.GitSource.Context))
+					Expect(component.Image.Dockerfile.BuildContext).Should(Equal("./"))
 				} else if component.Kubernetes != nil {
 					Expect(component.Kubernetes.Inlined).Should(ContainSubstring("Deployment"))
 				}
