@@ -42,9 +42,8 @@ type MockSPIClient struct {
 }
 
 var mockDevfile = `
-schemaVersion: 2.0.0
+schemaVersion: 2.2.0
 metadata:
-  description: Stack with the latest Go version
   displayName: Go Runtime
   icon: https://raw.githubusercontent.com/devfile-samples/devfile-stack-icons/main/golang.svg
   language: go
@@ -70,6 +69,27 @@ components:
       mountSources: true
       sourceMapping: /project
     name: runtime
+  - name: image-build
+    image:
+      imageName: go-image:latest
+      dockerfile:
+        uri: docker/Dockerfile
+        buildContext: .
+        rootRequired: false
+  - name: kubernetes-deploy
+    kubernetes:
+      inlined: |-
+        apiVersion: apps/v1
+        kind: Deployment
+        metadata:
+          creationTimestamp: null
+          labels:
+            maysun: test
+          name: deploy-sample
+      endpoints:
+      - name: http-8081
+        targetPort: 8081
+        path: /
 commands:
   - exec:
       commandLine: GOCACHE=/project/.cache go build main.go
@@ -87,6 +107,20 @@ commands:
         kind: run
       workingDir: /project
     id: run
+  - id: build-image
+    apply:
+      component: image-build
+  - id: deployk8s
+    apply:
+      component: kubernetes-deploy
+  - id: deploy
+    composite:
+      commands:
+        - build-image
+        - deployk8s
+      group:
+        kind: deploy
+        isDefault: true
 `
 
 var mockDockerfile = `
