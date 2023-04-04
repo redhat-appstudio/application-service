@@ -131,7 +131,7 @@ func search(log logr.Logger, a Alizer, localpath string, devfileRegistryURL stri
 					// we will read the devfile to ensure a dockerfile has been referenced.
 					// However, if a Dockerfile is named differently and not referenced in the devfile
 					// it will go undetected
-					dockerfileContextMapFromRepo[context] = path.Join(context, DockerfileName)
+					dockerfileContextMapFromRepo[context] = DockerfileName
 					isDockerfilePresent = true
 				}
 			}

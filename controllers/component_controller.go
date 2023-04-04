@@ -301,7 +301,7 @@ func (r *ComponentReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 					return ctrl.Result{}, err
 				}
 			} else if source.GitSource.DockerfileURL != "" {
-				devfileData, err := devfile.CreateDevfileForDockerfileBuild(source.GitSource.DockerfileURL, context, component.Name, component.Spec.Application, component.Namespace)
+				devfileData, err := devfile.CreateDevfileForDockerfileBuild(source.GitSource.DockerfileURL, "./", component.Name, component.Spec.Application, component.Namespace)
 				if err != nil {
 					log.Error(err, fmt.Sprintf("Unable to create devfile for dockerfile build %v", req.NamespacedName))
 					r.SetCreateConditionAndUpdateCR(ctx, req, &component, err)
