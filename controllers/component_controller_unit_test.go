@@ -163,7 +163,6 @@ func TestGenerateGitops(t *testing.T) {
 	r := &ComponentReconciler{
 		Log:               ctrl.Log.WithName("controllers").WithName("Component"),
 		GitHubOrg:         github.AppStudioAppDataOrg,
-		GitToken:          "fake-token",
 		Generator:         gitops.NewMockGenerator(),
 		Client:            fakeClient,
 		GitHubTokenClient: github.MockGitHubTokenClient{},
@@ -175,7 +174,6 @@ func TestGenerateGitops(t *testing.T) {
 	errReconciler := &ComponentReconciler{
 		Log:               ctrl.Log.WithName("controllers").WithName("Component"),
 		GitHubOrg:         github.AppStudioAppDataOrg,
-		GitToken:          "fake-token",
 		Generator:         errGen,
 		Client:            fakeClient,
 		GitHubTokenClient: github.MockGitHubTokenClient{},
