@@ -555,7 +555,7 @@ func TestScanRepo(t *testing.T) {
 				"python-src-docker":                    "https://raw.githubusercontent.com/devfile-samples/devfile-sample-python-basic/main/devfile.yaml",
 			},
 			expectedDockerfileContextMap: map[string]string{
-				"python-src-docker":                    "python-src-docker/Dockerfile",
+				"python-src-docker":                    "Dockerfile",
 				"devfile-sample-nodejs-basic":          "https://raw.githubusercontent.com/nodeshift-starters/devfile-sample/main/Dockerfile",
 				"devfile-sample-java-springboot-basic": "devfile-sample-java-springboot-basic/docker/Dockerfile",
 				"python-src-none":                      "https://raw.githubusercontent.com/devfile-samples/devfile-sample-python-basic/main/docker/Dockerfile",

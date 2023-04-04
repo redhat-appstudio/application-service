@@ -124,6 +124,49 @@ func (a MockAlizerClient) DetectComponents(path string) ([]model.Component, erro
 				},
 			},
 		}, nil
+	} else if strings.Contains(path, "quality-dashboard") {
+		return []model.Component{
+			{
+				Path: filepath.Join(path, "backend"),
+				Languages: []model.Language{
+					{
+						Name: "Go",
+						Aliases: []string{
+							"golang",
+						},
+						Frameworks: []string{
+							"Mux",
+						},
+						Tools: []string{
+							"1.18",
+						},
+						Weight:         100,
+						CanBeComponent: true,
+					},
+				},
+			},
+			{
+				Path: filepath.Join(path, "frontend"),
+				Languages: []model.Language{
+					{
+						Name: "Typescript",
+						Aliases: []string{
+							"ts",
+							"Javascript",
+						},
+						Frameworks: []string{
+							"React",
+						},
+						Tools: []string{
+							"NodeJs",
+							"Node.js",
+						},
+						Weight:         100,
+						CanBeComponent: true,
+					},
+				},
+			},
+		}, nil
 	} else if !strings.Contains(path, "springboot") && !strings.Contains(path, "python") {
 		return nil, nil
 	}
