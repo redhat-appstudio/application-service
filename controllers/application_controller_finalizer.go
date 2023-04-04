@@ -21,9 +21,11 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/prometheus/client_golang/prometheus"
 	appstudiov1alpha1 "github.com/redhat-appstudio/application-api/api/v1alpha1"
 	devfile "github.com/redhat-appstudio/application-service/pkg/devfile"
 	github "github.com/redhat-appstudio/application-service/pkg/github"
+	"github.com/redhat-appstudio/application-service/pkg/metrics"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 )
@@ -67,7 +69,13 @@ func (r *ApplicationReconciler) Finalize(application *appstudiov1alpha1.Applicat
 		if err != nil {
 			return err
 		}
-		return ghClient.DeleteRepository(context.Background(), r.GitHubOrg, repoName)
+
+		metricsLabel := prometheus.Labels{"controller": applicationName, "tokenName": ghClient.TokenName, "operation": "DeleteRepository"}
+		metrics.ControllerGitRequest.With(metricsLabel).Inc()
+		err = ghClient.DeleteRepository(context.Background(), r.GitHubOrg, repoName)
+		metrics.HandleRateLimitMetrics(err, metricsLabel)
+		return err
+
 	}
 	return nil
 }

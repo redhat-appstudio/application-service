@@ -16,6 +16,7 @@
 package metrics
 
 import (
+	gh "github.com/google/go-github/v41/github"
 	"github.com/prometheus/client_golang/prometheus"
 	"sigs.k8s.io/controller-runtime/pkg/metrics"
 )
@@ -40,9 +41,42 @@ var (
 			Help: "Number of successful gitops creation requests",
 		},
 	)
+
+	ControllerGitRequest = prometheus.NewCounterVec(
+		prometheus.CounterOpts{
+			Name: "controller_git_request",
+			Help: "Number of git operation requests.  Not an SLI metric",
+		},
+		[]string{"controller", "tokenName", "operation"},
+	)
+
+	SecondaryRateLimitCounter = prometheus.NewCounterVec(
+		prometheus.CounterOpts{
+			Name: "secondary_rate_limit_total",
+			Help: "Number of times the secondary rate limit has been reached.  Not an SLI metric",
+		},
+		[]string{"controller", "tokenName", "operation"},
+	)
+
+	PrimaryRateLimitCounter = prometheus.NewCounterVec(
+		prometheus.CounterOpts{
+			Name: "primary_rate_limit_total",
+			Help: "Number of times the primary rate limit has been reached.  Not an SLI metric",
+		},
+		[]string{"controller", "tokenName", "operation"},
+	)
 )
 
 func init() {
 	// Register custom metrics with the global prometheus registry
-	metrics.Registry.MustRegister(GitOpsRepoCreationTotalReqs, GitOpsRepoCreationFailed, GitOpsRepoCreationSucceeded)
+	metrics.Registry.MustRegister(GitOpsRepoCreationTotalReqs, GitOpsRepoCreationFailed, GitOpsRepoCreationSucceeded, ControllerGitRequest, SecondaryRateLimitCounter, PrimaryRateLimitCounter)
+}
+
+// HandleRateLimitMetrics checks the error type to verify a primary or secondary rate limit has been encountered
+func HandleRateLimitMetrics(err error, labels prometheus.Labels) {
+	if _, ok := err.(*gh.RateLimitError); ok {
+		PrimaryRateLimitCounter.With(labels).Inc()
+	} else if _, ok := err.(*gh.AbuseRateLimitError); ok {
+		SecondaryRateLimitCounter.With(labels).Inc()
+	}
 }

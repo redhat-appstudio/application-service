@@ -91,9 +91,6 @@ manifests: controller-gen ## Generate WebhookConfiguration, ClusterRole and Cust
 generate: controller-gen ## Generate code containing DeepCopy, DeepCopyInto, and DeepCopyObject method implementations.
 	$(CONTROLLER_GEN) object:headerFile="hack/boilerplate.go.txt" paths="./..."
 
-fmt: ## Run go fmt against code.
-	go fmt ./...
-
 ### fmt_license: ensure license header is set on all files
 fmt_license:
 ifneq ($(shell command -v addlicense 2> /dev/null),)
@@ -118,6 +115,17 @@ check_fmt:
 	  if ! addlicense -check -f license_header.txt $$(find . -not -path '*/\.*' -name '*.go'); then \
 	    echo "Licenses are not formatted; run 'make fmt_license'"; exit 1 ;\
 	  fi \
+
+
+### fmt: Runs go fmt against code.  Borrowed from DWO
+fmt:
+  ifneq ($(shell command -v goimports 2> /dev/null),)
+	find . -not -path '*/\.*' -not -name '*zz_generated*.go' -name '*.go' -exec goimports -w {} \;
+  else
+	  @echo "WARN: goimports is not installed -- formatting using go fmt instead."
+	  @echo "      Please install goimports to ensure file imports are consistent."
+	  go fmt -x ./...
+  endif
 
 vet: ## Run go vet against code.
 	go vet ./...
