@@ -80,7 +80,14 @@ func GetResourceFromDevfile(log logr.Logger, devfileData data.DevfileData, deplo
 	k8sLabels := generateK8sLabels(compName, appName)
 	matchLabels := getMatchLabel(compName)
 
+	if len(kubernetesComponents) == 0 {
+		return parser.KubernetesResources{}, fmt.Errorf("the devfile has no kubernetes components defined, missing outerloop definition")
+	} else if len(kubernetesComponents) == 1 && len(deployAssociatedComponents) == 0 {
+		// only one kubernetes components defined, but no deploy cmd associated
+		deployAssociatedComponents[kubernetesComponents[0].Name] = "place-holder"
+	}
 	for _, component := range kubernetesComponents {
+		// get kubecomponent referenced by default deploy command
 		if _, ok := deployAssociatedComponents[component.Name]; ok && component.Kubernetes != nil {
 			if component.Kubernetes.Inlined != "" {
 				log.Info(fmt.Sprintf("reading the kubernetes inline from component %s", component.Name))
