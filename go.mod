@@ -24,16 +24,16 @@ require (
 	github.com/redhat-appstudio/application-api v0.0.0-20221205185405-03f73a06d978
 	github.com/redhat-appstudio/service-provider-integration-scm-file-retriever v0.8.3
 	github.com/redhat-developer/alizer/go v0.0.0-20230117135912-8f7afff3b7cd
-	github.com/redhat-developer/gitops-generator v0.0.0-20230213195503-fabf23de5236
+	github.com/redhat-developer/gitops-generator v0.0.0-20230406182916-65ab99a9113f
 	github.com/spf13/afero v1.8.0
 	github.com/stretchr/testify v1.8.1
 	go.uber.org/zap v1.24.0
 	golang.org/x/exp v0.0.0-20230206171751-46f607a40771
 	golang.org/x/oauth2 v0.2.0
-	k8s.io/api v0.25.4
-	k8s.io/apimachinery v0.25.4
+	k8s.io/api v0.26.1
+	k8s.io/apimachinery v0.26.1
 	k8s.io/client-go v0.25.4
-	sigs.k8s.io/controller-runtime v0.13.1
+	sigs.k8s.io/controller-runtime v0.14.4
 	sigs.k8s.io/yaml v1.3.0
 
 )
@@ -176,8 +176,8 @@ require (
 	k8s.io/component-base v0.25.2 // indirect
 	k8s.io/klog v1.0.0 // indirect
 	k8s.io/klog/v2 v2.80.1 // indirect
-	k8s.io/kube-openapi v0.0.0-20220803162953-67bda5d908f1 // indirect
-	k8s.io/utils v0.0.0-20220728103510-ee6ede2d64ed // indirect
+	k8s.io/kube-openapi v0.0.0-20221012153701-172d655c2280 // indirect
+	k8s.io/utils v0.0.0-20221128185143-99ec85e7a448 // indirect
 	knative.dev/pkg v0.0.0-20221011175852-714b7630a836 // indirect
 	oras.land/oras-go v1.1.0 // indirect
 	sigs.k8s.io/json v0.0.0-20220713155537-f223a00ba0e2 // indirect

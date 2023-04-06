@@ -147,8 +147,7 @@ func GetResourceFromDevfile(log logr.Logger, devfileData data.DevfileData, deplo
 					// If set, leave it alone
 					for i, _ := range resources.Deployments {
 						if resources.Deployments[i].Spec.RevisionHistoryLimit == nil {
-							revHistory := int32(0)
-							resources.Deployments[i].Spec.RevisionHistoryLimit = &revHistory
+							resources.Deployments[i].Spec.RevisionHistoryLimit = &util.RevisionHistoryLimit
 						}
 					}
 

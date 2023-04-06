@@ -37,6 +37,8 @@ import (
 	"github.com/devfile/library/v2/pkg/devfile/parser"
 )
 
+var RevisionHistoryLimit = int32(0)
+
 func SanitizeName(name string) string {
 	sanitizedName := strings.ToLower(strings.Replace(strings.Replace(name, " ", "-", -1), "'", "", -1))
 	if len(sanitizedName) > 50 {
@@ -234,17 +236,18 @@ func GetMappedGitOpsComponent(component appstudiov1alpha1.Component, kubernetesR
 		"app.kubernetes.io/created-by": "application-service",
 	}
 	gitopsMapComponent := gitopsgenv1alpha1.GeneratorOptions{
-		Name:           component.ObjectMeta.Name,
-		Namespace:      component.ObjectMeta.Namespace,
-		Application:    component.Spec.Application,
-		Secret:         component.Spec.Secret,
-		Resources:      component.Spec.Resources,
-		Replicas:       component.Spec.Replicas,
-		TargetPort:     component.Spec.TargetPort,
-		Route:          component.Spec.Route,
-		BaseEnvVar:     component.Spec.Env,
-		ContainerImage: component.Spec.ContainerImage,
-		K8sLabels:      customK8sLabels,
+		Name:                 component.ObjectMeta.Name,
+		Namespace:            component.ObjectMeta.Namespace,
+		Application:          component.Spec.Application,
+		Secret:               component.Spec.Secret,
+		Resources:            component.Spec.Resources,
+		Replicas:             component.Spec.Replicas,
+		TargetPort:           component.Spec.TargetPort,
+		Route:                component.Spec.Route,
+		BaseEnvVar:           component.Spec.Env,
+		ContainerImage:       component.Spec.ContainerImage,
+		K8sLabels:            customK8sLabels,
+		RevisionHistoryLimit: &RevisionHistoryLimit,
 	}
 	if component.Spec.Source.ComponentSourceUnion.GitSource != nil {
 		gitopsMapComponent.GitSource = &gitopsgenv1alpha1.GitSource{
