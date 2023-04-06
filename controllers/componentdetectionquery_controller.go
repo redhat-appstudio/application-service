@@ -126,7 +126,7 @@ func (r *ComponentDetectionQueryReconciler) Reconcile(ctx context.Context, req c
 
 		source := componentDetectionQuery.Spec.GitSource
 		var devfileBytes, dockerfileBytes []byte
-		var clonePath, componentPath, devfilePath string
+		var clonePath, componentPath, devfilePath, dockerfilePath string
 		devfilesMap := make(map[string][]byte)
 		devfilesURLMap := make(map[string]string)
 		dockerfileContextMap := make(map[string]string)
@@ -188,7 +188,7 @@ func (r *ComponentDetectionQueryReconciler) Reconcile(ctx context.Context, req c
 					return ctrl.Result{}, nil
 				}
 				log.Info(fmt.Sprintf("Look for devfile or dockerfile at the URL %s... %v", gitURL, req.NamespacedName))
-				devfileBytes, devfilePath, dockerfileBytes = devfile.DownloadDevfileAndDockerfile(gitURL)
+				devfileBytes, devfilePath, dockerfileBytes, dockerfilePath = devfile.DownloadDevfileAndDockerfile(gitURL)
 			} else {
 				// Use SPI to retrieve the devfile from the private repository
 				// TODO - maysunfaisal also search for Dockerfile
@@ -221,7 +221,13 @@ func (r *ComponentDetectionQueryReconciler) Reconcile(ctx context.Context, req c
 				}
 			} else if isDockerfilePresent {
 				log.Info(fmt.Sprintf("Determined that this is a Dockerfile only component  %v", req.NamespacedName))
-				dockerfileContextMap[context] = "./Dockerfile"
+				updatedDockerfileLink, err := devfile.UpdateGitLink(source.URL, source.Revision, path.Join(context, dockerfilePath))
+				if err != nil {
+					log.Error(err, fmt.Sprintf("Unable to update the dockerfile link %v", req.NamespacedName))
+					r.SetCompleteConditionAndUpdateCR(ctx, req, &componentDetectionQuery, copiedCDQ, err)
+					return ctrl.Result{}, nil
+				}
+				dockerfileContextMap[context] = updatedDockerfileLink
 			}
 
 			// Clone the repo if no dockerfile present

@@ -52,11 +52,19 @@ const (
 	HiddenDevfileName = ".devfile.yaml"
 	HiddenDevfileDir  = ".devfile"
 	DockerfileName    = "Dockerfile"
+	HiddenDockerDir   = ".docker"
+	DockerDir         = "docker"
+	BuildDir          = "build"
 
 	Devfile                = DevfileName                                // devfile.yaml
 	HiddenDevfile          = HiddenDevfileName                          // .devfile.yaml
 	HiddenDirDevfile       = HiddenDevfileDir + "/" + DevfileName       // .devfile/devfile.yaml
 	HiddenDirHiddenDevfile = HiddenDevfileDir + "/" + HiddenDevfileName // .devfile/.devfile.yaml
+
+	Dockerfile          = DockerfileName                         // Dockerfile
+	HiddenDirDockerfile = HiddenDockerDir + "/" + DockerfileName // .docker/Dockerfile
+	DockerDirDockerfile = DockerDir + "/" + DockerfileName       // docker/Dockerfile
+	BuildDirDockerfile  = BuildDir + "/" + DockerfileName        // build/Dockerfile
 
 	// DevfileRegistryEndpoint is the endpoint of the devfile registry
 	DevfileRegistryEndpoint = "https://registry.devfile.io"
@@ -691,20 +699,38 @@ func FindAndDownloadDevfile(dir string) ([]byte, string, error) {
 	return nil, "", &NoDevfileFound{Location: dir}
 }
 
+// FindAndDownloadDockerfile downloads dockerfile from the various possible dockerfile locations in dir and returns the contents and its context
+func FindAndDownloadDockerfile(dir string) ([]byte, string, error) {
+	var dockerfileBytes []byte
+	var err error
+	validDockerfileLocations := []string{Dockerfile, DockerDirDockerfile, HiddenDirDockerfile, BuildDirDockerfile}
+
+	for _, path := range validDockerfileLocations {
+		dockerfilePath := dir + "/" + path
+		dockerfileBytes, err = DownloadFile(dockerfilePath)
+		if err == nil {
+			// if we get a 200, return
+			return dockerfileBytes, path, err
+		}
+	}
+
+	return nil, "", &NoDockerfileFound{Location: dir}
+}
+
 // DownloadFile downloads the specified file
 func DownloadFile(file string) ([]byte, error) {
 	return util.CurlEndpoint(file)
 }
 
-// DownloadDevfileAndDockerfile attempts to download and return the devfile, devfile context and dockerfile from the root of the specified url
-func DownloadDevfileAndDockerfile(url string) ([]byte, string, []byte) {
+// DownloadDevfileAndDockerfile attempts to download and return the devfile, devfile context, dockerfile and dockerfile context from the root of the specified url
+func DownloadDevfileAndDockerfile(url string) ([]byte, string, []byte, string) {
 	var devfileBytes, dockerfileBytes []byte
-	var devfilePath string
+	var devfilePath, dockerfilePath string
 
 	devfileBytes, devfilePath, _ = FindAndDownloadDevfile(url)
-	dockerfileBytes, _ = DownloadFile(url + "/Dockerfile")
+	dockerfileBytes, dockerfilePath, _ = FindAndDownloadDockerfile(url)
 
-	return devfileBytes, devfilePath, dockerfileBytes
+	return devfileBytes, devfilePath, dockerfileBytes, dockerfilePath
 }
 
 // ScanRepo attempts to read and return devfiles and dockerfiles from the local path upto the specified depth
