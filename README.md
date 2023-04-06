@@ -44,9 +44,9 @@ The image being pushed can again be modified using the environment variable:
 IMG=quay.io/user/hasoperator:next make docker-push
 ```
 
-## Deploying the Operator (non-KCP)
+## Deploying the Operator
 
-The following section outlines the steps to deploy HAS on a physical Kubernetes cluster. If you are looking to deploy HAS on KCP, please see [this document](./docs/kcp.md).
+The following section outlines the steps to deploy HAS on a physical Kubernetes cluster.
 
 ### Setting up the AppStudio Build Service environment
 
