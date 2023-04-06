@@ -17,6 +17,9 @@ package devfile
 
 import (
 	"fmt"
+	"net/url"
+	"path"
+	"strings"
 
 	"github.com/devfile/api/v2/pkg/apis/workspaces/v1alpha2"
 	"github.com/devfile/api/v2/pkg/attributes"
@@ -26,6 +29,7 @@ import (
 	parser "github.com/devfile/library/v2/pkg/devfile/parser"
 	data "github.com/devfile/library/v2/pkg/devfile/parser/data"
 	"github.com/devfile/library/v2/pkg/devfile/parser/data/v2/common"
+	parserUtil "github.com/devfile/library/v2/pkg/util"
 	"golang.org/x/exp/maps"
 
 	appstudiov1alpha1 "github.com/redhat-appstudio/application-api/api/v1alpha1"
@@ -76,7 +80,14 @@ func GetResourceFromDevfile(log logr.Logger, devfileData data.DevfileData, deplo
 	k8sLabels := generateK8sLabels(compName, appName)
 	matchLabels := getMatchLabel(compName)
 
+	if len(kubernetesComponents) == 0 {
+		return parser.KubernetesResources{}, fmt.Errorf("the devfile has no kubernetes components defined, missing outerloop definition")
+	} else if len(kubernetesComponents) == 1 && len(deployAssociatedComponents) == 0 {
+		// only one kubernetes components defined, but no deploy cmd associated
+		deployAssociatedComponents[kubernetesComponents[0].Name] = "place-holder"
+	}
 	for _, component := range kubernetesComponents {
+		// get kubecomponent referenced by default deploy command
 		if _, ok := deployAssociatedComponents[component.Name]; ok && component.Kubernetes != nil {
 			if component.Kubernetes.Inlined != "" {
 				log.Info(fmt.Sprintf("reading the kubernetes inline from component %s", component.Name))
@@ -354,7 +365,13 @@ func GetResourceFromDevfile(log logr.Logger, devfileData data.DevfileData, deplo
 				}
 				if len(resources.Routes) > 0 {
 					// replace the route metadata.name to use the component name
-					resources.Routes[0].ObjectMeta.Name = compName
+					// Trim the route name if needed
+					routeName := compName
+					if len(routeName) >= 30 {
+						routeName = routeName[0:25] + util.GetRandomString(4, true)
+					}
+
+					resources.Routes[0].ObjectMeta.Name = routeName
 					resources.Routes[0].ObjectMeta.Namespace = namespace
 
 					// generate and append the route labels with the hc & ha information
@@ -418,6 +435,7 @@ func GetRouteFromEndpoint(name, serviceName, port, path string, secure bool, ann
 type DevfileSrc struct {
 	Data string
 	URL  string
+	Path string
 }
 
 // ParseDevfile calls the devfile library's parse and returns the devfile data.
@@ -435,6 +453,8 @@ func ParseDevfile(src DevfileSrc) (data.DevfileData, error) {
 		parserArgs.Data = []byte(src.Data)
 	} else if src.URL != "" {
 		parserArgs.URL = src.URL
+	} else if src.Path != "" {
+		parserArgs.Path = src.Path
 	} else {
 		return nil, fmt.Errorf("cannot parse devfile without a src")
 	}
@@ -734,4 +754,133 @@ func UpdateLocalDockerfileURItoAbsolute(devfile data.DevfileData, dockerfileURL 
 	}
 
 	return devfile, err
+}
+
+// ValidateDevfile parse and validate a devfile from it's URL, returns if the devfile should be ignored, the devfile raw content and an error if devfile is invalid
+// If the devfile failed to parse, or the kubernetes uri is invalid or kubernetes file content is invalid. return an error.
+// If no kubernetes components being defined in devfile, then it's not a valid outerloop devfile, the devfile should be ignored.
+// If more than one kubernetes components in the devfile, but no deploy commands being defined. return an error
+// If more than one image components in the devfile, but no apply commands being defined. return an error
+func ValidateDevfile(log logr.Logger, URL string) (shouldIgnoreDevfile bool, devfileBytes []byte, err error) {
+	log.Info(fmt.Sprintf("Validating devfile from %s...", URL))
+	shouldIgnoreDevfile = false
+	var devfileSrc DevfileSrc
+	if strings.HasPrefix(URL, "http://") || strings.HasPrefix(URL, "https://") {
+		devfileSrc = DevfileSrc{
+			URL: URL,
+		}
+	} else {
+		devfileSrc = DevfileSrc{
+			Path: URL,
+		}
+	}
+
+	devfileData, err := ParseDevfile(devfileSrc)
+	if err != nil {
+		log.Error(err, fmt.Sprintf("failed to parse the devfile content from %s", URL))
+		return shouldIgnoreDevfile, nil, fmt.Errorf(fmt.Sprintf("err: %v, failed to parse the devfile content from %s", err, URL))
+	}
+	deployCompMap, err := parser.GetDeployComponents(devfileData)
+	if err != nil {
+		log.Error(err, fmt.Sprintf("failed to get deploy components from %s", URL))
+		return shouldIgnoreDevfile, nil, fmt.Errorf(fmt.Sprintf("err: %v, failed to get deploy components from %s", err, URL))
+	}
+	devfileBytes, err = yaml.Marshal(devfileData)
+	if err != nil {
+		return shouldIgnoreDevfile, nil, err
+	}
+	kubeCompFilter := common.DevfileOptions{
+		ComponentOptions: common.ComponentOptions{
+			ComponentType: v1alpha2.KubernetesComponentType,
+		},
+	}
+	kubeComp, err := devfileData.GetComponents(kubeCompFilter)
+	if err != nil {
+		log.Error(err, fmt.Sprintf("failed to get kubernetes component from %s", URL))
+		shouldIgnoreDevfile = true
+		return shouldIgnoreDevfile, nil, nil
+	}
+	if len(kubeComp) == 0 {
+		log.Info(fmt.Sprintf("Found 0 kubernetes components being defined in devfile from %s, it is not a valid outerloop definition, the devfile will be ignored. A devfile will be matched from registry...", URL))
+		shouldIgnoreDevfile = true
+		return shouldIgnoreDevfile, nil, nil
+	} else {
+		if len(kubeComp) > 1 {
+			found := false
+			for _, component := range kubeComp {
+				if _, ok := deployCompMap[component.Name]; ok {
+					found = true
+					break
+				}
+			}
+			if !found {
+				err = fmt.Errorf("found more than one kubernetes components, but no deploy command associated with any being defined in the devfile from %s", URL)
+				log.Error(err, "failed to validate devfile")
+				return shouldIgnoreDevfile, nil, err
+			}
+		}
+		// TODO: if only one kube component, should return a warning that no deploy command being defined
+	}
+	imageCompFilter := common.DevfileOptions{
+		ComponentOptions: common.ComponentOptions{
+			ComponentType: v1alpha2.ImageComponentType,
+		},
+	}
+	imageComp, err := devfileData.GetComponents(imageCompFilter)
+	if err != nil {
+		log.Error(err, fmt.Sprintf("failed to get image component from %s", URL))
+		return shouldIgnoreDevfile, nil, fmt.Errorf(fmt.Sprintf("err: %v, failed to get image component from %s", err, URL))
+	}
+	if len(imageComp) == 0 {
+		log.Info(fmt.Sprintf("Found 0 image components being defined in devfile from %s, it is not a valid outerloop definition, the devfile will be ignored. A devfile will be matched from registry...", URL))
+		shouldIgnoreDevfile = true
+		return shouldIgnoreDevfile, nil, nil
+	} else {
+		if len(imageComp) > 1 {
+			found := false
+			for _, component := range imageComp {
+				if component.Image != nil && component.Image.Dockerfile != nil && component.Image.Dockerfile.DockerfileSrc.Uri != "" {
+					dockerfileURI := component.Image.Dockerfile.DockerfileSrc.Uri
+					absoluteURI := strings.HasPrefix(dockerfileURI, "http://") || strings.HasPrefix(dockerfileURI, "https://")
+					if absoluteURI {
+						// image uri
+						_, err = util.CurlEndpoint(dockerfileURI)
+					} else {
+						if devfileSrc.Path != "" {
+							// local devfile src with relative dockerfile uri
+							dockerfileURI = path.Join(path.Dir(URL), dockerfileURI)
+							err = parserUtil.ValidateFile(dockerfileURI)
+						} else {
+							// remote devfile src with relative dockerfile uri
+							var u *url.URL
+							u, err = url.Parse(URL)
+							if err != nil {
+								log.Error(err, fmt.Sprintf("failed to parse URL from %s", URL))
+								return shouldIgnoreDevfile, nil, fmt.Errorf(fmt.Sprintf("failed to parse URL from %s", URL))
+							}
+							u.Path = path.Join(u.Path, dockerfileURI)
+							dockerfileURI = u.String()
+							_, err = util.CurlEndpoint(dockerfileURI)
+						}
+					}
+					if err != nil {
+						log.Error(err, fmt.Sprintf("failed to get dockerfile from the URI %s, invalid image component: %s", URL, component.Name))
+						return shouldIgnoreDevfile, nil, fmt.Errorf(fmt.Sprintf("failed to get dockerfile from the URI %s, invalid image component: %s", URL, component.Name))
+					}
+				}
+				if _, ok := deployCompMap[component.Name]; ok {
+					found = true
+					break
+				}
+			}
+			if !found {
+				err = fmt.Errorf("found more than one image components, but no deploy command associated with any being defined in the devfile from %s", URL)
+				log.Error(err, "failed to validate devfile")
+				return shouldIgnoreDevfile, nil, err
+			}
+		}
+		// TODO: if only one image component, should return a warning that no apply command being defined
+	}
+
+	return shouldIgnoreDevfile, devfileBytes, nil
 }

@@ -26,9 +26,9 @@ import (
 	"github.com/devfile/library/v2/pkg/devfile/parser/data/v2/common"
 	"github.com/go-logr/logr"
 	appstudiov1alpha1 "github.com/redhat-appstudio/application-api/api/v1alpha1"
-	"github.com/redhat-appstudio/application-service/pkg/util"
 	"github.com/redhat-developer/alizer/go/pkg/apis/model"
 	"github.com/redhat-developer/alizer/go/pkg/apis/recognizer"
+	"sigs.k8s.io/yaml"
 )
 
 type Alizer interface {
@@ -72,20 +72,23 @@ func search(log logr.Logger, a Alizer, localpath string, devfileRegistryURL stri
 				if f.Name() == DevfileName || f.Name() == HiddenDevfileName {
 					// Check for devfile.yaml or .devfile.yaml
 					/* #nosec G304 -- false positive, filename is not based on user input*/
-					devfileBytes, err := ioutil.ReadFile(path.Join(curPath, f.Name()))
-					if err != nil {
-						return nil, nil, nil, nil, err
-					}
-
-					devfileMapFromRepo[context] = devfileBytes
-
+					devfilePath := path.Join(curPath, f.Name())
 					// Set the proper devfile URL for the detected devfile
 					updatedLink, err := UpdateGitLink(source.URL, source.Revision, path.Join(source.Context, path.Join(context, f.Name())))
 					if err != nil {
 						return nil, nil, nil, nil, err
 					}
-					devfilesURLMapFromRepo[context] = updatedLink
-					isDevfilePresent = true
+					shouldIgnoreDevfile, devfileBytes, err := ValidateDevfile(log, devfilePath)
+					if err != nil {
+						return nil, nil, nil, nil, err
+					}
+					if shouldIgnoreDevfile {
+						isDevfilePresent = false
+					} else {
+						devfileMapFromRepo[context] = devfileBytes
+						devfilesURLMapFromRepo[context] = updatedLink
+						isDevfilePresent = true
+					}
 				} else if f.IsDir() && f.Name() == HiddenDevfileDir {
 					// Check for .devfile/devfile.yaml or .devfile/.devfile.yaml
 					// if the dir is .devfile, we dont increment currentLevel
@@ -99,21 +102,26 @@ func search(log logr.Logger, a Alizer, localpath string, devfileRegistryURL stri
 						if f.Name() == DevfileName || f.Name() == HiddenDevfileName {
 							// Check for devfile.yaml or .devfile.yaml
 							/* #nosec G304 -- false positive, filename is not based on user input*/
-							devfileBytes, err := ioutil.ReadFile(path.Join(hiddenDirPath, f.Name()))
-							if err != nil {
-								return nil, nil, nil, nil, err
-							}
-
-							devfileMapFromRepo[context] = devfileBytes
+							devfilePath := path.Join(hiddenDirPath, f.Name())
 
 							// Set the proper devfile URL for the detected devfile
 							updatedLink, err := UpdateGitLink(source.URL, source.Revision, path.Join(source.Context, path.Join(context, HiddenDevfileDir, f.Name())))
 							if err != nil {
 								return nil, nil, nil, nil, err
 							}
-							devfilesURLMapFromRepo[context] = updatedLink
+							shouldIgnoreDevfile, devfileBytes, err := ValidateDevfile(log, devfilePath)
+							if err != nil {
+								return nil, nil, nil, nil, err
+							}
 
-							isDevfilePresent = true
+							if shouldIgnoreDevfile {
+								isDevfilePresent = false
+							} else {
+								devfileMapFromRepo[context] = devfileBytes
+								devfilesURLMapFromRepo[context] = updatedLink
+
+								isDevfilePresent = true
+							}
 						}
 					}
 				} else if f.Name() == DockerfileName {
@@ -123,7 +131,7 @@ func search(log logr.Logger, a Alizer, localpath string, devfileRegistryURL stri
 					// we will read the devfile to ensure a dockerfile has been referenced.
 					// However, if a Dockerfile is named differently and not referenced in the devfile
 					// it will go undetected
-					dockerfileContextMapFromRepo[context] = path.Join(context, DockerfileName)
+					dockerfileContextMapFromRepo[context] = DockerfileName
 					isDockerfilePresent = true
 				}
 			}
@@ -161,9 +169,8 @@ func search(log logr.Logger, a Alizer, localpath string, devfileRegistryURL stri
 func AnalyzePath(a Alizer, localpath, context, devfileRegistryURL string, devfileMapFromRepo map[string][]byte, devfilesURLMapFromRepo, dockerfileContextMapFromRepo map[string]string, componentPortsMapFromRepo map[string][]int, isDevfilePresent, isDockerfilePresent bool) error {
 	if isDevfilePresent {
 		// If devfile is present, check to see if we can determine a Dockerfile from it
-		devfile := devfileMapFromRepo[context]
-
-		dockerfileImage, err := SearchForDockerfile(devfile)
+		devfileBytes := devfileMapFromRepo[context]
+		dockerfileImage, err := SearchForDockerfile(devfileBytes)
 		if err != nil {
 			return err
 		}
@@ -228,12 +235,12 @@ func AnalyzePath(a Alizer, localpath, context, devfileRegistryURL string, devfil
 
 // SearchForDockerfile searches for a dockerfile from a devfile image component.
 // If no dockerfile is found, nil will be returned.
-func SearchForDockerfile(devfile []byte) (*v1alpha2.DockerfileImage, error) {
-	if len(devfile) == 0 {
+func SearchForDockerfile(devfileBytes []byte) (*v1alpha2.DockerfileImage, error) {
+	if len(devfileBytes) == 0 {
 		return nil, nil
 	}
 	devfileSrc := DevfileSrc{
-		Data: string(devfile),
+		Data: string(devfileBytes),
 	}
 	devfileData, err := ParseDevfile(devfileSrc)
 	if err != nil {
@@ -324,7 +331,14 @@ func AnalyzeAndDetectDevfile(a Alizer, path, devfileRegistryURL string) ([]byte,
 					return nil, "", "", nil, err
 				}
 
-				devfileBytes, err = util.CurlEndpoint(detectedDevfileEndpoint)
+				devfileSrc := DevfileSrc{
+					URL: detectedDevfileEndpoint,
+				}
+				compDevfileData, err := ParseDevfile(devfileSrc)
+				if err != nil {
+					return nil, "", "", nil, err
+				}
+				devfileBytes, err = yaml.Marshal(compDevfileData)
 				if err != nil {
 					return nil, "", "", nil, err
 				}

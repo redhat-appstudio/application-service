@@ -23,6 +23,8 @@ import (
 	"reflect"
 	"time"
 
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/redhat-appstudio/application-service/pkg/metrics"
 	"go.uber.org/zap/zapcore"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -63,7 +65,6 @@ type ComponentReconciler struct {
 	client.Client
 	Scheme            *runtime.Scheme
 	Log               logr.Logger
-	GitToken          string
 	GitHubOrg         string
 	Generator         gitopsgen.Generator
 	AppFS             afero.Afero
@@ -74,6 +75,7 @@ type ComponentReconciler struct {
 const (
 	applicationFailCounterAnnotation = "applicationFailCounter"
 	maxApplicationFailCount          = 5
+	componentName                    = "Component"
 )
 
 //+kubebuilder:rbac:groups=appstudio.redhat.com,resources=components,verbs=get;list;watch;create;update;patch;delete
@@ -93,7 +95,7 @@ const (
 // For more details, check Reconcile and its Result here:
 // - https://pkg.go.dev/sigs.k8s.io/controller-runtime@v0.9.2/pkg/reconcile
 func (r *ComponentReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
-	log := r.Log.WithValues("Component", req.NamespacedName).WithValues("clusterName", req.ClusterName)
+	log := r.Log.WithValues(componentName, req.NamespacedName).WithValues("clusterName", req.ClusterName)
 
 	// if we're running on kcp, we need to include workspace in context
 	if req.ClusterName != "" {
@@ -289,7 +291,7 @@ func (r *ComponentReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 					return ctrl.Result{}, err
 				}
 			} else if source.GitSource.DockerfileURL != "" {
-				devfileData, err := devfile.CreateDevfileForDockerfileBuild(source.GitSource.DockerfileURL, context, component.Name, component.Spec.Application, component.Namespace)
+				devfileData, err := devfile.CreateDevfileForDockerfileBuild(source.GitSource.DockerfileURL, "./", component.Name, component.Spec.Application, component.Namespace)
 				if err != nil {
 					log.Error(err, fmt.Sprintf("Unable to create devfile for dockerfile build %v", req.NamespacedName))
 					r.SetCreateConditionAndUpdateCR(ctx, req, &component, err)
@@ -537,6 +539,8 @@ func (r *ComponentReconciler) generateGitops(ctx context.Context, ghClient githu
 	// Generate and push the gitops resources
 	mappedGitOpsComponent := util.GetMappedGitOpsComponent(*component, kubernetesResources)
 
+	//add the token name to the metrics.  When we add more tokens and rotate, we can determine how evenly distributed the requests are
+	metrics.ControllerGitRequest.With(prometheus.Labels{"controller": componentName, "tokenName": ghClient.TokenName, "operation": "CloneGenerateAndPush"}).Inc()
 	err = r.Generator.CloneGenerateAndPush(tempDir, gitOpsURL, mappedGitOpsComponent, r.AppFS, gitOpsBranch, gitOpsContext, false)
 	if err != nil {
 		log.Error(err, "unable to generate gitops resources due to error")
@@ -544,6 +548,7 @@ func (r *ComponentReconciler) generateGitops(ctx context.Context, ghClient githu
 	}
 
 	//Gitops functions return sanitized error messages
+	metrics.ControllerGitRequest.With(prometheus.Labels{"controller": componentName, "tokenName": ghClient.TokenName, "operation": "CommitAndPush"}).Inc()
 	err = r.Generator.CommitAndPush(tempDir, "", gitOpsURL, mappedGitOpsComponent.Name, gitOpsBranch, "Generating GitOps resources")
 	if err != nil {
 		log.Error(err, "unable to commit and push gitops resources due to error")
@@ -558,7 +563,11 @@ func (r *ComponentReconciler) generateGitops(ctx context.Context, ghClient githu
 		log.Error(gitOpsErr, "")
 		return gitOpsErr
 	}
+
+	metricsLabel := prometheus.Labels{"controller": componentName, "tokenName": ghClient.TokenName, "operation": "GetLatestCommitSHAFromRepository"}
+	metrics.ControllerGitRequest.With(metricsLabel).Inc()
 	commitID, err = ghClient.GetLatestCommitSHAFromRepository(ctx, repoName, orgName, gitOpsBranch)
+	metrics.HandleRateLimitMetrics(err, metricsLabel)
 	if err != nil {
 		gitOpsErr := &GitOpsCommitIdError{err}
 		log.Error(gitOpsErr, "")
