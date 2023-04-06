@@ -221,13 +221,7 @@ func (r *ComponentDetectionQueryReconciler) Reconcile(ctx context.Context, req c
 				}
 			} else if isDockerfilePresent {
 				log.Info(fmt.Sprintf("Determined that this is a Dockerfile only component  %v", req.NamespacedName))
-				updatedDockerfileLink, err := devfile.UpdateGitLink(source.URL, source.Revision, path.Join(context, dockerfilePath))
-				if err != nil {
-					log.Error(err, fmt.Sprintf("Unable to update the dockerfile link %v", req.NamespacedName))
-					r.SetCompleteConditionAndUpdateCR(ctx, req, &componentDetectionQuery, copiedCDQ, err)
-					return ctrl.Result{}, nil
-				}
-				dockerfileContextMap[context] = updatedDockerfileLink
+				dockerfileContextMap[context] = dockerfilePath
 			}
 
 			// Clone the repo if no dockerfile present
