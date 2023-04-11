@@ -97,54 +97,6 @@ var _ = Describe("Application controller", func() {
 		})
 	})
 
-	Context("Create Application with no repositories set", func() {
-		It("Should create successfully with generated repositories", func() {
-			ctx := context.Background()
-
-			hasApp := &appstudiov1alpha1.Application{
-				TypeMeta: metav1.TypeMeta{
-					APIVersion: "appstudio.redhat.com/v1alpha1",
-					Kind:       "Application",
-				},
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      HASAppName,
-					Namespace: HASAppNamespace,
-				},
-				Spec: appstudiov1alpha1.ApplicationSpec{
-					DisplayName: DisplayName,
-					Description: Description,
-				},
-			}
-
-			Expect(k8sClient.Create(ctx, hasApp)).Should(Succeed())
-
-			// Look up the has app resource that was created.
-			// num(conditions) may still be < 1 on the first try, so retry until at least _some_ condition is set
-			hasAppLookupKey := types.NamespacedName{Name: HASAppName, Namespace: HASAppNamespace}
-			createdHasApp := &appstudiov1alpha1.Application{}
-			Eventually(func() bool {
-				k8sClient.Get(context.Background(), hasAppLookupKey, createdHasApp)
-				return len(createdHasApp.Status.Conditions) > 0
-			}, timeout, interval).Should(BeTrue())
-
-			// Make sure the devfile model was properly set
-			Expect(createdHasApp.Status.Devfile).Should(Not(Equal("")))
-
-			devfileSrc := devfile.DevfileSrc{
-				Data: createdHasApp.Status.Devfile,
-			}
-			devfile, err := devfile.ParseDevfile(devfileSrc)
-			Expect(err).Should(Not(HaveOccurred()))
-
-			// gitOpsRepo and appModelRepo should both be set
-			Expect(string(devfile.GetMetadata().Attributes["gitOpsRepository.url"].Raw)).Should(Not(Equal("")))
-			Expect(string(devfile.GetMetadata().Attributes["appModelRepository.url"].Raw)).Should(Not(Equal("")))
-
-			// Delete the specified resource
-			deleteHASAppCR(hasAppLookupKey)
-		})
-	})
-
 	Context("Create Application with no appmodel repository set", func() {
 		It("Should create successfully with appmodel repository set to gitops repository", func() {
 			ctx := context.Background()

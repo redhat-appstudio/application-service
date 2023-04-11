@@ -12,8 +12,6 @@ require (
 	github.com/gofri/go-github-ratelimit v1.0.2
 	github.com/golang/mock v1.6.0
 	github.com/google/go-github/v41 v41.0.0
-	github.com/kcp-dev/kcp/pkg/apis v0.7.0
-	github.com/kcp-dev/logicalcluster/v2 v2.0.0-alpha.1
 	github.com/migueleliasweb/go-github-mock v0.0.13
 	github.com/mitchellh/go-homedir v1.1.0
 	github.com/onsi/ginkgo v1.16.5
@@ -22,6 +20,7 @@ require (
 	github.com/openshift/api v0.0.0-20210503193030-25175d9d392d
 	github.com/prometheus/client_golang v1.14.0
 	github.com/redhat-appstudio/application-api v0.0.0-20221205185405-03f73a06d978
+	github.com/redhat-appstudio/operator-goodies v0.0.0-20230113090719-a8a43f600367
 	github.com/redhat-appstudio/service-provider-integration-scm-file-retriever v0.8.3
 	github.com/redhat-developer/alizer/go v0.0.0-20230117135912-8f7afff3b7cd
 	github.com/redhat-developer/gitops-generator v0.0.0-20230213195503-fabf23de5236
@@ -102,7 +101,6 @@ require (
 	github.com/jenkins-x/go-scm v1.11.35 // indirect
 	github.com/josharian/intern v1.0.0 // indirect
 	github.com/json-iterator/go v1.1.12 // indirect
-	github.com/kcp-dev/apimachinery v0.0.0-20220803185518-868856d14e8a // indirect
 	github.com/kevinburke/ssh_config v1.2.0 // indirect
 	github.com/klauspost/compress v1.15.11 // indirect
 	github.com/kylelemons/godebug v1.1.0 // indirect
@@ -185,5 +183,3 @@ require (
 )
 
 replace github.com/antlr/antlr4 => github.com/antlr/antlr4 v0.0.0-20211106181442-e4c1a74c66bd
-
-replace sigs.k8s.io/controller-runtime => github.com/kcp-dev/controller-runtime v0.12.2-0.20220808200255-4b60fd66e5de
