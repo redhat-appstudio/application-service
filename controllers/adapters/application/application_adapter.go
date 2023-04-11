@@ -40,7 +40,7 @@ func (a *Adapter) EnsureGitOpsRepoExists() (reconciler.OperationResult, error) {
 	if a.Application.Status.Devfile == "" {
 		if gitOpsRepo == "" {
 			// If both repositories are blank, just generate a single shared repository
-			uniqueHash := util.GenerateUniqueHashForWorkloadImageTag("", a.Application.Namespace)
+			uniqueHash := util.GenerateUniqueHashForWorkloadImageTag(a.Application.Namespace)
 			repoName := github.GenerateNewRepositoryName(a.Application.Name, uniqueHash)
 
 			// Generate the git repo in the redhat-appstudio-appdata org
