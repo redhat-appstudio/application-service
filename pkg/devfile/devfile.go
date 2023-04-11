@@ -145,7 +145,7 @@ func GetResourceFromDevfile(log logr.Logger, devfileData data.DevfileData, deplo
 
 					// Set the RevisionHistoryLimit for all Deployments to 0, if it's unset
 					// If set, leave it alone
-					for i, _ := range resources.Deployments {
+					for i := range resources.Deployments {
 						if resources.Deployments[i].Spec.RevisionHistoryLimit == nil {
 							resources.Deployments[i].Spec.RevisionHistoryLimit = &util.RevisionHistoryLimit
 						}
