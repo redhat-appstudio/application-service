@@ -17,9 +17,7 @@ limitations under the License.
 package main
 
 import (
-	"context"
 	"flag"
-	"fmt"
 	"log"
 	"net/http"
 	"os"
@@ -29,18 +27,13 @@ import (
 	// Import all Kubernetes client auth plugins (e.g. Azure, GCP, OIDC, etc.)
 	// to ensure that exec-entrypoint and run can make use of them.
 	"go.uber.org/zap/zapcore"
-	"k8s.io/client-go/discovery"
 	_ "k8s.io/client-go/plugin/pkg/client/auth"
-	"k8s.io/client-go/rest"
 
 	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/apimachinery/pkg/types"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
 	ctrl "sigs.k8s.io/controller-runtime"
-	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/healthz"
-	"sigs.k8s.io/controller-runtime/pkg/kcp"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 
 	routev1 "github.com/openshift/api/route/v1"
@@ -55,9 +48,7 @@ import (
 	// Enable pprof for profiling
 	/* #nosec G108 -- debug code */
 	_ "net/http/pprof"
-
 	//+kubebuilder:scaffold:imports
-	apisv1alpha1 "github.com/kcp-dev/kcp/pkg/apis/apis/v1alpha1"
 )
 
 var (
@@ -70,7 +61,6 @@ func init() {
 
 	utilruntime.Must(appstudiov1alpha1.AddToScheme(scheme))
 
-	utilruntime.Must(apisv1alpha1.AddToScheme(scheme))
 	//+kubebuilder:scaffold:scheme
 }
 
@@ -118,28 +108,10 @@ func main() {
 		LeaderElectionID:       "f50829e1.redhat.com",
 		LeaderElectionConfig:   restConfig,
 	}
-	if kcpAPIsGroupPresent(restConfig) {
-		setupLog.Info("Looking up virtual workspace URL")
-		cfg, err := restConfigForAPIExport(ctx, restConfig, apiExportName)
-		if err != nil {
-			setupLog.Error(err, "error looking up virtual workspace URL")
-		}
-
-		setupLog.Info("Using virtual workspace URL", "url", cfg.Host)
-
-		options.LeaderElectionConfig = restConfig
-		mgr, err = kcp.NewClusterAwareManager(cfg, options)
-		if err != nil {
-			setupLog.Error(err, "unable to start cluster aware manager")
-			os.Exit(1)
-		}
-	} else {
-		setupLog.Info("The apis.kcp.dev group is not present - creating standard manager")
-		mgr, err = ctrl.NewManager(restConfig, options)
-		if err != nil {
-			setupLog.Error(err, "unable to start manager")
-			os.Exit(1)
-		}
+	mgr, err = ctrl.NewManager(restConfig, options)
+	if err != nil {
+		setupLog.Error(err, "unable to start manager")
+		os.Exit(1)
 	}
 
 	if err := routev1.AddToScheme(mgr.GetScheme()); err != nil {
@@ -242,73 +214,4 @@ func main() {
 		setupLog.Error(err, "problem running manager")
 		os.Exit(1)
 	}
-}
-
-// restConfigForAPIExport returns a *rest.Config properly configured to communicate with the endpoint for the
-// APIExport's virtual workspace.
-func restConfigForAPIExport(ctx context.Context, cfg *rest.Config, apiExportName string) (*rest.Config, error) {
-	scheme := runtime.NewScheme()
-	if err := apisv1alpha1.AddToScheme(scheme); err != nil {
-		return nil, fmt.Errorf("error adding apis.kcp.dev/v1alpha1 to scheme: %w", err)
-	}
-
-	apiExportClient, err := client.New(cfg, client.Options{Scheme: scheme})
-	if err != nil {
-		return nil, fmt.Errorf("error creating APIExport client: %w", err)
-	}
-
-	var apiExport apisv1alpha1.APIExport
-
-	if apiExportName != "" {
-		if err := apiExportClient.Get(ctx, types.NamespacedName{Name: apiExportName}, &apiExport); err != nil {
-			return nil, fmt.Errorf("error getting APIExport %q: %w", apiExportName, err)
-		}
-	} else {
-		setupLog.Info("api-export-name is empty - listing")
-		exports := &apisv1alpha1.APIExportList{}
-		if err := apiExportClient.List(ctx, exports); err != nil {
-			return nil, fmt.Errorf("error listing APIExports: %w", err)
-		}
-		if len(exports.Items) == 0 {
-			return nil, fmt.Errorf("no APIExport found")
-		}
-		if len(exports.Items) > 1 {
-			return nil, fmt.Errorf("more than one APIExport found")
-		}
-		apiExport = exports.Items[0]
-	}
-
-	if len(apiExport.Status.VirtualWorkspaces) < 1 {
-		return nil, fmt.Errorf("APIExport %q status.virtualWorkspaces is empty", apiExportName)
-	}
-
-	cfg = rest.CopyConfig(cfg)
-	// TODO(ncdc): sharding support
-	cfg.Host = apiExport.Status.VirtualWorkspaces[0].URL
-
-	return cfg, nil
-}
-
-func kcpAPIsGroupPresent(restConfig *rest.Config) bool {
-	discoveryClient, err := discovery.NewDiscoveryClientForConfig(restConfig)
-	if err != nil {
-		setupLog.Error(err, "failed to create discovery client")
-		os.Exit(1)
-	}
-	apiGroupList, err := discoveryClient.ServerGroups()
-	if err != nil {
-		setupLog.Error(err, "failed to get server groups")
-		os.Exit(1)
-	}
-
-	for _, group := range apiGroupList.Groups {
-		if group.Name == apisv1alpha1.SchemeGroupVersion.Group {
-			for _, version := range group.Versions {
-				if version.Version == apisv1alpha1.SchemeGroupVersion.Version {
-					return true
-				}
-			}
-		}
-	}
-	return false
 }

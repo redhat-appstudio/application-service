@@ -19,7 +19,6 @@ import (
 	"context"
 	"fmt"
 
-	logicalcluster "github.com/kcp-dev/logicalcluster/v2"
 	appstudiov1alpha1 "github.com/redhat-appstudio/application-api/api/v1alpha1"
 	"k8s.io/apimachinery/pkg/types"
 	ctrl "sigs.k8s.io/controller-runtime"
@@ -32,12 +31,9 @@ import (
 // Adapted from https://github.com/codeready-toolchain/host-operator/blob/master/controllers/spacebindingcleanup/mapper.go#L17
 func MapToBindingByBoundObjectName(cl client.Client, objectType, label string) func(object client.Object) []reconcile.Request {
 	return func(obj client.Object) []reconcile.Request {
-		// Retrieve the cluster name (if applicable)
-		clusterName := logicalcluster.From(obj).String()
-
 		mapperLog := ctrl.Log.WithName("MapToBindingByBoundObjectName")
-		log := mapperLog.WithValues("object-name", obj.GetName(), "object-kind", obj.GetObjectKind()).WithValues("clusterName", clusterName)
-		ctx := logicalcluster.WithCluster(context.TODO(), logicalcluster.New(clusterName))
+		log := mapperLog.WithValues("object-name", obj.GetName(), "object-kind", obj.GetObjectKind())
+		ctx := context.Background()
 
 		bindingList := &appstudiov1alpha1.SnapshotEnvironmentBindingList{}
 		err := cl.List(ctx, bindingList,
@@ -61,7 +57,6 @@ func MapToBindingByBoundObjectName(cl client.Client, objectType, label string) f
 					Namespace: item.Namespace,
 					Name:      item.Name,
 				},
-				ClusterName: clusterName,
 			}
 			log.Info(fmt.Sprintf("The corresponding SnapshotEnvironmentBinding %s will be reconciled", item.Name))
 		}
