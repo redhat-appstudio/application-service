@@ -1355,6 +1355,53 @@ var _ = Describe("Component Detection Query controller", func() {
 			})
 		})
 
+		Context("Create Component Detection Query with dockerfile under other common locations", func() {
+			It("Should return dockerfile under common sub folder", func() {
+				ctx := context.Background()
+
+				queryName := HASCompDetQuery + "27"
+
+				hasCompDetectionQuery := &appstudiov1alpha1.ComponentDetectionQuery{
+					TypeMeta: metav1.TypeMeta{
+						APIVersion: "appstudio.redhat.com/v1alpha1",
+						Kind:       "ComponentDetectionQuery",
+					},
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      queryName,
+						Namespace: HASNamespace,
+					},
+					Spec: appstudiov1alpha1.ComponentDetectionQuerySpec{
+						GitSource: appstudiov1alpha1.GitSource{
+							URL: "https://github.com/yangcao77/multi-component-dockerfile-deep",
+						},
+					},
+				}
+
+				Expect(k8sClient.Create(ctx, hasCompDetectionQuery)).Should(Succeed())
+
+				// Look up the has app resource that was created.
+				// num(conditions) may still be < 1 on the first try, so retry until at least _some_ condition is set
+				hasCompDetQueryLookupKey := types.NamespacedName{Name: queryName, Namespace: HASNamespace}
+				createdHasCompDetectionQuery := &appstudiov1alpha1.ComponentDetectionQuery{}
+				Eventually(func() bool {
+					k8sClient.Get(context.Background(), hasCompDetQueryLookupKey, createdHasCompDetectionQuery)
+					return len(createdHasCompDetectionQuery.Status.Conditions) > 1
+				}, timeout20s, interval).Should(BeTrue())
+
+				// Make sure the right status is set
+				Expect(createdHasCompDetectionQuery.Status.Conditions[1].Message).Should(ContainSubstring("ComponentDetectionQuery has successfully finished"))
+
+				// Make sure the devfiles are detected
+				Expect(len(createdHasCompDetectionQuery.Status.ComponentDetected)).Should(Equal(3)) // mocked, not accurate. check unit test for accurate detection that uses the alizer client instead of the mock client.
+				for _, componentDesc := range createdHasCompDetectionQuery.Status.ComponentDetected {
+					Expect(componentDesc.ComponentStub.Source.GitSource).ShouldNot(BeNil())
+				}
+
+				// Delete the specified Detection Query resource
+				deleteCompDetQueryCR(hasCompDetQueryLookupKey)
+			})
+		})
+
 		Context("Create Component Detection Query with multicomponent repo with local Dockerfiles", func() {
 			It("Should return successfully and properly set the DockerfileURL", func() {
 				ctx := context.Background()
