@@ -30,7 +30,7 @@ import (
 )
 
 func (r *ComponentDetectionQueryReconciler) SetDetectingConditionAndUpdateCR(ctx context.Context, req ctrl.Request, componentDetectionQuery *appstudiov1alpha1.ComponentDetectionQuery) {
-	log := r.Log.WithValues("ComponentDetectionQuery", req.NamespacedName).WithValues("clusterName", req.ClusterName)
+	log := r.Log.WithValues("ComponentDetectionQuery", req.NamespacedName)
 
 	patch := client.MergeFrom(componentDetectionQuery.DeepCopy())
 
@@ -48,7 +48,7 @@ func (r *ComponentDetectionQueryReconciler) SetDetectingConditionAndUpdateCR(ctx
 }
 
 func (r *ComponentDetectionQueryReconciler) SetCompleteConditionAndUpdateCR(ctx context.Context, req ctrl.Request, componentDetectionQuery *appstudiov1alpha1.ComponentDetectionQuery, originalCDQ *appstudiov1alpha1.ComponentDetectionQuery, completeError error) {
-	log := r.Log.WithValues("ComponentDetectionQuery", req.NamespacedName).WithValues("clusterName", req.ClusterName)
+	log := r.Log.WithValues("ComponentDetectionQuery", req.NamespacedName)
 
 	patch := client.MergeFrom(originalCDQ.DeepCopy())
 
