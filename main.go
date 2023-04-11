@@ -47,7 +47,6 @@ import (
 
 	appstudiov1alpha1 "github.com/redhat-appstudio/application-api/api/v1alpha1"
 	"github.com/redhat-appstudio/application-service/controllers"
-	appservicegitops "github.com/redhat-appstudio/application-service/gitops"
 	"github.com/redhat-appstudio/application-service/pkg/devfile"
 	"github.com/redhat-appstudio/application-service/pkg/github"
 	"github.com/redhat-appstudio/application-service/pkg/spi"
@@ -154,13 +153,6 @@ func main() {
 		ghOrg = "redhat-appstudio-appdata"
 	}
 
-	// Retrieve the name of the default repository to use
-	imageRepository := os.Getenv("IMAGE_REPOSITORY")
-	if imageRepository == "" {
-		imageRepository = appservicegitops.DefaultImageRepo
-	}
-	appservicegitops.SetDefaultImageRepo(imageRepository)
-
 	// Retrieve the option to specify a custom devfile registry
 	devfileRegistryURL := os.Getenv("DEVFILE_REGISTRY_URL")
 	if devfileRegistryURL == "" {
@@ -192,7 +184,6 @@ func main() {
 		Generator:         gitopsgen.NewGitopsGen(),
 		AppFS:             ioutils.NewFilesystem(),
 		GitHubTokenClient: ghTokenClient,
-		ImageRepository:   imageRepository,
 		SPIClient:         spi.SPIClient{},
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "Component")

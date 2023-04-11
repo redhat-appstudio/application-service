@@ -122,34 +122,3 @@ func TestGenerateTektonBuild(t *testing.T) {
 		})
 	}
 }
-
-func TestGetAndSetDefaultImageRepo(t *testing.T) {
-
-	tests := []struct {
-		name      string
-		imageRepo string
-		want      string
-	}{
-		{
-			name: "Get default image repo",
-			want: "quay.io/redhat-appstudio/user-workload",
-		},
-		{
-			name:      "Override default image repo",
-			imageRepo: "quay.io/myuser/myrepo",
-			want:      "quay.io/myuser/myrepo",
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			if tt.imageRepo != "" {
-				SetDefaultImageRepo(tt.imageRepo)
-			}
-			imageRepo := GetDefaultImageRepo()
-			if imageRepo != tt.want {
-				t.Errorf("TestGetAndSetDefaultImageRepo(): want %v, got %v", tt.want, imageRepo)
-			}
-		})
-	}
-}
