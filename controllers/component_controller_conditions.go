@@ -29,7 +29,7 @@ import (
 )
 
 func (r *ComponentReconciler) SetCreateConditionAndUpdateCR(ctx context.Context, req ctrl.Request, component *appstudiov1alpha1.Component, createError error) {
-	log := r.Log.WithValues("Component", req.NamespacedName).WithValues("clusterName", req.ClusterName)
+	log := r.Log.WithValues("Component", req.NamespacedName)
 
 	if createError == nil {
 		meta.SetStatusCondition(&component.Status.Conditions, metav1.Condition{
@@ -55,7 +55,7 @@ func (r *ComponentReconciler) SetCreateConditionAndUpdateCR(ctx context.Context,
 }
 
 func (r *ComponentReconciler) SetUpdateConditionAndUpdateCR(ctx context.Context, req ctrl.Request, component *appstudiov1alpha1.Component, updateError error) {
-	log := r.Log.WithValues("Component", req.NamespacedName).WithValues("clusterName", req.ClusterName)
+	log := r.Log.WithValues("Component", req.NamespacedName)
 
 	if updateError == nil {
 		meta.SetStatusCondition(&component.Status.Conditions, metav1.Condition{
