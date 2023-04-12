@@ -1350,7 +1350,7 @@ func TestUpdateComponentStub(t *testing.T) {
 				Development: true,
 			})))
 			fakeClient := NewFakeClient(t)
-			fakeClient.MockGet = func(ctx context.Context, key types.NamespacedName, obj client.Object) error {
+			fakeClient.MockGet = func(ctx context.Context, key types.NamespacedName, obj client.Object, opts ...client.GetOption) error {
 				return nil
 			}
 			r := ComponentDetectionQueryReconciler{

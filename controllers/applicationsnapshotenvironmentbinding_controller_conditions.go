@@ -28,7 +28,7 @@ import (
 )
 
 func (r *SnapshotEnvironmentBindingReconciler) SetConditionAndUpdateCR(ctx context.Context, req ctrl.Request, appSnapshotEnvBinding *appstudiov1alpha1.SnapshotEnvironmentBinding, createError error) {
-	log := r.Log.WithValues("SnapshotEnvironmentBinding", req.NamespacedName).WithValues("clusterName", req.ClusterName)
+	log := r.Log.WithValues("SnapshotEnvironmentBinding", req.NamespacedName)
 
 	var currentSEB appstudiov1alpha1.SnapshotEnvironmentBinding
 	err := r.Get(ctx, req.NamespacedName, &currentSEB)
