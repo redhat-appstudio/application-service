@@ -143,6 +143,14 @@ func GetResourceFromDevfile(log logr.Logger, devfileData data.DevfileData, deplo
 						}
 					}
 
+					// Set the RevisionHistoryLimit for all Deployments to 0, if it's unset
+					// If set, leave it alone
+					for i := range resources.Deployments {
+						if resources.Deployments[i].Spec.RevisionHistoryLimit == nil {
+							resources.Deployments[i].Spec.RevisionHistoryLimit = &util.RevisionHistoryLimit
+						}
+					}
+
 					// replace the deployment metadata.name to use the component name
 					resources.Deployments[0].ObjectMeta.Name = compName
 					resources.Deployments[0].ObjectMeta.Namespace = namespace
