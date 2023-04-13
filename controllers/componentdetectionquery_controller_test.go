@@ -426,7 +426,7 @@ var _ = Describe("Component Detection Query controller", func() {
 			}, timeout, interval).Should(BeTrue())
 
 			// Make sure the right err is set
-			Expect(createdHasCompDetectionQuery.Status.Conditions[1].Message).Should(ContainSubstring("unable to GET from https://registry.devfile.io/devfiles/fake"))
+			Expect(createdHasCompDetectionQuery.Status.Conditions[1].Message).Should(ContainSubstring("ComponentDetectionQuery failed: unable to GET"))
 
 			// Delete the specified Detection Query resource
 			deleteCompDetQueryCR(hasCompDetQueryLookupKey)
@@ -569,7 +569,7 @@ var _ = Describe("Component Detection Query controller", func() {
 
 			// index is 1 because of CDQ status condition Processing
 			Expect(createdHasCompDetectionQuery.Status.Conditions[1].Status).Should(Equal(metav1.ConditionFalse))
-			Expect(createdHasCompDetectionQuery.Status.Conditions[1].Message).Should(ContainSubstring("ComponentDetectionQuery failed: failed to clone the repo"))
+			Expect(createdHasCompDetectionQuery.Status.Conditions[1].Message).Should(ContainSubstring("error getting devfile info from url: failed to retrieve"))
 
 			// Delete the specified Detection Query resource
 			deleteCompDetQueryCR(hasCompDetQueryLookupKey)
@@ -628,7 +628,7 @@ var _ = Describe("Component Detection Query controller", func() {
 
 			// index is 1 because of CDQ status condition Processing
 			Expect(createdHasCompDetectionQuery.Status.Conditions[1].Status).Should(Equal(metav1.ConditionFalse))
-			Expect(createdHasCompDetectionQuery.Status.Conditions[1].Message).Should(ContainSubstring("ComponentDetectionQuery failed: failed to clone the repo"))
+			Expect(createdHasCompDetectionQuery.Status.Conditions[1].Message).Should(ContainSubstring("error getting devfile info from url: failed to retrieve"))
 
 			// Delete the specified Detection Query resource
 			deleteCompDetQueryCR(hasCompDetQueryLookupKey)
@@ -1164,6 +1164,48 @@ var _ = Describe("Component Detection Query controller", func() {
 			})
 		})
 
+		Context("Create Component Detection Query with Devfile URL that has no kubernetes definition", func() {
+			It("Should err out", func() {
+				ctx := context.Background()
+
+				queryName := HASCompDetQuery + "25"
+
+				hasCompDetectionQuery := &appstudiov1alpha1.ComponentDetectionQuery{
+					TypeMeta: metav1.TypeMeta{
+						APIVersion: "appstudio.redhat.com/v1alpha1",
+						Kind:       "ComponentDetectionQuery",
+					},
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      queryName,
+						Namespace: HASNamespace,
+					},
+					Spec: appstudiov1alpha1.ComponentDetectionQuerySpec{
+						GitSource: appstudiov1alpha1.GitSource{
+							URL:        SampleRepoLink,
+							DevfileURL: "https://raw.githubusercontent.com/yangcao77/multi-components-with-no-kubecomps/main/devfile-sample-java-springboot-basic/.devfile/.devfile.yaml",
+						},
+					},
+				}
+
+				Expect(k8sClient.Create(ctx, hasCompDetectionQuery)).Should(Succeed())
+
+				// Look up the has app resource that was created.
+				// num(conditions) may still be < 1 on the first try, so retry until at least _some_ condition is set
+				hasCompDetQueryLookupKey := types.NamespacedName{Name: queryName, Namespace: HASNamespace}
+				createdHasCompDetectionQuery := &appstudiov1alpha1.ComponentDetectionQuery{}
+				Eventually(func() bool {
+					k8sClient.Get(context.Background(), hasCompDetQueryLookupKey, createdHasCompDetectionQuery)
+					return len(createdHasCompDetectionQuery.Status.Conditions) > 1
+				}, timeout, interval).Should(BeTrue())
+
+				// Make sure the right err is set
+				Expect(createdHasCompDetectionQuery.Status.Conditions[1].Message).Should(ContainSubstring("does not contain a valid outerloop definition"))
+
+				// Delete the specified Detection Query resource
+				deleteCompDetQueryCR(hasCompDetQueryLookupKey)
+			})
+		})
+
 		Context("Create Component Detection Query with repo that has devfile but no dockerfile", func() {
 			It("Should successfully detect a devfile and match the proper dockerfile for it", func() {
 				ctx := context.Background()
@@ -1202,7 +1244,7 @@ var _ = Describe("Component Detection Query controller", func() {
 
 				for devfileName, devfileDesc := range createdHasCompDetectionQuery.Status.ComponentDetected {
 					Expect(devfileName).Should(ContainSubstring("node"))
-					Expect(devfileDesc.ComponentStub.Source.GitSource.DevfileURL).Should(Equal("https://raw.githubusercontent.com/devfile-samples/node-express-hello-devfile-no-dockerfile/main/devfile.yaml"))
+					Expect(devfileDesc.ComponentStub.Source.GitSource.DevfileURL).Should(Equal("https://raw.githubusercontent.com/nodeshift-starters/devfile-sample/main/devfile.yaml"))
 					Expect(devfileDesc.ComponentStub.Source.GitSource.DockerfileURL).Should(Equal("https://raw.githubusercontent.com/nodeshift-starters/devfile-sample/main/Dockerfile"))
 				}
 
@@ -1306,6 +1348,57 @@ var _ = Describe("Component Detection Query controller", func() {
 					Expect(devfileDesc.ComponentStub.Source.GitSource.DevfileURL).Should(Equal("https://raw.githubusercontent.com/nodeshift-starters/devfile-sample/main/devfile.yaml"))
 					Expect(devfileDesc.ComponentStub.TargetPort).Should(Equal(8080))
 					Expect(devfileDesc.DevfileFound).Should(BeTrue())
+				}
+
+				// Delete the specified Detection Query resource
+				deleteCompDetQueryCR(hasCompDetQueryLookupKey)
+			})
+		})
+
+		Context("Create Component Detection Query with multicomponent repo with local Dockerfiles", func() {
+			It("Should return successfully and properly set the DockerfileURL", func() {
+				ctx := context.Background()
+
+				queryName := HASCompDetQuery + "quality-dashboard" + "27"
+
+				hasCompDetectionQuery := &appstudiov1alpha1.ComponentDetectionQuery{
+					TypeMeta: metav1.TypeMeta{
+						APIVersion: "appstudio.redhat.com/v1alpha1",
+						Kind:       "ComponentDetectionQuery",
+					},
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      queryName,
+						Namespace: HASNamespace,
+					},
+					Spec: appstudiov1alpha1.ComponentDetectionQuerySpec{
+						GitSource: appstudiov1alpha1.GitSource{
+							URL: "https://github.com/redhat-appstudio/quality-dashboard",
+						},
+					},
+				}
+
+				Expect(k8sClient.Create(ctx, hasCompDetectionQuery)).Should(Succeed())
+
+				// Look up the has app resource that was created.
+				// num(conditions) may still be < 1 on the first try, so retry until at least _some_ condition is set
+				hasCompDetQueryLookupKey := types.NamespacedName{Name: queryName, Namespace: HASNamespace}
+				createdHasCompDetectionQuery := &appstudiov1alpha1.ComponentDetectionQuery{}
+				Eventually(func() bool {
+					k8sClient.Get(context.Background(), hasCompDetQueryLookupKey, createdHasCompDetectionQuery)
+					return len(createdHasCompDetectionQuery.Status.Conditions) > 1
+				}, timeout, interval).Should(BeTrue())
+
+				// Make sure the a devfile is detected
+				Expect(len(createdHasCompDetectionQuery.Status.ComponentDetected)).Should(Equal(2))
+
+				for devfileName, devfileDesc := range createdHasCompDetectionQuery.Status.ComponentDetected {
+					Expect(devfileName).Should(Or(ContainSubstring("backend-quality-dashboard"), ContainSubstring("frontend-quality-dashboard")))
+					Expect(devfileDesc.ComponentStub.Source.GitSource.DockerfileURL).Should(Equal("Dockerfile"))
+					//Expect(devfileDesc.ComponentStub.Source.GitSource.Context).Should(ContainSubstring("nodejs"))
+					//Expect(devfileDesc.ComponentStub.Source.GitSource.Revision).Should(ContainSubstring("main"))
+					//Expect(devfileDesc.ComponentStub.Source.GitSource.DevfileURL).Should(Equal("https://raw.githubusercontent.com/nodeshift-starters/devfile-sample/main/devfile.yaml"))
+					//Expect(devfileDesc.ComponentStub.TargetPort).Should(Equal(8080))
+					//Expect(devfileDesc.DevfileFound).Should(BeTrue())
 				}
 
 				// Delete the specified Detection Query resource

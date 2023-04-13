@@ -285,7 +285,6 @@ func (r *ComponentDetectionQueryReconciler) updateComponentStub(req ctrl.Request
 
 	for context, devfileBytes := range devfilesMap {
 		log.Info(fmt.Sprintf("Currently reading the devfile for context %v", context))
-
 		// Parse the Component Devfile
 		devfileSrc := devfile.DevfileSrc{
 			Data: string(devfileBytes),

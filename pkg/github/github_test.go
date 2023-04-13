@@ -47,7 +47,7 @@ func TestGenerateNewRepositoryName(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			sanitizedName := util.SanitizeName(tt.displayName)
-			uniqueHash := util.GenerateUniqueHashForWorkloadImageTag(tt.clusterName, tt.namespace)
+			uniqueHash := util.GenerateUniqueHashForWorkloadImageTag(tt.namespace)
 			generatedRepo := GenerateNewRepositoryName(tt.displayName, uniqueHash)
 
 			if !strings.Contains(generatedRepo, sanitizedName) || !strings.Contains(generatedRepo, uniqueHash) {

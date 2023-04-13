@@ -562,7 +562,7 @@ func TestUpdateComponentStub(t *testing.T) {
 				Kubernetes: &devfileAPIV1.KubernetesComponent{
 					K8sLikeComponent: devfileAPIV1.K8sLikeComponent{
 						K8sLikeComponentLocation: devfileAPIV1.K8sLikeComponentLocation{
-							Uri: "testLocation",
+							Uri: "https://raw.githubusercontent.com/yangcao77/devfile-sample-java-springboot-basic/main/deploy.yaml",
 						},
 					},
 				},
@@ -575,7 +575,26 @@ func TestUpdateComponentStub(t *testing.T) {
 				Kubernetes: &devfileAPIV1.KubernetesComponent{
 					K8sLikeComponent: devfileAPIV1.K8sLikeComponent{
 						K8sLikeComponentLocation: devfileAPIV1.K8sLikeComponentLocation{
-							Uri: "testLocation",
+							Uri: "https://raw.githubusercontent.com/yangcao77/devfile-sample-java-springboot-basic/main/deploy.yaml",
+						},
+					},
+				},
+			},
+		},
+	}
+
+	componentsInvalidDeployYamlErr := []devfileAPIV1.Component{
+		{
+			Name: "component1",
+			Attributes: envAttributes.PutInteger(devfilePkg.ReplicaKey, 1).PutString(devfilePkg.RouteKey, "route1").PutInteger(
+				devfilePkg.ContainerImagePortKey, 1001).PutString(devfilePkg.CpuLimitKey, "2").PutString(devfilePkg.CpuRequestKey, "700m").PutString(
+				devfilePkg.MemoryLimitKey, "500Mi").PutString(devfilePkg.MemoryRequestKey, "400Mi").PutString(
+				devfilePkg.StorageLimitKey, "400Mi").PutString(devfilePkg.StorageRequestKey, "200Mi"),
+			ComponentUnion: devfileAPIV1.ComponentUnion{
+				Kubernetes: &devfileAPIV1.KubernetesComponent{
+					K8sLikeComponent: devfileAPIV1.K8sLikeComponent{
+						K8sLikeComponentLocation: devfileAPIV1.K8sLikeComponentLocation{
+							Uri: "testLocation/deploy.yaml",
 						},
 					},
 				},
@@ -594,7 +613,7 @@ func TestUpdateComponentStub(t *testing.T) {
 				Kubernetes: &devfileAPIV1.KubernetesComponent{
 					K8sLikeComponent: devfileAPIV1.K8sLikeComponent{
 						K8sLikeComponentLocation: devfileAPIV1.K8sLikeComponentLocation{
-							Uri: "testLocation",
+							Uri: "https://raw.githubusercontent.com/yangcao77/devfile-sample-java-springboot-basic/main/deploy.yaml",
 						},
 					},
 				},
@@ -1282,6 +1301,29 @@ func TestUpdateComponentStub(t *testing.T) {
 			},
 			wantErr: true,
 		},
+		{
+			name: "Check err for invalid deploy yaml uri error",
+			devfilesDataMap: map[string]*v2.DevfileV2{
+				"./": {
+					Devfile: devfileAPIV1.Devfile{
+						DevfileHeader: devfile.DevfileHeader{
+							SchemaVersion: "2.2.0",
+							Metadata: devfile.DevfileMetadata{
+								Name:        "test-devfile",
+								Language:    "language",
+								ProjectType: "project",
+							},
+						},
+						DevWorkspaceTemplateSpec: devfileAPIV1.DevWorkspaceTemplateSpec{
+							DevWorkspaceTemplateSpecContent: devfileAPIV1.DevWorkspaceTemplateSpecContent{
+								Components: componentsInvalidDeployYamlErr,
+							},
+						},
+					},
+				},
+			},
+			wantErr: true,
+		},
 	}
 
 	for _, tt := range tests {
@@ -1308,7 +1350,7 @@ func TestUpdateComponentStub(t *testing.T) {
 				Development: true,
 			})))
 			fakeClient := NewFakeClient(t)
-			fakeClient.MockGet = func(ctx context.Context, key types.NamespacedName, obj client.Object) error {
+			fakeClient.MockGet = func(ctx context.Context, key types.NamespacedName, obj client.Object, opts ...client.GetOption) error {
 				return nil
 			}
 			r := ComponentDetectionQueryReconciler{

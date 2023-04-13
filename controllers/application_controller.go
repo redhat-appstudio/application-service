@@ -20,6 +20,9 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/redhat-appstudio/application-service/pkg/metrics"
+
 	gofakeit "github.com/brianvoe/gofakeit/v6"
 	"github.com/go-logr/logr"
 	"go.uber.org/zap/zapcore"
@@ -34,8 +37,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/predicate"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 	"sigs.k8s.io/yaml"
-
-	logicalcluster "github.com/kcp-dev/logicalcluster/v2"
 
 	appstudiov1alpha1 "github.com/redhat-appstudio/application-api/api/v1alpha1"
 	devfile "github.com/redhat-appstudio/application-service/pkg/devfile"
@@ -53,6 +54,8 @@ type ApplicationReconciler struct {
 	GitHubOrg         string
 }
 
+const applicationName = "Application"
+
 //+kubebuilder:rbac:groups=appstudio.redhat.com,resources=applications,verbs=get;list;watch;create;update;patch;delete
 //+kubebuilder:rbac:groups=appstudio.redhat.com,resources=applications/status,verbs=get;update;patch
 //+kubebuilder:rbac:groups=appstudio.redhat.com,resources=applications/finalizers,verbs=update
@@ -68,11 +71,6 @@ type ApplicationReconciler struct {
 // - https://pkg.go.dev/sigs.k8s.io/controller-runtime@v0.9.2/pkg/reconcile
 func (r *ApplicationReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
 	log := r.Log.WithValues("kind", "Application").WithValues("resource", req.NamespacedName.Name).WithValues("namespace", req.NamespacedName.Namespace)
-
-	// if we're running on kcp, we need to include workspace in context
-	if req.ClusterName != "" {
-		ctx = logicalcluster.WithCluster(ctx, logicalcluster.New(req.ClusterName))
-	}
 
 	// Get the Application resource
 	var application appstudiov1alpha1.Application
@@ -140,12 +138,16 @@ func (r *ApplicationReconciler) Reconcile(ctx context.Context, req ctrl.Request)
 		appModelRepo := application.Spec.AppModelRepository.URL
 		if gitOpsRepo == "" {
 			// If both repositories are blank, just generate a single shared repository
-			uniqueHash := util.GenerateUniqueHashForWorkloadImageTag(req.ClusterName, application.Namespace)
+			uniqueHash := util.GenerateUniqueHashForWorkloadImageTag(application.Namespace)
 			repoName := github.GenerateNewRepositoryName(application.Name, uniqueHash)
 
 			// Generate the git repo in the redhat-appstudio-appdata org
+			// Not an SLI metric.  Used for determining the number of git operation requests
+			metricsLabel := prometheus.Labels{"controller": applicationName, "tokenName": ghClient.TokenName, "operation": "GenerateNewRepository"}
+			metrics.ControllerGitRequest.With(metricsLabel).Inc()
 			repoUrl, err := ghClient.GenerateNewRepository(ctx, r.GitHubOrg, repoName, "GitOps Repository")
 			if err != nil {
+				metrics.HandleRateLimitMetrics(err, metricsLabel)
 				log.Error(err, fmt.Sprintf("Unable to create repository %v", repoUrl))
 				r.SetCreateConditionAndUpdateCR(ctx, req, &application, err)
 				return reconcile.Result{}, err
