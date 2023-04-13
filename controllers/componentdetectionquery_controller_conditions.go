@@ -30,7 +30,7 @@ import (
 )
 
 func (r *ComponentDetectionQueryReconciler) SetDetectingConditionAndUpdateCR(ctx context.Context, req ctrl.Request, componentDetectionQuery *appstudiov1alpha1.ComponentDetectionQuery) {
-	log := r.Log.WithValues("kind", "ComponentDetectionQuery").WithValues("resource", req.NamespacedName.Name).WithValues("namespace", req.NamespacedName.Namespace)
+	log := r.Log.WithValues("controllerKind", "ComponentDetectionQuery").WithValues("name", req.NamespacedName.Name).WithValues("namespace", req.NamespacedName.Namespace)
 
 	patch := client.MergeFrom(componentDetectionQuery.DeepCopy())
 

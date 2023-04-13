@@ -76,7 +76,6 @@ func main() {
 		"Enable leader election for controller manager. "+
 			"Enabling this will ensure there is only one active controller manager.")
 	opts := zap.Options{
-		Development: true,
 		TimeEncoder: zapcore.ISO8601TimeEncoder,
 	}
 	opts.BindFlags(flag.CommandLine)
@@ -87,7 +86,7 @@ func main() {
 	ctx := ctrl.SetupSignalHandler()
 
 	restConfig := ctrl.GetConfigOrDie()
-	setupLog = setupLog.WithValues("kind", apiExportName)
+	setupLog = setupLog.WithValues("controllerKind", apiExportName)
 
 	// Set up pprof if needed
 	if os.Getenv("ENABLE_PPROF") == "true" {

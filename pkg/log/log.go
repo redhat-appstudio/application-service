@@ -38,7 +38,7 @@ func LogAPIResourceChangeEvent(log logr.Logger, resourceName string, resourceKin
 		log.Error(nil, "resourceKind passed to LogAPIResourceChangeEvent was empty")
 		return
 	}
-	log = log.WithValues("resource", resourceName).WithValues("kind", resourceKind).WithValues("action", resourceChangeType)
+	log = log.WithValues("name", resourceName).WithValues("controllerKind", resourceKind).WithValues("action", resourceChangeType)
 	if err != nil {
 		log.Info(fmt.Sprintf("API Resource change event failed: %s, error: %v", string(resourceChangeType), err))
 	} else {

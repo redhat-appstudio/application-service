@@ -78,7 +78,7 @@ const asebName = "SnapshotEnvironmentBinding"
 // For more details, check Reconcile and its Result here:
 // - https://pkg.go.dev/sigs.k8s.io/controller-runtime@v0.9.2/pkg/reconcile
 func (r *SnapshotEnvironmentBindingReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
-	log := r.Log.WithValues("kind", "SnapshotEnvironmentBinding").WithValues("resource", req.NamespacedName.Name).WithValues("namespace", req.NamespacedName.Namespace)
+	log := r.Log.WithValues("controllerKind", "SnapshotEnvironmentBinding").WithValues("name", req.NamespacedName.Name).WithValues("namespace", req.NamespacedName.Namespace)
 
 	// Fetch the SnapshotEnvironmentBinding instance
 	var appSnapshotEnvBinding appstudiov1alpha1.SnapshotEnvironmentBinding
