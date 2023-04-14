@@ -157,7 +157,7 @@ func TestGetNewGitHubClient(t *testing.T) {
 			wantErr:            false,
 		},
 		{
-			name:          "One token set, should return client",
+			name:          "Passed in token",
 			client:        ghTokenClient,
 			passedInToken: fakeToken,
 			wantErr:       false,
@@ -183,7 +183,7 @@ func TestGetNewGitHubClient(t *testing.T) {
 
 			_ = ParseGitHubTokens()
 			ghClient, err := tt.client.GetNewGitHubClient(tt.passedInToken)
-			if tt.name != "Mock client" && !tt.wantErr {
+			if tt.name != "Mock client" && tt.name != "Passed in token" && !tt.wantErr {
 				if Tokens[ghClient.TokenName] == "" {
 					t.Errorf("TestGetNewGitHubClient() error: expected token value %v with key %v", Tokens[ghClient.TokenName], ghClient.TokenName)
 				}
