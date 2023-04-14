@@ -126,7 +126,7 @@ func (r *ComponentReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 
 	setCounterAnnotation(applicationFailCounterAnnotation, &component, 0)
 
-	ghClient, err := r.GitHubTokenClient.GetNewGitHubClient()
+	ghClient, err := r.GitHubTokenClient.GetNewGitHubClient("")
 	if err != nil {
 		log.Error(err, "Unable to create Go-GitHub client due to error")
 		return reconcile.Result{}, err

@@ -118,6 +118,13 @@ func (r *ComponentDetectionQueryReconciler) Reconcile(ctx context.Context, req c
 			gitToken = string(gitSecret.Data["password"])
 		}
 
+		// Create a Go-GitHub client for checking the default branch
+		ghClient, err := r.GitHubTokenClient.GetNewGitHubClient(gitToken)
+		if err != nil {
+			log.Error(err, "Unable to create Go-GitHub client due to error")
+			return reconcile.Result{}, err
+		}
+
 		source := componentDetectionQuery.Spec.GitSource
 		var devfileBytes, dockerfileBytes []byte
 		var clonePath, componentPath, devfilePath string
@@ -139,13 +146,6 @@ func (r *ComponentDetectionQueryReconciler) Reconcile(ctx context.Context, req c
 			sourceURL = sourceURL[0 : len(sourceURL)-1]
 		}
 		if source.Revision == "" {
-			// Create a Go-GitHub client for checking the default branch
-			ghClient, err := r.GitHubTokenClient.GetNewGitHubClient()
-			if err != nil {
-				log.Error(err, "Unable to create Go-GitHub client due to error")
-				return reconcile.Result{}, err
-			}
-
 			log.Info(fmt.Sprintf("Look for default branch of repo %s... %v", source.URL, req.NamespacedName))
 			metricsLabel := prometheus.Labels{"controller": cdqName, "tokenName": ghClient.TokenName, "operation": "GetDefaultBranchFromURL"}
 			metrics.ControllerGitRequest.With(metricsLabel).Inc()

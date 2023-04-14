@@ -29,7 +29,7 @@ import (
 )
 
 type GitHubToken interface {
-	GetNewGitHubClient() (GitHubClient, error)
+	GetNewGitHubClient(token string) (GitHubClient, error)
 }
 
 type GitHubTokenClient struct {
@@ -101,13 +101,21 @@ func getRandomToken() (string, string, error) {
 	return token, tokenName, nil
 }
 
-// GetNewGitHubClient intializes a new Go-GitHub client from a randomly selected GitHub token available to HAS
-// It returns the GitHub client, and the name of the token used for the client
+// GetNewGitHubClient intializes a new Go-GitHub client
+// If a token is passed in (non-empty string) it will use that token for the GitHub client
+// If no token is passed in (empty string), a token will be randomly selected by HAS.
+// It returns the GitHub client, and (if a token was randomly selected) the name of the token used for the client
 // If an error is encountered retrieving the token, or initializing the client, an error is returned
-func (g GitHubTokenClient) GetNewGitHubClient() (GitHubClient, error) {
-	ghToken, ghTokenName, err := getRandomToken()
-	if err != nil {
-		return GitHubClient{}, err
+func (g GitHubTokenClient) GetNewGitHubClient(token string) (GitHubClient, error) {
+	var ghToken, ghTokenName string
+	var err error
+	if token == "" {
+		ghToken, ghTokenName, err = getRandomToken()
+		if err != nil {
+			return GitHubClient{}, err
+		}
+	} else {
+		ghToken = token
 	}
 
 	ts := oauth2.StaticTokenSource(&oauth2.Token{AccessToken: ghToken})
