@@ -29,7 +29,7 @@ import (
 )
 
 func (r *ComponentReconciler) SetCreateConditionAndUpdateCR(ctx context.Context, req ctrl.Request, component *appstudiov1alpha1.Component, createError error) {
-	log := r.Log.WithValues("namespace", req.NamespacedName.Namespace)
+	log := ctrl.LoggerFrom(ctx)
 
 	if createError == nil {
 		meta.SetStatusCondition(&component.Status.Conditions, metav1.Condition{
@@ -55,7 +55,7 @@ func (r *ComponentReconciler) SetCreateConditionAndUpdateCR(ctx context.Context,
 }
 
 func (r *ComponentReconciler) SetUpdateConditionAndUpdateCR(ctx context.Context, req ctrl.Request, component *appstudiov1alpha1.Component, updateError error) {
-	log := r.Log.WithValues("namespace", req.NamespacedName.Namespace)
+	log := ctrl.LoggerFrom(ctx)
 
 	if updateError == nil {
 		meta.SetStatusCondition(&component.Status.Conditions, metav1.Condition{
@@ -81,7 +81,7 @@ func (r *ComponentReconciler) SetUpdateConditionAndUpdateCR(ctx context.Context,
 }
 
 func (r *ComponentReconciler) SetGitOpsGeneratedConditionAndUpdateCR(ctx context.Context, req ctrl.Request, component *appstudiov1alpha1.Component, generateError error) {
-	log := r.Log.WithValues("namespace", req.NamespacedName.Namespace)
+	log := ctrl.LoggerFrom(ctx)
 
 	if generateError == nil {
 		meta.SetStatusCondition(&component.Status.Conditions, metav1.Condition{

@@ -275,6 +275,7 @@ func (r *ComponentDetectionQueryReconciler) updateComponentStub(req ctrl.Request
 	if componentDetectionQuery == nil {
 		return fmt.Errorf("componentDetectionQuery is nil")
 	}
+
 	log := r.Log.WithValues("controllerKind", "ComponentDetectionQuery").WithValues("name", req.NamespacedName.Name).WithValues("namespace", req.NamespacedName.Namespace)
 
 	if len(componentDetectionQuery.Status.ComponentDetected) == 0 {

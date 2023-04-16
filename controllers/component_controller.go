@@ -93,7 +93,7 @@ const (
 // For more details, check Reconcile and its Result here:
 // - https://pkg.go.dev/sigs.k8s.io/controller-runtime@v0.9.2/pkg/reconcile
 func (r *ComponentReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
-	log := r.Log.WithValues("controllerKind", "Component").WithValues("name", req.NamespacedName.Name).WithValues("namespace", req.NamespacedName.Namespace)
+	log := ctrl.LoggerFrom(ctx)
 
 	// Fetch the Component instance
 	var component appstudiov1alpha1.Component
@@ -503,7 +503,7 @@ func (r *ComponentReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 // generateGitops retrieves the necessary information about a Component's gitops repository (URL, branch, context)
 // and attempts to use the GitOps package to generate gitops resources based on that component
 func (r *ComponentReconciler) generateGitops(ctx context.Context, ghClient github.GitHubClient, req ctrl.Request, component *appstudiov1alpha1.Component, compDevfileData data.DevfileData) error {
-	log := r.Log.WithValues("controllerKind", "Component").WithValues("name", req.NamespacedName.Name).WithValues("namespace", req.NamespacedName.Namespace)
+	log := ctrl.LoggerFrom(ctx)
 
 	gitOpsURL, gitOpsBranch, gitOpsContext, err := util.ProcessGitOpsStatus(component.Status.GitOps, ghClient.Token)
 	if err != nil {
