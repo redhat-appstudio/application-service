@@ -25,7 +25,6 @@ import (
 
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/redhat-appstudio/application-service/pkg/metrics"
-	"go.uber.org/zap/zapcore"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -38,7 +37,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/controller"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	"sigs.k8s.io/controller-runtime/pkg/event"
-	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 	"sigs.k8s.io/controller-runtime/pkg/predicate"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 	"sigs.k8s.io/yaml"
@@ -611,12 +609,8 @@ func setGitopsStatus(component *appstudiov1alpha1.Component, devfileData data.De
 }
 
 // SetupWithManager sets up the controller with the Manager.
-func (r *ComponentReconciler) SetupWithManager(mgr ctrl.Manager) error {
-	opts := zap.Options{
-		TimeEncoder: zapcore.ISO8601TimeEncoder,
-	}
-	ctrl.SetLogger(zap.New(zap.UseFlagOptions(&opts)))
-	log := ctrl.Log.WithName("controllers").WithName("Component")
+func (r *ComponentReconciler) SetupWithManager(ctx context.Context, mgr ctrl.Manager) error {
+	log := ctrl.LoggerFrom(ctx).WithName("controllers").WithName("Component")
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&appstudiov1alpha1.Component{}, builder.WithPredicates(predicate.GenerationChangedPredicate{})).
 		WithOptions(controller.Options{

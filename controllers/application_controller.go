@@ -25,7 +25,6 @@ import (
 
 	gofakeit "github.com/brianvoe/gofakeit/v6"
 	"github.com/go-logr/logr"
-	"go.uber.org/zap/zapcore"
 
 	k8sErrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -33,7 +32,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	"sigs.k8s.io/controller-runtime/pkg/event"
-	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 	"sigs.k8s.io/controller-runtime/pkg/predicate"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 	"sigs.k8s.io/yaml"
@@ -226,13 +224,9 @@ func (r *ApplicationReconciler) Reconcile(ctx context.Context, req ctrl.Request)
 }
 
 // SetupWithManager sets up the controller with the Manager.
-func (r *ApplicationReconciler) SetupWithManager(mgr ctrl.Manager) error {
+func (r *ApplicationReconciler) SetupWithManager(ctx context.Context, mgr ctrl.Manager) error {
 	gofakeit.New(0)
-	opts := zap.Options{
-		TimeEncoder: zapcore.ISO8601TimeEncoder,
-	}
-	ctrl.SetLogger(zap.New(zap.UseFlagOptions(&opts)))
-	log := ctrl.Log.WithName("controllers").WithName("Application")
+	log := ctrl.LoggerFrom(ctx).WithName("controllers").WithName("Application")
 
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&appstudiov1alpha1.Application{}).WithEventFilter(predicate.Funcs{

@@ -143,7 +143,7 @@ func main() {
 		Log:               ctrl.Log.WithName("controllers").WithName("Application"),
 		GitHubTokenClient: ghTokenClient,
 		GitHubOrg:         ghOrg,
-	}).SetupWithManager(mgr); err != nil {
+	}).SetupWithManager(ctx, mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "Application")
 		os.Exit(1)
 	}
@@ -155,7 +155,7 @@ func main() {
 		AppFS:             ioutils.NewFilesystem(),
 		GitHubTokenClient: ghTokenClient,
 		SPIClient:         spi.SPIClient{},
-	}).SetupWithManager(mgr); err != nil {
+	}).SetupWithManager(ctx, mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "Component")
 		os.Exit(1)
 	}
@@ -168,7 +168,7 @@ func main() {
 		GitHubTokenClient:  ghTokenClient,
 		DevfileRegistryURL: devfileRegistryURL,
 		AppFS:              ioutils.NewFilesystem(),
-	}).SetupWithManager(mgr); err != nil {
+	}).SetupWithManager(ctx, mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "ComponentDetectionQuery")
 		os.Exit(1)
 	}
@@ -192,7 +192,7 @@ func main() {
 		Generator:         gitopsgen.NewGitopsGen(),
 		AppFS:             ioutils.NewFilesystem(),
 		GitHubTokenClient: ghTokenClient,
-	}).SetupWithManager(mgr); err != nil {
+	}).SetupWithManager(ctx, mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "SnapshotEnvironmentBinding")
 		os.Exit(1)
 	}

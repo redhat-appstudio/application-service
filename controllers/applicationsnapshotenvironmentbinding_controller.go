@@ -25,7 +25,6 @@ import (
 	"github.com/redhat-appstudio/application-service/pkg/metrics"
 	gitopsgenv1alpha1 "github.com/redhat-developer/gitops-generator/api/v1alpha1"
 	gitopsgen "github.com/redhat-developer/gitops-generator/pkg"
-	"go.uber.org/zap/zapcore"
 	"golang.org/x/exp/maps"
 	corev1 "k8s.io/api/core/v1"
 
@@ -44,7 +43,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/event"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
-	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 	"sigs.k8s.io/controller-runtime/pkg/predicate"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 	"sigs.k8s.io/controller-runtime/pkg/source"
@@ -327,12 +325,8 @@ func (r *SnapshotEnvironmentBindingReconciler) Reconcile(ctx context.Context, re
 }
 
 // SetupWithManager sets up the controller with the Manager.
-func (r *SnapshotEnvironmentBindingReconciler) SetupWithManager(mgr ctrl.Manager) error {
-	opts := zap.Options{
-		TimeEncoder: zapcore.ISO8601TimeEncoder,
-	}
-	ctrl.SetLogger(zap.New(zap.UseFlagOptions(&opts)))
-	log := ctrl.Log.WithName("controllers").WithName("Environment")
+func (r *SnapshotEnvironmentBindingReconciler) SetupWithManager(ctx context.Context, mgr ctrl.Manager) error {
+	log := ctrl.LoggerFrom(ctx).WithName("controllers").WithName("Environment")
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&appstudiov1alpha1.SnapshotEnvironmentBinding{}, builder.WithPredicates(predicate.GenerationChangedPredicate{})).
 		// Watch for Environment CR updates and reconcile all the Bindings that reference the Environment

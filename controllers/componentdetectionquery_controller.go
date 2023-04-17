@@ -24,7 +24,6 @@ import (
 
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/redhat-appstudio/application-service/pkg/metrics"
-	"go.uber.org/zap/zapcore"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -33,7 +32,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/builder"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/event"
-	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 	"sigs.k8s.io/controller-runtime/pkg/predicate"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
@@ -344,12 +342,9 @@ func (r *ComponentDetectionQueryReconciler) Reconcile(ctx context.Context, req c
 }
 
 // SetupWithManager sets up the controller with the Manager.
-func (r *ComponentDetectionQueryReconciler) SetupWithManager(mgr ctrl.Manager) error {
-	opts := zap.Options{
-		TimeEncoder: zapcore.ISO8601TimeEncoder,
-	}
-	ctrl.SetLogger(zap.New(zap.UseFlagOptions(&opts)))
-	log := ctrl.Log.WithName("controllers").WithName("ComponentDetectionQuery")
+func (r *ComponentDetectionQueryReconciler) SetupWithManager(ctx context.Context, mgr ctrl.Manager) error {
+	log := ctrl.LoggerFrom(ctx).WithName("controllers").WithName("ComponentDetectionQuery")
+
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&appstudiov1alpha1.ComponentDetectionQuery{},
 			builder.WithPredicates(predicate.GenerationChangedPredicate{})).WithEventFilter(predicate.Funcs{
