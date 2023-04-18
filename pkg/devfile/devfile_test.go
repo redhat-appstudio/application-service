@@ -373,6 +373,56 @@ func TestFindAndDownloadDevfile(t *testing.T) {
 	}
 }
 
+func TestFindAndDownloadDockerfile(t *testing.T) {
+	tests := []struct {
+		name                  string
+		url                   string
+		wantDockerfileContext string
+		wantErr               bool
+	}{
+		{
+			name:                  "Curl Dockerfile",
+			url:                   "https://raw.githubusercontent.com/yangcao77/dockerfile-priority/main/case1",
+			wantDockerfileContext: "Dockerfile",
+		},
+		{
+			name:                  "Curl docker/Dockerfile",
+			url:                   "https://raw.githubusercontent.com/yangcao77/dockerfile-priority/main/case2",
+			wantDockerfileContext: "docker/Dockerfile",
+		},
+		{
+			name:                  "Curl .docker/Dockerfile",
+			url:                   "https://raw.githubusercontent.com/yangcao77/dockerfile-priority/main/case3",
+			wantDockerfileContext: ".docker/Dockerfile",
+		},
+		{
+			name:                  "Curl build/Dockerfile",
+			url:                   "https://raw.githubusercontent.com/yangcao77/dockerfile-priority/main/case4",
+			wantDockerfileContext: "build/Dockerfile",
+		},
+		{
+			name:    "Cannot curl for a Dockerfile",
+			url:     "https://github.com/octocat/Hello-World",
+			wantErr: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			contents, dockerfileContext, err := FindAndDownloadDockerfile(tt.url)
+			if tt.wantErr && (err == nil) {
+				t.Error("wanted error but got nil")
+			} else if !tt.wantErr && err != nil {
+				t.Errorf("got unexpected error %v", err)
+			} else if err == nil && contents == nil {
+				t.Errorf("unable to read body")
+			} else if err == nil && (dockerfileContext != tt.wantDockerfileContext) {
+				t.Errorf("Dockerfile context did not match, got %v, wanted %v", dockerfileContext, tt.wantDockerfileContext)
+			}
+		})
+	}
+}
+
 func TestCreateDevfileForDockerfileBuild(t *testing.T) {
 	tests := []struct {
 		name    string
@@ -454,16 +504,18 @@ func TestCreateDevfileForDockerfileBuild(t *testing.T) {
 
 func TestDownloadDevfileAndDockerfile(t *testing.T) {
 	tests := []struct {
-		name               string
-		url                string
-		wantDevfileContext string
-		want               bool
+		name                  string
+		url                   string
+		wantDevfileContext    string
+		wantDockerfileContext string
+		want                  bool
 	}{
 		{
-			name:               "Curl devfile.yaml and dockerfile",
-			url:                "https://raw.githubusercontent.com/maysunfaisal/devfile-sample-python-samelevel/main",
-			wantDevfileContext: ".devfile.yaml",
-			want:               true,
+			name:                  "Curl devfile.yaml and dockerfile",
+			url:                   "https://raw.githubusercontent.com/maysunfaisal/devfile-sample-python-samelevel/main",
+			wantDevfileContext:    ".devfile.yaml",
+			wantDockerfileContext: "Dockerfile",
+			want:                  true,
 		},
 		{
 			name: "Cannot curl for a devfile nor a dockerfile",
@@ -474,13 +526,17 @@ func TestDownloadDevfileAndDockerfile(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			devfile, devfileContext, dockerfile := DownloadDevfileAndDockerfile(tt.url)
+			devfile, devfileContext, dockerfile, dockerfileContext := DownloadDevfileAndDockerfile(tt.url)
 			if tt.want != (len(devfile) > 0 && len(dockerfile) > 0) {
 				t.Errorf("devfile and a dockerfile wanted: %v but got devfile: %v dockerfile: %v", tt.want, len(devfile) > 0, len(dockerfile) > 0)
 			}
 
 			if devfileContext != tt.wantDevfileContext {
 				t.Errorf("devfile context did not match, got %v, wanted %v", devfileContext, tt.wantDevfileContext)
+			}
+
+			if dockerfileContext != tt.wantDockerfileContext {
+				t.Errorf("dockerfile context did not match, got %v, wanted %v", dockerfileContext, tt.wantDockerfileContext)
 			}
 		})
 	}
