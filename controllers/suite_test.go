@@ -106,7 +106,7 @@ var _ = BeforeSuite(func() {
 		Log:               ctrl.Log.WithName("controllers").WithName("Application"),
 		GitHubTokenClient: mockGhTokenClient,
 		GitHubOrg:         github.AppStudioAppDataOrg,
-	}).SetupWithManager(k8sManager)
+	}).SetupWithManager(ctx, k8sManager)
 	Expect(err).ToNot(HaveOccurred())
 
 	err = (&ComponentReconciler{
@@ -117,7 +117,7 @@ var _ = BeforeSuite(func() {
 		AppFS:             ioutils.NewMemoryFilesystem(),
 		SPIClient:         spi.MockSPIClient{},
 		GitHubTokenClient: mockGhTokenClient,
-	}).SetupWithManager(k8sManager)
+	}).SetupWithManager(ctx, k8sManager)
 	Expect(err).ToNot(HaveOccurred())
 
 	err = (&ComponentDetectionQueryReconciler{
@@ -129,7 +129,7 @@ var _ = BeforeSuite(func() {
 		GitHubTokenClient:  mockGhTokenClient,
 		DevfileRegistryURL: devfile.DevfileStageRegistryEndpoint, // Use the staging devfile registry for tests
 		AppFS:              ioutils.NewMemoryFilesystem(),
-	}).SetupWithManager(k8sManager)
+	}).SetupWithManager(ctx, k8sManager)
 	Expect(err).ToNot(HaveOccurred())
 
 	err = (&SnapshotEnvironmentBindingReconciler{
@@ -139,7 +139,7 @@ var _ = BeforeSuite(func() {
 		Generator:         gitops.NewMockGenerator(),
 		AppFS:             ioutils.NewMemoryFilesystem(),
 		GitHubTokenClient: mockGhTokenClient,
-	}).SetupWithManager(k8sManager)
+	}).SetupWithManager(ctx, k8sManager)
 	Expect(err).ToNot(HaveOccurred())
 
 	go func() {

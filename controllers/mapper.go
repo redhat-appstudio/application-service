@@ -1,5 +1,5 @@
 //
-// Copyright 2022 Red Hat, Inc.
+// Copyright 2022-2023 Red Hat, Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -32,7 +32,7 @@ import (
 func MapToBindingByBoundObjectName(cl client.Client, objectType, label string) func(object client.Object) []reconcile.Request {
 	return func(obj client.Object) []reconcile.Request {
 		mapperLog := ctrl.Log.WithName("MapToBindingByBoundObjectName")
-		log := mapperLog.WithValues("object-name", obj.GetName(), "object-kind", obj.GetObjectKind())
+		log := mapperLog.WithValues("name", obj.GetName()).WithValues("namespace", obj.GetNamespace()).WithValues("controllerKind", obj.GetObjectKind())
 		ctx := context.Background()
 
 		bindingList := &appstudiov1alpha1.SnapshotEnvironmentBindingList{}

@@ -1,5 +1,5 @@
 /*
-Copyright 2021 Red Hat, Inc.
+Copyright 2021-2023 Red Hat, Inc.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -29,7 +29,7 @@ import (
 )
 
 func (r *ApplicationReconciler) SetCreateConditionAndUpdateCR(ctx context.Context, req ctrl.Request, application *appstudiov1alpha1.Application, createError error) {
-	log := r.Log.WithValues("Application", req.NamespacedName)
+	log := ctrl.LoggerFrom(ctx)
 
 	if createError == nil {
 		meta.SetStatusCondition(&application.Status.Conditions, metav1.Condition{
@@ -55,7 +55,7 @@ func (r *ApplicationReconciler) SetCreateConditionAndUpdateCR(ctx context.Contex
 }
 
 func (r *ApplicationReconciler) SetUpdateConditionAndUpdateCR(ctx context.Context, req ctrl.Request, application *appstudiov1alpha1.Application, updateError error) {
-	log := r.Log.WithValues("Application", req.NamespacedName)
+	log := ctrl.LoggerFrom(ctx)
 
 	if updateError == nil {
 		meta.SetStatusCondition(&application.Status.Conditions, metav1.Condition{
