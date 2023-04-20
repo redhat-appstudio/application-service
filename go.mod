@@ -4,8 +4,8 @@ go 1.18
 
 require (
 	github.com/brianvoe/gofakeit/v6 v6.9.0
-	github.com/devfile/api/v2 v2.2.0
-	github.com/devfile/library/v2 v2.2.1-0.20230222170110-539d4b199ef3
+	github.com/devfile/api/v2 v2.2.1-alpha.0.20230413012049-a6c32fca0dbd
+	github.com/devfile/library/v2 v2.2.1-0.20230418160146-e75481b7eebd
 	github.com/devfile/registry-support/index/generator v0.0.0-20221018203505-df96d34d4273
 	github.com/devfile/registry-support/registry-library v0.0.0-20221018213054-47b3ffaeadba
 	github.com/go-logr/logr v1.2.3
@@ -165,6 +165,7 @@ require (
 	k8s.io/klog v1.0.0 // indirect
 	k8s.io/klog/v2 v2.80.1 // indirect
 	k8s.io/kube-openapi v0.0.0-20221012153701-172d655c2280 // indirect
+	k8s.io/pod-security-admission v0.26.1 // indirect
 	k8s.io/utils v0.0.0-20221128185143-99ec85e7a448 // indirect
 	knative.dev/pkg v0.0.0-20221011175852-714b7630a836 // indirect
 	oras.land/oras-go v1.1.0 // indirect
