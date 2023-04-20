@@ -97,7 +97,7 @@ func (r *ApplicationReconciler) Reconcile(ctx context.Context, req ctrl.Request)
 			// Attach the finalizer and return to reset the reconciler loop
 			err := r.AddFinalizer(ctx, &application)
 			if err == nil {
-				return ctrl.Result{}, nil
+				return ctrl.Result{Requeue: true}, nil
 			}
 			return ctrl.Result{}, err
 		}

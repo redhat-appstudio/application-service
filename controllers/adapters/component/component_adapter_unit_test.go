@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package controllers
+package component
 
 import (
 	"context"
@@ -160,23 +160,24 @@ func TestGenerateGitops(t *testing.T) {
 
 	fakeClient := fake.NewClientBuilder().Build()
 
-	r := &ComponentReconciler{
-		Log:               ctrl.Log.WithName("controllers").WithName("Component"),
-		GitHubOrg:         github.AppStudioAppDataOrg,
-		Generator:         gitops.NewMockGenerator(),
-		Client:            fakeClient,
-		GitHubTokenClient: github.MockGitHubTokenClient{},
+	mockGHClient, _ := github.MockGitHubTokenClient{}.GetNewGitHubClient()
+	a := &Adapter{
+		Log:          ctrl.Log.WithName("controllers").WithName("Component"),
+		Ctx:          ctx,
+		Generator:    gitops.NewMockGenerator(),
+		Client:       fakeClient,
+		GitHubClient: mockGHClient,
 	}
 
 	// Create a second reconciler for testing error scenarios
 	errGen := gitops.NewMockGenerator()
 	errGen.Errors.Push(errors.New("Fatal error"))
-	errReconciler := &ComponentReconciler{
-		Log:               ctrl.Log.WithName("controllers").WithName("Component"),
-		GitHubOrg:         github.AppStudioAppDataOrg,
-		Generator:         errGen,
-		Client:            fakeClient,
-		GitHubTokenClient: github.MockGitHubTokenClient{},
+	errAdapter := &Adapter{
+		Log:          ctrl.Log.WithName("controllers").WithName("Component"),
+		Ctx:          ctx,
+		Generator:    errGen,
+		Client:       fakeClient,
+		GitHubClient: mockGHClient,
 	}
 
 	componentSpec := appstudiov1alpha1.ComponentSpec{
@@ -322,16 +323,16 @@ func TestGenerateGitops(t *testing.T) {
 	}
 
 	tests := []struct {
-		name       string
-		reconciler *ComponentReconciler
-		fs         afero.Afero
-		component  *appstudiov1alpha1.Component
-		wantErr    bool
+		name      string
+		adapter   *Adapter
+		fs        afero.Afero
+		component *appstudiov1alpha1.Component
+		wantErr   bool
 	}{
 		{
-			name:       "Simple application component, no errors",
-			reconciler: r,
-			fs:         appFS,
+			name:    "Simple application component, no errors",
+			adapter: a,
+			fs:      appFS,
 			component: &appstudiov1alpha1.Component{
 				TypeMeta: metav1.TypeMeta{
 					APIVersion: "appstudio.redhat.com/v1alpha1",
@@ -353,9 +354,9 @@ func TestGenerateGitops(t *testing.T) {
 			wantErr: false,
 		},
 		{
-			name:       "Invalid application component, no labels",
-			reconciler: r,
-			fs:         appFS,
+			name:    "Invalid application component, no labels",
+			adapter: a,
+			fs:      appFS,
 			component: &appstudiov1alpha1.Component{
 				TypeMeta: metav1.TypeMeta{
 					APIVersion: "appstudio.redhat.com/v1alpha1",
@@ -371,9 +372,9 @@ func TestGenerateGitops(t *testing.T) {
 			wantErr: true,
 		},
 		{
-			name:       "Invalid application component, no gitops URL",
-			reconciler: r,
-			fs:         appFS,
+			name:    "Invalid application component, no gitops URL",
+			adapter: a,
+			fs:      appFS,
 			component: &appstudiov1alpha1.Component{
 				TypeMeta: metav1.TypeMeta{
 					APIVersion: "appstudio.redhat.com/v1alpha1",
@@ -391,9 +392,9 @@ func TestGenerateGitops(t *testing.T) {
 			wantErr: true,
 		},
 		{
-			name:       "Invalid application component, invalid gitops url",
-			reconciler: r,
-			fs:         appFS,
+			name:    "Invalid application component, invalid gitops url",
+			adapter: a,
+			fs:      appFS,
 			component: &appstudiov1alpha1.Component{
 				TypeMeta: metav1.TypeMeta{
 					APIVersion: "appstudio.redhat.com/v1alpha1",
@@ -411,9 +412,9 @@ func TestGenerateGitops(t *testing.T) {
 			wantErr: true,
 		},
 		{
-			name:       "Application component, only gitops URL set",
-			reconciler: r,
-			fs:         appFS,
+			name:    "Application component, only gitops URL set",
+			adapter: a,
+			fs:      appFS,
 			component: &appstudiov1alpha1.Component{
 				TypeMeta: metav1.TypeMeta{
 					APIVersion: "appstudio.redhat.com/v1alpha1",
@@ -433,9 +434,9 @@ func TestGenerateGitops(t *testing.T) {
 			wantErr: false,
 		},
 		{
-			name:       "Gitops generation fails",
-			reconciler: errReconciler,
-			fs:         appFS,
+			name:    "Gitops generation fails",
+			adapter: errAdapter,
+			fs:      appFS,
 			component: &appstudiov1alpha1.Component{
 				TypeMeta: metav1.TypeMeta{
 					APIVersion: "appstudio.redhat.com/v1alpha1",
@@ -455,9 +456,9 @@ func TestGenerateGitops(t *testing.T) {
 			wantErr: true,
 		},
 		{
-			name:       "Fail to create temp folder",
-			reconciler: errReconciler,
-			fs:         readOnlyFs,
+			name:    "Fail to create temp folder",
+			adapter: errAdapter,
+			fs:      readOnlyFs,
 			component: &appstudiov1alpha1.Component{
 				TypeMeta: metav1.TypeMeta{
 					APIVersion: "appstudio.redhat.com/v1alpha1",
@@ -477,9 +478,9 @@ func TestGenerateGitops(t *testing.T) {
 			wantErr: true,
 		},
 		{
-			name:       "Fail to retrieve commit ID for GitOps repository [Mock]",
-			reconciler: r,
-			fs:         appFS,
+			name:    "Fail to retrieve commit ID for GitOps repository [Mock]",
+			adapter: a,
+			fs:      appFS,
 			component: &appstudiov1alpha1.Component{
 				TypeMeta: metav1.TypeMeta{
 					APIVersion: "appstudio.redhat.com/v1alpha1",
@@ -499,9 +500,9 @@ func TestGenerateGitops(t *testing.T) {
 			wantErr: true,
 		},
 		{
-			name:       "Fail to retrieve commit ID for GitOps repository with invalid repo [Mock]",
-			reconciler: r,
-			fs:         appFS,
+			name:    "Fail to retrieve commit ID for GitOps repository with invalid repo [Mock]",
+			adapter: a,
+			fs:      appFS,
 			component: &appstudiov1alpha1.Component{
 				TypeMeta: metav1.TypeMeta{
 					APIVersion: "appstudio.redhat.com/v1alpha1",
@@ -523,7 +524,7 @@ func TestGenerateGitops(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		tt.reconciler.AppFS = tt.fs
+		tt.adapter.AppFS = tt.fs
 		t.Run(tt.name, func(t *testing.T) {
 
 			goMockCtrl := gomock.NewController(t)
@@ -554,10 +555,8 @@ func TestGenerateGitops(t *testing.T) {
 			}
 			mockKubernetesComponents := mockDevfileData.EXPECT().GetComponents(kubernetesComponentFilter)
 			mockKubernetesComponents.Return(kubernetesComponents, nil).AnyTimes()
-			mockedClient := github.GitHubClient{
-				Client: github.GetMockedClient(),
-			}
-			err := tt.reconciler.generateGitops(ctx, mockedClient, ctrl.Request{}, tt.component, mockDevfileData)
+
+			err := tt.adapter.generateGitops(tt.component, mockDevfileData)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("TestGenerateGitops() unexpected error: %v", err)
 			}

@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/devfile/api/v2/pkg/attributes"
 	"github.com/go-logr/logr"
 	"github.com/prometheus/client_golang/prometheus"
 	appstudiov1alpha1 "github.com/redhat-appstudio/application-api/api/v1alpha1"
@@ -18,14 +19,16 @@ import (
 )
 
 type Adapter struct {
-	Application    *appstudiov1alpha1.Application
-	NamespacedName types.NamespacedName
-	Components     []appstudiov1alpha1.Component
-	GithubOrg      string
-	GitHubClient   github.GitHubClient
-	Client         client.Client
-	Ctx            context.Context
-	Log            logr.Logger
+	Application        *appstudiov1alpha1.Application
+	NamespacedName     types.NamespacedName
+	Components         []appstudiov1alpha1.Component
+	GithubOrg          string
+	GitHubClient       github.GitHubClient
+	Client             client.Client
+	Ctx                context.Context
+	Log                logr.Logger
+	GitOpsRepository   appstudiov1alpha1.ApplicationGitRepository
+	AppModelRepository appstudiov1alpha1.ApplicationGitRepository
 }
 
 func (a *Adapter) EnsureGitOpsRepoExists() (reconciler.OperationResult, error) {
@@ -36,8 +39,22 @@ func (a *Adapter) EnsureGitOpsRepoExists() (reconciler.OperationResult, error) {
 	gitOpsRepo := a.Application.Spec.GitOpsRepository.URL
 	appModelRepo := a.Application.Spec.AppModelRepository.URL
 
-	// ToDo: replaced with an API call to the GH API for the GitOps repository's existence
-	if a.Application.Status.Devfile == "" {
+	if a.Application.Status.Devfile != "" {
+		gitOpsRepo, err := getRepoInfo(a.Application, "gitOpsRepository")
+		if err != nil {
+			log.Error(err, "Unable to get gitops repository from devfile model")
+			a.SetConditionAndUpdateCR(err)
+			return reconciler.RequeueWithError(err)
+		}
+		appModelRepo, err := getRepoInfo(a.Application, "appModelRepository")
+		if err != nil {
+			log.Error(err, "Unable to get appmodel repository from devfile model")
+			a.SetConditionAndUpdateCR(err)
+			return reconciler.RequeueWithError(err)
+		}
+		a.GitOpsRepository = gitOpsRepo
+		a.AppModelRepository = appModelRepo
+	} else {
 		if gitOpsRepo == "" {
 			// If both repositories are blank, just generate a single shared repository
 			uniqueHash := util.GenerateUniqueHashForWorkloadImageTag(a.Application.Namespace)
@@ -55,10 +72,22 @@ func (a *Adapter) EnsureGitOpsRepoExists() (reconciler.OperationResult, error) {
 				return reconciler.RequeueWithError(err)
 			}
 
-			a.Application.Spec.GitOpsRepository.URL = repoUrl
+			a.GitOpsRepository.URL = repoUrl
+		} else {
+			a.GitOpsRepository = appstudiov1alpha1.ApplicationGitRepository{
+				URL:     gitOpsRepo,
+				Context: a.Application.Spec.GitOpsRepository.Context,
+				Branch:  a.Application.Spec.GitOpsRepository.Branch,
+			}
 		}
 		if appModelRepo == "" {
-			a.Application.Spec.AppModelRepository.URL = a.Application.Spec.GitOpsRepository.URL
+			a.AppModelRepository.URL = a.GitOpsRepository.URL
+		} else {
+			a.AppModelRepository = appstudiov1alpha1.ApplicationGitRepository{
+				URL:     appModelRepo,
+				Context: a.Application.Spec.AppModelRepository.Context,
+				Branch:  a.Application.Spec.AppModelRepository.Branch,
+			}
 		}
 	}
 
@@ -72,7 +101,7 @@ func (a *Adapter) EnsureApplicationDevfile() (reconciler.OperationResult, error)
 	a.Application.Status.Devfile = ""
 
 	// Convert the devfile string to a devfile object
-	devfileData, err := devfile.ConvertApplicationToDevfile(*a.Application, a.Application.Spec.GitOpsRepository.URL, a.Application.Spec.AppModelRepository.URL)
+	devfileData, err := devfile.ConvertApplicationToDevfile(*a.Application, a.GitOpsRepository, a.AppModelRepository)
 	if err != nil {
 		log.Error(err, fmt.Sprintf("Unable to convert Application CR to devfile, exiting reconcile loop %v", namespacedName))
 		a.SetConditionAndUpdateCR(err)
@@ -105,4 +134,42 @@ func (a *Adapter) EnsureApplicationDevfile() (reconciler.OperationResult, error)
 func (a *Adapter) EnsureApplicationStatus() (reconciler.OperationResult, error) {
 	a.SetConditionAndUpdateCR(nil)
 	return reconciler.ContinueProcessing()
+}
+
+// getRepoInfo retrieves the necessary information (repo url, branch and context) about the gitops repository
+// Return values are: repository url, repository branch, repository context, and an error value
+func getRepoInfo(application *appstudiov1alpha1.Application, repositoryLabel string) (appstudiov1alpha1.ApplicationGitRepository, error) {
+	var repoInfo appstudiov1alpha1.ApplicationGitRepository
+	// Get the devfile of the hasApp CR
+	devfileSrc := devfile.DevfileSrc{
+		Data: application.Status.Devfile,
+	}
+	devfileData, err := devfile.ParseDevfile(devfileSrc)
+	if err != nil {
+		return appstudiov1alpha1.ApplicationGitRepository{}, err
+	}
+	devfileAttributes := devfileData.GetMetadata().Attributes
+
+	// Get the GitOps repository URL
+	repoInfo.URL = devfileAttributes.GetString(repositoryLabel+".url", &err)
+	if err != nil {
+		return appstudiov1alpha1.ApplicationGitRepository{}, fmt.Errorf("unable to retrieve GitOps repository URL from Application CR devfile: %v", err)
+	}
+
+	// Get the GitOps repository branch
+	repoInfo.Branch = devfileAttributes.GetString(repositoryLabel+".branch", &err)
+	if err != nil {
+		if _, ok := err.(*attributes.KeyNotFoundError); !ok {
+			return appstudiov1alpha1.ApplicationGitRepository{}, err
+		}
+	}
+
+	// Get the GitOps repository context
+	repoInfo.Context = devfileAttributes.GetString(repositoryLabel+".context", &err)
+	if err != nil {
+		if _, ok := err.(*attributes.KeyNotFoundError); !ok {
+			return appstudiov1alpha1.ApplicationGitRepository{}, err
+		}
+	}
+	return repoInfo, nil
 }
