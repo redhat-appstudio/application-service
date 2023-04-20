@@ -147,6 +147,24 @@ func search(log logr.Logger, a Alizer, localpath string, devfileRegistryURL stri
 							isDockerfilePresent = true
 						}
 					}
+				} else if f.Name() == ContainerfileName {
+					// Check for Containerfile
+					dockerfileContextMapFromRepo[context] = ContainerfileName
+					isDockerfilePresent = true
+				} else if f.IsDir() && (f.Name() == DockerDir || f.Name() == HiddenDockerDir || f.Name() == BuildDir) {
+					// Check for docker/Containerfile, .docker/Containerfile and build/Containerfile
+					dirName := f.Name()
+					dirPath := path.Join(curPath, dirName)
+					files, err := ioutil.ReadDir(dirPath)
+					if err != nil {
+						return nil, nil, nil, nil, err
+					}
+					for _, f := range files {
+						if f.Name() == ContainerfileName {
+							dockerfileContextMapFromRepo[context] = path.Join(dirName, ContainerfileName)
+							isDockerfilePresent = true
+						}
+					}
 				}
 			}
 			// unset the dockerfile context if we have both devfile and dockerfile
