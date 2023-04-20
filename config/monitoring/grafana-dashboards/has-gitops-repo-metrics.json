@@ -30,10 +30,6 @@
   "liveNow": false,
   "panels": [
     {
-      "datasource": {
-        "type": "prometheus",
-        "uid": "PF224BEF3374A25F8"
-      },
       "description": "The rate of gitops repo creation requests",
       "fieldConfig": {
         "defaults": {
@@ -111,10 +107,6 @@
       },
       "targets": [
         {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "PF224BEF3374A25F8"
-          },
           "editorMode": "code",
           "expr": "sum(rate(has_gitops_repo_creation_total[5m]))",
           "legendFormat": "__auto",
@@ -126,10 +118,6 @@
       "type": "timeseries"
     },
     {
-      "datasource": {
-        "type": "prometheus",
-        "uid": "PF224BEF3374A25F8"
-      },
       "description": "Percentage of successful gitops repo creation requests",
       "fieldConfig": {
         "defaults": {
@@ -178,10 +166,6 @@
       "pluginVersion": "9.1.6",
       "targets": [
         {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "PF224BEF3374A25F8"
-          },
           "editorMode": "code",
           "expr": "1-sum(increase(has_gitops_failed_repo_creation_total[$__range]))/sum(increase(has_gitops_repo_creation_total[$__range]))",
           "legendFormat": "__auto",
@@ -193,10 +177,6 @@
       "type": "gauge"
     },
     {
-      "datasource": {
-        "type": "prometheus",
-        "uid": "PF224BEF3374A25F8"
-      },
       "description": "Percentage of failed gitops repo creation requests",
       "fieldConfig": {
         "defaults": {
@@ -244,10 +224,6 @@
       "pluginVersion": "9.1.6",
       "targets": [
         {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "PF224BEF3374A25F8"
-          },
           "editorMode": "code",
           "expr": "sum(increase(has_gitops_failed_repo_creation_total[$__range]))/sum(increase(has_gitops_repo_creation_total[$__range]))",
           "legendFormat": "__auto",
@@ -262,28 +238,7 @@
   "schemaVersion": 37,
   "style": "dark",
   "tags": [],
-  "templating": {
-    "list": [
-      {
-        "current": {
-          "selected": true,
-          "text": "prometheus-appstudio-ds",
-          "value": "prometheus-appstudio-ds"
-        },
-        "hide": 0,
-        "includeAll": false,
-        "multi": false,
-        "name": "datasource",
-        "options": [],
-        "query": "prometheus",
-        "queryValue": "",
-        "refresh": 1,
-        "regex": ".*-(appstudio)-.*",
-        "skipUrlSync": false,
-        "type": "datasource"
-      }
-    ]
-  },
+  "templating": {},
   "time": {
     "from": "now-24h",
     "to": "now"
