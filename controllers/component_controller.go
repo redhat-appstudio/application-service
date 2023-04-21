@@ -51,6 +51,7 @@ import (
 // ComponentReconciler reconciles a Component object
 type ComponentReconciler struct {
 	client.Client
+	NonCachingClient  client.Client
 	Scheme            *runtime.Scheme
 	Log               logr.Logger
 	GitToken          string
@@ -156,16 +157,17 @@ func (r *ComponentReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 	log.Info(fmt.Sprintf("Starting reconcile loop for %v", req.NamespacedName))
 
 	adapter := ComponentAdapter{
-		Component:      &component,
-		Application:    &application,
-		NamespacedName: req.NamespacedName,
-		Generator:      r.Generator,
-		GitHubClient:   ghClient,
-		Client:         r.Client,
-		Ctx:            ctx,
-		AppFS:          r.AppFS,
-		SPIClient:      r.SPIClient,
-		Log:            log,
+		Component:        &component,
+		Application:      &application,
+		NamespacedName:   req.NamespacedName,
+		Generator:        r.Generator,
+		GitHubClient:     ghClient,
+		Client:           r.Client,
+		NonCachingClient: r.NonCachingClient,
+		Ctx:              ctx,
+		AppFS:            r.AppFS,
+		SPIClient:        r.SPIClient,
+		Log:              log,
 	}
 
 	// Reconcile the Application
@@ -236,11 +238,12 @@ func (r *ComponentReconciler) incrementCounterAndRequeue(log logr.Logger, ctx co
 	if count > 2 || err != nil {
 		log.Error(err, "")
 		a := ComponentAdapter{
-			Component:      component,
-			NamespacedName: req.NamespacedName,
-			Client:         r.Client,
-			Ctx:            ctx,
-			Log:            log,
+			Component:        component,
+			NamespacedName:   req.NamespacedName,
+			Client:           r.Client,
+			NonCachingClient: r.NonCachingClient,
+			Ctx:              ctx,
+			Log:              log,
 		}
 		a.SetConditionAndUpdateCR(componentErr)
 		return ctrl.Result{}, componentErr

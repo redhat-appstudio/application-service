@@ -19,19 +19,26 @@ package controllers
 import (
 	"fmt"
 
+	appstudiov1alpha1 "github.com/redhat-appstudio/application-api/api/v1alpha1"
 	logutil "github.com/redhat-appstudio/application-service/pkg/log"
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	ctrl "sigs.k8s.io/controller-runtime"
 )
 
-func (a ApplicationAdapter) SetConditionAndUpdateCR(appErr error) {
+func (a ApplicationAdapter) SetConditionAndUpdateCR(appErr error) error {
 	ctx := a.Ctx
 	log := ctrl.LoggerFrom(ctx)
-	client := a.Client
+	client := a.NonCachingClient
 	application := a.Application
 
-	createCond := meta.FindStatusCondition(application.Status.Conditions, "Created")
+	currentApp := &appstudiov1alpha1.Application{}
+	err := client.Get(ctx, a.NamespacedName, currentApp)
+	if err != nil {
+		return err
+	}
+
+	createCond := meta.FindStatusCondition(currentApp.Status.Conditions, "Created")
 	var condType, condMessage, reason string
 	var condStatus metav1.ConditionStatus
 
@@ -61,17 +68,20 @@ func (a ApplicationAdapter) SetConditionAndUpdateCR(appErr error) {
 	}
 
 	// Set the status condition
-	meta.SetStatusCondition(&application.Status.Conditions, metav1.Condition{
+	meta.SetStatusCondition(&currentApp.Status.Conditions, metav1.Condition{
 		Type:    condType,
 		Status:  condStatus,
 		Reason:  reason,
 		Message: condMessage,
 	})
-	logutil.LogAPIResourceChangeEvent(log, application.Name, "Application", logutil.ResourceCreate, appErr)
+	logutil.LogAPIResourceChangeEvent(log, currentApp.Name, "Application", logutil.ResourceCreate, appErr)
 
+	currentApp.Status.Devfile = application.Status.Devfile
 	// Update the status of the Application
-	err := client.Status().Update(ctx, application)
+	err = client.Status().Update(ctx, currentApp)
 	if err != nil {
 		log.Error(err, "Unable to update Application status")
 	}
+
+	return nil
 }

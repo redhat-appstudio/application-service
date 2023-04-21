@@ -45,6 +45,7 @@ import (
 // ApplicationReconciler reconciles a Application object
 type ApplicationReconciler struct {
 	client.Client
+	NonCachingClient  client.Client
 	Scheme            *runtime.Scheme
 	Log               logr.Logger
 	GitHubTokenClient github.GitHubToken
@@ -117,14 +118,15 @@ func (r *ApplicationReconciler) Reconcile(ctx context.Context, req ctrl.Request)
 	}
 
 	adapter := ApplicationAdapter{
-		Application:    &application,
-		NamespacedName: req.NamespacedName,
-		Components:     components,
-		GithubOrg:      r.GitHubOrg,
-		GitHubClient:   ghClient,
-		Client:         r.Client,
-		Ctx:            ctx,
-		Log:            log,
+		Application:      &application,
+		NamespacedName:   req.NamespacedName,
+		Components:       components,
+		GithubOrg:        r.GitHubOrg,
+		GitHubClient:     ghClient,
+		Client:           r.Client,
+		NonCachingClient: r.NonCachingClient,
+		Ctx:              ctx,
+		Log:              log,
 	}
 
 	// Reconcile the Application

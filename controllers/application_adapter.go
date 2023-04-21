@@ -40,6 +40,7 @@ type ApplicationAdapter struct {
 	GithubOrg          string
 	GitHubClient       github.GitHubClient
 	Client             client.Client
+	NonCachingClient   client.Client
 	Ctx                context.Context
 	Log                logr.Logger
 	GitOpsRepository   appstudiov1alpha1.ApplicationGitRepository
@@ -58,13 +59,13 @@ func (a *ApplicationAdapter) EnsureGitOpsRepoExists() (reconciler.OperationResul
 		gitOpsRepo, err := getRepoInfo(a.Application, "gitOpsRepository")
 		if err != nil {
 			log.Error(err, "Unable to get gitops repository from devfile model")
-			a.SetConditionAndUpdateCR(err)
+			_ = a.SetConditionAndUpdateCR(err)
 			return reconciler.RequeueWithError(err)
 		}
 		appModelRepo, err := getRepoInfo(a.Application, "appModelRepository")
 		if err != nil {
 			log.Error(err, "Unable to get appmodel repository from devfile model")
-			a.SetConditionAndUpdateCR(err)
+			_ = a.SetConditionAndUpdateCR(err)
 			return reconciler.RequeueWithError(err)
 		}
 		a.GitOpsRepository = gitOpsRepo
@@ -83,7 +84,7 @@ func (a *ApplicationAdapter) EnsureGitOpsRepoExists() (reconciler.OperationResul
 			if err != nil {
 				metrics.HandleRateLimitMetrics(err, metricsLabel)
 				log.Error(err, fmt.Sprintf("Unable to create repository %v", repoUrl))
-				a.SetConditionAndUpdateCR(err)
+				_ = a.SetConditionAndUpdateCR(err)
 				return reconciler.RequeueWithError(err)
 			}
 
@@ -119,7 +120,7 @@ func (a *ApplicationAdapter) EnsureApplicationDevfile() (reconciler.OperationRes
 	devfileData, err := devfile.ConvertApplicationToDevfile(*a.Application, a.GitOpsRepository, a.AppModelRepository)
 	if err != nil {
 		log.Error(err, fmt.Sprintf("Unable to convert Application CR to devfile, exiting reconcile loop %v", namespacedName))
-		a.SetConditionAndUpdateCR(err)
+		_ = a.SetConditionAndUpdateCR(err)
 		return reconciler.RequeueWithError(err)
 	}
 
@@ -128,7 +129,7 @@ func (a *ApplicationAdapter) EnsureApplicationDevfile() (reconciler.OperationRes
 		err = updateApplicationDevfileModel(devfileData, component)
 		if err != nil {
 			log.Error(err, fmt.Sprintf("Unable to add Component %q to the Application devfile model. %v", component.Name, namespacedName))
-			a.SetConditionAndUpdateCR(err)
+			_ = a.SetConditionAndUpdateCR(err)
 			return reconciler.RequeueWithError(err)
 		}
 	}
@@ -137,7 +138,7 @@ func (a *ApplicationAdapter) EnsureApplicationDevfile() (reconciler.OperationRes
 	yamlData, err := yaml.Marshal(devfileData)
 	if err != nil {
 		log.Error(err, fmt.Sprintf("Unable to marshall Application devfile, exiting reconcile loop %v", namespacedName))
-		a.SetConditionAndUpdateCR(err)
+		_ = a.SetConditionAndUpdateCR(err)
 		return reconciler.RequeueWithError(err)
 	}
 	a.Application.Status.Devfile = string(yamlData)
@@ -147,7 +148,10 @@ func (a *ApplicationAdapter) EnsureApplicationDevfile() (reconciler.OperationRes
 
 // EnsureApplicationStatus ensures that the status of the Application gets updated to 'Created/Updated'
 func (a *ApplicationAdapter) EnsureApplicationStatus() (reconciler.OperationResult, error) {
-	a.SetConditionAndUpdateCR(nil)
+	err := a.SetConditionAndUpdateCR(nil)
+	if err != nil {
+		return reconciler.RequeueWithError(err)
+	}
 	return reconciler.ContinueProcessing()
 }
 

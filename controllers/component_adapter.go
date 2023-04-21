@@ -43,17 +43,18 @@ import (
 )
 
 type ComponentAdapter struct {
-	Application     *appstudiov1alpha1.Application
-	AppFS           afero.Afero
-	NamespacedName  types.NamespacedName
-	Component       *appstudiov1alpha1.Component
-	CompDevfileData data.DevfileData
-	Generator       gitopsgen.Generator
-	GitHubClient    github.GitHubClient
-	SPIClient       spi.SPI
-	Client          client.Client
-	Ctx             context.Context
-	Log             logr.Logger
+	Application      *appstudiov1alpha1.Application
+	AppFS            afero.Afero
+	NamespacedName   types.NamespacedName
+	Component        *appstudiov1alpha1.Component
+	CompDevfileData  data.DevfileData
+	Generator        gitopsgen.Generator
+	GitHubClient     github.GitHubClient
+	SPIClient        spi.SPI
+	Client           client.Client
+	NonCachingClient client.Client
+	Ctx              context.Context
+	Log              logr.Logger
 }
 
 // EnsureComponentDevfile is responsible for ensuring the Component's devfile in the CR status is up to date
@@ -84,7 +85,7 @@ func (a *ComponentAdapter) EnsureComponentDevfile() (reconciler.OperationResult,
 			err = a.Client.Get(ctx, namespacedName, &gitSecret)
 			if err != nil {
 				log.Error(err, fmt.Sprintf("Unable to retrieve Git secret %v, exiting reconcile loop %v", component.Spec.Secret, a.NamespacedName))
-				a.SetConditionAndUpdateCR(err)
+				_ = a.SetConditionAndUpdateCR(err)
 				return reconciler.RequeueWithError(err)
 			}
 
@@ -97,14 +98,14 @@ func (a *ComponentAdapter) EnsureComponentDevfile() (reconciler.OperationResult,
 				gitURL, err = util.ConvertGitHubURL(source.GitSource.URL, source.GitSource.Revision, context)
 				if err != nil {
 					log.Error(err, fmt.Sprintf("Unable to convert Github URL to raw format, exiting reconcile loop %v", a.NamespacedName))
-					a.SetConditionAndUpdateCR(err)
+					_ = a.SetConditionAndUpdateCR(err)
 					return reconciler.RequeueWithError(err)
 				}
 
 				devfileBytes, devfileLocation, err = devfile.FindAndDownloadDevfile(gitURL)
 				if err != nil {
 					log.Error(err, fmt.Sprintf("Unable to read the devfile from dir %s %v", gitURL, a.NamespacedName))
-					a.SetConditionAndUpdateCR(err)
+					_ = a.SetConditionAndUpdateCR(err)
 					return reconciler.RequeueWithError(err)
 				}
 
@@ -114,7 +115,7 @@ func (a *ComponentAdapter) EnsureComponentDevfile() (reconciler.OperationResult,
 				devfileBytes, err = spi.DownloadDevfileUsingSPI(a.SPIClient, ctx, component.Namespace, source.GitSource.URL, "main", context)
 				if err != nil {
 					log.Error(err, fmt.Sprintf("Unable to download from any known devfile locations from %s %v", source.GitSource.URL, a.NamespacedName))
-					a.SetConditionAndUpdateCR(err)
+					_ = a.SetConditionAndUpdateCR(err)
 					return reconciler.RequeueWithError(err)
 				}
 			}
@@ -125,21 +126,21 @@ func (a *ComponentAdapter) EnsureComponentDevfile() (reconciler.OperationResult,
 			if err != nil {
 				log.Error(err, fmt.Sprintf("Unable to GET %s, exiting reconcile loop %v", source.GitSource.DevfileURL, a.NamespacedName))
 				err := fmt.Errorf("unable to GET from %s", source.GitSource.DevfileURL)
-				a.SetConditionAndUpdateCR(err)
+				_ = a.SetConditionAndUpdateCR(err)
 				return reconciler.RequeueWithError(err)
 			}
 		} else if source.GitSource.DockerfileURL != "" {
 			devfileData, err := devfile.CreateDevfileForDockerfileBuild(source.GitSource.DockerfileURL, "./", component.Name, component.Spec.Application, component.Namespace)
 			if err != nil {
 				log.Error(err, fmt.Sprintf("Unable to create devfile for dockerfile build %v", a.NamespacedName))
-				a.SetConditionAndUpdateCR(err)
+				_ = a.SetConditionAndUpdateCR(err)
 				return reconciler.RequeueWithError(err)
 			}
 
 			devfileBytes, err = yaml.Marshal(devfileData)
 			if err != nil {
 				log.Error(err, fmt.Sprintf("Unable to marshal devfile, exiting reconcile loop %v", a.NamespacedName))
-				a.SetConditionAndUpdateCR(err)
+				_ = a.SetConditionAndUpdateCR(err)
 				return reconciler.RequeueWithError(err)
 			}
 		}
@@ -149,7 +150,7 @@ func (a *ComponentAdapter) EnsureComponentDevfile() (reconciler.OperationResult,
 		devfileData, err := devfile.ConvertImageComponentToDevfile(*component)
 		if err != nil {
 			log.Error(err, fmt.Sprintf("Unable to convert the Image Component to a devfile %v", a.NamespacedName))
-			a.SetConditionAndUpdateCR(err)
+			_ = a.SetConditionAndUpdateCR(err)
 			return reconciler.RequeueWithError(err)
 		}
 		component.Status.ContainerImage = component.Spec.ContainerImage
@@ -157,7 +158,7 @@ func (a *ComponentAdapter) EnsureComponentDevfile() (reconciler.OperationResult,
 		devfileBytes, err = yaml.Marshal(devfileData)
 		if err != nil {
 			log.Error(err, fmt.Sprintf("Unable to marshal devfile, exiting reconcile loop %v", a.NamespacedName))
-			a.SetConditionAndUpdateCR(err)
+			_ = a.SetConditionAndUpdateCR(err)
 			return reconciler.RequeueWithError(err)
 		}
 	}
@@ -170,7 +171,7 @@ func (a *ComponentAdapter) EnsureComponentDevfile() (reconciler.OperationResult,
 		compDevfileData, err = devfile.ParseDevfile(devfileSrc)
 		if err != nil {
 			log.Error(err, fmt.Sprintf("Unable to parse the devfile from Component devfile location, exiting reconcile loop %v", a.NamespacedName))
-			a.SetConditionAndUpdateCR(err)
+			_ = a.SetConditionAndUpdateCR(err)
 			return reconciler.RequeueWithError(err)
 		}
 	} else {
@@ -181,7 +182,7 @@ func (a *ComponentAdapter) EnsureComponentDevfile() (reconciler.OperationResult,
 		compDevfileData, err = devfile.ParseDevfile(devfileSrc)
 		if err != nil {
 			log.Error(err, fmt.Sprintf("Unable to parse the devfile from Component, exiting reconcile loop %v", a.NamespacedName))
-			a.SetConditionAndUpdateCR(err)
+			_ = a.SetConditionAndUpdateCR(err)
 			return reconciler.RequeueWithError(err)
 		}
 	}
@@ -189,14 +190,14 @@ func (a *ComponentAdapter) EnsureComponentDevfile() (reconciler.OperationResult,
 	err = a.updateComponentDevfileModel(compDevfileData, *component)
 	if err != nil {
 		log.Error(err, fmt.Sprintf("Unable to update the Component Devfile model %v", a.NamespacedName))
-		a.SetConditionAndUpdateCR(err)
+		_ = a.SetConditionAndUpdateCR(err)
 		return reconciler.RequeueWithError(err)
 	}
 
 	yamlHASCompData, err := yaml.Marshal(compDevfileData)
 	if err != nil {
 		log.Error(err, fmt.Sprintf("Unable to marshall the Component devfile, exiting reconcile loop %v", a.NamespacedName))
-		a.SetConditionAndUpdateCR(err)
+		_ = a.SetConditionAndUpdateCR(err)
 		return reconciler.RequeueWithError(err)
 	}
 
@@ -220,7 +221,7 @@ func (a *ComponentAdapter) EnsureComponentGitOpsResources() (reconciler.Operatio
 	devfileData, err := devfile.ParseDevfile(devfileSrc)
 	if err != nil {
 		log.Error(err, fmt.Sprintf("Unable to parse the devfile from Application, exiting reconcile loop %v", a.NamespacedName))
-		a.SetConditionAndUpdateCR(err)
+		_ = a.SetConditionAndUpdateCR(err)
 		return reconciler.RequeueWithError(err)
 	}
 
@@ -228,7 +229,7 @@ func (a *ComponentAdapter) EnsureComponentGitOpsResources() (reconciler.Operatio
 	err = setGitopsStatus(a.Component, devfileData)
 	if err != nil {
 		log.Error(err, fmt.Sprintf("Unable to retrieve gitops repository information for resource %v", a.NamespacedName))
-		a.SetConditionAndUpdateCR(err)
+		_ = a.SetConditionAndUpdateCR(err)
 		return reconciler.RequeueWithError(err)
 	}
 
@@ -237,11 +238,14 @@ func (a *ComponentAdapter) EnsureComponentGitOpsResources() (reconciler.Operatio
 		if err := a.generateGitops(a.Component, a.CompDevfileData); err != nil {
 			errMsg := fmt.Sprintf("Unable to generate gitops resources for component %v", a.NamespacedName)
 			log.Error(err, errMsg)
-			a.SetGitOpsGeneratedConditionAndUpdateCR(fmt.Errorf("%v: %v", errMsg, err))
-			a.SetConditionAndUpdateCR(err)
+			_ = a.SetGitOpsGeneratedConditionAndUpdateCR(fmt.Errorf("%v: %v", errMsg, err))
+			_ = a.SetConditionAndUpdateCR(err)
 			return reconciler.RequeueWithError(err)
 		} else {
-			a.SetGitOpsGeneratedConditionAndUpdateCR(nil)
+			err = a.SetGitOpsGeneratedConditionAndUpdateCR(nil)
+			if err != nil {
+				return reconciler.RequeueWithError(err)
+			}
 		}
 	}
 	return reconciler.ContinueProcessing()
@@ -249,7 +253,10 @@ func (a *ComponentAdapter) EnsureComponentGitOpsResources() (reconciler.Operatio
 
 // EnsureApplicationStatus ensures that the status of the Application gets updated to 'Created/Updated'
 func (a *ComponentAdapter) EnsureComponentStatus() (reconciler.OperationResult, error) {
-	a.SetConditionAndUpdateCR(nil)
+	err := a.SetConditionAndUpdateCR(nil)
+	if err != nil {
+		return reconciler.RequeueWithError(err)
+	}
 	return reconciler.ContinueProcessing()
 }
 

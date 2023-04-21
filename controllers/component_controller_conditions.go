@@ -22,17 +22,24 @@ import (
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
+	appstudiov1alpha1 "github.com/redhat-appstudio/application-api/api/v1alpha1"
 	logutil "github.com/redhat-appstudio/application-service/pkg/log"
 	ctrl "sigs.k8s.io/controller-runtime"
 )
 
-func (a ComponentAdapter) SetConditionAndUpdateCR(appErr error) {
+func (a ComponentAdapter) SetConditionAndUpdateCR(appErr error) error {
 	ctx := a.Ctx
 	log := ctrl.LoggerFrom(ctx)
-	client := a.Client
+	client := a.NonCachingClient
 	component := a.Component
 
-	createCond := meta.FindStatusCondition(component.Status.Conditions, "Created")
+	currentComp := &appstudiov1alpha1.Component{}
+	err := client.Get(ctx, a.NamespacedName, currentComp)
+	if err != nil {
+		return err
+	}
+
+	createCond := meta.FindStatusCondition(currentComp.Status.Conditions, "Created")
 	var condType, condMessage, reason string
 	var condStatus metav1.ConditionStatus
 
@@ -62,46 +69,62 @@ func (a ComponentAdapter) SetConditionAndUpdateCR(appErr error) {
 	}
 
 	// Set the status condition
-	meta.SetStatusCondition(&component.Status.Conditions, metav1.Condition{
+	meta.SetStatusCondition(&currentComp.Status.Conditions, metav1.Condition{
 		Type:    condType,
 		Status:  condStatus,
 		Reason:  reason,
 		Message: condMessage,
 	})
-	logutil.LogAPIResourceChangeEvent(log, component.Name, "Component", logutil.ResourceCreate, appErr)
+	logutil.LogAPIResourceChangeEvent(log, currentComp.Name, "Component", logutil.ResourceCreate, appErr)
+
+	currentComp.Status.Devfile = component.Status.Devfile
+	currentComp.Status.GitOps = component.Status.GitOps
+	currentComp.Status.ContainerImage = component.Status.ContainerImage
 
 	// Update the status of the Component
-	err := client.Status().Update(ctx, component)
+	err = client.Status().Update(ctx, currentComp)
 	if err != nil {
 		log.Error(err, "Unable to update Component status")
 	}
+
+	return nil
 }
 
-func (a ComponentAdapter) SetGitOpsGeneratedConditionAndUpdateCR(generateError error) {
+func (a ComponentAdapter) SetGitOpsGeneratedConditionAndUpdateCR(generateError error) error {
 	ctx := a.Ctx
 	log := ctrl.LoggerFrom(ctx)
-	client := a.Client
+	client := a.NonCachingClient
 	component := a.Component
 
+	currentComp := &appstudiov1alpha1.Component{}
+	err := client.Get(ctx, a.NamespacedName, currentComp)
+	if err != nil {
+		return err
+	}
+
 	if generateError == nil {
-		meta.SetStatusCondition(&component.Status.Conditions, metav1.Condition{
+		meta.SetStatusCondition(&currentComp.Status.Conditions, metav1.Condition{
 			Type:    "GitOpsResourcesGenerated",
 			Status:  metav1.ConditionTrue,
 			Reason:  "OK",
 			Message: "GitOps resource generated successfully",
 		})
 	} else {
-		meta.SetStatusCondition(&component.Status.Conditions, metav1.Condition{
+		meta.SetStatusCondition(&currentComp.Status.Conditions, metav1.Condition{
 			Type:    "GitOpsResourcesGenerated",
 			Status:  metav1.ConditionFalse,
 			Reason:  "GenerateError",
 			Message: fmt.Sprintf("GitOps resources failed to generate: %v", generateError),
 		})
-		logutil.LogAPIResourceChangeEvent(log, component.Name, "ComponentGitOpsResources", logutil.ResourceCreate, generateError)
+		logutil.LogAPIResourceChangeEvent(log, currentComp.Name, "ComponentGitOpsResources", logutil.ResourceCreate, generateError)
 	}
 
-	err := client.Status().Update(ctx, component)
+	currentComp.Status.Devfile = component.Status.Devfile
+	currentComp.Status.GitOps = component.Status.GitOps
+	currentComp.Status.ContainerImage = component.Status.ContainerImage
+	err = client.Status().Update(ctx, currentComp)
 	if err != nil {
 		log.Error(err, "Unable to update Component")
 	}
+	return nil
 }
