@@ -1,4 +1,4 @@
-package component
+package controllers
 
 import (
 	"context"
@@ -27,7 +27,7 @@ import (
 	"sigs.k8s.io/yaml"
 )
 
-type Adapter struct {
+type ComponentAdapter struct {
 	Application     *appstudiov1alpha1.Application
 	AppFS           afero.Afero
 	NamespacedName  types.NamespacedName
@@ -42,7 +42,7 @@ type Adapter struct {
 }
 
 // EnsureComponentDevfile is responsible for ensuring the Component's devfile in the CR status is up to date
-func (a *Adapter) EnsureComponentDevfile() (reconciler.OperationResult, error) {
+func (a *ComponentAdapter) EnsureComponentDevfile() (reconciler.OperationResult, error) {
 	component := a.Component
 	log := a.Log
 	ctx := a.Ctx
@@ -193,7 +193,7 @@ func (a *Adapter) EnsureComponentDevfile() (reconciler.OperationResult, error) {
 }
 
 // EnsureComponentGitOpsResources is reponsible for ensuring that the Component's GitOps resources get generated
-func (a *Adapter) EnsureComponentGitOpsResources() (reconciler.OperationResult, error) {
+func (a *ComponentAdapter) EnsureComponentGitOpsResources() (reconciler.OperationResult, error) {
 	component := a.Component
 	log := a.Log
 
@@ -233,14 +233,14 @@ func (a *Adapter) EnsureComponentGitOpsResources() (reconciler.OperationResult, 
 }
 
 // EnsureApplicationStatus ensures that the status of the Application gets updated to 'Created/Updated'
-func (a *Adapter) EnsureComponentStatus() (reconciler.OperationResult, error) {
+func (a *ComponentAdapter) EnsureComponentStatus() (reconciler.OperationResult, error) {
 	a.SetConditionAndUpdateCR(nil)
 	return reconciler.ContinueProcessing()
 }
 
 // generateGitops retrieves the necessary information about a Component's gitops repository (URL, branch, context)
 // and attempts to use the GitOps package to generate gitops resources based on that component
-func (a *Adapter) generateGitops(component *appstudiov1alpha1.Component, compDevfileData data.DevfileData) error {
+func (a *ComponentAdapter) generateGitops(component *appstudiov1alpha1.Component, compDevfileData data.DevfileData) error {
 	componentName := component.Name
 	log := a.Log
 	ctx := a.Ctx

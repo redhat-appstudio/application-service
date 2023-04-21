@@ -384,6 +384,56 @@ func TestFindAndDownloadDevfile(t *testing.T) {
 	}
 }
 
+func TestFindAndDownloadDockerfile(t *testing.T) {
+	tests := []struct {
+		name                  string
+		url                   string
+		wantDockerfileContext string
+		wantErr               bool
+	}{
+		{
+			name:                  "Curl Dockerfile",
+			url:                   "https://raw.githubusercontent.com/yangcao77/dockerfile-priority/main/case1",
+			wantDockerfileContext: "Dockerfile",
+		},
+		{
+			name:                  "Curl docker/Dockerfile",
+			url:                   "https://raw.githubusercontent.com/yangcao77/dockerfile-priority/main/case2",
+			wantDockerfileContext: "docker/Dockerfile",
+		},
+		{
+			name:                  "Curl .docker/Dockerfile",
+			url:                   "https://raw.githubusercontent.com/yangcao77/dockerfile-priority/main/case3",
+			wantDockerfileContext: ".docker/Dockerfile",
+		},
+		{
+			name:                  "Curl build/Dockerfile",
+			url:                   "https://raw.githubusercontent.com/yangcao77/dockerfile-priority/main/case4",
+			wantDockerfileContext: "build/Dockerfile",
+		},
+		{
+			name:    "Cannot curl for a Dockerfile",
+			url:     "https://github.com/octocat/Hello-World",
+			wantErr: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			contents, dockerfileContext, err := FindAndDownloadDockerfile(tt.url)
+			if tt.wantErr && (err == nil) {
+				t.Error("wanted error but got nil")
+			} else if !tt.wantErr && err != nil {
+				t.Errorf("got unexpected error %v", err)
+			} else if err == nil && contents == nil {
+				t.Errorf("unable to read body")
+			} else if err == nil && (dockerfileContext != tt.wantDockerfileContext) {
+				t.Errorf("Dockerfile context did not match, got %v, wanted %v", dockerfileContext, tt.wantDockerfileContext)
+			}
+		})
+	}
+}
+
 func TestCreateDevfileForDockerfileBuild(t *testing.T) {
 	tests := []struct {
 		name    string
@@ -465,16 +515,18 @@ func TestCreateDevfileForDockerfileBuild(t *testing.T) {
 
 func TestDownloadDevfileAndDockerfile(t *testing.T) {
 	tests := []struct {
-		name               string
-		url                string
-		wantDevfileContext string
-		want               bool
+		name                  string
+		url                   string
+		wantDevfileContext    string
+		wantDockerfileContext string
+		want                  bool
 	}{
 		{
-			name:               "Curl devfile.yaml and dockerfile",
-			url:                "https://raw.githubusercontent.com/maysunfaisal/devfile-sample-python-samelevel/main",
-			wantDevfileContext: ".devfile.yaml",
-			want:               true,
+			name:                  "Curl devfile.yaml and dockerfile",
+			url:                   "https://raw.githubusercontent.com/maysunfaisal/devfile-sample-python-samelevel/main",
+			wantDevfileContext:    ".devfile.yaml",
+			wantDockerfileContext: "Dockerfile",
+			want:                  true,
 		},
 		{
 			name: "Cannot curl for a devfile nor a dockerfile",
@@ -485,13 +537,17 @@ func TestDownloadDevfileAndDockerfile(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			devfile, devfileContext, dockerfile := DownloadDevfileAndDockerfile(tt.url)
+			devfile, devfileContext, dockerfile, dockerfileContext := DownloadDevfileAndDockerfile(tt.url)
 			if tt.want != (len(devfile) > 0 && len(dockerfile) > 0) {
 				t.Errorf("devfile and a dockerfile wanted: %v but got devfile: %v dockerfile: %v", tt.want, len(devfile) > 0, len(dockerfile) > 0)
 			}
 
 			if devfileContext != tt.wantDevfileContext {
 				t.Errorf("devfile context did not match, got %v, wanted %v", devfileContext, tt.wantDevfileContext)
+			}
+
+			if dockerfileContext != tt.wantDockerfileContext {
+				t.Errorf("dockerfile context did not match, got %v, wanted %v", dockerfileContext, tt.wantDockerfileContext)
 			}
 		})
 	}
@@ -1352,6 +1408,121 @@ metadata:
   name: java-springboot
 schemaVersion: 2.2.0`
 
+	kubernetesInlinedDevfileSeparatedKubeCompsRevHistory := `
+commands:
+- apply:
+    component: image-build
+  id: build-image
+- apply:
+    component: kubernetes-deploy
+  id: deployk8s
+- apply:
+    component: kubernetes-svc
+  id: svck8s
+- composite:
+    commands:
+    - build-image
+    - deployk8s
+    - svck8s
+    group:
+      isDefault: true
+      kind: deploy
+    parallel: false
+  id: deploy
+components:
+- image:
+    autoBuild: false
+    dockerfile:
+      buildContext: .
+      rootRequired: false
+      uri: docker/Dockerfile
+    imageName: java-springboot-image:latest
+  name: image-build
+- attributes:
+    api.devfile.io/k8sLikeComponent-originalURI: deploy.yaml
+    deployment/container-port: 1111
+    deployment/storageLimit: 401Mi
+    deployment/storageRequest: 201Mi
+  kubernetes:
+    deployByDefault: false
+    endpoints:
+    - name: http-8081
+      path: /
+      secure: false
+      targetPort: 8081
+    inlined: |-
+      apiVersion: apps/v1
+      kind: Deployment
+      metadata:
+        creationTimestamp: null
+        name: deploy-sample
+      spec:
+        revisionHistoryLimit: 5
+        replicas: 1
+        selector:
+          matchLabels:
+            app.kubernetes.io/instance: component-sample
+        strategy: {}
+        template:
+          metadata:
+            creationTimestamp: null
+            labels:
+              app.kubernetes.io/instance: component-sample
+          spec:
+            containers:
+            - env:
+              - name: FOOFOO
+                value: foo1
+              - name: BARBAR
+                value: bar1
+              image: quay.io/redhat-appstudio/user-workload:application-service-system-component-sample
+              imagePullPolicy: Always
+              livenessProbe:
+                httpGet:
+                  path: /
+                  port: 1111
+                initialDelaySeconds: 10
+                periodSeconds: 10
+              name: container-image
+              ports:
+              - containerPort: 1111
+              readinessProbe:
+                initialDelaySeconds: 10
+                periodSeconds: 10
+                tcpSocket:
+                  port: 1111
+              resources:
+                limits:
+                  cpu: "2"
+                  memory: 500Mi
+                  storage: 400Mi
+                requests:
+                  cpu: 700m
+                  memory: 400Mi
+                  storage: 200Mi
+      status: {}
+  name: kubernetes-deploy
+- attributes:
+    deployment/container-port: 1111
+  kubernetes:
+    deployByDefault: false
+    inlined: |-
+      apiVersion: v1
+      kind: Service
+      metadata:
+        creationTimestamp: null
+        name: service-sample
+      spec:
+        ports:
+        - port: 1111
+          targetPort: 1111
+      status:
+        loadBalancer: {}
+  name: kubernetes-svc
+metadata:
+  name: java-springboot
+schemaVersion: 2.2.0`
+
 	kubernetesInlinedDevfileRouteHostMissing := `
 commands:
 - apply:
@@ -1915,6 +2086,8 @@ schemaVersion: 2.2.0`
 	replica := int32(5)
 	replicaUpdated := int32(1)
 	namespace := "testNamespace"
+	revHistoryLimit := int32(0)
+	setRevHistoryLimit := int32(5)
 
 	tests := []struct {
 		name          string
@@ -1951,7 +2124,8 @@ schemaVersion: 2.2.0`
 					},
 				},
 				Spec: appsv1.DeploymentSpec{
-					Replicas: &replica,
+					RevisionHistoryLimit: &revHistoryLimit,
+					Replicas:             &replica,
 					Selector: &metav1.LabelSelector{
 						MatchLabels: map[string]string{
 							"app.kubernetes.io/instance": "component-sample",
@@ -2112,7 +2286,159 @@ schemaVersion: 2.2.0`
 					},
 				},
 				Spec: appsv1.DeploymentSpec{
-					Replicas: &replicaUpdated,
+					RevisionHistoryLimit: &revHistoryLimit,
+					Replicas:             &replicaUpdated,
+					Selector: &metav1.LabelSelector{
+						MatchLabels: map[string]string{
+							"app.kubernetes.io/instance": "component-sample",
+						},
+					},
+					Template: corev1.PodTemplateSpec{
+						ObjectMeta: metav1.ObjectMeta{
+							Labels: map[string]string{
+								"app.kubernetes.io/instance": "component-sample",
+							},
+						},
+						Spec: corev1.PodSpec{
+							Containers: []corev1.Container{
+								{
+									Name: "container-image",
+									Env: []corev1.EnvVar{
+										{
+											Name:  "FOOFOO",
+											Value: "foo1",
+										},
+										{
+											Name:  "BARBAR",
+											Value: "bar1",
+										},
+									},
+									Image:           "image1",
+									ImagePullPolicy: corev1.PullAlways,
+									LivenessProbe: &corev1.Probe{
+										ProbeHandler: corev1.ProbeHandler{
+											HTTPGet: &corev1.HTTPGetAction{
+												Path: "/",
+												Port: intstr.FromInt(1111),
+											},
+										},
+										InitialDelaySeconds: int32(10),
+										PeriodSeconds:       int32(10),
+									},
+									Ports: []corev1.ContainerPort{
+										{
+											ContainerPort: int32(1111),
+										},
+									},
+									ReadinessProbe: &corev1.Probe{
+										ProbeHandler: corev1.ProbeHandler{
+											TCPSocket: &corev1.TCPSocketAction{
+												Port: intstr.FromInt(1111),
+											},
+										},
+										InitialDelaySeconds: int32(10),
+										PeriodSeconds:       int32(10),
+									},
+									Resources: corev1.ResourceRequirements{
+										Limits: corev1.ResourceList{
+											corev1.ResourceCPU:     resource.MustParse("2"),
+											corev1.ResourceMemory:  resource.MustParse("500Mi"),
+											corev1.ResourceStorage: resource.MustParse("401Mi"),
+										},
+										Requests: corev1.ResourceList{
+											corev1.ResourceCPU:     resource.MustParse("700m"),
+											corev1.ResourceMemory:  resource.MustParse("400Mi"),
+											corev1.ResourceStorage: resource.MustParse("201Mi"),
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+			wantRoute: routev1.Route{
+				TypeMeta: metav1.TypeMeta{
+					Kind:       "Route",
+					APIVersion: "route.openshift.io/v1",
+				},
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "component-sample",
+					Namespace: namespace,
+					Labels: map[string]string{
+						"app.kubernetes.io/created-by": "application-service",
+						"app.kubernetes.io/instance":   "component-sample",
+						"app.kubernetes.io/managed-by": "kustomize",
+						"app.kubernetes.io/name":       "component-sample",
+						"app.kubernetes.io/part-of":    "application-sample",
+					},
+					Annotations: map[string]string{},
+				},
+				Spec: routev1.RouteSpec{
+					Path: "/",
+					Port: &routev1.RoutePort{
+						TargetPort: intstr.FromInt(1111),
+					},
+					To: routev1.RouteTargetReference{
+						Kind: "Service",
+						Name: "component-sample",
+					},
+				},
+			},
+			wantService: corev1.Service{
+				TypeMeta: metav1.TypeMeta{
+					Kind:       "Service",
+					APIVersion: "v1",
+				},
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "component-sample",
+					Namespace: namespace,
+					Labels: map[string]string{
+						"app.kubernetes.io/created-by": "application-service",
+						"app.kubernetes.io/instance":   "component-sample",
+						"app.kubernetes.io/managed-by": "kustomize",
+						"app.kubernetes.io/name":       "component-sample",
+						"app.kubernetes.io/part-of":    "application-sample",
+					},
+				},
+				Spec: corev1.ServiceSpec{
+					Ports: []corev1.ServicePort{
+						{
+							Port:       int32(1111),
+							TargetPort: intstr.FromInt(1111),
+						},
+					},
+					Selector: map[string]string{
+						"app.kubernetes.io/instance": "component-sample",
+					},
+				},
+			},
+		},
+		{
+			name:          "Simple devfile from Inline with deployment and svc from separated kube components - with RevisionHistoryLimit set",
+			devfileString: kubernetesInlinedDevfileSeparatedKubeCompsRevHistory,
+			componentName: "component-sample",
+			appName:       "application-sample",
+			image:         "image1",
+			wantDeploy: appsv1.Deployment{
+				TypeMeta: metav1.TypeMeta{
+					Kind:       "Deployment",
+					APIVersion: "apps/v1",
+				},
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "component-sample",
+					Namespace: namespace,
+					Labels: map[string]string{
+						"app.kubernetes.io/created-by": "application-service",
+						"app.kubernetes.io/instance":   "component-sample",
+						"app.kubernetes.io/managed-by": "kustomize",
+						"app.kubernetes.io/name":       "component-sample",
+						"app.kubernetes.io/part-of":    "application-sample",
+					},
+				},
+				Spec: appsv1.DeploymentSpec{
+					RevisionHistoryLimit: &setRevHistoryLimit,
+					Replicas:             &replicaUpdated,
 					Selector: &metav1.LabelSelector{
 						MatchLabels: map[string]string{
 							"app.kubernetes.io/instance": "component-sample",
@@ -2337,7 +2663,8 @@ schemaVersion: 2.2.0`
 					},
 				},
 				Spec: appsv1.DeploymentSpec{
-					Replicas: &replicaUpdated,
+					RevisionHistoryLimit: &revHistoryLimit,
+					Replicas:             &replicaUpdated,
 					Selector: &metav1.LabelSelector{
 						MatchLabels: map[string]string{
 							"app.kubernetes.io/instance": "component-sample",
@@ -2459,7 +2786,8 @@ schemaVersion: 2.2.0`
 					},
 				},
 				Spec: appsv1.DeploymentSpec{
-					Replicas: &replicaUpdated,
+					RevisionHistoryLimit: &revHistoryLimit,
+					Replicas:             &replicaUpdated,
 					Selector: &metav1.LabelSelector{
 						MatchLabels: map[string]string{
 							"app.kubernetes.io/instance": "component-sample-component-sample-component-sample",
@@ -2582,7 +2910,8 @@ schemaVersion: 2.2.0`
 					},
 				},
 				Spec: appsv1.DeploymentSpec{
-					Replicas: &replicaUpdated,
+					RevisionHistoryLimit: &revHistoryLimit,
+					Replicas:             &replicaUpdated,
 					Selector: &metav1.LabelSelector{
 						MatchLabels: map[string]string{
 							"app.kubernetes.io/instance": "component-sample",

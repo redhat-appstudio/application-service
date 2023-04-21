@@ -1,5 +1,5 @@
 //
-// Copyright 2022 Red Hat, Inc.
+// Copyright 2022-2023 Red Hat, Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -31,14 +31,14 @@ const (
 	ResourceComplete ResourceChangeType = "Complete"
 )
 
-func LogAPIResourceChangeEvent(log logr.Logger, resourceName string, resource string, resourceChangeType ResourceChangeType, err error) {
+func LogAPIResourceChangeEvent(log logr.Logger, resourceName string, resourceKind string, resourceChangeType ResourceChangeType, err error) {
 	log = log.WithValues("audit", "true")
 
-	if resource == "" {
-		log.Error(nil, "resource passed to LogAPIResourceChangeEvent was empty")
+	if resourceKind == "" {
+		log.Error(nil, "resourceKind passed to LogAPIResourceChangeEvent was empty")
 		return
 	}
-	log = log.WithValues("name", resourceName).WithValues("resource", resource).WithValues("action", resourceChangeType)
+	log = log.WithValues("name", resourceName).WithValues("controllerKind", resourceKind).WithValues("action", resourceChangeType)
 	if err != nil {
 		log.Info(fmt.Sprintf("API Resource change event failed: %s, error: %v", string(resourceChangeType), err))
 	} else {

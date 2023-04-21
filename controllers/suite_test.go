@@ -30,7 +30,6 @@ import (
 
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/envtest"
-	"sigs.k8s.io/controller-runtime/pkg/envtest/printer"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 
@@ -59,16 +58,15 @@ var (
 func TestAPIs(t *testing.T) {
 	RegisterFailHandler(Fail)
 
-	RunSpecsWithDefaultAndCustomReporters(t,
-		"Controller Suite",
-		[]Reporter{printer.NewlineReporter{}})
+	RunSpecs(t,
+		"Controller Suite")
 }
 
 var _ = BeforeSuite(func() {
 	logf.SetLogger(zap.New(zap.WriteTo(GinkgoWriter), zap.UseDevMode(true)))
 
 	ctx, cancel = context.WithCancel(context.TODO())
-	applicationAPIDepVersion := "v0.0.0-20221205185405-03f73a06d978"
+	applicationAPIDepVersion := "v0.0.0-20230405183341-7a48b1d4c860"
 
 	By("bootstrapping test environment")
 	testEnv = &envtest.Environment{
@@ -108,7 +106,7 @@ var _ = BeforeSuite(func() {
 		Log:               ctrl.Log.WithName("controllers").WithName("Application"),
 		GitHubTokenClient: mockGhTokenClient,
 		GitHubOrg:         github.AppStudioAppDataOrg,
-	}).SetupWithManager(k8sManager)
+	}).SetupWithManager(ctx, k8sManager)
 	Expect(err).ToNot(HaveOccurred())
 
 	err = (&ComponentReconciler{
@@ -119,7 +117,7 @@ var _ = BeforeSuite(func() {
 		AppFS:             ioutils.NewMemoryFilesystem(),
 		SPIClient:         spi.MockSPIClient{},
 		GitHubTokenClient: mockGhTokenClient,
-	}).SetupWithManager(k8sManager)
+	}).SetupWithManager(ctx, k8sManager)
 	Expect(err).ToNot(HaveOccurred())
 
 	err = (&ComponentDetectionQueryReconciler{
@@ -131,7 +129,7 @@ var _ = BeforeSuite(func() {
 		GitHubTokenClient:  mockGhTokenClient,
 		DevfileRegistryURL: devfile.DevfileStageRegistryEndpoint, // Use the staging devfile registry for tests
 		AppFS:              ioutils.NewMemoryFilesystem(),
-	}).SetupWithManager(k8sManager)
+	}).SetupWithManager(ctx, k8sManager)
 	Expect(err).ToNot(HaveOccurred())
 
 	err = (&SnapshotEnvironmentBindingReconciler{
@@ -141,7 +139,7 @@ var _ = BeforeSuite(func() {
 		Generator:         gitops.NewMockGenerator(),
 		AppFS:             ioutils.NewMemoryFilesystem(),
 		GitHubTokenClient: mockGhTokenClient,
-	}).SetupWithManager(k8sManager)
+	}).SetupWithManager(ctx, k8sManager)
 	Expect(err).ToNot(HaveOccurred())
 
 	go func() {

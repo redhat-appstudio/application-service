@@ -1,4 +1,4 @@
-package application
+package controllers
 
 import (
 	"context"
@@ -18,7 +18,7 @@ import (
 	"sigs.k8s.io/yaml"
 )
 
-type Adapter struct {
+type ApplicationAdapter struct {
 	Application        *appstudiov1alpha1.Application
 	NamespacedName     types.NamespacedName
 	Components         []appstudiov1alpha1.Component
@@ -31,7 +31,7 @@ type Adapter struct {
 	AppModelRepository appstudiov1alpha1.ApplicationGitRepository
 }
 
-func (a *Adapter) EnsureGitOpsRepoExists() (reconciler.OperationResult, error) {
+func (a *ApplicationAdapter) EnsureGitOpsRepoExists() (reconciler.OperationResult, error) {
 	ghClient := a.GitHubClient
 	log := a.Log
 
@@ -95,7 +95,7 @@ func (a *Adapter) EnsureGitOpsRepoExists() (reconciler.OperationResult, error) {
 }
 
 // EnsureApplicationDevfile is reponsible for ensuring the devfile in the Application's status is up to date
-func (a *Adapter) EnsureApplicationDevfile() (reconciler.OperationResult, error) {
+func (a *ApplicationAdapter) EnsureApplicationDevfile() (reconciler.OperationResult, error) {
 	log := a.Log
 	namespacedName := a.NamespacedName
 	a.Application.Status.Devfile = ""
@@ -131,7 +131,7 @@ func (a *Adapter) EnsureApplicationDevfile() (reconciler.OperationResult, error)
 }
 
 // EnsureApplicationStatus ensures that the status of the Application gets updated to 'Created/Updated'
-func (a *Adapter) EnsureApplicationStatus() (reconciler.OperationResult, error) {
+func (a *ApplicationAdapter) EnsureApplicationStatus() (reconciler.OperationResult, error) {
 	a.SetConditionAndUpdateCR(nil)
 	return reconciler.ContinueProcessing()
 }

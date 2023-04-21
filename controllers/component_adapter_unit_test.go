@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package component
+package controllers
 
 import (
 	"context"
@@ -160,8 +160,8 @@ func TestGenerateGitops(t *testing.T) {
 
 	fakeClient := fake.NewClientBuilder().Build()
 
-	mockGHClient, _ := github.MockGitHubTokenClient{}.GetNewGitHubClient()
-	a := &Adapter{
+	mockGHClient, _ := github.MockGitHubTokenClient{}.GetNewGitHubClient("")
+	a := &ComponentAdapter{
 		Log:          ctrl.Log.WithName("controllers").WithName("Component"),
 		Ctx:          ctx,
 		Generator:    gitops.NewMockGenerator(),
@@ -172,7 +172,7 @@ func TestGenerateGitops(t *testing.T) {
 	// Create a second reconciler for testing error scenarios
 	errGen := gitops.NewMockGenerator()
 	errGen.Errors.Push(errors.New("Fatal error"))
-	errAdapter := &Adapter{
+	errAdapter := &ComponentAdapter{
 		Log:          ctrl.Log.WithName("controllers").WithName("Component"),
 		Ctx:          ctx,
 		Generator:    errGen,
@@ -324,7 +324,7 @@ func TestGenerateGitops(t *testing.T) {
 
 	tests := []struct {
 		name      string
-		adapter   *Adapter
+		adapter   *ComponentAdapter
 		fs        afero.Afero
 		component *appstudiov1alpha1.Component
 		wantErr   bool

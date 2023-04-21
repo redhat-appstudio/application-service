@@ -1,4 +1,4 @@
-package application
+package controllers
 
 import (
 	"context"
@@ -10,12 +10,9 @@ import (
 	appstudiov1alpha1 "github.com/redhat-appstudio/application-api/api/v1alpha1"
 	"github.com/redhat-appstudio/application-service/pkg/devfile"
 	"github.com/redhat-appstudio/application-service/pkg/github"
-	"github.com/stretchr/testify/require"
 	"go.uber.org/zap/zapcore"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
-	"k8s.io/client-go/kubernetes/scheme"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
@@ -68,15 +65,15 @@ func TestEnsureGitOpsRepoExists(t *testing.T) {
 	emptyGitStruct := appstudiov1alpha1.ApplicationGitRepository{}
 
 	mockTokenClient := github.MockGitHubTokenClient{}
-	mockGHClient, _ := mockTokenClient.GetNewGitHubClient()
+	mockGHClient, _ := mockTokenClient.GetNewGitHubClient("")
 	tests := []struct {
 		name    string
-		adapter Adapter
+		adapter ApplicationAdapter
 		wantErr bool
 	}{
 		{
 			name: "Simple application component, no errors",
-			adapter: Adapter{
+			adapter: ApplicationAdapter{
 				Application:    &application,
 				NamespacedName: types.NamespacedName{Name: "myapp", Namespace: "default"},
 				GithubOrg:      "test-org",
@@ -88,7 +85,7 @@ func TestEnsureGitOpsRepoExists(t *testing.T) {
 		},
 		{
 			name: "Simple application component - gitops repo creation failure",
-			adapter: Adapter{
+			adapter: ApplicationAdapter{
 				Application: &appstudiov1alpha1.Application{
 					ObjectMeta: v1.ObjectMeta{
 						Name:      "test-error-response",
@@ -113,7 +110,7 @@ func TestEnsureGitOpsRepoExists(t *testing.T) {
 		},
 		{
 			name: "Simple application component - both git repositories set",
-			adapter: Adapter{
+			adapter: ApplicationAdapter{
 				Application: &appstudiov1alpha1.Application{
 					ObjectMeta: v1.ObjectMeta{
 						Name:      "myapp",
@@ -144,7 +141,7 @@ func TestEnsureGitOpsRepoExists(t *testing.T) {
 		},
 		{
 			name: "Application with devfile model already set",
-			adapter: Adapter{
+			adapter: ApplicationAdapter{
 				Application: &appstudiov1alpha1.Application{
 					ObjectMeta: v1.ObjectMeta{
 						Name:      "myapp",
@@ -172,7 +169,7 @@ func TestEnsureGitOpsRepoExists(t *testing.T) {
 		},
 		{
 			name: "Application with invalid devfile model - no gitops repository",
-			adapter: Adapter{
+			adapter: ApplicationAdapter{
 				Application: &appstudiov1alpha1.Application{
 					ObjectMeta: v1.ObjectMeta{
 						Name:      "myapp",
@@ -200,7 +197,7 @@ func TestEnsureGitOpsRepoExists(t *testing.T) {
 		},
 		{
 			name: "Application with invalid devfile model - no appmodel repository",
-			adapter: Adapter{
+			adapter: ApplicationAdapter{
 				Application: &appstudiov1alpha1.Application{
 					ObjectMeta: v1.ObjectMeta{
 						Name:      "myapp",
@@ -281,15 +278,15 @@ func TestEnsureApplicationDevfile(t *testing.T) {
 	}
 
 	mockTokenClient := github.MockGitHubTokenClient{}
-	mockGHClient, _ := mockTokenClient.GetNewGitHubClient()
+	mockGHClient, _ := mockTokenClient.GetNewGitHubClient("")
 	tests := []struct {
 		name    string
-		adapter Adapter
+		adapter ApplicationAdapter
 		wantErr bool
 	}{
 		{
 			name: "Simple application with no components, no errors",
-			adapter: Adapter{
+			adapter: ApplicationAdapter{
 				Application:    &application,
 				NamespacedName: types.NamespacedName{Name: "myapp", Namespace: "default"},
 				GithubOrg:      "fakeorg",
@@ -307,7 +304,7 @@ func TestEnsureApplicationDevfile(t *testing.T) {
 		},
 		{
 			name: "Simple application with two git components, no errors",
-			adapter: Adapter{
+			adapter: ApplicationAdapter{
 				Application: &application,
 				Components: []appstudiov1alpha1.Component{
 					{
@@ -354,7 +351,7 @@ func TestEnsureApplicationDevfile(t *testing.T) {
 		},
 		{
 			name: "Application with multiple git and image components, no errors",
-			adapter: Adapter{
+			adapter: ApplicationAdapter{
 				Application: &application,
 				Components: []appstudiov1alpha1.Component{
 					{
@@ -415,7 +412,7 @@ func TestEnsureApplicationDevfile(t *testing.T) {
 		},
 		{
 			name: "Simple application with duplicate git components, should return error",
-			adapter: Adapter{
+			adapter: ApplicationAdapter{
 				Application: &application,
 				Components: []appstudiov1alpha1.Component{
 					{
@@ -462,7 +459,7 @@ func TestEnsureApplicationDevfile(t *testing.T) {
 		},
 		{
 			name: "Simple application with duplicate image components, should return error",
-			adapter: Adapter{
+			adapter: ApplicationAdapter{
 				Application: &application,
 				Components: []appstudiov1alpha1.Component{
 					{
@@ -497,7 +494,7 @@ func TestEnsureApplicationDevfile(t *testing.T) {
 		},
 		{
 			name: "Application with commponents with no source, should return error",
-			adapter: Adapter{
+			adapter: ApplicationAdapter{
 				Application: &application,
 				Components: []appstudiov1alpha1.Component{
 					{
@@ -641,15 +638,15 @@ func TestEnsureApplicationStatus(t *testing.T) {
 	}))
 
 	mockTokenClient := github.MockGitHubTokenClient{}
-	mockGHClient, _ := mockTokenClient.GetNewGitHubClient()
+	mockGHClient, _ := mockTokenClient.GetNewGitHubClient("")
 	tests := []struct {
 		name    string
-		adapter Adapter
+		adapter ApplicationAdapter
 		err     error
 	}{
 		{
 			name: "Simple application component, no errors",
-			adapter: Adapter{
+			adapter: ApplicationAdapter{
 				Application:    application,
 				NamespacedName: types.NamespacedName{Name: "myapp-one", Namespace: "default"},
 				GithubOrg:      "test-org",
@@ -661,7 +658,7 @@ func TestEnsureApplicationStatus(t *testing.T) {
 		},
 		{
 			name: "Application component with a status condition already",
-			adapter: Adapter{
+			adapter: ApplicationAdapter{
 				Application:    applicationWithStatus,
 				NamespacedName: types.NamespacedName{Name: "myapp-other", Namespace: "default"},
 				GithubOrg:      "test-org",
@@ -697,15 +694,4 @@ func TestEnsureApplicationStatus(t *testing.T) {
 		})
 	}
 
-}
-
-func NewFakeClient(t *testing.T, initObjs ...runtime.Object) client.Client {
-	s := scheme.Scheme
-	err := appstudiov1alpha1.AddToScheme(s)
-	require.NoError(t, err)
-	cl := fake.NewClientBuilder().
-		WithScheme(s).
-		WithRuntimeObjects(initObjs...).
-		Build()
-	return cl
 }

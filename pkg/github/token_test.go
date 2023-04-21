@@ -120,11 +120,15 @@ func TestParseGitHubTokens(t *testing.T) {
 
 func TestGetNewGitHubClient(t *testing.T) {
 	ghTokenClient := GitHubTokenClient{}
+
+	fakeToken := "ghp_faketoken"
+
 	tests := []struct {
 		name               string
 		client             GitHubToken
 		githubTokenEnv     string
 		githubTokenListEnv string
+		passedInToken      string
 		wantErr            bool
 	}{
 		{
@@ -153,6 +157,12 @@ func TestGetNewGitHubClient(t *testing.T) {
 			wantErr:            false,
 		},
 		{
+			name:          "Passed in token",
+			client:        ghTokenClient,
+			passedInToken: fakeToken,
+			wantErr:       false,
+		},
+		{
 			name:    "Mock client",
 			client:  MockGitHubTokenClient{},
 			wantErr: false,
@@ -172,8 +182,8 @@ func TestGetNewGitHubClient(t *testing.T) {
 			}
 
 			_ = ParseGitHubTokens()
-			ghClient, err := tt.client.GetNewGitHubClient()
-			if tt.name != "Mock client" && !tt.wantErr {
+			ghClient, err := tt.client.GetNewGitHubClient(tt.passedInToken)
+			if tt.name != "Mock client" && tt.name != "Passed in token" && !tt.wantErr {
 				if Tokens[ghClient.TokenName] == "" {
 					t.Errorf("TestGetNewGitHubClient() error: expected token value %v with key %v", Tokens[ghClient.TokenName], ghClient.TokenName)
 				}

@@ -76,7 +76,6 @@ func main() {
 		"Enable leader election for controller manager. "+
 			"Enabling this will ensure there is only one active controller manager.")
 	opts := zap.Options{
-		Development: true,
 		TimeEncoder: zapcore.ISO8601TimeEncoder,
 	}
 	opts.BindFlags(flag.CommandLine)
@@ -87,7 +86,7 @@ func main() {
 	ctx := ctrl.SetupSignalHandler()
 
 	restConfig := ctrl.GetConfigOrDie()
-	setupLog = setupLog.WithValues("api-export-name", apiExportName).WithValues("appstudio-component", "HAS")
+	setupLog = setupLog.WithValues("controllerKind", apiExportName)
 
 	// Set up pprof if needed
 	if os.Getenv("ENABLE_PPROF") == "true" {
@@ -96,7 +95,6 @@ func main() {
 			log.Println(http.ListenAndServe("localhost:6060", nil))
 		}()
 	}
-
 	var mgr ctrl.Manager
 	var err error
 	options := ctrl.Options{
@@ -142,35 +140,35 @@ func main() {
 	if err = (&controllers.ApplicationReconciler{
 		Client:            mgr.GetClient(),
 		Scheme:            mgr.GetScheme(),
-		Log:               ctrl.Log.WithName("controllers").WithName("Application").WithValues("appstudio-component", "HAS"),
+		Log:               ctrl.Log.WithName("controllers").WithName("Application"),
 		GitHubTokenClient: ghTokenClient,
 		GitHubOrg:         ghOrg,
-	}).SetupWithManager(mgr); err != nil {
+	}).SetupWithManager(ctx, mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "Application")
 		os.Exit(1)
 	}
 	if err = (&controllers.ComponentReconciler{
 		Client:            mgr.GetClient(),
 		Scheme:            mgr.GetScheme(),
-		Log:               ctrl.Log.WithName("controllers").WithName("Component").WithValues("appstudio-component", "HAS"),
+		Log:               ctrl.Log.WithName("controllers").WithName("Component"),
 		Generator:         gitopsgen.NewGitopsGen(),
 		AppFS:             ioutils.NewFilesystem(),
 		GitHubTokenClient: ghTokenClient,
 		SPIClient:         spi.SPIClient{},
-	}).SetupWithManager(mgr); err != nil {
+	}).SetupWithManager(ctx, mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "Component")
 		os.Exit(1)
 	}
 	if err = (&controllers.ComponentDetectionQueryReconciler{
 		Client:             mgr.GetClient(),
 		Scheme:             mgr.GetScheme(),
-		Log:                ctrl.Log.WithName("controllers").WithName("ComponentDetectionQuery").WithValues("appstudio-component", "HAS"),
+		Log:                ctrl.Log.WithName("controllers").WithName("ComponentDetectionQuery"),
 		SPIClient:          spi.SPIClient{},
 		AlizerClient:       devfile.AlizerClient{},
 		GitHubTokenClient:  ghTokenClient,
 		DevfileRegistryURL: devfileRegistryURL,
 		AppFS:              ioutils.NewFilesystem(),
-	}).SetupWithManager(mgr); err != nil {
+	}).SetupWithManager(ctx, mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "ComponentDetectionQuery")
 		os.Exit(1)
 	}
@@ -190,11 +188,11 @@ func main() {
 	if err = (&controllers.SnapshotEnvironmentBindingReconciler{
 		Client:            mgr.GetClient(),
 		Scheme:            mgr.GetScheme(),
-		Log:               ctrl.Log.WithName("controllers").WithName("SnapshotEnvironmentBinding").WithValues("appstudio-component", "HAS"),
+		Log:               ctrl.Log.WithName("controllers").WithName("SnapshotEnvironmentBinding"),
 		Generator:         gitopsgen.NewGitopsGen(),
 		AppFS:             ioutils.NewFilesystem(),
 		GitHubTokenClient: ghTokenClient,
-	}).SetupWithManager(mgr); err != nil {
+	}).SetupWithManager(ctx, mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "SnapshotEnvironmentBinding")
 		os.Exit(1)
 	}

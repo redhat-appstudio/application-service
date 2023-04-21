@@ -19,8 +19,9 @@ type MockGitHubTokenClient struct {
 }
 
 // GetNewGitHubClient returns a mocked Go-GitHub client. No actual tokens are passed in or used when this function is called
-func (g MockGitHubTokenClient) GetNewGitHubClient() (GitHubClient, error) {
+func (g MockGitHubTokenClient) GetNewGitHubClient(token string) (GitHubClient, error) {
 	return GitHubClient{
+		Token:  token,
 		Client: GetMockedClient(),
 	}, nil
 }

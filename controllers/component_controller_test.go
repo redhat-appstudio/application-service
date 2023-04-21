@@ -18,7 +18,6 @@ package controllers
 
 import (
 	"context"
-	"fmt"
 	"strings"
 	"testing"
 
@@ -364,7 +363,7 @@ var _ = Describe("Component controller", func() {
 			// Make sure the err was set
 			Expect(createdHasComp.Status.Devfile).Should(Equal(""))
 			Expect(createdHasComp.Status.Conditions[len(createdHasComp.Status.Conditions)-1].Reason).Should(Equal("Error"))
-			Expect(createdHasComp.Status.Conditions[len(createdHasComp.Status.Conditions)-1].Message).Should(ContainSubstring(fmt.Sprintf("Component create failed: application devfile model is empty. Before creating a Component, an instance of Application should be created")))
+			Expect(createdHasComp.Status.Conditions[len(createdHasComp.Status.Conditions)-1].Message).Should(ContainSubstring("Component create failed: application devfile model is empty. Before creating a Component, an instance of Application should be created"))
 
 			compAnnotations := createdHasComp.GetAnnotations()
 			Expect(compAnnotations).ShouldNot(BeNil())

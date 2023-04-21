@@ -21,7 +21,6 @@ import (
 
 	gofakeit "github.com/brianvoe/gofakeit/v6"
 	"github.com/go-logr/logr"
-	"go.uber.org/zap/zapcore"
 
 	k8sErrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -32,13 +31,11 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	"sigs.k8s.io/controller-runtime/pkg/event"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
-	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 	"sigs.k8s.io/controller-runtime/pkg/predicate"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 	"sigs.k8s.io/controller-runtime/pkg/source"
 
 	appstudiov1alpha1 "github.com/redhat-appstudio/application-api/api/v1alpha1"
-	appAdapter "github.com/redhat-appstudio/application-service/controllers/adapters/application"
 	github "github.com/redhat-appstudio/application-service/pkg/github"
 	logutil "github.com/redhat-appstudio/application-service/pkg/log"
 	util "github.com/redhat-appstudio/application-service/pkg/util"
@@ -70,9 +67,9 @@ const applicationName = "Application"
 // For more details, check Reconcile and its Result here:
 // - https://pkg.go.dev/sigs.k8s.io/controller-runtime@v0.9.2/pkg/reconcile
 func (r *ApplicationReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
-	log := r.Log.WithValues("Application", req.NamespacedName)
+	log := ctrl.LoggerFrom(ctx)
 
-	ghClient, err := r.GitHubTokenClient.GetNewGitHubClient()
+	ghClient, err := r.GitHubTokenClient.GetNewGitHubClient("")
 	if err != nil {
 		log.Error(err, "Unable to create Go-GitHub client due to error")
 		return reconcile.Result{}, err
@@ -119,7 +116,7 @@ func (r *ApplicationReconciler) Reconcile(ctx context.Context, req ctrl.Request)
 		}
 	}
 
-	adapter := appAdapter.Adapter{
+	adapter := ApplicationAdapter{
 		Application:    &application,
 		NamespacedName: req.NamespacedName,
 		Components:     components,
@@ -139,15 +136,12 @@ func (r *ApplicationReconciler) Reconcile(ctx context.Context, req ctrl.Request)
 }
 
 // SetupWithManager sets up the controller with the Manager.
-func (r *ApplicationReconciler) SetupWithManager(mgr ctrl.Manager) error {
+func (r *ApplicationReconciler) SetupWithManager(ctx context.Context, mgr ctrl.Manager) error {
 	gofakeit.New(0)
-	opts := zap.Options{
-		TimeEncoder: zapcore.ISO8601TimeEncoder,
-	}
-	ctrl.SetLogger(zap.New(zap.UseFlagOptions(&opts)))
+	log := ctrl.LoggerFrom(ctx).WithName("controllers").WithName("Application")
+
 	mapComponentToApplication := handler.EnqueueRequestsFromMapFunc(MapComponentToApplication())
 
-	log := ctrl.Log.WithName("controllers").WithName("Application").WithValues("appstudio-component", "HAS")
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&appstudiov1alpha1.Application{}, builder.WithPredicates(predicate.GenerationChangedPredicate{})).
 		WithEventFilter(predicate.Funcs{

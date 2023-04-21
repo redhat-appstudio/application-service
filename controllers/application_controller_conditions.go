@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package application
+package controllers
 
 import (
 	"fmt"
@@ -24,7 +24,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-func (a Adapter) SetConditionAndUpdateCR(appErr error) {
+func (a ApplicationAdapter) SetConditionAndUpdateCR(appErr error) {
 	ctx := a.Ctx
 	log := a.Log
 	client := a.Client

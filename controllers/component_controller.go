@@ -21,7 +21,6 @@ import (
 	"fmt"
 	"time"
 
-	"go.uber.org/zap/zapcore"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
@@ -33,14 +32,12 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/controller"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	"sigs.k8s.io/controller-runtime/pkg/event"
-	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 	"sigs.k8s.io/controller-runtime/pkg/predicate"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
 	"github.com/go-logr/logr"
 
 	appstudiov1alpha1 "github.com/redhat-appstudio/application-api/api/v1alpha1"
-	compAdapter "github.com/redhat-appstudio/application-service/controllers/adapters/component"
 	github "github.com/redhat-appstudio/application-service/pkg/github"
 	logutil "github.com/redhat-appstudio/application-service/pkg/log"
 
@@ -68,7 +65,6 @@ type ComponentReconciler struct {
 const (
 	applicationFailCounterAnnotation = "applicationFailCounter"
 	maxApplicationFailCount          = 5
-	componentName                    = "Component"
 )
 
 //+kubebuilder:rbac:groups=appstudio.redhat.com,resources=components,verbs=get;list;watch;create;update;patch;delete
@@ -88,9 +84,9 @@ const (
 // For more details, check Reconcile and its Result here:
 // - https://pkg.go.dev/sigs.k8s.io/controller-runtime@v0.9.2/pkg/reconcile
 func (r *ComponentReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
-	log := r.Log.WithValues("Component", req.NamespacedName)
+	log := ctrl.LoggerFrom(ctx)
 
-	ghClient, err := r.GitHubTokenClient.GetNewGitHubClient()
+	ghClient, err := r.GitHubTokenClient.GetNewGitHubClient("")
 	if err != nil {
 		log.Error(err, "Unable to create Go-GitHub client due to error")
 		return reconcile.Result{}, err
@@ -160,7 +156,7 @@ func (r *ComponentReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 
 	log.Info(fmt.Sprintf("Starting reconcile loop for %v", req.NamespacedName))
 
-	adapter := compAdapter.Adapter{
+	adapter := ComponentAdapter{
 		Component:      &component,
 		Application:    &application,
 		NamespacedName: req.NamespacedName,
@@ -184,29 +180,25 @@ func (r *ComponentReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 }
 
 // SetupWithManager sets up the controller with the Manager.
-func (r *ComponentReconciler) SetupWithManager(mgr ctrl.Manager) error {
-	opts := zap.Options{
-		TimeEncoder: zapcore.ISO8601TimeEncoder,
-	}
-	ctrl.SetLogger(zap.New(zap.UseFlagOptions(&opts)))
-	log := ctrl.Log.WithName("controllers").WithName("Component").WithValues("appstudio-component", "HAS")
+func (r *ComponentReconciler) SetupWithManager(ctx context.Context, mgr ctrl.Manager) error {
+	log := ctrl.LoggerFrom(ctx).WithName("controllers").WithName("Component")
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&appstudiov1alpha1.Component{}, builder.WithPredicates(predicate.GenerationChangedPredicate{})).
 		WithOptions(controller.Options{
 			RateLimiter: workqueue.NewItemExponentialFailureRateLimiter(time.Duration(500*time.Millisecond), time.Duration(60*time.Second)),
 		}).WithEventFilter(predicate.Funcs{
 		CreateFunc: func(e event.CreateEvent) bool {
-			log := log.WithValues("Namespace", e.Object.GetNamespace())
+			log := log.WithValues("namespace", e.Object.GetNamespace())
 			logutil.LogAPIResourceChangeEvent(log, e.Object.GetName(), "Component", logutil.ResourceCreate, nil)
 			return true
 		},
 		UpdateFunc: func(e event.UpdateEvent) bool {
-			log := log.WithValues("Namespace", e.ObjectNew.GetNamespace())
+			log := log.WithValues("namespace", e.ObjectNew.GetNamespace())
 			logutil.LogAPIResourceChangeEvent(log, e.ObjectNew.GetName(), "Component", logutil.ResourceUpdate, nil)
 			return true
 		},
 		DeleteFunc: func(e event.DeleteEvent) bool {
-			log := log.WithValues("Namespace", e.Object.GetNamespace())
+			log := log.WithValues("namespace", e.Object.GetNamespace())
 			logutil.LogAPIResourceChangeEvent(log, e.Object.GetName(), "Component", logutil.ResourceDelete, nil)
 			return true
 		},
@@ -244,7 +236,14 @@ func (r *ComponentReconciler) incrementCounterAndRequeue(log logr.Logger, ctx co
 	count, err := getCounterAnnotation(applicationFailCounterAnnotation, component)
 	if count > 2 || err != nil {
 		log.Error(err, "")
-		r.SetCreateConditionAndUpdateCR(ctx, req, component, componentErr)
+		a := ComponentAdapter{
+			Component:      component,
+			NamespacedName: req.NamespacedName,
+			Client:         r.Client,
+			Ctx:            ctx,
+			Log:            log,
+		}
+		a.SetConditionAndUpdateCR(componentErr)
 		return ctrl.Result{}, componentErr
 	} else {
 		setCounterAnnotation(applicationFailCounterAnnotation, component, count+1)
