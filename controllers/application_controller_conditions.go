@@ -22,11 +22,12 @@ import (
 	logutil "github.com/redhat-appstudio/application-service/pkg/log"
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	ctrl "sigs.k8s.io/controller-runtime"
 )
 
 func (a ApplicationAdapter) SetConditionAndUpdateCR(appErr error) {
 	ctx := a.Ctx
-	log := a.Log
+	log := ctrl.LoggerFrom(ctx)
 	client := a.Client
 	application := a.Application
 

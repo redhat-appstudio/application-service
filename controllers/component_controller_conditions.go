@@ -1,5 +1,5 @@
 /*
-Copyright 2021 Red Hat, Inc.
+Copyright 2021-2023 Red Hat, Inc.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -79,7 +79,7 @@ func (a ComponentAdapter) SetConditionAndUpdateCR(appErr error) {
 
 func (a ComponentAdapter) SetGitOpsGeneratedConditionAndUpdateCR(generateError error) {
 	ctx := a.Ctx
-	log := a.Log
+	log := ctrl.LoggerFrom(ctx)
 	client := a.Client
 	component := a.Component
 
