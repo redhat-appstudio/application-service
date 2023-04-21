@@ -21,7 +21,9 @@ import (
 	"github.com/devfile/api/v2/pkg/apis/workspaces/v1alpha2"
 	data "github.com/devfile/library/v2/pkg/devfile/parser/data"
 	"github.com/devfile/library/v2/pkg/devfile/parser/data/v2/common"
-	. "github.com/onsi/gomega"
+
+	// nolint:staticcheck
+	"github.com/onsi/gomega"
 	devfilePkg "github.com/redhat-appstudio/application-service/pkg/devfile"
 
 	corev1 "k8s.io/api/core/v1"
@@ -44,7 +46,7 @@ func VerifyHASComponentUpdates(devfile data.DevfileData, checklist UpdateCheckli
 		},
 	})
 	if goPkgTest == nil {
-		Expect(err).Should(Not(HaveOccurred()))
+		gomega.Expect(err).Should(gomega.Not(gomega.HaveOccurred()))
 	} else if err != nil {
 		goPkgTest.Error(err)
 	}
@@ -60,8 +62,8 @@ func VerifyHASComponentUpdates(devfile data.DevfileData, checklist UpdateCheckli
 		if checklist.Route != "" {
 			route := componentAttributes.Get(devfilePkg.RouteKey, &err)
 			if goPkgTest == nil {
-				Expect(err).Should(Not(HaveOccurred()))
-				Expect(route).Should(Equal(checklist.Route))
+				gomega.Expect(err).Should(gomega.Not(gomega.HaveOccurred()))
+				gomega.Expect(route).Should(gomega.Equal(checklist.Route))
 			} else if err != nil {
 				goPkgTest.Error(err)
 			} else if route != checklist.Route {
@@ -73,8 +75,8 @@ func VerifyHASComponentUpdates(devfile data.DevfileData, checklist UpdateCheckli
 		if checklist.Replica != 0 {
 			replicas := componentAttributes.Get(devfilePkg.ReplicaKey, &err)
 			if goPkgTest == nil {
-				Expect(err).Should(Not(HaveOccurred()))
-				Expect(replicas).Should(Equal(float64(checklist.Replica)))
+				gomega.Expect(err).Should(gomega.Not(gomega.HaveOccurred()))
+				gomega.Expect(replicas).Should(gomega.Equal(float64(checklist.Replica)))
 			} else if err != nil {
 				goPkgTest.Error(err)
 			} else if int(replicas.(float64)) != checklist.Replica {
@@ -87,8 +89,8 @@ func VerifyHASComponentUpdates(devfile data.DevfileData, checklist UpdateCheckli
 			storageLimitChecklist := limits[corev1.ResourceStorage]
 			storageLimit := componentAttributes.Get(devfilePkg.StorageLimitKey, &err)
 			if goPkgTest == nil {
-				Expect(err).Should(Not(HaveOccurred()))
-				Expect(storageLimit).Should(Equal(storageLimitChecklist.String()))
+				gomega.Expect(err).Should(gomega.Not(gomega.HaveOccurred()))
+				gomega.Expect(storageLimit).Should(gomega.Equal(storageLimitChecklist.String()))
 			} else if err != nil {
 				goPkgTest.Error(err)
 			} else if storageLimit.(string) != storageLimitChecklist.String() {
@@ -101,8 +103,8 @@ func VerifyHASComponentUpdates(devfile data.DevfileData, checklist UpdateCheckli
 			storageRequestChecklist := requests[corev1.ResourceStorage]
 			storageRequest := componentAttributes.Get(devfilePkg.StorageRequestKey, &err)
 			if goPkgTest == nil {
-				Expect(err).Should(Not(HaveOccurred()))
-				Expect(storageRequest).Should(Equal(storageRequestChecklist.String()))
+				gomega.Expect(err).Should(gomega.Not(gomega.HaveOccurred()))
+				gomega.Expect(storageRequest).Should(gomega.Equal(storageRequestChecklist.String()))
 			} else if err != nil {
 				goPkgTest.Error(err)
 			} else if storageRequest.(string) != storageRequestChecklist.String() {
@@ -115,8 +117,8 @@ func VerifyHASComponentUpdates(devfile data.DevfileData, checklist UpdateCheckli
 			memoryLimitChecklist := limits[corev1.ResourceMemory]
 			memoryLimit := componentAttributes.Get(devfilePkg.MemoryLimitKey, &err)
 			if goPkgTest == nil {
-				Expect(err).Should(Not(HaveOccurred()))
-				Expect(memoryLimit.(string)).Should(Equal(memoryLimitChecklist.String()))
+				gomega.Expect(err).Should(gomega.Not(gomega.HaveOccurred()))
+				gomega.Expect(memoryLimit.(string)).Should(gomega.Equal(memoryLimitChecklist.String()))
 			} else if err != nil {
 				goPkgTest.Error(err)
 			} else if memoryLimit.(string) != memoryLimitChecklist.String() {
@@ -129,8 +131,8 @@ func VerifyHASComponentUpdates(devfile data.DevfileData, checklist UpdateCheckli
 			memoryRequestChecklist := requests[corev1.ResourceMemory]
 			memoryRequest := componentAttributes.Get(devfilePkg.MemoryRequestKey, &err)
 			if goPkgTest == nil {
-				Expect(err).Should(Not(HaveOccurred()))
-				Expect(memoryRequest).Should(Equal(memoryRequestChecklist.String()))
+				gomega.Expect(err).Should(gomega.Not(gomega.HaveOccurred()))
+				gomega.Expect(memoryRequest).Should(gomega.Equal(memoryRequestChecklist.String()))
 			} else if err != nil {
 				goPkgTest.Error(err)
 			} else if memoryRequest.(string) != memoryRequestChecklist.String() {
@@ -143,8 +145,8 @@ func VerifyHASComponentUpdates(devfile data.DevfileData, checklist UpdateCheckli
 			cpuLimitChecklist := limits[corev1.ResourceCPU]
 			cpuLimit := componentAttributes.Get(devfilePkg.CpuLimitKey, &err)
 			if goPkgTest == nil {
-				Expect(err).Should(Not(HaveOccurred()))
-				Expect(cpuLimit).Should(Equal(cpuLimitChecklist.String()))
+				gomega.Expect(err).Should(gomega.Not(gomega.HaveOccurred()))
+				gomega.Expect(cpuLimit).Should(gomega.Equal(cpuLimitChecklist.String()))
 			} else if err != nil {
 				goPkgTest.Error(err)
 			} else if cpuLimit.(string) != cpuLimitChecklist.String() {
@@ -157,8 +159,8 @@ func VerifyHASComponentUpdates(devfile data.DevfileData, checklist UpdateCheckli
 			cpuRequestChecklist := requests[corev1.ResourceCPU]
 			cpuRequest := componentAttributes.Get(devfilePkg.CpuRequestKey, &err)
 			if goPkgTest == nil {
-				Expect(err).Should(Not(HaveOccurred()))
-				Expect(cpuRequest).Should(Equal(cpuRequestChecklist.String()))
+				gomega.Expect(err).Should(gomega.Not(gomega.HaveOccurred()))
+				gomega.Expect(cpuRequest).Should(gomega.Equal(cpuRequestChecklist.String()))
 			} else if err != nil {
 				goPkgTest.Error(err)
 			} else if cpuRequest.(string) != cpuRequestChecklist.String() {
@@ -170,8 +172,8 @@ func VerifyHASComponentUpdates(devfile data.DevfileData, checklist UpdateCheckli
 		if checklist.Port != 0 {
 			containerPort := componentAttributes.Get(devfilePkg.ContainerImagePortKey, &err)
 			if goPkgTest == nil {
-				Expect(err).Should(Not(HaveOccurred()))
-				Expect(containerPort).Should(Equal(float64(checklist.Port)))
+				gomega.Expect(err).Should(gomega.Not(gomega.HaveOccurred()))
+				gomega.Expect(containerPort).Should(gomega.Equal(float64(checklist.Port)))
 			} else if err != nil {
 				goPkgTest.Error(err)
 			} else if int(containerPort.(float64)) != checklist.Port {
@@ -189,7 +191,7 @@ func VerifyHASComponentUpdates(devfile data.DevfileData, checklist UpdateCheckli
 				}
 			}
 			if goPkgTest == nil {
-				Expect(isMatched).Should(Equal(true))
+				gomega.Expect(isMatched).Should(gomega.Equal(true))
 			} else if err != nil {
 				goPkgTest.Error(err)
 			} else if !isMatched {

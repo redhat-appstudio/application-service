@@ -35,67 +35,6 @@ import (
 	ctrl "sigs.k8s.io/controller-runtime"
 )
 
-func (r *ComponentReconciler) updateApplicationDevfileModel(hasAppDevfileData data.DevfileData, component appstudiov1alpha1.Component) error {
-
-	if component.Spec.Source.GitSource != nil {
-		newProject := devfileAPIV1.Project{
-			Name: component.Spec.ComponentName,
-			ProjectSource: devfileAPIV1.ProjectSource{
-				Git: &devfileAPIV1.GitProjectSource{
-					GitLikeProjectSource: devfileAPIV1.GitLikeProjectSource{
-						Remotes: map[string]string{
-							"origin": component.Spec.Source.GitSource.URL,
-						},
-					},
-				},
-			},
-		}
-		projects, err := hasAppDevfileData.GetProjects(common.DevfileOptions{})
-		if err != nil {
-			return err
-		}
-		for _, project := range projects {
-			if project.Name == newProject.Name {
-				return fmt.Errorf("application already has a component with name %s", newProject.Name)
-			}
-		}
-		err = hasAppDevfileData.AddProjects([]devfileAPIV1.Project{newProject})
-		if err != nil {
-			return err
-		}
-	} else if component.Spec.ContainerImage != "" {
-		var err error
-
-		// Initialize the attributes
-		devSpec := hasAppDevfileData.GetDevfileWorkspaceSpec()
-
-		// Add the image as a top level attribute
-		devfileAttributes := devSpec.Attributes
-		if devfileAttributes == nil {
-			devfileAttributes = attributes.Attributes{}
-			devSpec.Attributes = devfileAttributes
-			hasAppDevfileData.SetDevfileWorkspaceSpec(*devSpec)
-		}
-		imageAttrString := fmt.Sprintf("containerImage/%s", component.Spec.ComponentName)
-		componentImage := devfileAttributes.GetString(imageAttrString, &err)
-		if err != nil {
-			if _, ok := err.(*attributes.KeyNotFoundError); !ok {
-				return err
-			}
-		}
-		if componentImage != "" {
-			return fmt.Errorf("application already has a component with name %s", component.Name)
-		}
-		devSpec.Attributes = devfileAttributes.PutString(imageAttrString, component.Spec.ContainerImage)
-		hasAppDevfileData.SetDevfileWorkspaceSpec(*devSpec)
-
-	} else {
-		return fmt.Errorf("component source is nil")
-	}
-
-	return nil
-}
-
 func (r *ComponentDetectionQueryReconciler) updateComponentStub(req ctrl.Request, componentDetectionQuery *appstudiov1alpha1.ComponentDetectionQuery, devfilesMap map[string][]byte, devfilesURLMap map[string]string, dockerfileContextMap map[string]string, componentPortsMap map[string][]int) error {
 
 	if componentDetectionQuery == nil {
