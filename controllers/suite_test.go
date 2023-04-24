@@ -99,6 +99,8 @@ var _ = BeforeSuite(func() {
 	Expect(err).ToNot(HaveOccurred())
 
 	mockGhTokenClient := github.MockGitHubTokenClient{}
+
+	//nonCachingClient, err := client.New(k8sManager.GetConfig(), client.Options{Scheme: k8sManager.GetScheme()})
 	// To Do: Set up reconcilers for the other controllers
 	err = (&ApplicationReconciler{
 		Client:            k8sManager.GetClient(),
@@ -111,6 +113,7 @@ var _ = BeforeSuite(func() {
 
 	err = (&ComponentReconciler{
 		Client:            k8sManager.GetClient(),
+		NonCachingClient:  k8sClient,
 		Scheme:            k8sManager.GetScheme(),
 		Log:               ctrl.Log.WithName("controllers").WithName("Component"),
 		Generator:         gitops.NewMockGenerator(),
