@@ -52,7 +52,28 @@ func (r *ComponentReconciler) SetCreateConditionAndUpdateCR(ctx context.Context,
 
 	err := r.Client.Status().Update(ctx, component)
 	if err != nil {
-		log.Error(err, "Unable to update Component")
+		// Retry, and if still fails, then return an error
+		curComponent := &appstudiov1alpha1.Component{
+			TypeMeta: metav1.TypeMeta{
+				APIVersion: "appstudio.redhat.com/v1alpha1",
+				Kind:       "Application",
+			},
+		}
+		err := r.Client.Get(ctx, req.NamespacedName, curComponent)
+		if err != nil {
+			return err
+		}
+
+		curComponent.Status.Devfile = component.Status.Devfile
+		curComponent.Status.ContainerImage = component.Status.ContainerImage
+		curComponent.Status.GitOps = component.Status.GitOps
+		meta.SetStatusCondition(&curComponent.Status.Conditions, condition)
+
+		err = r.Client.Status().Update(ctx, curComponent)
+		if err != nil {
+			log.Error(err, "Unable to update Component")
+		}
+
 		return err
 	}
 	return nil
@@ -82,7 +103,28 @@ func (r *ComponentReconciler) SetUpdateConditionAndUpdateCR(ctx context.Context,
 	meta.SetStatusCondition(&component.Status.Conditions, condition)
 	err := r.Client.Status().Update(ctx, component)
 	if err != nil {
-		log.Error(err, "Unable to update Component")
+		// Retry, and if still fails, then return an error
+		curComponent := &appstudiov1alpha1.Component{
+			TypeMeta: metav1.TypeMeta{
+				APIVersion: "appstudio.redhat.com/v1alpha1",
+				Kind:       "Application",
+			},
+		}
+		err := r.Client.Get(ctx, req.NamespacedName, curComponent)
+		if err != nil {
+			return err
+		}
+
+		curComponent.Status.Devfile = component.Status.Devfile
+		curComponent.Status.ContainerImage = component.Status.ContainerImage
+		curComponent.Status.GitOps = component.Status.GitOps
+		meta.SetStatusCondition(&curComponent.Status.Conditions, condition)
+
+		err = r.Client.Status().Update(ctx, curComponent)
+		if err != nil {
+			log.Error(err, "Unable to update Component")
+		}
+
 		return err
 	}
 
@@ -112,7 +154,24 @@ func (r *ComponentReconciler) SetGitOpsGeneratedConditionAndUpdateCR(ctx context
 
 	err := r.Client.Status().Update(ctx, component)
 	if err != nil {
-		log.Error(err, "Unable to update Component")
+		// Retry, and if still fails, then return an error
+		curComponent := &appstudiov1alpha1.Component{
+			TypeMeta: metav1.TypeMeta{
+				APIVersion: "appstudio.redhat.com/v1alpha1",
+				Kind:       "Application",
+			},
+		}
+		err := r.Client.Get(ctx, req.NamespacedName, curComponent)
+		if err != nil {
+			return err
+		}
+		meta.SetStatusCondition(&curComponent.Status.Conditions, condition)
+
+		err = r.Client.Status().Update(ctx, curComponent)
+		if err != nil {
+			log.Error(err, "Unable to update Component")
+		}
+
 		return err
 	}
 	return nil
