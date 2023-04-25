@@ -133,8 +133,13 @@ func search(log logr.Logger, a Alizer, localpath string, devfileRegistryURL stri
 					// it will go undetected
 					dockerfileContextMapFromRepo[context] = DockerfileName
 					isDockerfilePresent = true
+				} else if f.Name() == ContainerfileName {
+					// Check for Containerfile
+					dockerfileContextMapFromRepo[context] = ContainerfileName
+					isDockerfilePresent = true
 				} else if f.IsDir() && (f.Name() == DockerDir || f.Name() == HiddenDockerDir || f.Name() == BuildDir) {
 					// Check for docker/Dockerfile, .docker/Dockerfile and build/Dockerfile
+					// OR docker/Containerfile, .docker/Containerfile and build/Containerfile
 					dirName := f.Name()
 					dirPath := path.Join(curPath, dirName)
 					files, err := ioutil.ReadDir(dirPath)
@@ -142,8 +147,8 @@ func search(log logr.Logger, a Alizer, localpath string, devfileRegistryURL stri
 						return nil, nil, nil, nil, err
 					}
 					for _, f := range files {
-						if f.Name() == DockerfileName {
-							dockerfileContextMapFromRepo[context] = path.Join(dirName, DockerfileName)
+						if f.Name() == DockerfileName || f.Name() == ContainerfileName {
+							dockerfileContextMapFromRepo[context] = path.Join(dirName, f.Name())
 							isDockerfilePresent = true
 						}
 					}
@@ -166,9 +171,9 @@ func search(log logr.Logger, a Alizer, localpath string, devfileRegistryURL stri
 		}
 	}
 
-	if len(devfileMapFromRepo) == 0 {
-		// if we didnt find any devfile we should return an err
-		err = &NoDevfileFound{Location: localpath}
+	if len(devfilesURLMapFromRepo) == 0 && len(devfileMapFromRepo) == 0 && len(dockerfileContextMapFromRepo) == 0 {
+		// if we didnt find any devfile or dockerfile we should return an err
+		err = fmt.Errorf("no devfile or dockerfile found in the specified location %s", localpath)
 	}
 
 	return devfileMapFromRepo, devfilesURLMapFromRepo, dockerfileContextMapFromRepo, componentPortsMapFromRepo, err

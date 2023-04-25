@@ -52,6 +52,7 @@ const (
 	HiddenDevfileName = ".devfile.yaml"
 	HiddenDevfileDir  = ".devfile"
 	DockerfileName    = "Dockerfile"
+	ContainerfileName = "Containerfile"
 	HiddenDockerDir   = ".docker"
 	DockerDir         = "docker"
 	BuildDir          = "build"
@@ -65,6 +66,11 @@ const (
 	HiddenDirDockerfile = HiddenDockerDir + "/" + DockerfileName // .docker/Dockerfile
 	DockerDirDockerfile = DockerDir + "/" + DockerfileName       // docker/Dockerfile
 	BuildDirDockerfile  = BuildDir + "/" + DockerfileName        // build/Dockerfile
+
+	Containerfile          = ContainerfileName                         // Containerfile
+	HiddenDirContainerfile = HiddenDockerDir + "/" + ContainerfileName // .docker/Containerfile
+	DockerDirContainerfile = DockerDir + "/" + ContainerfileName       // docker/Containerfile
+	BuildDirContainerfile  = BuildDir + "/" + ContainerfileName        // build/Containerfile
 
 	// DevfileRegistryEndpoint is the endpoint of the devfile registry
 	DevfileRegistryEndpoint = "https://registry.devfile.io"
@@ -720,11 +726,13 @@ func FindAndDownloadDevfile(dir string) ([]byte, string, error) {
 	return nil, "", &NoDevfileFound{Location: dir}
 }
 
-// FindAndDownloadDockerfile downloads dockerfile from the various possible dockerfile locations in dir and returns the contents and its context
+// FindAndDownloadDockerfile downloads dockerfile from the various possible dockerfile, or containerfile locations in dir and returns the contents and its context
 func FindAndDownloadDockerfile(dir string) ([]byte, string, error) {
 	var dockerfileBytes []byte
 	var err error
-	validDockerfileLocations := []string{Dockerfile, DockerDirDockerfile, HiddenDirDockerfile, BuildDirDockerfile}
+	// Containerfile is an alternate name for Dockerfile
+	validDockerfileLocations := []string{Dockerfile, DockerDirDockerfile, HiddenDirDockerfile, BuildDirDockerfile,
+		Containerfile, DockerDirContainerfile, HiddenDirContainerfile, BuildDirContainerfile}
 
 	for _, path := range validDockerfileLocations {
 		dockerfilePath := dir + "/" + path
