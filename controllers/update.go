@@ -495,7 +495,7 @@ func (r *ComponentDetectionQueryReconciler) updateComponentStub(req ctrl.Request
 		}
 		componentName := getComponentName(gitSource)
 
-		componentDetectionQuery.Status.ComponentDetected[componentName] = appstudiov1alpha1.ComponentDetectionDescription{
+		detectComp := appstudiov1alpha1.ComponentDetectionDescription{
 			DevfileFound: false, // always false since there is only a dockerfile present for these contexts
 			Language:     "Dockerfile",
 			ProjectType:  "Dockerfile",
@@ -509,6 +509,13 @@ func (r *ComponentDetectionQueryReconciler) updateComponentStub(req ctrl.Request
 				},
 			},
 		}
+
+		if len(componentPortsMap[context]) != 0 {
+			detectComp.ComponentStub.TargetPort = componentPortsMap[context][0]
+		}
+
+		componentDetectionQuery.Status.ComponentDetected[componentName] = detectComp
+
 	}
 
 	return nil

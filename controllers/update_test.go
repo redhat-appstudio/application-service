@@ -915,6 +915,15 @@ func TestUpdateComponentStub(t *testing.T) {
 			},
 		},
 		{
+			name: "dockerfile URL with ports",
+			dockerfileURLMap: map[string]string{
+				"./": "Dockerfile",
+			},
+			componentPortsMap: map[string][]int{
+				"./": {8080},
+			},
+		},
+		{
 			name: "No Kubernetes Components present",
 			devfilesDataMap: map[string]*v2.DevfileV2{
 				"./": {

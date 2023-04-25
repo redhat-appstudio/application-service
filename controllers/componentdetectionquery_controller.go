@@ -216,28 +216,29 @@ func (r *ComponentDetectionQueryReconciler) Reconcile(ctx context.Context, req c
 				dockerfileContextMap[context] = dockerfilePath
 			}
 
+			clonePath, err = ioutils.CreateTempPath(componentDetectionQuery.Name, r.AppFS)
+			if err != nil {
+				log.Error(err, fmt.Sprintf("Unable to create a temp path %s for cloning %v", clonePath, req.NamespacedName))
+				r.SetCompleteConditionAndUpdateCR(ctx, req, &componentDetectionQuery, copiedCDQ, err)
+				return ctrl.Result{}, nil
+			}
+
+			err = util.CloneRepo(clonePath, source.URL, source.Revision, gitToken)
+			if err != nil {
+				log.Error(err, fmt.Sprintf("Unable to clone repo %s to path %s, exiting reconcile loop %v", source.URL, clonePath, req.NamespacedName))
+				r.SetCompleteConditionAndUpdateCR(ctx, req, &componentDetectionQuery, copiedCDQ, err)
+				return ctrl.Result{}, nil
+			}
+
+			log.Info(fmt.Sprintf("cloned from %s to path %s... %v", source.URL, clonePath, req.NamespacedName))
+			componentPath = clonePath
+			if context != "" {
+				componentPath = path.Join(clonePath, context)
+			}
+
 			// Clone the repo if no dockerfile or containerfile present
 			if !isDockerfilePresent {
 				log.Info(fmt.Sprintf("Unable to find devfile, Dockerfile or Containerfile under root directory, run Alizer to detect components... %v", req.NamespacedName))
-
-				clonePath, err = ioutils.CreateTempPath(componentDetectionQuery.Name, r.AppFS)
-				if err != nil {
-					log.Error(err, fmt.Sprintf("Unable to create a temp path %s for cloning %v", clonePath, req.NamespacedName))
-					r.SetCompleteConditionAndUpdateCR(ctx, req, &componentDetectionQuery, copiedCDQ, err)
-					return ctrl.Result{}, nil
-				}
-
-				err = util.CloneRepo(clonePath, source.URL, source.Revision, gitToken)
-				if err != nil {
-					log.Error(err, fmt.Sprintf("Unable to clone repo %s to path %s, exiting reconcile loop %v", source.URL, clonePath, req.NamespacedName))
-					r.SetCompleteConditionAndUpdateCR(ctx, req, &componentDetectionQuery, copiedCDQ, err)
-					return ctrl.Result{}, nil
-				}
-				log.Info(fmt.Sprintf("cloned from %s to path %s... %v", source.URL, clonePath, req.NamespacedName))
-				componentPath = clonePath
-				if context != "" {
-					componentPath = path.Join(clonePath, context)
-				}
 
 				if !isDevfilePresent {
 					components, err = r.AlizerClient.DetectComponents(componentPath)
