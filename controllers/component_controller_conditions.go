@@ -53,12 +53,7 @@ func (r *ComponentReconciler) SetCreateConditionAndUpdateCR(ctx context.Context,
 	err := r.Client.Status().Update(ctx, component)
 	if err != nil {
 		// Retry, and if still fails, then return an error
-		curComponent := &appstudiov1alpha1.Component{
-			TypeMeta: metav1.TypeMeta{
-				APIVersion: "appstudio.redhat.com/v1alpha1",
-				Kind:       "Application",
-			},
-		}
+		curComponent := &appstudiov1alpha1.Component{}
 		err := r.Client.Get(ctx, req.NamespacedName, curComponent)
 		if err != nil {
 			return err
@@ -104,12 +99,7 @@ func (r *ComponentReconciler) SetUpdateConditionAndUpdateCR(ctx context.Context,
 	err := r.Client.Status().Update(ctx, component)
 	if err != nil {
 		// Retry, and if still fails, then return an error
-		curComponent := &appstudiov1alpha1.Component{
-			TypeMeta: metav1.TypeMeta{
-				APIVersion: "appstudio.redhat.com/v1alpha1",
-				Kind:       "Application",
-			},
-		}
+		curComponent := &appstudiov1alpha1.Component{}
 		err := r.Client.Get(ctx, req.NamespacedName, curComponent)
 		if err != nil {
 			return err
@@ -155,12 +145,7 @@ func (r *ComponentReconciler) SetGitOpsGeneratedConditionAndUpdateCR(ctx context
 	err := r.Client.Status().Update(ctx, component)
 	if err != nil {
 		// Retry, and if still fails, then return an error
-		curComponent := &appstudiov1alpha1.Component{
-			TypeMeta: metav1.TypeMeta{
-				APIVersion: "appstudio.redhat.com/v1alpha1",
-				Kind:       "Application",
-			},
-		}
+		curComponent := &appstudiov1alpha1.Component{}
 		err := r.Client.Get(ctx, req.NamespacedName, curComponent)
 		if err != nil {
 			return err

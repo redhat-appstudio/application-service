@@ -60,7 +60,6 @@ import (
 // ComponentReconciler reconciles a Component object
 type ComponentReconciler struct {
 	client.Client
-	NonCachingClient  client.Client
 	Scheme            *runtime.Scheme
 	Log               logr.Logger
 	GitHubOrg         string
