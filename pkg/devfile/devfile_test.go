@@ -236,8 +236,19 @@ func TestConvertApplicationToDevfile(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			gitOpsRepo := appstudiov1alpha1.ApplicationGitRepository{
+				URL:     tt.gitOpsRepo,
+				Branch:  tt.hasApp.Spec.GitOpsRepository.Branch,
+				Context: tt.hasApp.Spec.GitOpsRepository.Context,
+			}
+
+			appModelRepo := appstudiov1alpha1.ApplicationGitRepository{
+				URL:     tt.appModelRepo,
+				Branch:  tt.hasApp.Spec.AppModelRepository.Branch,
+				Context: tt.hasApp.Spec.AppModelRepository.Context,
+			}
 			// Convert the hasApp resource to a devfile
-			convertedDevfile, err := ConvertApplicationToDevfile(tt.hasApp, tt.gitOpsRepo, tt.appModelRepo)
+			convertedDevfile, err := ConvertApplicationToDevfile(tt.hasApp, gitOpsRepo, appModelRepo)
 			if err != nil {
 				t.Errorf("TestConvertApplicationToDevfile() unexpected error: %v", err)
 			} else if !reflect.DeepEqual(convertedDevfile, tt.wantDevfile) {

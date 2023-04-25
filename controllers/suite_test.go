@@ -19,6 +19,7 @@ package controllers
 import (
 	"context"
 	"go/build"
+	"os"
 	"path/filepath"
 	"testing"
 
@@ -98,10 +99,16 @@ var _ = BeforeSuite(func() {
 	})
 	Expect(err).ToNot(HaveOccurred())
 
+	nonCachingClient, err := client.New(k8sManager.GetConfig(), client.Options{Scheme: k8sManager.GetScheme()})
+	if err != nil {
+		os.Exit(1)
+	}
+
 	mockGhTokenClient := github.MockGitHubTokenClient{}
 	// To Do: Set up reconcilers for the other controllers
 	err = (&ApplicationReconciler{
 		Client:            k8sManager.GetClient(),
+		NonCachingClient:  nonCachingClient,
 		Scheme:            k8sManager.GetScheme(),
 		Log:               ctrl.Log.WithName("controllers").WithName("Application"),
 		GitHubTokenClient: mockGhTokenClient,
@@ -111,6 +118,7 @@ var _ = BeforeSuite(func() {
 
 	err = (&ComponentReconciler{
 		Client:            k8sManager.GetClient(),
+		NonCachingClient:  nonCachingClient,
 		Scheme:            k8sManager.GetScheme(),
 		Log:               ctrl.Log.WithName("controllers").WithName("Component"),
 		Generator:         gitops.NewMockGenerator(),

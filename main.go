@@ -33,6 +33,7 @@ import (
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
 	ctrl "sigs.k8s.io/controller-runtime"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/healthz"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 
@@ -117,6 +118,12 @@ func main() {
 		os.Exit(1)
 	}
 
+	nonCachingClient, err := client.New(mgr.GetConfig(), client.Options{Scheme: scheme})
+	if err != nil {
+		setupLog.Error(err, "unable to initialize non cached client")
+		os.Exit(1)
+	}
+
 	// Retrieve the name of the GitHub org to use
 	ghOrg := os.Getenv("GITHUB_ORG")
 	if ghOrg == "" {
@@ -139,6 +146,7 @@ func main() {
 
 	if err = (&controllers.ApplicationReconciler{
 		Client:            mgr.GetClient(),
+		NonCachingClient:  nonCachingClient,
 		Scheme:            mgr.GetScheme(),
 		Log:               ctrl.Log.WithName("controllers").WithName("Application"),
 		GitHubTokenClient: ghTokenClient,
@@ -149,6 +157,7 @@ func main() {
 	}
 	if err = (&controllers.ComponentReconciler{
 		Client:            mgr.GetClient(),
+		NonCachingClient:  nonCachingClient,
 		Scheme:            mgr.GetScheme(),
 		Log:               ctrl.Log.WithName("controllers").WithName("Component"),
 		Generator:         gitopsgen.NewGitopsGen(),

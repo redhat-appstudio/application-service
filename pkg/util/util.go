@@ -289,3 +289,13 @@ func GenerateUniqueHashForWorkloadImageTag(namespace string) string {
 	h.Write([]byte(namespace))
 	return base64.URLEncoding.EncodeToString(h.Sum(nil))[0:5]
 }
+
+// Helper functions to check and remove string from a slice of strings.
+func ContainsString(slice []string, s string) bool {
+	for _, item := range slice {
+		if item == s {
+			return true
+		}
+	}
+	return false
+}

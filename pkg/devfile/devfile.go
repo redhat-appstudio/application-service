@@ -487,7 +487,7 @@ func ParseDevfile(src DevfileSrc) (data.DevfileData, error) {
 
 // ConvertApplicationToDevfile takes in a given Application CR and converts it to
 // a devfile object
-func ConvertApplicationToDevfile(hasApp appstudiov1alpha1.Application, gitOpsRepo string, appModelRepo string) (data.DevfileData, error) {
+func ConvertApplicationToDevfile(hasApp appstudiov1alpha1.Application, gitOpsRepo appstudiov1alpha1.ApplicationGitRepository, appModelRepo appstudiov1alpha1.ApplicationGitRepository) (data.DevfileData, error) {
 	devfileVersion := string(data.APISchemaVersion220)
 	devfileData, err := data.NewDevfileData(devfileVersion)
 	if err != nil {
@@ -496,22 +496,22 @@ func ConvertApplicationToDevfile(hasApp appstudiov1alpha1.Application, gitOpsRep
 
 	devfileData.SetSchemaVersion(devfileVersion)
 
-	devfileAttributes := attributes.Attributes{}.PutString("gitOpsRepository.url", gitOpsRepo).PutString("appModelRepository.url", appModelRepo)
+	devfileAttributes := attributes.Attributes{}.PutString("gitOpsRepository.url", gitOpsRepo.URL).PutString("appModelRepository.url", appModelRepo.URL)
 
 	// Add annotations for repo branch/contexts if needed
-	if hasApp.Spec.AppModelRepository.Branch != "" {
-		devfileAttributes.PutString("appModelRepository.branch", hasApp.Spec.AppModelRepository.Branch)
+	if appModelRepo.Branch != "" {
+		devfileAttributes.PutString("appModelRepository.branch", appModelRepo.Branch)
 	}
-	if hasApp.Spec.AppModelRepository.Context != "" {
-		devfileAttributes.PutString("appModelRepository.context", hasApp.Spec.AppModelRepository.Context)
+	if appModelRepo.Context != "" {
+		devfileAttributes.PutString("appModelRepository.context", appModelRepo.Context)
 	} else {
 		devfileAttributes.PutString("appModelRepository.context", "/")
 	}
-	if hasApp.Spec.GitOpsRepository.Branch != "" {
-		devfileAttributes.PutString("gitOpsRepository.branch", hasApp.Spec.GitOpsRepository.Branch)
+	if gitOpsRepo.Branch != "" {
+		devfileAttributes.PutString("gitOpsRepository.branch", gitOpsRepo.Branch)
 	}
-	if hasApp.Spec.GitOpsRepository.Context != "" {
-		devfileAttributes.PutString("gitOpsRepository.context", hasApp.Spec.GitOpsRepository.Context)
+	if gitOpsRepo.Context != "" {
+		devfileAttributes.PutString("gitOpsRepository.context", gitOpsRepo.Context)
 	} else {
 		devfileAttributes.PutString("gitOpsRepository.context", "./")
 	}

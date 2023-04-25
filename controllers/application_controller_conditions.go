@@ -17,65 +17,71 @@ limitations under the License.
 package controllers
 
 import (
-	"context"
 	"fmt"
 
+	appstudiov1alpha1 "github.com/redhat-appstudio/application-api/api/v1alpha1"
 	logutil "github.com/redhat-appstudio/application-service/pkg/log"
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	ctrl "sigs.k8s.io/controller-runtime"
-
-	appstudiov1alpha1 "github.com/redhat-appstudio/application-api/api/v1alpha1"
 )
 
-func (r *ApplicationReconciler) SetCreateConditionAndUpdateCR(ctx context.Context, req ctrl.Request, application *appstudiov1alpha1.Application, createError error) {
+func (a ApplicationAdapter) SetConditionAndUpdateCR(appErr error) error {
+	ctx := a.Ctx
 	log := ctrl.LoggerFrom(ctx)
+	client := a.NonCachingClient
+	application := a.Application
 
-	if createError == nil {
-		meta.SetStatusCondition(&application.Status.Conditions, metav1.Condition{
-			Type:    "Created",
-			Status:  metav1.ConditionTrue,
-			Reason:  "OK",
-			Message: "Application has been successfully created",
-		})
-	} else {
-		meta.SetStatusCondition(&application.Status.Conditions, metav1.Condition{
-			Type:    "Created",
-			Status:  metav1.ConditionFalse,
-			Reason:  "Error",
-			Message: fmt.Sprintf("Application create failed: %v", createError),
-		})
-		logutil.LogAPIResourceChangeEvent(log, application.Name, "Application", logutil.ResourceCreate, createError)
+	currentApp := &appstudiov1alpha1.Application{}
+	err := client.Get(ctx, a.NamespacedName, currentApp)
+	if err != nil {
+		return err
 	}
 
-	err := r.Client.Status().Update(ctx, application)
+	createCond := meta.FindStatusCondition(currentApp.Status.Conditions, "Created")
+	var condType, condMessage, reason string
+	var condStatus metav1.ConditionStatus
+
+	if createCond != nil && createCond.Status == metav1.ConditionTrue {
+		// Set the "Update" status
+		condType = "Updated"
+		if appErr == nil {
+			condMessage = "Application has been successfully updated"
+			reason = "OK"
+			condStatus = metav1.ConditionTrue
+		} else {
+			condMessage = fmt.Sprintf("Application update failed: %v", appErr)
+			reason = "Error"
+			condStatus = metav1.ConditionFalse
+		}
+	} else {
+		condType = "Created"
+		if appErr == nil {
+			condMessage = "Application has been successfully created"
+			reason = "OK"
+			condStatus = metav1.ConditionTrue
+		} else {
+			condMessage = fmt.Sprintf("Application create failed: %v", appErr)
+			reason = "Error"
+			condStatus = metav1.ConditionFalse
+		}
+	}
+
+	// Set the status condition
+	meta.SetStatusCondition(&currentApp.Status.Conditions, metav1.Condition{
+		Type:    condType,
+		Status:  condStatus,
+		Reason:  reason,
+		Message: condMessage,
+	})
+	logutil.LogAPIResourceChangeEvent(log, currentApp.Name, "Application", logutil.ResourceCreate, appErr)
+
+	currentApp.Status.Devfile = application.Status.Devfile
+	// Update the status of the Application
+	err = client.Status().Update(ctx, currentApp)
 	if err != nil {
 		log.Error(err, "Unable to update Application status")
 	}
-}
 
-func (r *ApplicationReconciler) SetUpdateConditionAndUpdateCR(ctx context.Context, req ctrl.Request, application *appstudiov1alpha1.Application, updateError error) {
-	log := ctrl.LoggerFrom(ctx)
-
-	if updateError == nil {
-		meta.SetStatusCondition(&application.Status.Conditions, metav1.Condition{
-			Type:    "Updated",
-			Status:  metav1.ConditionTrue,
-			Reason:  "OK",
-			Message: "Application has been successfully updated",
-		})
-	} else {
-		meta.SetStatusCondition(&application.Status.Conditions, metav1.Condition{
-			Type:    "Updated",
-			Status:  metav1.ConditionFalse,
-			Reason:  "Error",
-			Message: fmt.Sprintf("Application updated failed: %v", updateError),
-		})
-		logutil.LogAPIResourceChangeEvent(log, application.Name, "Application", logutil.ResourceUpdate, updateError)
-	}
-
-	err := r.Client.Status().Update(ctx, application)
-	if err != nil {
-		log.Error(err, "Unable to update Application status")
-	}
+	return nil
 }
