@@ -3,4 +3,3 @@ ignore:
   - "pkg/spi/spi_mock.go" # mock file for testing
   - "pkg/devfile/detect_mock.go" # mock file for testing
   - "gitops/generate_mock.go" # mock file for testing
-  - "pkg/util/testutil.go" # Shared functions for testing
