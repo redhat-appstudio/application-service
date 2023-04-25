@@ -99,6 +99,7 @@ var _ = BeforeSuite(func() {
 	Expect(err).ToNot(HaveOccurred())
 
 	mockGhTokenClient := github.MockGitHubTokenClient{}
+
 	// To Do: Set up reconcilers for the other controllers
 	err = (&ApplicationReconciler{
 		Client:            k8sManager.GetClient(),
