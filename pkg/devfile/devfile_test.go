@@ -401,7 +401,27 @@ func TestFindAndDownloadDockerfile(t *testing.T) {
 			wantDockerfileContext: "build/Dockerfile",
 		},
 		{
-			name:    "Cannot curl for a Dockerfile",
+			name:                  "Curl Containerfile",
+			url:                   "https://raw.githubusercontent.com/yangcao77/dockerfile-priority/main/case5",
+			wantDockerfileContext: "Containerfile",
+		},
+		{
+			name:                  "Curl docker/Containerfile",
+			url:                   "https://raw.githubusercontent.com/yangcao77/dockerfile-priority/main/case6",
+			wantDockerfileContext: "docker/Containerfile",
+		},
+		{
+			name:                  "Curl .docker/Containerfile",
+			url:                   "https://raw.githubusercontent.com/yangcao77/dockerfile-priority/main/case7",
+			wantDockerfileContext: ".docker/Containerfile",
+		},
+		{
+			name:                  "Curl build/Containerfile",
+			url:                   "https://raw.githubusercontent.com/yangcao77/dockerfile-priority/main/case8",
+			wantDockerfileContext: "build/Containerfile",
+		},
+		{
+			name:    "Cannot curl for a Dockerfile or a Containerfile",
 			url:     "https://github.com/octocat/Hello-World",
 			wantErr: true,
 		},
@@ -617,6 +637,23 @@ func TestScanRepo(t *testing.T) {
 				"devfile-sample-java-springboot-basic": "devfile-sample-java-springboot-basic/docker/Dockerfile",
 				"python-src-none":                      "https://raw.githubusercontent.com/devfile-samples/devfile-sample-python-basic/main/docker/Dockerfile",
 				"devfile-sample-python-basic":          "https://raw.githubusercontent.com/maysunfaisal/multi-components-dockerfile/main/devfile-sample-python-basic/Dockerfile"},
+		},
+		{
+			name:      "Should return 4 dockerfile contexts with dockerfile/containerfile path, and 4 devfileURLs ",
+			clonePath: "/tmp/testclone",
+			repo:      "https://github.com/yangcao77/multi-components-dockerfile",
+			revision:  "containerfile",
+			expectedDevfileURLContextMap: map[string]string{
+				"java-springboot-containerfile": "https://raw.githubusercontent.com/devfile-samples/devfile-sample-java-springboot-basic/main/devfile.yaml",
+				"java-springboot-dockerfile":    "https://raw.githubusercontent.com/devfile-samples/devfile-sample-java-springboot-basic/main/devfile.yaml",
+				"python-dockerfile":             "https://raw.githubusercontent.com/devfile-samples/devfile-sample-python-basic/main/devfile.yaml",
+				"python-containerfile":          "https://raw.githubusercontent.com/devfile-samples/devfile-sample-python-basic/main/devfile.yaml",
+			},
+			expectedDockerfileContextMap: map[string]string{
+				"java-springboot-dockerfile":    "docker/Dockerfile",
+				"java-springboot-containerfile": "docker/Containerfile",
+				"python-dockerfile":             "docker/Dockerfile",
+				"python-containerfile":          "Containerfile"},
 		},
 		{
 			name:                   "Should return one context with one devfile, along with one port detected",
