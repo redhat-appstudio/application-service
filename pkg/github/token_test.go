@@ -16,9 +16,11 @@
 package github
 
 import (
+	"context"
 	"os"
 	"reflect"
 	"testing"
+	"time"
 )
 
 func TestParseGitHubTokens(t *testing.T) {
@@ -26,7 +28,7 @@ func TestParseGitHubTokens(t *testing.T) {
 		name               string
 		githubTokenEnv     string
 		githubTokenListEnv string
-		want               map[string]string
+		want               map[string]*GitHubClient
 		wantErr            bool
 	}{
 		{
@@ -36,35 +38,59 @@ func TestParseGitHubTokens(t *testing.T) {
 		{
 			name:           "Only one token, stored in GITHUB_AUTH_TOKEN",
 			githubTokenEnv: "some_token",
-			want: map[string]string{
-				"GITHUB_AUTH_TOKEN": "some_token",
+			want: map[string]*GitHubClient{
+				"GITHUB_AUTH_TOKEN": &GitHubClient{
+					TokenName: "GITHUB_AUTH_TOKEN",
+					Token:     "some_token",
+				},
 			},
 		},
 		{
 			name:               "Only one token, stored in GITHUB_TOKEN_LIST",
 			githubTokenListEnv: "token1:list_token",
-			want: map[string]string{
-				"token1": "list_token",
+			want: map[string]*GitHubClient{
+				"token1": &GitHubClient{
+					TokenName: "token1",
+					Token:     "list_token",
+				},
 			},
 		},
 		{
 			name:               "Two tokens, one each stored in GITHUB_AUTH_TOKEN and GITHUB_TOKEN_LIST",
 			githubTokenEnv:     "some_token",
 			githubTokenListEnv: "token1:list_token",
-			want: map[string]string{
-				"GITHUB_AUTH_TOKEN": "some_token",
-				"token1":            "list_token",
+			want: map[string]*GitHubClient{
+				"GITHUB_AUTH_TOKEN": &GitHubClient{
+					TokenName: "GITHUB_AUTH_TOKEN",
+					Token:     "some_token",
+				},
+				"token1": &GitHubClient{
+					TokenName: "token1",
+					Token:     "list_token",
+				},
 			},
 		},
 		{
 			name:               "Multiple tokens",
 			githubTokenEnv:     "some_token",
 			githubTokenListEnv: "token1:list_token,token2:another_token,token3:third_token",
-			want: map[string]string{
-				"GITHUB_AUTH_TOKEN": "some_token",
-				"token1":            "list_token",
-				"token2":            "another_token",
-				"token3":            "third_token",
+			want: map[string]*GitHubClient{
+				"GITHUB_AUTH_TOKEN": &GitHubClient{
+					TokenName: "GITHUB_AUTH_TOKEN",
+					Token:     "some_token",
+				},
+				"token1": &GitHubClient{
+					TokenName: "token1",
+					Token:     "list_token",
+				},
+				"token2": &GitHubClient{
+					TokenName: "token2",
+					Token:     "another_token",
+				},
+				"token3": &GitHubClient{
+					TokenName: "token3",
+					Token:     "third_token",
+				},
 			},
 		},
 		{
@@ -109,8 +135,12 @@ func TestParseGitHubTokens(t *testing.T) {
 				t.Errorf("TestParseGitHubTokens() error: unexpected error value %v", err)
 			}
 			if !tt.wantErr {
-				if !reflect.DeepEqual(Tokens, tt.want) {
-					t.Errorf("TestParseGitHubTokens() error: expected %v got %v", tt.want, Tokens)
+				for k, v := range Clients {
+					client := v.Client
+					tt.want[k].Client = client
+				}
+				if !reflect.DeepEqual(Clients, tt.want) {
+					t.Errorf("TestParseGitHubTokens() error: expected %v got %v", tt.want, Clients)
 				}
 			}
 
@@ -119,9 +149,9 @@ func TestParseGitHubTokens(t *testing.T) {
 }
 
 func TestGetNewGitHubClient(t *testing.T) {
-	ghTokenClient := GitHubTokenClient{}
+	//ghTokenClient := GitHubTokenClient{}
 
-	fakeToken := "ghp_faketoken"
+	//fakeToken := "ghp_faketoken"
 
 	tests := []struct {
 		name               string
@@ -132,46 +162,27 @@ func TestGetNewGitHubClient(t *testing.T) {
 		wantErr            bool
 	}{
 		{
-			name:    "No tokens initialized, error should be returned",
-			client:  ghTokenClient,
-			wantErr: true,
-		},
-		{
-			name:           "One token set, should return client",
-			client:         ghTokenClient,
-			githubTokenEnv: "some_token",
-			wantErr:        false,
-		},
-		{
-			name:               "Multiple tokens, should return client",
-			client:             ghTokenClient,
-			githubTokenEnv:     "some_token",
-			githubTokenListEnv: "token1:another_token,token2:third_token",
-			wantErr:            false,
-		},
-		{
-			name:               "Multiple tokens, should return client",
-			client:             ghTokenClient,
-			githubTokenEnv:     "some_token",
-			githubTokenListEnv: "token1:another_token,token:2third_token",
-			wantErr:            false,
-		},
-		{
-			name:          "Passed in token",
-			client:        ghTokenClient,
-			passedInToken: fakeToken,
-			wantErr:       false,
-		},
-		{
 			name:    "Mock client",
 			client:  MockGitHubTokenClient{},
 			wantErr: false,
+		},
+		{
+			name:          "Passed in token",
+			client:        GitHubTokenClient{},
+			passedInToken: "fake-token", // Use an empty token here instead of a fake token string.
+			wantErr:       false,
+		},
+		{
+			name:           "Empty token passed in - should error out because rate limited",
+			client:         MockPrimaryRateLimitGitHubTokenClient{},
+			githubTokenEnv: " ", // Use an empty token here instead of a fake token string, since we need to make a request to GH RateLimit API
+			wantErr:        true,
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			Tokens = nil
+			Clients = nil
 			os.Unsetenv("GITHUB_AUTH_TOKEN")
 			os.Unsetenv("GITHUB_TOKEN_LIST")
 			if tt.githubTokenEnv != "" {
@@ -183,13 +194,89 @@ func TestGetNewGitHubClient(t *testing.T) {
 
 			_ = ParseGitHubTokens()
 			ghClient, err := tt.client.GetNewGitHubClient(tt.passedInToken)
-			if tt.name != "Mock client" && tt.name != "Passed in token" && !tt.wantErr {
-				if Tokens[ghClient.TokenName] == "" {
-					t.Errorf("TestGetNewGitHubClient() error: expected token value %v with key %v", Tokens[ghClient.TokenName], ghClient.TokenName)
-				}
-			}
 			if tt.wantErr != (err != nil) {
 				t.Errorf("TestGetNewGitHubClient() error: unexpected error value %v", err)
+			}
+			if tt.name != "Mock client" && tt.name != "Passed in token" && !tt.wantErr {
+				if ghClient == nil {
+					t.Errorf("TestGetNewGitHubClient() error: did not expect GitHub Client to be nil")
+				}
+				if Clients[ghClient.TokenName] == nil {
+					t.Errorf("TestGetNewGitHubClient() error: expected token value %v with key %v", Clients[ghClient.TokenName], ghClient.TokenName)
+				}
+			}
+
+		})
+	}
+}
+
+func TestGetRandomClient(t *testing.T) {
+	//ghTokenClient := GitHubTokenClient{}
+
+	//fakeToken := "ghp_faketoken"
+
+	tests := []struct {
+		name               string
+		client             GitHubToken
+		clientPool         map[string]*GitHubClient
+		githubTokenEnv     string
+		githubTokenListEnv string
+		passedInToken      string
+		wantErr            bool
+	}{
+		{
+			name:       "Empty client pool - should return an error",
+			clientPool: make(map[string]*GitHubClient),
+			wantErr:    true,
+		},
+		{
+			name: "primary-rate-limit",
+			clientPool: map[string]*GitHubClient{
+				"fake1": {
+					TokenName: "fake1",
+					Token:     "fake",
+					Client:    GetMockedPrimaryRateLimitedClient(),
+				},
+			},
+			wantErr: true,
+		},
+		{
+			name: "secondary-rate-limit",
+			clientPool: map[string]*GitHubClient{
+				"mock": {
+					TokenName: "mock",
+					Token:     "fake",
+					Client:    GetMockedSecondaryRateLimitedClient(),
+				},
+			},
+			wantErr: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+
+			client, err := getRandomClient(tt.clientPool)
+			if tt.wantErr != (err != nil) && tt.name != "secondary-rate-limit" {
+				t.Errorf("TestGetRandomClient() error: unexpected error value %v", err)
+			}
+			if tt.name == "secondary-rate-limit" {
+				Clients = tt.clientPool
+				// Deliberately lock the secondary rate limit object until we need to test the related fields
+				client.SecondaryRateLimit.mu.Lock()
+				_, err := client.GenerateNewRepository(context.Background(), "test-org", "test-repo", "test description")
+				if err == nil {
+					t.Error("TestGetRandomClient() error: expected err not to be nil")
+				}
+
+				client.SecondaryRateLimit.mu.Unlock()
+				time.Sleep(time.Second * 1)
+
+				_, err = getRandomClient(tt.clientPool)
+				if err == nil {
+					t.Error("TestGetRandomClient() error: unexpected err not to be nil")
+				}
+
 			}
 
 		})

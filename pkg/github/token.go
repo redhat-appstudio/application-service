@@ -19,6 +19,7 @@ import (
 	"context"
 	"fmt"
 	"math/rand"
+	"net/http"
 	"os"
 	"strings"
 	"time"
@@ -29,14 +30,14 @@ import (
 )
 
 type GitHubToken interface {
-	GetNewGitHubClient(token string) (GitHubClient, error)
+	GetNewGitHubClient(token string) (*GitHubClient, error)
 }
 
 type GitHubTokenClient struct {
 }
 
 // Tokens is mapping of token names to GitHub tokens
-var Tokens map[string]string
+var Clients map[string]*GitHubClient
 
 // ParseGitHubTokens parses all of the possible GitHub tokens available to HAS and makes them available within the "github" package
 // This function should *only* be called once: at operator startup.
@@ -47,15 +48,22 @@ func ParseGitHubTokens() error {
 		return fmt.Errorf("no GitHub tokens were provided. Either GITHUB_TOKEN_LIST or GITHUB_AUTH_TOKEN (legacy) must be set")
 	}
 
-	Tokens = make(map[string]string)
+	Clients = make(map[string]*GitHubClient)
 	if githubToken != "" {
 		// The old token format, stored in 'GITHUB_AUTH_TOKEN', didn't require a key/'name' for the token
 		// So use the key 'GITHUB_AUTH_TOKEN' for it
-		Tokens["GITHUB_AUTH_TOKEN"] = githubToken
+		ts := oauth2.StaticTokenSource(&oauth2.Token{AccessToken: githubToken})
+		tc := oauth2.NewClient(context.Background(), ts)
+		token, err := createGitHubClientFromToken(&tc.Transport, githubToken, "GITHUB_AUTH_TOKEN")
+		if err != nil {
+			return err
+		}
+		Clients["GITHUB_AUTH_TOKEN"] = token
 	}
 
 	// Parse any tokens passed in through the 'GITHUB_TOKEN_LIST' environment variable
 	// e.g. GITHUB_TOKEN_LIST=token1:ghp_faketoken,token2:ghp_anothertoken
+	//emptyGitHubClient := GitHubClient{}
 	if githubTokenList != "" {
 		// Each token key-value pair is separated by a comma, so split the string based on commas and loop over each key-value pair
 		tokenKeyValuePairs := strings.Split(githubTokenList, ",")
@@ -70,59 +78,104 @@ func ParseGitHubTokens() error {
 			tokenKey := splitTokenKeyValuePair[0]
 			tokenValue := splitTokenKeyValuePair[1]
 
-			if Tokens[tokenKey] != "" {
+			if Clients[tokenKey] != nil {
 				return fmt.Errorf("a token with the key '%s' already exists. Each token must have a unique key", tokenKey)
 			}
-			Tokens[tokenKey] = tokenValue
+
+			ts := oauth2.StaticTokenSource(&oauth2.Token{AccessToken: tokenValue})
+			tc := oauth2.NewClient(context.Background(), ts)
+			token, err := createGitHubClientFromToken(&tc.Transport, tokenValue, tokenKey)
+			if err != nil {
+				return err
+			}
+			Clients[tokenKey] = token
 		}
 	}
 
 	return nil
 }
 
-// getRandomToken randomly retrieves a token from all of the tokens available to HAS
+// getRandomClient randomly retrieves a token from all of the tokens available to HAS
 // It returns the token and the name/key of the token
-func getRandomToken() (string, string, error) {
-	if len(Tokens) == 0 {
-		return "", "", fmt.Errorf("no GitHub tokens initialized")
+func getRandomClient(clientPool map[string]*GitHubClient) (*GitHubClient, error) {
+	if len(clientPool) == 0 {
+		return nil, fmt.Errorf("no GitHub tokens available")
 	}
 	/* #nosec G404 -- not used for cryptographic purposes*/
-	index := rand.Intn(len(Tokens))
+	index := rand.Intn(len(clientPool))
 
 	i := 0
-	var tokenName, token string
-	for k, v := range Tokens {
+	var ghClient *GitHubClient
+	for _, v := range clientPool {
 		if i == index {
-			tokenName = k
-			token = v
+			ghClient = v
 		}
 		i++
 	}
-	return token, tokenName, nil
+
+	// Check the Primary rate limit
+	rl, _, err := ghClient.Client.RateLimits(context.Background())
+	if err != nil {
+		return nil, err
+	}
+	if rl != nil && (rl.Core != nil && rl.Core.Remaining < 10) || (rl.Search != nil && rl.Search.Remaining < 2) {
+		newClientPool := make(map[string]*GitHubClient)
+		for k, v := range clientPool {
+			if k != ghClient.TokenName {
+				newClientPool[k] = v
+			}
+		}
+		return getRandomClient(newClientPool)
+	}
+
+	// Check the secondary rate limit
+	var isSecondaryRl bool
+	ghClient.SecondaryRateLimit.mu.Lock()
+	isSecondaryRl = ghClient.SecondaryRateLimit.isLimitReached
+	ghClient.SecondaryRateLimit.mu.Unlock()
+
+	if isSecondaryRl {
+		newClientPool := make(map[string]*GitHubClient)
+		for k, v := range clientPool {
+			if k != ghClient.TokenName {
+				newClientPool[k] = v
+			}
+		}
+		return getRandomClient(newClientPool)
+	}
+	return ghClient, nil
 }
 
-// GetNewGitHubClient intializes a new Go-GitHub client
+// GetNewGitHubClient returns a Go-GitHub client
 // If a token is passed in (non-empty string) it will use that token for the GitHub client
 // If no token is passed in (empty string), a token will be randomly selected by HAS.
 // It returns the GitHub client, and (if a token was randomly selected) the name of the token used for the client
 // If an error is encountered retrieving the token, or initializing the client, an error is returned
-func (g GitHubTokenClient) GetNewGitHubClient(token string) (GitHubClient, error) {
-	var ghToken, ghTokenName string
-	var err error
-	if token == "" {
-		ghToken, ghTokenName, err = getRandomToken()
-		if err != nil {
-			return GitHubClient{}, err
-		}
-	} else {
+func (g GitHubTokenClient) GetNewGitHubClient(token string) (*GitHubClient, error) {
+	var ghToken string
+	if token != "" {
 		ghToken = token
+		ts := oauth2.StaticTokenSource(&oauth2.Token{AccessToken: ghToken})
+		tc := oauth2.NewClient(context.Background(), ts)
+		ghClient, err := createGitHubClientFromToken(&tc.Transport, ghToken, "")
+		if err != nil {
+			return nil, err
+		}
+		return ghClient, nil
+	} else {
+		ghClient, err := getRandomClient(Clients)
+		if err != nil {
+			return nil, err
+		}
+		return ghClient, nil
 	}
+}
 
-	ts := oauth2.StaticTokenSource(&oauth2.Token{AccessToken: ghToken})
-	tc := oauth2.NewClient(context.Background(), ts)
-	rateLimiter, err := github_ratelimit.NewRateLimitWaiterClient(tc.Transport, github_ratelimit.WithSingleSleepLimit(time.Minute, nil))
+func createGitHubClientFromToken(roundTripper *http.RoundTripper, ghToken string, ghTokenName string) (*GitHubClient, error) {
+	rateLimiter, err := github_ratelimit.NewRateLimitWaiterClient(*roundTripper, github_ratelimit.WithLimitDetectedCallback(rateLimitCallBackfunc))
+
 	if err != nil {
-		return GitHubClient{}, err
+		return nil, err
 	}
 	client := github.NewClient(rateLimiter)
 	githubClient := GitHubClient{
@@ -131,5 +184,28 @@ func (g GitHubTokenClient) GetNewGitHubClient(token string) (GitHubClient, error
 		Client:    client,
 	}
 
-	return githubClient, nil
+	return &githubClient, nil
+}
+
+func rateLimitCallBackfunc(cbContext *github_ratelimit.CallbackContext) {
+	// Retrieve the request's context and get the client name from it
+	// Use the client name to lookup the client pointer
+	req := *cbContext.Request
+	reqCtx := req.Context()
+	ghClientName := reqCtx.Value("ghClient").(string)
+	ghClient := Clients[ghClientName]
+
+	// Start a goroutine that marks the given client as rate limited and sleeps for 'TotalSleepTime'
+	go func(client *GitHubClient) {
+		client.SecondaryRateLimit.mu.Lock()
+		client.SecondaryRateLimit.isLimitReached = true
+		client.SecondaryRateLimit.mu.Unlock()
+
+		// Sleep until the rate limit is over
+		time.Sleep(*cbContext.TotalSleepTime)
+		client.SecondaryRateLimit.mu.Lock()
+		client.SecondaryRateLimit.isLimitReached = false
+		client.SecondaryRateLimit.mu.Unlock()
+	}(ghClient)
+
 }

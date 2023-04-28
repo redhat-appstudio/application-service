@@ -554,8 +554,9 @@ func TestGenerateGitops(t *testing.T) {
 			}
 			mockKubernetesComponents := mockDevfileData.EXPECT().GetComponents(kubernetesComponentFilter)
 			mockKubernetesComponents.Return(kubernetesComponents, nil).AnyTimes()
-			mockedClient := github.GitHubClient{
-				Client: github.GetMockedClient(),
+			mockedClient := &github.GitHubClient{
+				Client:    github.GetMockedClient(),
+				TokenName: "some-token",
 			}
 			err := tt.reconciler.generateGitops(ctx, mockedClient, ctrl.Request{}, tt.component, mockDevfileData)
 			if (err != nil) != tt.wantErr {

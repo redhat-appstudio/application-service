@@ -19,6 +19,7 @@ import (
 	"context"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/testutil"
@@ -105,13 +106,30 @@ func TestGenerateNewRepository(t *testing.T) {
 			numReposCreated:        1,
 			numReposCreationFailed: 2,
 		},
+		{
+			name:                   "Repo creation fails due to secondary rate limit",
+			repoName:               "secondary-rate-limit",
+			orgName:                "redhat-appstudio-appdata",
+			want:                   "https://github.com/redhat-appstudio-appdata/secondary-rate-limit",
+			wantErr:                true,
+			numReposCreated:        1,
+			numReposCreationFailed: 2,
+		},
 	}
 
 	numTests := len(tests)
 	for _, tt := range tests {
 		mockedClient := GitHubClient{
-			Client: GetMockedClient(),
+			Client:    GetMockedClient(),
+			TokenName: "mock",
 		}
+		if Clients == nil {
+			Clients = make(map[string]*GitHubClient)
+		}
+		Clients["mock"] = &mockedClient
+
+		// Deliberately lock the secondary rate limit object until we need to test the related fields
+		Clients["mock"].SecondaryRateLimit.mu.Lock()
 
 		t.Run(tt.name, func(t *testing.T) {
 			repoURL, err := mockedClient.GenerateNewRepository(context.Background(), tt.orgName, tt.repoName, "")
@@ -140,6 +158,17 @@ func TestGenerateNewRepository(t *testing.T) {
 				t.Errorf("TestGenerateNewRepository() error: expected %v got %v", tt.want, repoURL)
 			}
 
+			if tt.repoName == "secondary-rate-limit" {
+				Clients["mock"].SecondaryRateLimit.mu.Unlock()
+				time.Sleep(time.Second * 1)
+				if !Clients["mock"].SecondaryRateLimit.isLimitReached {
+					t.Errorf("TestGenerateNewRepository() error expected github client to be secondary rate limited")
+				}
+				time.Sleep(time.Second * 3)
+				if Clients["mock"].SecondaryRateLimit.isLimitReached {
+					t.Errorf("TestGenerateNewRepository() error expected github client to no longer be secondary rate limited")
+				}
+			}
 			//verify the number of successful repos created
 			assert.Equal(t, float64(tt.numReposCreated), testutil.ToFloat64(metrics.GitOpsRepoCreationSucceeded))
 			assert.Equal(t, float64(tt.numReposCreationFailed), testutil.ToFloat64(metrics.GitOpsRepoCreationFailed))

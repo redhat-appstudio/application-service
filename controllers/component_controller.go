@@ -527,7 +527,7 @@ func (r *ComponentReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 
 // generateGitops retrieves the necessary information about a Component's gitops repository (URL, branch, context)
 // and attempts to use the GitOps package to generate gitops resources based on that component
-func (r *ComponentReconciler) generateGitops(ctx context.Context, ghClient github.GitHubClient, req ctrl.Request, component *appstudiov1alpha1.Component, compDevfileData data.DevfileData) error {
+func (r *ComponentReconciler) generateGitops(ctx context.Context, ghClient *github.GitHubClient, req ctrl.Request, component *appstudiov1alpha1.Component, compDevfileData data.DevfileData) error {
 	log := ctrl.LoggerFrom(ctx)
 
 	gitOpsURL, gitOpsBranch, gitOpsContext, err := util.ProcessGitOpsStatus(component.Status.GitOps, ghClient.Token)
