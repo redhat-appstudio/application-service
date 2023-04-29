@@ -39,7 +39,7 @@ func TestParseGitHubTokens(t *testing.T) {
 			name:           "Only one token, stored in GITHUB_AUTH_TOKEN",
 			githubTokenEnv: "some_token",
 			want: map[string]*GitHubClient{
-				"GITHUB_AUTH_TOKEN": &GitHubClient{
+				"GITHUB_AUTH_TOKEN": {
 					TokenName: "GITHUB_AUTH_TOKEN",
 					Token:     "some_token",
 				},
@@ -49,7 +49,7 @@ func TestParseGitHubTokens(t *testing.T) {
 			name:               "Only one token, stored in GITHUB_TOKEN_LIST",
 			githubTokenListEnv: "token1:list_token",
 			want: map[string]*GitHubClient{
-				"token1": &GitHubClient{
+				"token1": {
 					TokenName: "token1",
 					Token:     "list_token",
 				},
@@ -60,11 +60,11 @@ func TestParseGitHubTokens(t *testing.T) {
 			githubTokenEnv:     "some_token",
 			githubTokenListEnv: "token1:list_token",
 			want: map[string]*GitHubClient{
-				"GITHUB_AUTH_TOKEN": &GitHubClient{
+				"GITHUB_AUTH_TOKEN": {
 					TokenName: "GITHUB_AUTH_TOKEN",
 					Token:     "some_token",
 				},
-				"token1": &GitHubClient{
+				"token1": {
 					TokenName: "token1",
 					Token:     "list_token",
 				},
@@ -75,19 +75,19 @@ func TestParseGitHubTokens(t *testing.T) {
 			githubTokenEnv:     "some_token",
 			githubTokenListEnv: "token1:list_token,token2:another_token,token3:third_token",
 			want: map[string]*GitHubClient{
-				"GITHUB_AUTH_TOKEN": &GitHubClient{
+				"GITHUB_AUTH_TOKEN": {
 					TokenName: "GITHUB_AUTH_TOKEN",
 					Token:     "some_token",
 				},
-				"token1": &GitHubClient{
+				"token1": {
 					TokenName: "token1",
 					Token:     "list_token",
 				},
-				"token2": &GitHubClient{
+				"token2": {
 					TokenName: "token2",
 					Token:     "another_token",
 				},
-				"token3": &GitHubClient{
+				"token3": {
 					TokenName: "token3",
 					Token:     "third_token",
 				},
