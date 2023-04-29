@@ -192,7 +192,7 @@ func rateLimitCallBackfunc(cbContext *github_ratelimit.CallbackContext) {
 	// Use the client name to lookup the client pointer
 	req := *cbContext.Request
 	reqCtx := req.Context()
-	ghClientName := reqCtx.Value("ghClient").(string)
+	ghClientName := reqCtx.Value(GHClientKey).(string)
 	ghClient := Clients[ghClientName]
 
 	// Start a goroutine that marks the given client as rate limited and sleeps for 'TotalSleepTime'
