@@ -201,7 +201,7 @@ func TestGetNewGitHubClient(t *testing.T) {
 				if ghClient == nil {
 					t.Errorf("TestGetNewGitHubClient() error: did not expect GitHub Client to be nil")
 				}
-				if Clients[ghClient.TokenName] == nil {
+				if ghClient != nil && Clients[ghClient.TokenName] == nil {
 					t.Errorf("TestGetNewGitHubClient() error: expected token value %v with key %v", Clients[ghClient.TokenName], ghClient.TokenName)
 				}
 			}

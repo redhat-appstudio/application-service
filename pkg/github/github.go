@@ -43,6 +43,12 @@ type SecondaryRateLimit struct {
 	mu             sync.Mutex
 }
 
+type ContextKey string
+
+const (
+	GHClientKey ContextKey = "ghClient"
+)
+
 // ServerError is used to identify gitops repo creation failures caused by server errors
 type ServerError struct {
 	err error
@@ -62,7 +68,7 @@ func GenerateNewRepositoryName(displayName, uniqueHash string) string {
 
 func (g *GitHubClient) GenerateNewRepository(ctx context.Context, orgName string, repoName string, description string) (string, error) {
 	// Add the client to the context
-	ctx = context.WithValue(ctx, "ghClient", g.TokenName)
+	ctx = context.WithValue(ctx, GHClientKey, g.TokenName)
 	isPrivate := false
 	appStudioAppDataURL := "https://github.com/" + orgName + "/"
 	metrics.GitOpsRepoCreationTotalReqs.Inc()
