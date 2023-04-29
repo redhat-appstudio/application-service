@@ -24,37 +24,35 @@ type MockPrimaryRateLimitGitHubTokenClient struct {
 type MockSecondaryRateLimitGitHubTokenClient struct {
 }
 
-var FakeClients map[string]*GitHubClient
-
 // GetNewGitHubClient returns a mocked Go-GitHub client. No actual tokens are passed in or used when this function is called
 func (g MockGitHubTokenClient) GetNewGitHubClient(token string) (*GitHubClient, error) {
-	FakeClients = make(map[string]*GitHubClient)
-	FakeClients["fake1"] = &GitHubClient{
+	fakeClients := make(map[string]*GitHubClient)
+	fakeClients["fake1"] = &GitHubClient{
 		TokenName: "fake1",
 		Token:     token,
 		Client:    GetMockedClient(),
 	}
-	FakeClients["fake2"] = &GitHubClient{
+	fakeClients["fake2"] = &GitHubClient{
 		TokenName: "fake2",
 		Token:     "faketoken2",
 		Client:    GetMockedClient(),
 	}
-	FakeClients["fake3"] = &GitHubClient{
+	fakeClients["fake3"] = &GitHubClient{
 		TokenName: "fake3",
 		Token:     "faketoken3",
 		Client:    GetMockedClient(),
 	}
 
-	return getRandomClient(FakeClients)
+	return getRandomClient(fakeClients)
 }
 
 func (g MockPrimaryRateLimitGitHubTokenClient) GetNewGitHubClient(token string) (*GitHubClient, error) {
-	FakeClients = make(map[string]*GitHubClient)
-	FakeClients["fake1"] = &GitHubClient{
+	fakeClients := make(map[string]*GitHubClient)
+	fakeClients["fake1"] = &GitHubClient{
 		TokenName: "fake1",
 		Token:     token,
 		Client:    GetMockedPrimaryRateLimitedClient(),
 	}
 
-	return getRandomClient(FakeClients)
+	return getRandomClient(fakeClients)
 }
