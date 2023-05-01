@@ -178,6 +178,12 @@ func TestGetNewGitHubClient(t *testing.T) {
 			githubTokenEnv: " ", // Use an empty token here instead of a fake token string, since we need to make a request to GH RateLimit API
 			wantErr:        true,
 		},
+		{
+			name:           "Invalid token passed in - should error out",
+			client:         GitHubTokenClient{},
+			githubTokenEnv: "dsfaasldkfnwerwe", // Use an empty token here instead of a fake token string, since we need to make a request to GH RateLimit API
+			wantErr:        true,
+		},
 	}
 
 	for _, tt := range tests {

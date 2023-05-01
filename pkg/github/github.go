@@ -18,9 +18,12 @@ package github
 import (
 	"context"
 	"fmt"
+	"net/http"
 	"net/url"
+	"strconv"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/brianvoe/gofakeit/v6"
 	"github.com/google/go-github/v41/github"
@@ -81,6 +84,15 @@ func (g *GitHubClient) GenerateNewRepository(ctx context.Context, orgName string
 			metrics.GitOpsRepoCreationFailed.Inc()
 			return "", &ServerError{err: err}
 		}
+	}
+
+	// Handle secondary rate limit if applicable
+	if resp != nil && resp.StatusCode == 403 && strings.Contains(err.Error(), "secondary rate limit") {
+		err := handleSecondaryRateLimit(resp, g)
+		if err != nil {
+			return "", err
+		}
+
 	}
 
 	if err != nil {
@@ -171,5 +183,44 @@ func (g *GitHubClient) DeleteRepository(ctx context.Context, orgName string, rep
 	if err != nil {
 		return err
 	}
+	return nil
+}
+
+func handleSecondaryRateLimit(resp *github.Response, client *GitHubClient) error {
+	var sleepUntil time.Time
+	var curTime time.Time
+
+	// Check the 'Retry-After' header first.
+	retryAfter := resp.Header["Retry-After"]
+	if len(retryAfter) == 0 {
+		// Check the 'X-RateLimit-Reset' header instead since 'Retry-After' was nil
+		rateLimitReset := resp.Header[http.CanonicalHeaderKey("x-ratelimit-reset")]
+		rateLimitResetSeconds, err := strconv.ParseInt(rateLimitReset[0], 10, 64)
+		if err != nil {
+			return err
+		}
+		sleepUntil = time.Unix(rateLimitResetSeconds, 0)
+	} else {
+		retryAfterSeconds, err := strconv.ParseInt(retryAfter[0], 10, 64)
+		if err != nil {
+			return err
+		}
+		curTime = time.Now()
+		sleepUntil = curTime.Add(time.Duration(retryAfterSeconds * int64(time.Second)))
+	}
+
+	go func(client *GitHubClient, sleepUntil time.Time) {
+		client.SecondaryRateLimit.mu.Lock()
+		client.SecondaryRateLimit.isLimitReached = true
+		client.SecondaryRateLimit.mu.Unlock()
+
+		// Sleep until the rate limit is over
+		timeUntilSleep := time.Until(sleepUntil)
+		time.Sleep(timeUntilSleep)
+		client.SecondaryRateLimit.mu.Lock()
+		client.SecondaryRateLimit.isLimitReached = false
+		client.SecondaryRateLimit.mu.Unlock()
+	}(client, sleepUntil)
+
 	return nil
 }

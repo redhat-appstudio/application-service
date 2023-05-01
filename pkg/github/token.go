@@ -22,9 +22,7 @@ import (
 	"net/http"
 	"os"
 	"strings"
-	"time"
 
-	"github.com/gofri/go-github-ratelimit/github_ratelimit"
 	"github.com/google/go-github/v41/github"
 	"golang.org/x/oauth2"
 )
@@ -54,7 +52,7 @@ func ParseGitHubTokens() error {
 		// So use the key 'GITHUB_AUTH_TOKEN' for it
 		ts := oauth2.StaticTokenSource(&oauth2.Token{AccessToken: githubToken})
 		tc := oauth2.NewClient(context.Background(), ts)
-		token, err := createGitHubClientFromToken(&tc.Transport, githubToken, "GITHUB_AUTH_TOKEN")
+		token, err := createGitHubClientFromToken(tc, githubToken, "GITHUB_AUTH_TOKEN")
 		if err != nil {
 			return err
 		}
@@ -84,7 +82,7 @@ func ParseGitHubTokens() error {
 
 			ts := oauth2.StaticTokenSource(&oauth2.Token{AccessToken: tokenValue})
 			tc := oauth2.NewClient(context.Background(), ts)
-			token, err := createGitHubClientFromToken(&tc.Transport, tokenValue, tokenKey)
+			token, err := createGitHubClientFromToken(tc, tokenValue, tokenKey)
 			if err != nil {
 				return err
 			}
@@ -157,7 +155,7 @@ func (g GitHubTokenClient) GetNewGitHubClient(token string) (*GitHubClient, erro
 		ghToken = token
 		ts := oauth2.StaticTokenSource(&oauth2.Token{AccessToken: ghToken})
 		tc := oauth2.NewClient(context.Background(), ts)
-		ghClient, err := createGitHubClientFromToken(&tc.Transport, ghToken, "")
+		ghClient, err := createGitHubClientFromToken(tc, ghToken, "")
 		if err != nil {
 			return nil, err
 		}
@@ -171,13 +169,13 @@ func (g GitHubTokenClient) GetNewGitHubClient(token string) (*GitHubClient, erro
 	}
 }
 
-func createGitHubClientFromToken(roundTripper *http.RoundTripper, ghToken string, ghTokenName string) (*GitHubClient, error) {
-	rateLimiter, err := github_ratelimit.NewRateLimitWaiterClient(*roundTripper, github_ratelimit.WithLimitDetectedCallback(rateLimitCallBackfunc))
+func createGitHubClientFromToken(httpClient *http.Client, ghToken string, ghTokenName string) (*GitHubClient, error) {
+	/*rateLimiter, err := github_ratelimit.NewRateLimitWaiterClient(*roundTripper, github_ratelimit.WithLimitDetectedCallback(rateLimitCallBackfunc))
 
 	if err != nil {
 		return nil, err
-	}
-	client := github.NewClient(rateLimiter)
+	}*/
+	client := github.NewClient(httpClient)
 	githubClient := GitHubClient{
 		TokenName: ghTokenName,
 		Token:     ghToken,
@@ -187,25 +185,32 @@ func createGitHubClientFromToken(roundTripper *http.RoundTripper, ghToken string
 	return &githubClient, nil
 }
 
-func rateLimitCallBackfunc(cbContext *github_ratelimit.CallbackContext) {
+/*func rateLimitCallBackfunc(cbContext *github_ratelimit.CallbackContext) {
 	// Retrieve the request's context and get the client name from it
 	// Use the client name to lookup the client pointer
+
+	sleepUntil := *cbContext.SleepUntil
+	curTime := time.Now()
+	noSleep := 0 * time.Second
+	cbContext.SleepUntil = &curTime
+	cbContext.TotalSleepTime = &noSleep
 	req := *cbContext.Request
 	reqCtx := req.Context()
 	ghClientName := reqCtx.Value(GHClientKey).(string)
 	ghClient := Clients[ghClientName]
 
 	// Start a goroutine that marks the given client as rate limited and sleeps for 'TotalSleepTime'
-	go func(client *GitHubClient) {
+	go func(client *GitHubClient, sleepUntil time.Time) {
 		client.SecondaryRateLimit.mu.Lock()
 		client.SecondaryRateLimit.isLimitReached = true
 		client.SecondaryRateLimit.mu.Unlock()
 
 		// Sleep until the rate limit is over
-		time.Sleep(*cbContext.TotalSleepTime)
+		timeUntilSleep := time.Until(sleepUntil)
+		time.Sleep(timeUntilSleep)
 		client.SecondaryRateLimit.mu.Lock()
 		client.SecondaryRateLimit.isLimitReached = false
 		client.SecondaryRateLimit.mu.Unlock()
-	}(ghClient)
+	}(ghClient, sleepUntil)
 
-}
+}*/

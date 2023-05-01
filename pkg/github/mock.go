@@ -18,7 +18,9 @@ package github
 import (
 	"io/ioutil"
 	"net/http"
+	"strconv"
 	"strings"
+	"time"
 
 	"github.com/google/go-github/v41/github"
 	"github.com/migueleliasweb/go-github-mock/src/mock"
@@ -56,6 +58,14 @@ func GetMockedClient() *github.Client {
 					WriteError(w,
 						http.StatusUnauthorized,
 						"user is unauthorized",
+					)
+				} else if strings.Contains(reqBody, "ratelimit-reset-secondary-rate-limit") {
+					resetTime := strconv.FormatInt(time.Now().Add(3*time.Second).Unix(), 10)
+
+					w.Header().Add("x-ratelimit-reset", resetTime)
+					WriteError(w,
+						http.StatusForbidden,
+						"secondary rate limit",
 					)
 				} else if strings.Contains(reqBody, "secondary-rate-limit") {
 					w.Header().Add("Retry-After", "3")
@@ -160,7 +170,7 @@ func GetMockedClient() *github.Client {
 		),
 	)
 
-	cl, _ := createGitHubClientFromToken(&mockedHTTPClient.Transport, "", "mock")
+	cl, _ := createGitHubClientFromToken(mockedHTTPClient, "", "mock")
 	return cl.Client
 
 }
@@ -189,7 +199,7 @@ func GetMockedPrimaryRateLimitedClient() *github.Client {
 		),
 	)
 
-	cl, _ := createGitHubClientFromToken(&mockedHTTPClient.Transport, "", "mock")
+	cl, _ := createGitHubClientFromToken(mockedHTTPClient, "", "mock")
 	return cl.Client
 
 }
@@ -228,7 +238,7 @@ func GetMockedSecondaryRateLimitedClient() *github.Client {
 		),
 	)
 
-	cl, _ := createGitHubClientFromToken(&mockedHTTPClient.Transport, "", "mock")
+	cl, _ := createGitHubClientFromToken(mockedHTTPClient, "", "mock")
 	return cl.Client
 
 }
