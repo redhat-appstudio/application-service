@@ -172,7 +172,7 @@ func (g GitHubTokenClient) GetNewGitHubClient(token string) (*GitHubClient, erro
 }
 
 func createGitHubClientFromToken(roundTripper *http.RoundTripper, ghToken string, ghTokenName string) (*GitHubClient, error) {
-	rateLimiter, err := github_ratelimit.NewRateLimitWaiterClient(*roundTripper, github_ratelimit.WithLimitDetectedCallback(rateLimitCallBackfunc))
+	rateLimiter, err := github_ratelimit.NewRateLimitWaiterClient(*roundTripper, github_ratelimit.WithSingleSleepLimit(0, rateLimitCallBackfunc))
 
 	if err != nil {
 		return nil, err
@@ -202,7 +202,7 @@ func rateLimitCallBackfunc(cbContext *github_ratelimit.CallbackContext) {
 		client.SecondaryRateLimit.mu.Unlock()
 
 		// Sleep until the rate limit is over
-		time.Sleep(*cbContext.TotalSleepTime)
+		time.Sleep(time.Until(*cbContext.SleepUntil))
 		client.SecondaryRateLimit.mu.Lock()
 		client.SecondaryRateLimit.isLimitReached = false
 		client.SecondaryRateLimit.mu.Unlock()
