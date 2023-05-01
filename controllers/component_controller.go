@@ -273,7 +273,7 @@ func (r *ComponentReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 					devfileLocation = gitURL + string(os.PathSeparator) + devfileLocation
 				} else {
 					// Use SPI to retrieve the devfile from the private repository
-					devfileBytes, err = spi.DownloadDevfileUsingSPI(r.SPIClient, ctx, component.Namespace, source.GitSource.URL, "main", context)
+					devfileBytes, err = spi.DownloadDevfileUsingSPI(r.SPIClient, ctx, component.Namespace, source.GitSource.URL, source.GitSource.Revision, context)
 					if err != nil {
 						log.Error(err, fmt.Sprintf("Unable to download from any known devfile locations from %s %v", source.GitSource.URL, req.NamespacedName))
 						_ = r.SetCreateConditionAndUpdateCR(ctx, req, &component, err)
