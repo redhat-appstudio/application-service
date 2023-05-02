@@ -558,7 +558,7 @@ func TestGenerateGitops(t *testing.T) {
 				Client:    github.GetMockedClient(),
 				TokenName: "some-token",
 			}
-			err := tt.reconciler.generateGitops(ctx, mockedClient, ctrl.Request{}, tt.component, mockDevfileData)
+			err := tt.reconciler.generateGitops(ctx, mockedClient, tt.component, mockDevfileData)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("TestGenerateGitops() unexpected error: %v", err)
 			}

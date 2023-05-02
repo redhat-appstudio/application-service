@@ -169,7 +169,7 @@ func TestGetNewGitHubClient(t *testing.T) {
 		{
 			name:          "Passed in token",
 			client:        GitHubTokenClient{},
-			passedInToken: "fake-token", // Use an empty token here instead of a fake token string.
+			passedInToken: "fake-token",
 			wantErr:       false,
 		},
 		{
