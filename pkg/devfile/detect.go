@@ -252,13 +252,9 @@ func AnalyzePath(a Alizer, localpath, context, devfileRegistryURL string, devfil
 	if !isDevfilePresent && isDockerfilePresent {
 		// Still invoke alizer to detect the ports from the component
 		_, _, _, detectedPorts, err := AnalyzeAndDetectDevfile(a, localpath, devfileRegistryURL)
-		if err != nil {
-			if _, ok := err.(*NoDevfileFound); ok {
-				return nil
-			}
-			return err
+		if err == nil {
+			componentPortsMapFromRepo[context] = detectedPorts
 		}
-		componentPortsMapFromRepo[context] = detectedPorts
 	}
 
 	return nil
