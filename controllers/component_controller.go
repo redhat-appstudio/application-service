@@ -273,6 +273,7 @@ func (r *ComponentReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 						metrics.HandleRateLimitMetrics(err, metricsLabel)
 						log.Error(err, fmt.Sprintf("Unable to get main branch of Github Repo %v ... %v", source.GitSource.URL, req.NamespacedName))
 						retErr := fmt.Errorf("unable to get default branch of Github Repo %v, try to fall back to main branch, failed to get main branch... %v", source.GitSource.URL, req.NamespacedName)
+						_ = r.SetCreateConditionAndUpdateCR(ctx, req, &component, retErr)
 						return ctrl.Result{}, retErr
 					} else {
 						source.GitSource.Revision = "main"

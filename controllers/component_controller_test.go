@@ -1032,7 +1032,7 @@ var _ = Describe("Component controller", func() {
 			// Make sure the devfile model was properly set in Component
 			errCondition := createdHasComp.Status.Conditions[len(createdHasComp.Status.Conditions)-1]
 			Expect(errCondition.Status).Should(Equal(metav1.ConditionFalse))
-			Expect(errCondition.Message).Should(ContainSubstring("Component create failed: parse \"http://fds df &\": invalid character \" \" in host name"))
+			Expect(errCondition.Message).Should(ContainSubstring("Unable to get main branch of Github Repo"))
 
 			hasAppLookupKey := types.NamespacedName{Name: applicationName, Namespace: HASAppNamespace}
 
