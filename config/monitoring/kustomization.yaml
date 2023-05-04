@@ -12,3 +12,6 @@ configMapGenerator:
   - name: grafana-dashboard-has-gitops-repo-metrics
     files:
       - grafana-dashboards/has-gitops-repo-metrics.json
+  - name: grafana-dashboard-has-rate-limiting-metrics
+    files:
+      - grafana-dashboards/has-rate-limiting-metrics.json
