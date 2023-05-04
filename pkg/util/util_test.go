@@ -471,8 +471,7 @@ func TestGetMappedComponent(t *testing.T) {
 			name: "Test01ComponentSpecFilledIn",
 			component: appstudiov1alpha1.Component{
 				ObjectMeta: metav1.ObjectMeta{
-					Name:      "testcomponent",
-					Namespace: "testnamespace",
+					Name: "testcomponent",
 				},
 				Spec: appstudiov1alpha1.ComponentSpec{
 					ComponentName: "frontEnd",
@@ -509,7 +508,6 @@ func TestGetMappedComponent(t *testing.T) {
 			},
 			want: gitopsgenv1alpha1.GeneratorOptions{
 				Name:        "testcomponent",
-				Namespace:   "testnamespace",
 				Application: "AppTest001",
 				Secret:      "Secret",
 				Resources: corev1.ResourceRequirements{
@@ -540,8 +538,7 @@ func TestGetMappedComponent(t *testing.T) {
 			name: "Test02EmptyComponentSource",
 			component: appstudiov1alpha1.Component{
 				ObjectMeta: metav1.ObjectMeta{
-					Name:      "testcomponent",
-					Namespace: "testnamespace",
+					Name: "testcomponent",
 				},
 				Spec: appstudiov1alpha1.ComponentSpec{
 					ComponentName: "frontEnd",
@@ -551,7 +548,6 @@ func TestGetMappedComponent(t *testing.T) {
 			},
 			want: gitopsgenv1alpha1.GeneratorOptions{
 				Name:        "testcomponent",
-				Namespace:   "testnamespace",
 				Application: "AppTest002",
 				GitSource:   &gitopsgenv1alpha1.GitSource{},
 				Resources: corev1.ResourceRequirements{
@@ -570,8 +566,7 @@ func TestGetMappedComponent(t *testing.T) {
 			name: "Test03NoSource",
 			component: appstudiov1alpha1.Component{
 				ObjectMeta: metav1.ObjectMeta{
-					Name:      "testcomponent",
-					Namespace: "testnamespace",
+					Name: "testcomponent",
 				},
 				Spec: appstudiov1alpha1.ComponentSpec{
 					ComponentName: "frontEnd",
@@ -580,7 +575,6 @@ func TestGetMappedComponent(t *testing.T) {
 			},
 			want: gitopsgenv1alpha1.GeneratorOptions{
 				Name:        "testcomponent",
-				Namespace:   "testnamespace",
 				Application: "AppTest003",
 				Resources: corev1.ResourceRequirements{
 					Requests: corev1.ResourceList{
@@ -598,8 +592,7 @@ func TestGetMappedComponent(t *testing.T) {
 			name: "Test04EmptyComponentSourceUnion",
 			component: appstudiov1alpha1.Component{
 				ObjectMeta: metav1.ObjectMeta{
-					Name:      "testcomponent",
-					Namespace: "testnamespace",
+					Name: "testcomponent",
 				},
 				Spec: appstudiov1alpha1.ComponentSpec{
 					ComponentName: "frontEnd",
@@ -611,7 +604,6 @@ func TestGetMappedComponent(t *testing.T) {
 			},
 			want: gitopsgenv1alpha1.GeneratorOptions{
 				Name:        "testcomponent",
-				Namespace:   "testnamespace",
 				Application: "AppTest004",
 				GitSource:   &gitopsgenv1alpha1.GitSource{},
 				Resources: corev1.ResourceRequirements{
@@ -630,8 +622,7 @@ func TestGetMappedComponent(t *testing.T) {
 			name: "Test05EmptyGitSource",
 			component: appstudiov1alpha1.Component{
 				ObjectMeta: metav1.ObjectMeta{
-					Name:      "testcomponent",
-					Namespace: "testnamespace",
+					Name: "testcomponent",
 				},
 				Spec: appstudiov1alpha1.ComponentSpec{
 					ComponentName: "frontEnd",
@@ -645,7 +636,6 @@ func TestGetMappedComponent(t *testing.T) {
 			},
 			want: gitopsgenv1alpha1.GeneratorOptions{
 				Name:        "testcomponent",
-				Namespace:   "testnamespace",
 				Application: "AppTest005",
 				GitSource:   &gitopsgenv1alpha1.GitSource{},
 				Resources: corev1.ResourceRequirements{
@@ -664,8 +654,7 @@ func TestGetMappedComponent(t *testing.T) {
 			name: "Test06KubernetesResources",
 			component: appstudiov1alpha1.Component{
 				ObjectMeta: metav1.ObjectMeta{
-					Name:      "testcomponent",
-					Namespace: "testnamespace",
+					Name: "testcomponent",
 				},
 				Spec: appstudiov1alpha1.ComponentSpec{
 					ComponentName: "frontEnd",
@@ -698,7 +687,6 @@ func TestGetMappedComponent(t *testing.T) {
 			},
 			want: gitopsgenv1alpha1.GeneratorOptions{
 				Name:        "testcomponent",
-				Namespace:   "testnamespace",
 				Application: "AppTest005",
 				GitSource: &gitopsgenv1alpha1.GitSource{
 					URL: "url",
@@ -738,7 +726,6 @@ func TestGetMappedComponent(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			mappedComponent := GetMappedGitOpsComponent(tt.component, tt.kubernetesResources)
 			assert.True(t, tt.want.Name == mappedComponent.Name, "Expected ObjectMeta.Name: %s, is different than actual: %s", tt.want.Name, mappedComponent.Name)
-			assert.True(t, tt.want.Namespace == mappedComponent.Namespace, "Expected ObjectMeta.Namespace: %s, is different than actual: %s", tt.want.Namespace, mappedComponent.Namespace)
 			assert.True(t, tt.want.Application == mappedComponent.Application, "Expected Spec.Application: %s, is different than actual: %s", tt.want.Application, mappedComponent.Application)
 			assert.True(t, tt.want.Secret == mappedComponent.Secret, "Expected Spec.Secret: %s, is different than actual: %s", tt.want.Secret, mappedComponent.Secret)
 			assert.True(t, reflect.DeepEqual(tt.want.Resources, mappedComponent.Resources), "Expected Spec.Resources: %s, is different than actual: %s", tt.want.Resources, mappedComponent.Resources)

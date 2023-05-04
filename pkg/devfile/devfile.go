@@ -79,7 +79,7 @@ const (
 	DevfileStageRegistryEndpoint = "https://registry.stage.devfile.io"
 )
 
-func GetResourceFromDevfile(log logr.Logger, devfileData data.DevfileData, deployAssociatedComponents map[string]string, compName, appName, image, namespace string) (parser.KubernetesResources, error) {
+func GetResourceFromDevfile(log logr.Logger, devfileData data.DevfileData, deployAssociatedComponents map[string]string, compName, appName, image string) (parser.KubernetesResources, error) {
 	kubernetesComponentFilter := common.DevfileOptions{
 		ComponentOptions: common.ComponentOptions{
 			ComponentType: v1alpha2.KubernetesComponentType,
@@ -167,7 +167,6 @@ func GetResourceFromDevfile(log logr.Logger, devfileData data.DevfileData, deplo
 
 					// replace the deployment metadata.name to use the component name
 					resources.Deployments[0].ObjectMeta.Name = compName
-					resources.Deployments[0].ObjectMeta.Namespace = namespace
 
 					// generate and append the deployment labels with the hc & ha information
 					if resources.Deployments[0].ObjectMeta.Labels != nil {
@@ -352,7 +351,6 @@ func GetResourceFromDevfile(log logr.Logger, devfileData data.DevfileData, deplo
 				if len(resources.Services) > 0 {
 					// replace the service metadata.name to use the component name
 					resources.Services[0].ObjectMeta.Name = compName
-					resources.Services[0].ObjectMeta.Namespace = namespace
 
 					// generate and append the service labels with the hc & ha information
 					if resources.Services[0].ObjectMeta.Labels != nil {
@@ -394,7 +392,6 @@ func GetResourceFromDevfile(log logr.Logger, devfileData data.DevfileData, deplo
 					}
 
 					resources.Routes[0].ObjectMeta.Name = routeName
-					resources.Routes[0].ObjectMeta.Namespace = namespace
 
 					// generate and append the route labels with the hc & ha information
 					if resources.Routes[0].ObjectMeta.Labels != nil {
@@ -537,7 +534,7 @@ func ConvertImageComponentToDevfile(comp appstudiov1alpha1.Component) (data.Devf
 		Name: comp.Spec.ComponentName,
 	})
 
-	deploymentTemplate := GenerateDeploymentTemplate(comp.Name, comp.Spec.Application, comp.Namespace, comp.Spec.ContainerImage)
+	deploymentTemplate := GenerateDeploymentTemplate(comp.Name, comp.Spec.Application, comp.Spec.ContainerImage)
 	deploymentTemplateBytes, err := yaml.Marshal(deploymentTemplate)
 	if err != nil {
 		return nil, err
@@ -568,7 +565,7 @@ func ConvertImageComponentToDevfile(comp appstudiov1alpha1.Component) (data.Devf
 }
 
 // CreateDevfileForDockerfileBuild creates a devfile with the dockerfile uri and build context
-func CreateDevfileForDockerfileBuild(dockerfileUri, buildContext, name, application, namespace string) (data.DevfileData, error) {
+func CreateDevfileForDockerfileBuild(dockerfileUri, buildContext, name, application string) (data.DevfileData, error) {
 	devfileVersion := string(data.APISchemaVersion220)
 	devfileData, err := data.NewDevfileData(devfileVersion)
 	if err != nil {
@@ -582,7 +579,7 @@ func CreateDevfileForDockerfileBuild(dockerfileUri, buildContext, name, applicat
 		Description: "Basic Devfile for a Dockerfile Component",
 	})
 
-	deploymentTemplate := GenerateDeploymentTemplate(name, application, namespace, "")
+	deploymentTemplate := GenerateDeploymentTemplate(name, application, "")
 	deploymentTemplateBytes, err := yaml.Marshal(deploymentTemplate)
 	if err != nil {
 		return nil, err
@@ -645,7 +642,7 @@ func CreateDevfileForDockerfileBuild(dockerfileUri, buildContext, name, applicat
 }
 
 // GenerateDeploymentTemplate generates a deployment template with the information passed
-func GenerateDeploymentTemplate(name, application, namespace, image string) appsv1.Deployment {
+func GenerateDeploymentTemplate(name, application, image string) appsv1.Deployment {
 
 	k8sLabels := generateK8sLabels(name, application)
 	matchLabels := getMatchLabel(name)
@@ -661,9 +658,8 @@ func GenerateDeploymentTemplate(name, application, namespace, image string) apps
 			APIVersion: "apps/v1",
 		},
 		ObjectMeta: v1.ObjectMeta{
-			Name:      name,
-			Namespace: namespace,
-			Labels:    k8sLabels,
+			Name:   name,
+			Labels: k8sLabels,
 		},
 		Spec: appsv1.DeploymentSpec{
 			Selector: &v1.LabelSelector{
