@@ -3170,7 +3170,7 @@ schemaVersion: 2.2.0`
 			}
 			logger := ctrl.Log.WithName("TestGetResourceFromDevfile")
 
-			actualResources, err := GetResourceFromDevfile(logger, devfileData, deployAssociatedComponents, tt.componentName, tt.appName, tt.image)
+			actualResources, err := GetResourceFromDevfile(logger, devfileData, deployAssociatedComponents, tt.componentName, tt.appName, tt.image, "")
 			if tt.wantErr && (err == nil) {
 				t.Error("wanted error but got nil")
 			} else if !tt.wantErr && err != nil {

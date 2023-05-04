@@ -20,6 +20,7 @@ import (
 	"context"
 	"fmt"
 	"path/filepath"
+	"reflect"
 
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/redhat-appstudio/application-service/pkg/metrics"
@@ -28,8 +29,10 @@ import (
 	"golang.org/x/exp/maps"
 	corev1 "k8s.io/api/core/v1"
 
+	devfileParser "github.com/devfile/library/v2/pkg/devfile/parser"
 	"github.com/go-logr/logr"
 	appstudiov1alpha1 "github.com/redhat-appstudio/application-api/api/v1alpha1"
+	devfile "github.com/redhat-appstudio/application-service/pkg/devfile"
 	github "github.com/redhat-appstudio/application-service/pkg/github"
 	logutil "github.com/redhat-appstudio/application-service/pkg/log"
 	"github.com/redhat-appstudio/application-service/pkg/util"
@@ -179,6 +182,46 @@ func (r *SnapshotEnvironmentBindingReconciler) Reconcile(ctx context.Context, re
 			return ctrl.Result{}, err
 		}
 
+		var clusterIngressDomain string
+		isKubernetesCluster := isKubernetesCluster(environment)
+		unsupportedConfig := environment.Spec.UnstableConfigurationFields
+		if unsupportedConfig != nil {
+			clusterIngressDomain = unsupportedConfig.IngressDomain
+		}
+
+		// Safeguard if Ingress Domain is empty on Kubernetes
+		if isKubernetesCluster && clusterIngressDomain == "" {
+			err = fmt.Errorf("ingress domain cannot be empty on a Kubernetes cluster")
+			log.Error(err, "unable to create an ingress resource on a Kubernetes cluster")
+			r.SetConditionAndUpdateCR(ctx, req, &appSnapshotEnvBinding, err)
+			return ctrl.Result{}, err
+		}
+
+		devfileSrc := devfile.DevfileSrc{
+			Data: hasComponent.Status.Devfile,
+		}
+		compDevfileData, err := devfile.ParseDevfile(devfileSrc)
+		if err != nil {
+			errMsg := fmt.Sprintf("Unable to parse the devfile from Component status, exiting reconcile loop %v", req.NamespacedName)
+			log.Error(err, errMsg)
+			r.SetConditionAndUpdateCR(ctx, req, &appSnapshotEnvBinding, fmt.Errorf("%v: %v", errMsg, err))
+			return ctrl.Result{}, err
+		}
+
+		deployAssociatedComponents, err := devfileParser.GetDeployComponents(compDevfileData)
+		if err != nil {
+			log.Error(err, "unable to get deploy components")
+			r.SetConditionAndUpdateCR(ctx, req, &appSnapshotEnvBinding, err)
+			return ctrl.Result{}, err
+		}
+
+		kubernetesResources, err := devfile.GetResourceFromDevfile(log, compDevfileData, deployAssociatedComponents, hasComponent.Name, hasComponent.Spec.Application, hasComponent.Spec.ContainerImage, hasComponent.Namespace, clusterIngressDomain)
+		if err != nil {
+			log.Error(err, "unable to get kubernetes resources from the devfile outerloop components")
+			r.SetConditionAndUpdateCR(ctx, req, &appSnapshotEnvBinding, err)
+			return ctrl.Result{}, err
+		}
+
 		var imageName string
 
 		for _, snapshotComponent := range appSnapshot.Spec.Components {
@@ -254,6 +297,20 @@ func (r *SnapshotEnvironmentBindingReconciler) Reconcile(ctx context.Context, re
 			OverlayEnvVar: environmentConfigEnvVars,
 			K8sLabels:     kubeLabels,
 		}
+
+		if !reflect.DeepEqual(kubernetesResources, devfileParser.KubernetesResources{}) {
+			genOptions.KubernetesResources.Deployments = append(genOptions.KubernetesResources.Deployments, kubernetesResources.Deployments...)
+			genOptions.KubernetesResources.Services = append(genOptions.KubernetesResources.Services, kubernetesResources.Services...)
+			genOptions.KubernetesResources.Routes = append(genOptions.KubernetesResources.Routes, kubernetesResources.Routes...)
+			genOptions.KubernetesResources.Ingresses = append(genOptions.KubernetesResources.Ingresses, kubernetesResources.Ingresses...)
+			genOptions.KubernetesResources.Others = append(genOptions.KubernetesResources.Others, kubernetesResources.Others...)
+		}
+
+		clusterInfo := gitopsgen.ClusterInfo{
+			IsKubernetesCluster: isKubernetesCluster,
+			IngressDomain:       clusterIngressDomain,
+		}
+
 		//Gitops functions return sanitized error messages
 		metrics.ControllerGitRequest.With(prometheus.Labels{"controller": asebName, "tokenName": ghClient.TokenName, "operation": "GenerateOverlaysAndPush"}).Inc()
 		err = r.Generator.GenerateOverlaysAndPush(tempDir, clone, gitOpsRemoteURL, genOptions, applicationName, environmentName, imageName, "", r.AppFS, gitOpsBranch, gitOpsContext, true, componentGeneratedResources)
@@ -316,6 +373,20 @@ func (r *SnapshotEnvironmentBindingReconciler) Reconcile(ctx context.Context, re
 
 	log.Info(fmt.Sprintf("Finished reconcile loop for %v", req.NamespacedName))
 	return ctrl.Result{}, nil
+}
+
+// isKubernetesCluster checks if its either a Kubernetes or an OpenShift cluster
+// from the Environment custom resource
+func isKubernetesCluster(environment appstudiov1alpha1.Environment) bool {
+	unstableConfig := environment.Spec.UnstableConfigurationFields
+
+	if unstableConfig != nil {
+		if unstableConfig.ClusterType == appstudiov1alpha1.ConfigurationClusterType_Kubernetes {
+			return true
+		}
+	}
+
+	return false
 }
 
 // SetupWithManager sets up the controller with the Manager.

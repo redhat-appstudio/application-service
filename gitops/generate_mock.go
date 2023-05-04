@@ -52,14 +52,14 @@ func (m *MockGenerator) CloneGenerateAndPush(outputPath string, remote string, o
 }
 
 // GenerateOverlaysAndPush is a simplified version of the real method.  It's intended to invoke a pass/fail response from GenerateOverlays and nothing else
-func (m *MockGenerator) GenerateOverlaysAndPush(outputPath string, clone bool, remote string, options gitopsv1alpha1.GeneratorOptions, applicationName, environmentName, imageName, namespace string, appFs afero.Afero, branch string, context string, doPush bool, componentGeneratedResources map[string][]string) error {
+func (m *MockGenerator) GenerateOverlaysAndPush(outputPath string, clone bool, remote string, options gitopsv1alpha1.GeneratorOptions, applicationName, environmentName, imageName, namespace string, clusterInfo gitops.ClusterInfo, appFs afero.Afero, branch string, context string, doPush bool, componentGeneratedResources map[string][]string) error {
 	componentName := options.Name
 	repoPath := filepath.Join(outputPath, applicationName)
 
 	// Generate the gitops resources and update the parent kustomize yaml file
 	gitopsFolder := filepath.Join(repoPath, context)
 	componentEnvOverlaysPath := filepath.Join(gitopsFolder, "components", componentName, "overlays", environmentName)
-	if err := gitops.GenerateOverlays(appFs, gitopsFolder, componentEnvOverlaysPath, options, imageName, namespace, componentGeneratedResources); err != nil {
+	if err := gitops.GenerateOverlays(appFs, gitopsFolder, componentEnvOverlaysPath, options, imageName, namespace, clusterInfo, componentGeneratedResources); err != nil {
 		return fmt.Errorf("failed to generate the gitops resources in overlays dir %q for component %q: %s", componentEnvOverlaysPath, componentName, err)
 	}
 
