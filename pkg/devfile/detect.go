@@ -163,7 +163,7 @@ func search(log logr.Logger, a Alizer, localpath string, devfileRegistryURL stri
 			}
 
 			if (!isDevfilePresent && !isDockerfilePresent) || (isDevfilePresent && !isDockerfilePresent) {
-				err := AnalyzePath(a, curPath, context, devfileRegistryURL, devfileMapFromRepo, devfilesURLMapFromRepo, dockerfileContextMapFromRepo, componentPortsMapFromRepo, isDevfilePresent, isDockerfilePresent)
+				err := AnalyzePath(log, a, curPath, context, devfileRegistryURL, devfileMapFromRepo, devfilesURLMapFromRepo, dockerfileContextMapFromRepo, componentPortsMapFromRepo, isDevfilePresent, isDockerfilePresent)
 				if err != nil {
 					return nil, nil, nil, nil, err
 				}
@@ -185,7 +185,7 @@ func search(log logr.Logger, a Alizer, localpath string, devfileRegistryURL stri
 // devfilesURLMapFromRepo: a context to the matched devfileURL from the github repository. If no devfile was present, then a link to a matching devfile in the devfile registry will be used instead.
 // dockerfileContextMapFromRepo: a context to the dockerfile uri or a matched dockerfileURL from the devfile registry if no dockerfile is present in the context
 // componentPortsMapFromRepo: a context to the list of ports that were detected by alizer in the source code, at that given context
-func AnalyzePath(a Alizer, localpath, context, devfileRegistryURL string, devfileMapFromRepo map[string][]byte, devfilesURLMapFromRepo, dockerfileContextMapFromRepo map[string]string, componentPortsMapFromRepo map[string][]int, isDevfilePresent, isDockerfilePresent bool) error {
+func AnalyzePath(log logr.Logger, a Alizer, localpath, context, devfileRegistryURL string, devfileMapFromRepo map[string][]byte, devfilesURLMapFromRepo, dockerfileContextMapFromRepo map[string]string, componentPortsMapFromRepo map[string][]int, isDevfilePresent, isDockerfilePresent bool) error {
 	if isDevfilePresent {
 		// If devfile is present, check to see if we can determine a Dockerfile from it
 		devfileBytes := devfileMapFromRepo[context]
@@ -254,6 +254,8 @@ func AnalyzePath(a Alizer, localpath, context, devfileRegistryURL string, devfil
 		_, _, _, detectedPorts, err := AnalyzeAndDetectDevfile(a, localpath, devfileRegistryURL)
 		if err == nil {
 			componentPortsMapFromRepo[context] = detectedPorts
+		} else {
+			log.Info("failed to detect port from context: %v, error: %v", context, err)
 		}
 	}
 
