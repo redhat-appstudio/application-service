@@ -591,6 +591,9 @@ func TestScanRepo(t *testing.T) {
 			expectedDockerfileContextMap: map[string]string{
 				"devfile-sample-java-springboot-basic": "devfile-sample-java-springboot-basic/docker/Dockerfile",
 				"python":                               "https://raw.githubusercontent.com/devfile-samples/devfile-sample-python-basic/main/docker/Dockerfile"},
+			expectedPortsMap: map[string][]int{
+				"python": {8081},
+			},
 		},
 		{
 			name:                   "Should return 2 devfile contexts, and 2 devfileURLs as this is a multi comp devfile - with revision specified",
@@ -605,6 +608,9 @@ func TestScanRepo(t *testing.T) {
 			expectedDockerfileContextMap: map[string]string{
 				"devfile-sample-java-springboot-basic": "devfile-sample-java-springboot-basic/docker/Dockerfile",
 				"python":                               "https://raw.githubusercontent.com/devfile-samples/devfile-sample-python-basic/main/docker/Dockerfile"},
+			expectedPortsMap: map[string][]int{
+				"python": {8081},
+			},
 		},
 		{
 			name:                   "Should return 2 devfile contexts, and 2 devfileURLs with multi-component but no outerloop definition",
@@ -637,6 +643,9 @@ func TestScanRepo(t *testing.T) {
 				"devfile-sample-java-springboot-basic": "devfile-sample-java-springboot-basic/docker/Dockerfile",
 				"python-src-none":                      "https://raw.githubusercontent.com/devfile-samples/devfile-sample-python-basic/main/docker/Dockerfile",
 				"devfile-sample-python-basic":          "https://raw.githubusercontent.com/maysunfaisal/multi-components-dockerfile/main/devfile-sample-python-basic/Dockerfile"},
+			expectedPortsMap: map[string][]int{
+				"devfile-sample-nodejs-basic": {3000},
+			},
 		},
 		{
 			name:      "Should return 4 dockerfile contexts with dockerfile/containerfile path, and 4 devfileURLs ",
