@@ -100,6 +100,9 @@ func (r *SnapshotEnvironmentBindingReconciler) Reconcile(ctx context.Context, re
 		return reconcile.Result{}, err
 	}
 
+	// Add the Go-GitHub client name to the context
+	ctx = context.WithValue(ctx, github.GHClientKey, ghClient.TokenName)
+
 	applicationName := appSnapshotEnvBinding.Spec.Application
 	environmentName := appSnapshotEnvBinding.Spec.Environment
 	snapshotName := appSnapshotEnvBinding.Spec.Snapshot

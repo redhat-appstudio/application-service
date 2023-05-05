@@ -19,6 +19,7 @@ package controllers
 import (
 	"context"
 	"fmt"
+	"time"
 
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/redhat-appstudio/application-service/pkg/metrics"
@@ -28,8 +29,10 @@ import (
 
 	k8sErrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/client-go/util/workqueue"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/controller"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	"sigs.k8s.io/controller-runtime/pkg/event"
 	"sigs.k8s.io/controller-runtime/pkg/predicate"
@@ -90,6 +93,9 @@ func (r *ApplicationReconciler) Reconcile(ctx context.Context, req ctrl.Request)
 		return reconcile.Result{}, err
 	}
 
+	// Add the Go-GitHub client name to the context
+	ctx = context.WithValue(ctx, github.GHClientKey, ghClient.TokenName)
+
 	// Check if the Application CR is under deletion
 	// If so: Remove the GitOps repo (if generated) and remove the finalizer.
 	if application.ObjectMeta.DeletionTimestamp.IsZero() {
@@ -101,7 +107,7 @@ func (r *ApplicationReconciler) Reconcile(ctx context.Context, req ctrl.Request)
 	} else {
 		if containsString(application.GetFinalizers(), appFinalizerName) {
 			// A finalizer is present for the Application CR, so make sure we do the necessary cleanup steps
-			if err := r.Finalize(&application, ghClient); err != nil {
+			if err := r.Finalize(ctx, &application, ghClient); err != nil {
 				finalizeCounter, err := getCounterAnnotation(finalizeCount, &application)
 				if err == nil && finalizeCounter < 5 {
 					// The Finalize function failed, so increment the finalize count and return
@@ -229,22 +235,26 @@ func (r *ApplicationReconciler) SetupWithManager(ctx context.Context, mgr ctrl.M
 	log := ctrl.LoggerFrom(ctx).WithName("controllers").WithName("Application")
 
 	return ctrl.NewControllerManagedBy(mgr).
-		For(&appstudiov1alpha1.Application{}).WithEventFilter(predicate.Funcs{
-		CreateFunc: func(e event.CreateEvent) bool {
-			log := log.WithValues("namespace", e.Object.GetNamespace())
-			logutil.LogAPIResourceChangeEvent(log, e.Object.GetName(), "Application", logutil.ResourceCreate, nil)
-			return true
-		},
-		UpdateFunc: func(e event.UpdateEvent) bool {
-			log := log.WithValues("namespace", e.ObjectNew.GetNamespace())
-			logutil.LogAPIResourceChangeEvent(log, e.ObjectNew.GetName(), "Application", logutil.ResourceUpdate, nil)
-			return true
-		},
-		DeleteFunc: func(e event.DeleteEvent) bool {
-			log := log.WithValues("namespace", e.Object.GetNamespace())
-			logutil.LogAPIResourceChangeEvent(log, e.Object.GetName(), "Application", logutil.ResourceDelete, nil)
-			return false
-		},
-	}).
+		For(&appstudiov1alpha1.Application{}).
+		WithOptions(controller.Options{
+			RateLimiter: workqueue.NewItemExponentialFailureRateLimiter(time.Duration(1*time.Second), time.Duration(1000*time.Second)),
+		}).
+		WithEventFilter(predicate.Funcs{
+			CreateFunc: func(e event.CreateEvent) bool {
+				log := log.WithValues("namespace", e.Object.GetNamespace())
+				logutil.LogAPIResourceChangeEvent(log, e.Object.GetName(), "Application", logutil.ResourceCreate, nil)
+				return true
+			},
+			UpdateFunc: func(e event.UpdateEvent) bool {
+				log := log.WithValues("namespace", e.ObjectNew.GetNamespace())
+				logutil.LogAPIResourceChangeEvent(log, e.ObjectNew.GetName(), "Application", logutil.ResourceUpdate, nil)
+				return true
+			},
+			DeleteFunc: func(e event.DeleteEvent) bool {
+				log := log.WithValues("namespace", e.Object.GetNamespace())
+				logutil.LogAPIResourceChangeEvent(log, e.Object.GetName(), "Application", logutil.ResourceDelete, nil)
+				return false
+			},
+		}).
 		Complete(r)
 }

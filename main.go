@@ -18,6 +18,7 @@ package main
 
 import (
 	"flag"
+	"fmt"
 	"log"
 	"net/http"
 	"os"
@@ -136,6 +137,7 @@ func main() {
 		os.Exit(1)
 	}
 	ghTokenClient := github.GitHubTokenClient{}
+	setupLog.Info(fmt.Sprintf("There are %v token(s) available", len(github.Clients)))
 
 	if err = (&controllers.ApplicationReconciler{
 		Client:            mgr.GetClient(),
