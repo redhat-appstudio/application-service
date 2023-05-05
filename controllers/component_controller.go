@@ -294,7 +294,7 @@ func (r *ComponentReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 					return ctrl.Result{}, err
 				}
 			} else if source.GitSource.DockerfileURL != "" {
-				devfileData, err := devfile.CreateDevfileForDockerfileBuild(source.GitSource.DockerfileURL, "./", component.Name, component.Spec.Application, component.Namespace)
+				devfileData, err := devfile.CreateDevfileForDockerfileBuild(source.GitSource.DockerfileURL, "./", component.Name, component.Spec.Application)
 				if err != nil {
 					log.Error(err, fmt.Sprintf("Unable to create devfile for dockerfile build %v", req.NamespacedName))
 					_ = r.SetCreateConditionAndUpdateCR(ctx, req, &component, err)
@@ -551,7 +551,7 @@ func (r *ComponentReconciler) generateGitops(ctx context.Context, ghClient *gith
 		return err
 	}
 
-	kubernetesResources, err := devfile.GetResourceFromDevfile(log, compDevfileData, deployAssociatedComponents, component.Name, component.Spec.Application, component.Spec.ContainerImage, component.Namespace)
+	kubernetesResources, err := devfile.GetResourceFromDevfile(log, compDevfileData, deployAssociatedComponents, component.Name, component.Spec.Application, component.Spec.ContainerImage)
 	if err != nil {
 		log.Error(err, "unable to get kubernetes resources from the devfile outerloop components")
 		return err

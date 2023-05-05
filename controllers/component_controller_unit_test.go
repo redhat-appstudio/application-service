@@ -297,10 +297,9 @@ func TestGenerateGitops(t *testing.T) {
 
 	compName := "component"
 	applicationName := "application"
-	namespace := "namespace"
 	image := "image"
 
-	deploymentTemplate := devfile.GenerateDeploymentTemplate(compName, applicationName, namespace, image)
+	deploymentTemplate := devfile.GenerateDeploymentTemplate(compName, applicationName, image)
 	deploymentTemplateBytes, err := yaml.Marshal(deploymentTemplate)
 	if err != nil {
 		t.Errorf("TestConvertImageComponentToDevfile() unexpected error: %v", err)
