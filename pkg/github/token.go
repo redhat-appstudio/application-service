@@ -199,10 +199,6 @@ func rateLimitCallBackfunc(cbContext *github_ratelimit.CallbackContext) {
 	if ghClientNameObj == nil {
 		// The GitHub Client should never be nil - it must always be set before we access the GH API
 		// But if it is nil, returning prematurely is preferable to panicking
-		/*log := zap.New(zap.UseFlagOptions(&zap.Options{
-			Development: true,
-			TimeEncoder: zapcore.ISO8601TimeEncoder,
-		}))*/
 		log.Error(fmt.Errorf("a Go-GitHub client name was not set in GitHub API request, cannot execute secondary rate limit callback"), "")
 		return
 	}
