@@ -127,6 +127,9 @@ func GetRepoAndOrgFromURL(repoURL string) (string, string, error) {
 
 // GetDefaultBranchFromURL returns the default branch of a given repoURL
 func (g *GitHubClient) GetDefaultBranchFromURL(repoURL string, ctx context.Context) (string, error) {
+	// Add the client to the context
+	ctx = context.WithValue(ctx, GHClientKey, g.TokenName)
+
 	repoName, orgName, err := GetRepoAndOrgFromURL(repoURL)
 	if err != nil {
 		return "", err
@@ -142,6 +145,9 @@ func (g *GitHubClient) GetDefaultBranchFromURL(repoURL string, ctx context.Conte
 
 // GetBranchFromURL returns the requested branch of a given repoURL
 func (g *GitHubClient) GetBranchFromURL(repoURL string, ctx context.Context, branchName string) (*github.Branch, error) {
+	// Add the client to the context
+	ctx = context.WithValue(ctx, GHClientKey, g.TokenName)
+
 	repoName, orgName, err := GetRepoAndOrgFromURL(repoURL)
 	if err != nil {
 		return nil, err
@@ -157,6 +163,9 @@ func (g *GitHubClient) GetBranchFromURL(repoURL string, ctx context.Context, bra
 
 // GetLatestCommitSHAFromRepository gets the latest Commit SHA from the repository
 func (g *GitHubClient) GetLatestCommitSHAFromRepository(ctx context.Context, repoName string, orgName string, branch string) (string, error) {
+	// Add the client to the context
+	ctx = context.WithValue(ctx, GHClientKey, g.TokenName)
+
 	commitSHA, _, err := g.Client.Repositories.GetCommitSHA1(ctx, orgName, repoName, branch, "")
 	if err != nil {
 		return "", err
@@ -166,6 +175,9 @@ func (g *GitHubClient) GetLatestCommitSHAFromRepository(ctx context.Context, rep
 
 // Delete Repository takes in the given repository URL and attempts to delete it
 func (g *GitHubClient) DeleteRepository(ctx context.Context, orgName string, repoName string) error {
+	// Add the client to the context
+	ctx = context.WithValue(ctx, GHClientKey, g.TokenName)
+
 	// Retrieve just the repository name from the URL
 	_, err := g.Client.Repositories.Delete(ctx, orgName, repoName)
 	if err != nil {
