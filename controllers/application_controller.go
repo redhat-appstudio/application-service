@@ -93,6 +93,9 @@ func (r *ApplicationReconciler) Reconcile(ctx context.Context, req ctrl.Request)
 		return reconcile.Result{}, err
 	}
 
+	// Add the Go-GitHub client name to the context
+	ctx = context.WithValue(ctx, github.GHClientKey, ghClient.TokenName)
+
 	// Check if the Application CR is under deletion
 	// If so: Remove the GitOps repo (if generated) and remove the finalizer.
 	if application.ObjectMeta.DeletionTimestamp.IsZero() {
@@ -104,7 +107,7 @@ func (r *ApplicationReconciler) Reconcile(ctx context.Context, req ctrl.Request)
 	} else {
 		if containsString(application.GetFinalizers(), appFinalizerName) {
 			// A finalizer is present for the Application CR, so make sure we do the necessary cleanup steps
-			if err := r.Finalize(&application, ghClient); err != nil {
+			if err := r.Finalize(ctx, &application, ghClient); err != nil {
 				finalizeCounter, err := getCounterAnnotation(finalizeCount, &application)
 				if err == nil && finalizeCounter < 5 {
 					// The Finalize function failed, so increment the finalize count and return
