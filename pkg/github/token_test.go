@@ -217,10 +217,7 @@ func TestGetNewGitHubClient(t *testing.T) {
 }
 
 func TestGetRandomClient(t *testing.T) {
-	//ghTokenClient := GitHubTokenClient{}
-
-	//fakeToken := "ghp_faketoken"
-
+	ctx := context.WithValue(context.Background(), GHClientKey, "mock")
 	tests := []struct {
 		name               string
 		client             GitHubToken
@@ -270,7 +267,7 @@ func TestGetRandomClient(t *testing.T) {
 				Clients = tt.clientPool
 				// Deliberately lock the secondary rate limit object until we need to test the related fields
 				client.SecondaryRateLimit.mu.Lock()
-				_, err := client.GenerateNewRepository(context.Background(), "test-org", "test-repo", "test description")
+				_, err := client.GenerateNewRepository(ctx, "test-org", "test-repo", "test description")
 				if err == nil {
 					t.Error("TestGetRandomClient() error: expected err not to be nil")
 				}

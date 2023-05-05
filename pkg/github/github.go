@@ -67,8 +67,6 @@ func GenerateNewRepositoryName(displayName, uniqueHash string) string {
 }
 
 func (g *GitHubClient) GenerateNewRepository(ctx context.Context, orgName string, repoName string, description string) (string, error) {
-	// Add the client to the context
-	ctx = context.WithValue(ctx, GHClientKey, g.TokenName)
 	isPrivate := false
 	appStudioAppDataURL := "https://github.com/" + orgName + "/"
 	metrics.GitOpsRepoCreationTotalReqs.Inc()

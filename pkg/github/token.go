@@ -27,6 +27,8 @@ import (
 	"github.com/gofri/go-github-ratelimit/github_ratelimit"
 	"github.com/google/go-github/v41/github"
 	"golang.org/x/oauth2"
+
+	ctrl "sigs.k8s.io/controller-runtime"
 )
 
 type GitHubToken interface {
@@ -192,8 +194,22 @@ func rateLimitCallBackfunc(cbContext *github_ratelimit.CallbackContext) {
 	// Use the client name to lookup the client pointer
 	req := *cbContext.Request
 	reqCtx := req.Context()
-	ghClientName := reqCtx.Value(GHClientKey).(string)
+	log := ctrl.LoggerFrom(reqCtx)
+	ghClientNameObj := reqCtx.Value(GHClientKey)
+	if ghClientNameObj == nil {
+		// The GitHub Client should never be nil - it must always be set before we access the GH API
+		// But if it is nil, returning prematurely is preferable to panicking
+		log.Error(fmt.Errorf("a Go-GitHub client name was not set in GitHub API request, cannot execute secondary rate limit callback"), "")
+		return
+	}
+	ghClientName := ghClientNameObj.(string)
 	ghClient := Clients[ghClientName]
+	if ghClient == nil {
+		// Likewise, the GitHub client should never be nil, it's directly set from the calling Go-GitHub client
+		// But if it is nil, returning prematurely is preferable to panicking.
+		log.Error(fmt.Errorf("a Go-GitHub client with the name %v as set in the GitHub API request does not exist, cannot execute secondary rate limit callback", ghClientName), "")
+		return
+	}
 
 	// Start a goroutine that marks the given client as rate limited and sleeps for 'TotalSleepTime'
 	go func(client *GitHubClient) {
