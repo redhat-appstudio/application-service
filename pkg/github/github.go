@@ -20,6 +20,7 @@ import (
 	"fmt"
 	"net/url"
 	"strings"
+	"sync"
 
 	"github.com/brianvoe/gofakeit/v6"
 	"github.com/google/go-github/v41/github"
@@ -31,10 +32,22 @@ const AppStudioAppDataOrg = "redhat-appstudio-appdata"
 
 // GitHubClient represents a Go-GitHub client, along with the name of the GitHub token that was used to initialize it
 type GitHubClient struct {
-	TokenName string
-	Token     string
-	Client    *github.Client
+	TokenName          string
+	Token              string
+	Client             *github.Client
+	SecondaryRateLimit SecondaryRateLimit
 }
+
+type SecondaryRateLimit struct {
+	isLimitReached bool
+	mu             sync.Mutex
+}
+
+type ContextKey string
+
+const (
+	GHClientKey ContextKey = "ghClient"
+)
 
 // ServerError is used to identify gitops repo creation failures caused by server errors
 type ServerError struct {
@@ -53,14 +66,14 @@ func GenerateNewRepositoryName(displayName, uniqueHash string) string {
 	return repoName
 }
 
-func (g GitHubClient) GenerateNewRepository(ctx context.Context, orgName string, repoName string, description string) (string, error) {
+func (g *GitHubClient) GenerateNewRepository(ctx context.Context, orgName string, repoName string, description string) (string, error) {
 	isPrivate := false
 	appStudioAppDataURL := "https://github.com/" + orgName + "/"
 	metrics.GitOpsRepoCreationTotalReqs.Inc()
 	r := &github.Repository{Name: &repoName, Private: &isPrivate, Description: &description}
 	_, resp, err := g.Client.Repositories.Create(ctx, orgName, r)
 
-	if 500 <= resp.StatusCode && resp.StatusCode <= 599 {
+	if resp != nil && 500 <= resp.StatusCode && resp.StatusCode <= 599 {
 		// return custom error
 		if err != nil {
 			metrics.GitOpsRepoCreationFailed.Inc()
@@ -111,7 +124,7 @@ func GetRepoAndOrgFromURL(repoURL string) (string, string, error) {
 }
 
 // GetDefaultBranchFromURL returns the default branch of a given repoURL
-func (g GitHubClient) GetDefaultBranchFromURL(repoURL string, ctx context.Context) (string, error) {
+func (g *GitHubClient) GetDefaultBranchFromURL(repoURL string, ctx context.Context) (string, error) {
 	repoName, orgName, err := GetRepoAndOrgFromURL(repoURL)
 	if err != nil {
 		return "", err
@@ -126,7 +139,7 @@ func (g GitHubClient) GetDefaultBranchFromURL(repoURL string, ctx context.Contex
 }
 
 // GetBranchFromURL returns the requested branch of a given repoURL
-func (g GitHubClient) GetBranchFromURL(repoURL string, ctx context.Context, branchName string) (*github.Branch, error) {
+func (g *GitHubClient) GetBranchFromURL(repoURL string, ctx context.Context, branchName string) (*github.Branch, error) {
 	repoName, orgName, err := GetRepoAndOrgFromURL(repoURL)
 	if err != nil {
 		return nil, err
@@ -141,7 +154,7 @@ func (g GitHubClient) GetBranchFromURL(repoURL string, ctx context.Context, bran
 }
 
 // GetLatestCommitSHAFromRepository gets the latest Commit SHA from the repository
-func (g GitHubClient) GetLatestCommitSHAFromRepository(ctx context.Context, repoName string, orgName string, branch string) (string, error) {
+func (g *GitHubClient) GetLatestCommitSHAFromRepository(ctx context.Context, repoName string, orgName string, branch string) (string, error) {
 	commitSHA, _, err := g.Client.Repositories.GetCommitSHA1(ctx, orgName, repoName, branch, "")
 	if err != nil {
 		return "", err
@@ -150,7 +163,7 @@ func (g GitHubClient) GetLatestCommitSHAFromRepository(ctx context.Context, repo
 }
 
 // Delete Repository takes in the given repository URL and attempts to delete it
-func (g GitHubClient) DeleteRepository(ctx context.Context, orgName string, repoName string) error {
+func (g *GitHubClient) DeleteRepository(ctx context.Context, orgName string, repoName string) error {
 	// Retrieve just the repository name from the URL
 	_, err := g.Client.Repositories.Delete(ctx, orgName, repoName)
 	if err != nil {

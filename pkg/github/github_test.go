@@ -19,6 +19,7 @@ import (
 	"context"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/testutil"
@@ -59,9 +60,14 @@ func TestGenerateNewRepositoryName(t *testing.T) {
 
 func TestGenerateNewRepository(t *testing.T) {
 
+	ctx := context.WithValue(context.Background(), GHClientKey, "mock")
+	ctxNoClient := context.Background()
+	ctxClientDoesNotExist := context.WithValue(context.Background(), GHClientKey, "does-not-exist")
+
 	prometheus.MustRegister(metrics.GitOpsRepoCreationTotalReqs, metrics.GitOpsRepoCreationSucceeded, metrics.GitOpsRepoCreationFailed)
 	tests := []struct {
 		name                   string
+		ctx                    context.Context
 		repoName               string
 		orgName                string
 		want                   string
@@ -71,6 +77,7 @@ func TestGenerateNewRepository(t *testing.T) {
 	}{
 		{
 			name:                   "Simple repo name",
+			ctx:                    ctx,
 			repoName:               "test-repo-1",
 			orgName:                "redhat-appstudio-appdata",
 			want:                   "https://github.com/redhat-appstudio-appdata/test-repo-1",
@@ -80,6 +87,7 @@ func TestGenerateNewRepository(t *testing.T) {
 		},
 		{
 			name:                   "Repo creation fails due to server error",
+			ctx:                    ctx,
 			repoName:               "test-server-error-response",
 			orgName:                "redhat-appstudio-appdata",
 			want:                   "https://github.com/redhat-appstudio-appdata/test-error-response",
@@ -89,6 +97,7 @@ func TestGenerateNewRepository(t *testing.T) {
 		},
 		{
 			name:                   "Repo creation fails due to server error, failed metric count increases",
+			ctx:                    ctx,
 			repoName:               "test-server-error-response-2",
 			orgName:                "redhat-appstudio-appdata",
 			want:                   "https://github.com/redhat-appstudio-appdata/test-error-response-2",
@@ -98,9 +107,40 @@ func TestGenerateNewRepository(t *testing.T) {
 		},
 		{
 			name:                   "Repo creation fails due to user error, metric counts should not increase",
+			ctx:                    ctx,
 			repoName:               "test-user-error-response",
 			orgName:                "redhat-appstudio-appdata",
 			want:                   "https://github.com/redhat-appstudio-appdata/test-user-error-response",
+			wantErr:                true,
+			numReposCreated:        1,
+			numReposCreationFailed: 2,
+		},
+		{
+			name:                   "Repo creation fails due to secondary rate limit",
+			ctx:                    ctx,
+			repoName:               "secondary-rate-limit",
+			orgName:                "redhat-appstudio-appdata",
+			want:                   "https://github.com/redhat-appstudio-appdata/secondary-rate-limit",
+			wantErr:                true,
+			numReposCreated:        1,
+			numReposCreationFailed: 2,
+		},
+		{
+			name:                   "Secondary rate limit callback fails due to no token name passed in request, but should not panic",
+			ctx:                    ctxNoClient,
+			repoName:               "secondary-rate-limit-callback-fail",
+			orgName:                "redhat-appstudio-appdata",
+			want:                   "https://github.com/redhat-appstudio-appdata/secondary-rate-limit",
+			wantErr:                true,
+			numReposCreated:        1,
+			numReposCreationFailed: 2,
+		},
+		{
+			name:                   "Secondary rate limit callback fails due to an incorrect/non-existent token name, but should not panic",
+			ctx:                    ctxClientDoesNotExist,
+			repoName:               "secondary-rate-limit-callback-fail",
+			orgName:                "redhat-appstudio-appdata",
+			want:                   "https://github.com/redhat-appstudio-appdata/secondary-rate-limit",
 			wantErr:                true,
 			numReposCreated:        1,
 			numReposCreationFailed: 2,
@@ -110,11 +150,19 @@ func TestGenerateNewRepository(t *testing.T) {
 	numTests := len(tests)
 	for _, tt := range tests {
 		mockedClient := GitHubClient{
-			Client: GetMockedClient(),
+			Client:    GetMockedClient(),
+			TokenName: "mock",
 		}
+		if Clients == nil {
+			Clients = make(map[string]*GitHubClient)
+		}
+		Clients["mock"] = &mockedClient
+
+		// Deliberately lock the secondary rate limit object until we need to test the related fields
+		Clients["mock"].SecondaryRateLimit.mu.Lock()
 
 		t.Run(tt.name, func(t *testing.T) {
-			repoURL, err := mockedClient.GenerateNewRepository(context.Background(), tt.orgName, tt.repoName, "")
+			repoURL, err := mockedClient.GenerateNewRepository(tt.ctx, tt.orgName, tt.repoName, "")
 
 			if err != nil && tt.wantErr {
 				if _, ok := err.(*ServerError); ok {
@@ -140,6 +188,17 @@ func TestGenerateNewRepository(t *testing.T) {
 				t.Errorf("TestGenerateNewRepository() error: expected %v got %v", tt.want, repoURL)
 			}
 
+			if tt.repoName == "secondary-rate-limit" {
+				Clients["mock"].SecondaryRateLimit.mu.Unlock()
+				time.Sleep(time.Second * 1)
+				if !Clients["mock"].SecondaryRateLimit.isLimitReached {
+					t.Errorf("TestGenerateNewRepository() error expected github client to be secondary rate limited")
+				}
+				time.Sleep(time.Second * 3)
+				if Clients["mock"].SecondaryRateLimit.isLimitReached {
+					t.Errorf("TestGenerateNewRepository() error expected github client to no longer be secondary rate limited")
+				}
+			}
 			//verify the number of successful repos created
 			assert.Equal(t, float64(tt.numReposCreated), testutil.ToFloat64(metrics.GitOpsRepoCreationSucceeded))
 			assert.Equal(t, float64(tt.numReposCreationFailed), testutil.ToFloat64(metrics.GitOpsRepoCreationFailed))
