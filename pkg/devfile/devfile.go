@@ -428,11 +428,7 @@ func GetResourceFromDevfile(log logr.Logger, devfileData data.DevfileData, deplo
 				}
 				if len(resources.Ingresses) > 0 {
 					// replace the ingress metadata.name to use the component name
-					// Trim the ingress name if needed
 					ingressName := compName
-					if len(ingressName) >= 30 {
-						ingressName = ingressName[0:25] + util.GetRandomString(4, true)
-					}
 
 					resources.Ingresses[0].ObjectMeta.Name = ingressName
 
@@ -481,7 +477,7 @@ func GetIngressFromEndpoint(name, serviceName, port, path string, secure bool, a
 		return networkingv1.Ingress{}, nil
 	}
 
-	hostname, err := getIngressHostName(serviceName, namespace, ingressDomain)
+	hostname, err := GetIngressHostName(serviceName, namespace, ingressDomain)
 	if err != nil {
 		return networkingv1.Ingress{}, nil
 	}
@@ -519,7 +515,8 @@ func GetIngressFromEndpoint(name, serviceName, port, path string, secure bool, a
 	return ingress, nil
 }
 
-func getIngressHostName(componentName, namespace, ingressDomain string) (string, error) {
+// GetIngressHostName gets the ingress host name from the component name, namepsace and ingress domain
+func GetIngressHostName(componentName, namespace, ingressDomain string) (string, error) {
 
 	regexString := `[a-z0-9]([-a-z0-9]*[a-z0-9])?(\.[a-z0-9]([-a-z0-9]*[a-z0-9])?)*`
 	ingressHostRegex := regexp.MustCompile(regexString)

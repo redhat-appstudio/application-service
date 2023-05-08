@@ -290,25 +290,28 @@ func (r *SnapshotEnvironmentBindingReconciler) Reconcile(ctx context.Context, re
 			"app.kubernetes.io/created-by": "application-service",
 		}
 		genOptions := gitopsgenv1alpha1.GeneratorOptions{
-			Name:          component.Name,
-			Replicas:      component.Configuration.Replicas,
-			Resources:     componentResources,
-			BaseEnvVar:    envVars,
-			OverlayEnvVar: environmentConfigEnvVars,
-			K8sLabels:     kubeLabels,
+			Name:                component.Name,
+			Replicas:            component.Configuration.Replicas,
+			Resources:           componentResources,
+			BaseEnvVar:          envVars,
+			OverlayEnvVar:       environmentConfigEnvVars,
+			K8sLabels:           kubeLabels,
+			IsKubernetesCluster: isKubernetesCluster,
 		}
 
 		if !reflect.DeepEqual(kubernetesResources, devfileParser.KubernetesResources{}) {
-			genOptions.KubernetesResources.Deployments = append(genOptions.KubernetesResources.Deployments, kubernetesResources.Deployments...)
-			genOptions.KubernetesResources.Services = append(genOptions.KubernetesResources.Services, kubernetesResources.Services...)
 			genOptions.KubernetesResources.Routes = append(genOptions.KubernetesResources.Routes, kubernetesResources.Routes...)
 			genOptions.KubernetesResources.Ingresses = append(genOptions.KubernetesResources.Ingresses, kubernetesResources.Ingresses...)
-			genOptions.KubernetesResources.Others = append(genOptions.KubernetesResources.Others, kubernetesResources.Others...)
 		}
 
-		clusterInfo := gitopsgen.ClusterInfo{
-			IsKubernetesCluster: isKubernetesCluster,
-			IngressDomain:       clusterIngressDomain,
+		if isKubernetesCluster && len(genOptions.KubernetesResources.Ingresses) == 0 {
+			hostname, err := devfile.GetIngressHostName(componentName, appSnapshotEnvBinding.Namespace, clusterIngressDomain)
+			if err != nil {
+				log.Error(err, fmt.Sprintf("unable to get generate a host name from an ingress domain for %s %v", componentName, req.NamespacedName))
+				r.SetConditionAndUpdateCR(ctx, req, &appSnapshotEnvBinding, err)
+				return ctrl.Result{}, err
+			}
+			genOptions.Route = hostname
 		}
 
 		//Gitops functions return sanitized error messages

@@ -22,7 +22,7 @@ require (
 	github.com/redhat-appstudio/application-api v0.0.0-20230427114540-a91722251e0a
 	github.com/redhat-appstudio/service-provider-integration-scm-file-retriever v0.8.3
 	github.com/redhat-developer/alizer/go v0.0.0-20230504143552-c2b889a2d327
-	github.com/redhat-developer/gitops-generator v0.0.0-20230406182916-65ab99a9113f
+	github.com/redhat-developer/gitops-generator v0.0.0-20230508195028-547148fd17fe
 	github.com/spf13/afero v1.8.0
 	github.com/stretchr/testify v1.8.1
 	go.uber.org/zap v1.24.0
@@ -174,5 +174,3 @@ require (
 )
 
 replace github.com/antlr/antlr4 => github.com/antlr/antlr4 v0.0.0-20211106181442-e4c1a74c66bd
-
-replace github.com/redhat-developer/gitops-generator => /Users/maysun/dev/redhat/gitops-generator
