@@ -19,7 +19,6 @@ import (
 	"fmt"
 	"net/url"
 	"path"
-	"regexp"
 	"strconv"
 	"strings"
 
@@ -82,7 +81,7 @@ const (
 	DevfileStageRegistryEndpoint = "https://registry.stage.devfile.io"
 )
 
-func GetResourceFromDevfile(log logr.Logger, devfileData data.DevfileData, deployAssociatedComponents map[string]string, compName, appName, image, ingressDomain string) (parser.KubernetesResources, error) {
+func GetResourceFromDevfile(log logr.Logger, devfileData data.DevfileData, deployAssociatedComponents map[string]string, compName, appName, image, hostname string) (parser.KubernetesResources, error) {
 	kubernetesComponentFilter := common.DevfileOptions{
 		ComponentOptions: common.ComponentOptions{
 			ComponentType: v1alpha2.KubernetesComponentType,
@@ -130,7 +129,7 @@ func GetResourceFromDevfile(log logr.Logger, devfileData data.DevfileData, deplo
 							isSecure = *endpoint.Secure
 						}
 
-						ingressEndpoint, err := GetIngressFromEndpoint(endpoint.Name, compName, fmt.Sprintf("%d", endpoint.TargetPort), endpoint.Path, isSecure, endpoint.Annotations, ingressDomain)
+						ingressEndpoint, err := GetIngressFromEndpoint(endpoint.Name, compName, fmt.Sprintf("%d", endpoint.TargetPort), endpoint.Path, isSecure, endpoint.Annotations, hostname)
 						if err != nil {
 							return parser.KubernetesResources{}, err
 						}
@@ -464,7 +463,7 @@ func GetResourceFromDevfile(log logr.Logger, devfileData data.DevfileData, deplo
 }
 
 // GetIngressFromEndpoint gets an ingress resource from the devfile endpoint information
-func GetIngressFromEndpoint(name, serviceName, port, path string, secure bool, annotations map[string]string, namespace, ingressDomain string) (networkingv1.Ingress, error) {
+func GetIngressFromEndpoint(name, serviceName, port, path string, secure bool, annotations map[string]string, hostname string) (networkingv1.Ingress, error) {
 
 	if path == "" {
 		path = "/"
@@ -473,11 +472,6 @@ func GetIngressFromEndpoint(name, serviceName, port, path string, secure bool, a
 	implementationSpecific := networkingv1.PathTypeImplementationSpecific
 
 	portNumber, err := strconv.Atoi(port)
-	if err != nil {
-		return networkingv1.Ingress{}, nil
-	}
-
-	hostname, err := GetIngressHostName(serviceName, namespace, ingressDomain)
 	if err != nil {
 		return networkingv1.Ingress{}, nil
 	}
@@ -513,21 +507,6 @@ func GetIngressFromEndpoint(name, serviceName, port, path string, secure bool, a
 	}
 
 	return ingress, nil
-}
-
-// GetIngressHostName gets the ingress host name from the component name, namepsace and ingress domain
-func GetIngressHostName(componentName, namespace, ingressDomain string) (string, error) {
-
-	regexString := `[a-z0-9]([-a-z0-9]*[a-z0-9])?(\.[a-z0-9]([-a-z0-9]*[a-z0-9])?)*`
-	ingressHostRegex := regexp.MustCompile(regexString)
-
-	host := fmt.Sprintf("%s-%s.%s", componentName, namespace, ingressDomain)
-
-	if !ingressHostRegex.MatchString(host) {
-		return "", fmt.Errorf("hostname %s should match regex %s", host, regexString)
-	}
-
-	return host, nil
 }
 
 // GetRouteFromEndpoint gets the route resource

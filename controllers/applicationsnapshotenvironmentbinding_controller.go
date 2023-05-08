@@ -215,7 +215,17 @@ func (r *SnapshotEnvironmentBindingReconciler) Reconcile(ctx context.Context, re
 			return ctrl.Result{}, err
 		}
 
-		kubernetesResources, err := devfile.GetResourceFromDevfile(log, compDevfileData, deployAssociatedComponents, hasComponent.Name, hasComponent.Spec.Application, hasComponent.Spec.ContainerImage, hasComponent.Namespace, clusterIngressDomain)
+		var hostname string
+		if isKubernetesCluster {
+			hostname, err = devfile.GetIngressHostName(hasComponent.Name, appSnapshotEnvBinding.Namespace, clusterIngressDomain)
+			if err != nil {
+				log.Error(err, fmt.Sprintf("unable to get generate a host name from an ingress domain for %s %v", hasComponent.Name, req.NamespacedName))
+				r.SetConditionAndUpdateCR(ctx, req, &appSnapshotEnvBinding, err)
+				return ctrl.Result{}, err
+			}
+		}
+
+		kubernetesResources, err := devfile.GetResourceFromDevfile(log, compDevfileData, deployAssociatedComponents, hasComponent.Name, hasComponent.Spec.Application, hasComponent.Spec.ContainerImage, hostname)
 		if err != nil {
 			log.Error(err, "unable to get kubernetes resources from the devfile outerloop components")
 			r.SetConditionAndUpdateCR(ctx, req, &appSnapshotEnvBinding, err)
@@ -305,12 +315,8 @@ func (r *SnapshotEnvironmentBindingReconciler) Reconcile(ctx context.Context, re
 		}
 
 		if isKubernetesCluster && len(genOptions.KubernetesResources.Ingresses) == 0 {
-			hostname, err := devfile.GetIngressHostName(componentName, appSnapshotEnvBinding.Namespace, clusterIngressDomain)
-			if err != nil {
-				log.Error(err, fmt.Sprintf("unable to get generate a host name from an ingress domain for %s %v", componentName, req.NamespacedName))
-				r.SetConditionAndUpdateCR(ctx, req, &appSnapshotEnvBinding, err)
-				return ctrl.Result{}, err
-			}
+			// provide the hostname for the component if there are no ingresses
+			// Gitops Generator Library will create the Ingress with the hostname
 			genOptions.Route = hostname
 		}
 

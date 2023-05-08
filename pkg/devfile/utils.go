@@ -19,6 +19,7 @@ import (
 	"fmt"
 	"path"
 	"path/filepath"
+	"regexp"
 	"strings"
 
 	"github.com/devfile/registry-support/index/generator/schema"
@@ -95,4 +96,19 @@ func UpdateGitLink(repo, revision, context string) (string, error) {
 	}
 
 	return rawGitURL, nil
+}
+
+// GetIngressHostName gets the ingress host name from the component name, namepsace and ingress domain
+func GetIngressHostName(componentName, namespace, ingressDomain string) (string, error) {
+
+	regexString := `[a-z0-9]([-a-z0-9]*[a-z0-9])?(\.[a-z0-9]([-a-z0-9]*[a-z0-9])?)*`
+	ingressHostRegex := regexp.MustCompile(regexString)
+
+	host := fmt.Sprintf("%s-%s.%s", componentName, namespace, ingressDomain)
+
+	if !ingressHostRegex.MatchString(host) {
+		return "", fmt.Errorf("hostname %s should match regex %s", host, regexString)
+	}
+
+	return host, nil
 }
