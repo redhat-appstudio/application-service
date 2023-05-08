@@ -1,5 +1,5 @@
 //
-// Copyright 2022 Red Hat, Inc.
+// Copyright 2022-2023 Red Hat, Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -105,7 +105,7 @@ func execute(baseDir string, cmd gitops.CommandType, args ...string) ([]byte, er
 	if cmd == gitops.GitCommand || cmd == gitops.RmCommand {
 		if len(args) > 0 && args[0] == "rev-parse" {
 			if strings.Contains(baseDir, "test-git-error") {
-				return []byte(""), fmt.Errorf("unable to retrive git commit id")
+				return []byte(""), fmt.Errorf("unable to retrieve git commit id")
 			} else {
 				return []byte("ca82a6dff817ec66f44342007202690a93763949"), errorStack.Pop()
 			}
