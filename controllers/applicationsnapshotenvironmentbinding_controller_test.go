@@ -1781,7 +1781,8 @@ var _ = Describe("SnapshotEnvironmentBinding controller", func() {
 			environmentName := "staging"
 
 			replicas := int32(3)
-			createAndFetchSimpleApp(applicationName, HASAppNamespace, DisplayName, Description)
+
+			createAndFetchSimpleAppWithRepo(applicationName, HASAppNamespace, DisplayName, Description, "https://github.com/fakeorg/test-error-response")
 			hasComp := createAndFetchSimpleComponent(componentName, HASAppNamespace, ComponentName, applicationName, SampleRepoLink, false)
 			// Make sure the devfile model was properly set in Component
 			Expect(hasComp.Status.Devfile).Should(Not(Equal("")))
@@ -1889,7 +1890,6 @@ var _ = Describe("SnapshotEnvironmentBinding controller", func() {
 			Expect(createdBinding.Status.GitOpsRepoConditions[0].Status).Should(Equal(metav1.ConditionFalse))
 			Expect(createdBinding.Status.GitOpsRepoConditions[0].Reason).Should(Equal("GenerateError"))
 			Expect(createdBinding.Status.GitOpsRepoConditions[0].Message).Should(ContainSubstring("failed to retrieve commit id for repository"))
-			//Expect(createdBinding.Status.GitOpsRepoConditions[0].Message).Should(ContainSubstring("unable to parse gitops repository"))
 
 			// Delete the specified Component resources
 			hasCompLookupKey := types.NamespacedName{Name: componentName, Namespace: HASAppNamespace}
