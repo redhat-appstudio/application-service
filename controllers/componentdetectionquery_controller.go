@@ -123,6 +123,9 @@ func (r *ComponentDetectionQueryReconciler) Reconcile(ctx context.Context, req c
 			return reconcile.Result{}, err
 		}
 
+		// Add the Go-GitHub client name to the context
+		ctx = context.WithValue(ctx, github.GHClientKey, ghClient.TokenName)
+
 		source := componentDetectionQuery.Spec.GitSource
 		var devfileBytes, dockerfileBytes []byte
 		var clonePath, componentPath, devfilePath, dockerfilePath string

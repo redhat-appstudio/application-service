@@ -39,7 +39,7 @@ func (r *ComponentReconciler) AddFinalizer(ctx context.Context, component *appst
 
 // Finalize deletes the corresponding devfile project or the devfile attribute entry from the Application CR and also deletes the corresponding GitOps repo's Component dir
 // & updates the parent kustomize for the given Component CR.
-func (r *ComponentReconciler) Finalize(ctx context.Context, component *appstudiov1alpha1.Component, application *appstudiov1alpha1.Application, ghClient github.GitHubClient) error {
+func (r *ComponentReconciler) Finalize(ctx context.Context, component *appstudiov1alpha1.Component, application *appstudiov1alpha1.Application, ghClient *github.GitHubClient) error {
 	// Get the Application CR devfile
 	devfileSrc := devfile.DevfileSrc{
 		Data: application.Status.Devfile,

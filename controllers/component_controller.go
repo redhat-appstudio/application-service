@@ -130,6 +130,9 @@ func (r *ComponentReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 		return reconcile.Result{}, err
 	}
 
+	// Add the Go-GitHub client name to the context
+	ctx = context.WithValue(ctx, github.GHClientKey, ghClient.TokenName)
+
 	// Check if the Component CR is under deletion
 	// If so: Remove the project from the Application devfile, remove the component dir from the Gitops repo and remove the finalizer.
 	if component.ObjectMeta.DeletionTimestamp.IsZero() {
@@ -190,7 +193,7 @@ func (r *ComponentReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 				_ = r.SetGitOpsGeneratedConditionAndUpdateCR(ctx, req, &component, fmt.Errorf("%v: %v", errMsg, err))
 				return ctrl.Result{}, err
 			}
-			if err := r.generateGitops(ctx, ghClient, req, &component, compDevfileData); err != nil {
+			if err := r.generateGitops(ctx, ghClient, &component, compDevfileData); err != nil {
 				errMsg := fmt.Sprintf("Unable to generate gitops resources for component %v", req.NamespacedName)
 				log.Error(err, errMsg)
 				_ = r.SetGitOpsGeneratedConditionAndUpdateCR(ctx, req, &component, fmt.Errorf("%v: %v", errMsg, err))
@@ -291,7 +294,7 @@ func (r *ComponentReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 					return ctrl.Result{}, err
 				}
 			} else if source.GitSource.DockerfileURL != "" {
-				devfileData, err := devfile.CreateDevfileForDockerfileBuild(source.GitSource.DockerfileURL, "./", component.Name, component.Spec.Application, component.Namespace)
+				devfileData, err := devfile.CreateDevfileForDockerfileBuild(source.GitSource.DockerfileURL, "./", component.Name, component.Spec.Application)
 				if err != nil {
 					log.Error(err, fmt.Sprintf("Unable to create devfile for dockerfile build %v", req.NamespacedName))
 					_ = r.SetCreateConditionAndUpdateCR(ctx, req, &component, err)
@@ -419,7 +422,7 @@ func (r *ComponentReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 
 			// Generate and push the gitops resources
 			if !component.Spec.SkipGitOpsResourceGeneration {
-				if err := r.generateGitops(ctx, ghClient, req, &component, compDevfileData); err != nil {
+				if err := r.generateGitops(ctx, ghClient, &component, compDevfileData); err != nil {
 					errMsg := fmt.Sprintf("Unable to generate gitops resources for component %v", req.NamespacedName)
 					log.Error(err, errMsg)
 					_ = r.SetGitOpsGeneratedConditionAndUpdateCR(ctx, req, &component, fmt.Errorf("%v: %v", errMsg, err))
@@ -498,7 +501,7 @@ func (r *ComponentReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 
 			// Generate and push the gitops resources, if necessary.
 			if !component.Spec.SkipGitOpsResourceGeneration {
-				if err := r.generateGitops(ctx, ghClient, req, &component, hasCompDevfileData); err != nil {
+				if err := r.generateGitops(ctx, ghClient, &component, hasCompDevfileData); err != nil {
 					errMsg := fmt.Sprintf("Unable to generate gitops resources for component %v", req.NamespacedName)
 					log.Error(err, errMsg)
 					_ = r.SetGitOpsGeneratedConditionAndUpdateCR(ctx, req, &component, fmt.Errorf("%v: %v", errMsg, err))
@@ -527,7 +530,7 @@ func (r *ComponentReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 
 // generateGitops retrieves the necessary information about a Component's gitops repository (URL, branch, context)
 // and attempts to use the GitOps package to generate gitops resources based on that component
-func (r *ComponentReconciler) generateGitops(ctx context.Context, ghClient github.GitHubClient, req ctrl.Request, component *appstudiov1alpha1.Component, compDevfileData data.DevfileData) error {
+func (r *ComponentReconciler) generateGitops(ctx context.Context, ghClient *github.GitHubClient, component *appstudiov1alpha1.Component, compDevfileData data.DevfileData) error {
 	log := ctrl.LoggerFrom(ctx)
 
 	gitOpsURL, gitOpsBranch, gitOpsContext, err := util.ProcessGitOpsStatus(component.Status.GitOps, ghClient.Token)
@@ -548,7 +551,7 @@ func (r *ComponentReconciler) generateGitops(ctx context.Context, ghClient githu
 		return err
 	}
 
-	kubernetesResources, err := devfile.GetResourceFromDevfile(log, compDevfileData, deployAssociatedComponents, component.Name, component.Spec.Application, component.Spec.ContainerImage, component.Namespace)
+	kubernetesResources, err := devfile.GetResourceFromDevfile(log, compDevfileData, deployAssociatedComponents, component.Name, component.Spec.Application, component.Spec.ContainerImage)
 	if err != nil {
 		log.Error(err, "unable to get kubernetes resources from the devfile outerloop components")
 		return err

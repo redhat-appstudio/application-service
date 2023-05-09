@@ -237,7 +237,6 @@ func GetMappedGitOpsComponent(component appstudiov1alpha1.Component, kubernetesR
 	}
 	gitopsMapComponent := gitopsgenv1alpha1.GeneratorOptions{
 		Name:                 component.ObjectMeta.Name,
-		Namespace:            component.ObjectMeta.Namespace,
 		Application:          component.Spec.Application,
 		Secret:               component.Spec.Secret,
 		Resources:            component.Spec.Resources,

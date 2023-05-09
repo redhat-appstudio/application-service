@@ -251,10 +251,9 @@ func TestConvertImageComponentToDevfile(t *testing.T) {
 
 	compName := "component"
 	applicationName := "application"
-	namespace := "namespace"
 	image := "image"
 
-	deploymentTemplate := GenerateDeploymentTemplate(compName, applicationName, namespace, image)
+	deploymentTemplate := GenerateDeploymentTemplate(compName, applicationName, image)
 	deploymentTemplateBytes, err := yaml.Marshal(deploymentTemplate)
 	if err != nil {
 		t.Errorf("TestConvertImageComponentToDevfile() unexpected error: %v", err)
@@ -270,8 +269,7 @@ func TestConvertImageComponentToDevfile(t *testing.T) {
 			name: "Simple Component CR",
 			comp: appstudiov1alpha1.Component{
 				ObjectMeta: metav1.ObjectMeta{
-					Name:      compName,
-					Namespace: namespace,
+					Name: compName,
 				},
 				Spec: appstudiov1alpha1.ComponentSpec{
 					ComponentName:  compName,
@@ -459,7 +457,7 @@ func TestCreateDevfileForDockerfileBuild(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			gotDevfile, err := CreateDevfileForDockerfileBuild(tt.uri, tt.context, "", "", "")
+			gotDevfile, err := CreateDevfileForDockerfileBuild(tt.uri, tt.context, "", "")
 			if tt.wantErr && (err == nil) {
 				t.Error("wanted error but got nil")
 			} else if !tt.wantErr && err != nil {
@@ -591,6 +589,9 @@ func TestScanRepo(t *testing.T) {
 			expectedDockerfileContextMap: map[string]string{
 				"devfile-sample-java-springboot-basic": "devfile-sample-java-springboot-basic/docker/Dockerfile",
 				"python":                               "https://raw.githubusercontent.com/devfile-samples/devfile-sample-python-basic/main/docker/Dockerfile"},
+			expectedPortsMap: map[string][]int{
+				"python": {8081},
+			},
 		},
 		{
 			name:                   "Should return 2 devfile contexts, and 2 devfileURLs as this is a multi comp devfile - with revision specified",
@@ -605,6 +606,9 @@ func TestScanRepo(t *testing.T) {
 			expectedDockerfileContextMap: map[string]string{
 				"devfile-sample-java-springboot-basic": "devfile-sample-java-springboot-basic/docker/Dockerfile",
 				"python":                               "https://raw.githubusercontent.com/devfile-samples/devfile-sample-python-basic/main/docker/Dockerfile"},
+			expectedPortsMap: map[string][]int{
+				"python": {8081},
+			},
 		},
 		{
 			name:                   "Should return 2 devfile contexts, and 2 devfileURLs with multi-component but no outerloop definition",
@@ -637,6 +641,9 @@ func TestScanRepo(t *testing.T) {
 				"devfile-sample-java-springboot-basic": "devfile-sample-java-springboot-basic/docker/Dockerfile",
 				"python-src-none":                      "https://raw.githubusercontent.com/devfile-samples/devfile-sample-python-basic/main/docker/Dockerfile",
 				"devfile-sample-python-basic":          "https://raw.githubusercontent.com/maysunfaisal/multi-components-dockerfile/main/devfile-sample-python-basic/Dockerfile"},
+			expectedPortsMap: map[string][]int{
+				"devfile-sample-nodejs-basic": {3000},
+			},
 		},
 		{
 			name:      "Should return 4 dockerfile contexts with dockerfile/containerfile path, and 4 devfileURLs ",
@@ -760,14 +767,12 @@ func TestGenerateDeploymentTemplate(t *testing.T) {
 	var (
 		name        = "deploy1"
 		application = "application1"
-		namespace   = "namespace1"
 		image       = "image1"
 	)
 	t.Run(name, func(t *testing.T) {
-		actualDeployment := GenerateDeploymentTemplate(name, application, namespace, image)
+		actualDeployment := GenerateDeploymentTemplate(name, application, image)
 		assert.Equal(t, "Deployment", actualDeployment.Kind, "Kind did not match")
 		assert.Equal(t, name, actualDeployment.Name, "Name did not match")
-		assert.Equal(t, namespace, actualDeployment.Namespace, "Namespace did not match")
 		assert.Equal(t, generateK8sLabels(name, application), actualDeployment.Labels, "Labels did not match")
 		assert.NotNil(t, actualDeployment.Spec.Selector, "Selector can not be nil")
 		assert.Equal(t, getMatchLabel(name), actualDeployment.Spec.Selector.MatchLabels, "Match Labels did not match")
@@ -2111,7 +2116,6 @@ schemaVersion: 2.2.0`
 
 	replica := int32(5)
 	replicaUpdated := int32(1)
-	namespace := "testNamespace"
 	revHistoryLimit := int32(0)
 	setRevHistoryLimit := int32(5)
 
@@ -2138,8 +2142,7 @@ schemaVersion: 2.2.0`
 					APIVersion: "apps/v1",
 				},
 				ObjectMeta: metav1.ObjectMeta{
-					Name:      "component-sample",
-					Namespace: namespace,
+					Name: "component-sample",
 					Labels: map[string]string{
 						"app.kubernetes.io/created-by": "application-service",
 						"app.kubernetes.io/instance":   "component-sample",
@@ -2232,8 +2235,7 @@ schemaVersion: 2.2.0`
 					APIVersion: "v1",
 				},
 				ObjectMeta: metav1.ObjectMeta{
-					Name:      "component-sample",
-					Namespace: namespace,
+					Name: "component-sample",
 					Labels: map[string]string{
 						"app.kubernetes.io/created-by": "application-service",
 						"app.kubernetes.io/instance":   "component-sample",
@@ -2265,8 +2267,7 @@ schemaVersion: 2.2.0`
 					APIVersion: "route.openshift.io/v1",
 				},
 				ObjectMeta: metav1.ObjectMeta{
-					Name:      "component-sample",
-					Namespace: namespace,
+					Name: "component-sample",
 					Labels: map[string]string{
 						"app.kubernetes.io/created-by": "application-service",
 						"app.kubernetes.io/instance":   "component-sample",
@@ -2301,8 +2302,7 @@ schemaVersion: 2.2.0`
 					APIVersion: "apps/v1",
 				},
 				ObjectMeta: metav1.ObjectMeta{
-					Name:      "component-sample",
-					Namespace: namespace,
+					Name: "component-sample",
 					Labels: map[string]string{
 						"app.kubernetes.io/created-by": "application-service",
 						"app.kubernetes.io/instance":   "component-sample",
@@ -2389,8 +2389,7 @@ schemaVersion: 2.2.0`
 					APIVersion: "route.openshift.io/v1",
 				},
 				ObjectMeta: metav1.ObjectMeta{
-					Name:      "component-sample",
-					Namespace: namespace,
+					Name: "component-sample",
 					Labels: map[string]string{
 						"app.kubernetes.io/created-by": "application-service",
 						"app.kubernetes.io/instance":   "component-sample",
@@ -2417,8 +2416,7 @@ schemaVersion: 2.2.0`
 					APIVersion: "v1",
 				},
 				ObjectMeta: metav1.ObjectMeta{
-					Name:      "component-sample",
-					Namespace: namespace,
+					Name: "component-sample",
 					Labels: map[string]string{
 						"app.kubernetes.io/created-by": "application-service",
 						"app.kubernetes.io/instance":   "component-sample",
@@ -2452,8 +2450,7 @@ schemaVersion: 2.2.0`
 					APIVersion: "apps/v1",
 				},
 				ObjectMeta: metav1.ObjectMeta{
-					Name:      "component-sample",
-					Namespace: namespace,
+					Name: "component-sample",
 					Labels: map[string]string{
 						"app.kubernetes.io/created-by": "application-service",
 						"app.kubernetes.io/instance":   "component-sample",
@@ -2540,8 +2537,7 @@ schemaVersion: 2.2.0`
 					APIVersion: "route.openshift.io/v1",
 				},
 				ObjectMeta: metav1.ObjectMeta{
-					Name:      "component-sample",
-					Namespace: namespace,
+					Name: "component-sample",
 					Labels: map[string]string{
 						"app.kubernetes.io/created-by": "application-service",
 						"app.kubernetes.io/instance":   "component-sample",
@@ -2568,8 +2564,7 @@ schemaVersion: 2.2.0`
 					APIVersion: "v1",
 				},
 				ObjectMeta: metav1.ObjectMeta{
-					Name:      "component-sample",
-					Namespace: namespace,
+					Name: "component-sample",
 					Labels: map[string]string{
 						"app.kubernetes.io/created-by": "application-service",
 						"app.kubernetes.io/instance":   "component-sample",
@@ -2603,8 +2598,7 @@ schemaVersion: 2.2.0`
 					APIVersion: "route.openshift.io/v1",
 				},
 				ObjectMeta: metav1.ObjectMeta{
-					Name:      "component-sample",
-					Namespace: namespace,
+					Name: "component-sample",
 					Labels: map[string]string{
 						"app.kubernetes.io/created-by": "application-service",
 						"app.kubernetes.io/instance":   "component-sample",
@@ -2643,8 +2637,7 @@ schemaVersion: 2.2.0`
 					APIVersion: "v1",
 				},
 				ObjectMeta: metav1.ObjectMeta{
-					Name:      "component-sample",
-					Namespace: namespace,
+					Name: "component-sample",
 					Labels: map[string]string{
 						"app.kubernetes.io/created-by": "application-service",
 						"app.kubernetes.io/instance":   "component-sample",
@@ -2678,8 +2671,7 @@ schemaVersion: 2.2.0`
 					APIVersion: "apps/v1",
 				},
 				ObjectMeta: metav1.ObjectMeta{
-					Name:      "component-sample",
-					Namespace: namespace,
+					Name: "component-sample",
 					Labels: map[string]string{
 						"app.kubernetes.io/created-by": "application-service",
 						"app.kubernetes.io/instance":   "component-sample",
@@ -2766,8 +2758,7 @@ schemaVersion: 2.2.0`
 					APIVersion: "route.openshift.io/v1",
 				},
 				ObjectMeta: metav1.ObjectMeta{
-					Name:      "component-sample",
-					Namespace: namespace,
+					Name: "component-sample",
 					Labels: map[string]string{
 						"app.kubernetes.io/created-by": "application-service",
 						"app.kubernetes.io/instance":   "component-sample",
@@ -2801,8 +2792,7 @@ schemaVersion: 2.2.0`
 					APIVersion: "apps/v1",
 				},
 				ObjectMeta: metav1.ObjectMeta{
-					Name:      "component-sample-component-sample-component-sample",
-					Namespace: namespace,
+					Name: "component-sample-component-sample-component-sample",
 					Labels: map[string]string{
 						"app.kubernetes.io/created-by": "application-service",
 						"app.kubernetes.io/instance":   "component-sample-component-sample-component-sample",
@@ -2889,8 +2879,7 @@ schemaVersion: 2.2.0`
 					APIVersion: "route.openshift.io/v1",
 				},
 				ObjectMeta: metav1.ObjectMeta{
-					Name:      "component-sample-component-sample-component-sample",
-					Namespace: namespace,
+					Name: "component-sample-component-sample-component-sample",
 					Labels: map[string]string{
 						"app.kubernetes.io/created-by": "application-service",
 						"app.kubernetes.io/instance":   "component-sample-component-sample-component-sample",
@@ -2924,8 +2913,7 @@ schemaVersion: 2.2.0`
 					APIVersion: "apps/v1",
 				},
 				ObjectMeta: metav1.ObjectMeta{
-					Name:      "component-sample",
-					Namespace: namespace,
+					Name: "component-sample",
 					Labels: map[string]string{
 						"app.kubernetes.io/created-by": "application-service",
 						"app.kubernetes.io/instance":   "component-sample",
@@ -3016,8 +3004,7 @@ schemaVersion: 2.2.0`
 					APIVersion: "route.openshift.io/v1",
 				},
 				ObjectMeta: metav1.ObjectMeta{
-					Name:      "component-sample",
-					Namespace: namespace,
+					Name: "component-sample",
 					Labels: map[string]string{
 						"app.kubernetes.io/created-by": "application-service",
 						"app.kubernetes.io/instance":   "component-sample",
@@ -3057,8 +3044,7 @@ schemaVersion: 2.2.0`
 					APIVersion: "v1",
 				},
 				ObjectMeta: metav1.ObjectMeta{
-					Name:      "component-sample",
-					Namespace: namespace,
+					Name: "component-sample",
 					Labels: map[string]string{
 						"app.kubernetes.io/created-by": "application-service",
 						"app.kubernetes.io/instance":   "component-sample",
@@ -3092,8 +3078,7 @@ schemaVersion: 2.2.0`
 					APIVersion: "v1",
 				},
 				ObjectMeta: metav1.ObjectMeta{
-					Name:      "component-sample",
-					Namespace: namespace,
+					Name: "component-sample",
 					Labels: map[string]string{
 						"app.kubernetes.io/created-by": "application-service",
 						"app.kubernetes.io/instance":   "component-sample",
@@ -3185,7 +3170,7 @@ schemaVersion: 2.2.0`
 			}
 			logger := ctrl.Log.WithName("TestGetResourceFromDevfile")
 
-			actualResources, err := GetResourceFromDevfile(logger, devfileData, deployAssociatedComponents, tt.componentName, tt.appName, tt.image, namespace)
+			actualResources, err := GetResourceFromDevfile(logger, devfileData, deployAssociatedComponents, tt.componentName, tt.appName, tt.image)
 			if tt.wantErr && (err == nil) {
 				t.Error("wanted error but got nil")
 			} else if !tt.wantErr && err != nil {

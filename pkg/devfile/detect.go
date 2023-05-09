@@ -255,7 +255,7 @@ func AnalyzePath(log logr.Logger, a Alizer, localpath, context, devfileRegistryU
 		if err == nil {
 			componentPortsMapFromRepo[context] = detectedPorts
 		} else {
-			log.Info("failed to detect port from context: %v, error: %v", context, err)
+			log.Info(fmt.Sprintf("failed to detect port from context: %v, error: %v", context, err))
 		}
 	}
 
