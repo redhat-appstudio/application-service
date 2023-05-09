@@ -20,6 +20,7 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"path/filepath"
 	"reflect"
 	"time"
 
@@ -578,22 +579,14 @@ func (r *ComponentReconciler) generateGitops(ctx context.Context, ghClient *gith
 
 	// Get the commit ID for the gitops repository
 	var commitID string
-	repoName, orgName, err := github.GetRepoAndOrgFromURL(gitOpsURL)
-	if err != nil {
-		gitOpsErr := &GitOpsParseRepoError{gitOpsURL, err}
-		log.Error(gitOpsErr, "")
-		return gitOpsErr
+	repoPath := filepath.Join(tempDir, component.Name)
+	metricsLabel := prometheus.Labels{"controller": componentName, "tokenName": ghClient.TokenName, "operation": "GetCommitIDFromRepo"}
+	metrics.ControllerGitRequest.With(metricsLabel).Inc()
+	if commitID, err = r.Generator.GetCommitIDFromRepo(r.AppFS, repoPath); err != nil {
+		log.Error(err, "")
+		return err
 	}
 
-	metricsLabel := prometheus.Labels{"controller": componentName, "tokenName": ghClient.TokenName, "operation": "GetLatestCommitSHAFromRepository"}
-	metrics.ControllerGitRequest.With(metricsLabel).Inc()
-	commitID, err = ghClient.GetLatestCommitSHAFromRepository(ctx, repoName, orgName, gitOpsBranch)
-	metrics.HandleRateLimitMetrics(err, metricsLabel)
-	if err != nil {
-		gitOpsErr := &GitOpsCommitIdError{err}
-		log.Error(gitOpsErr, "")
-		return gitOpsErr
-	}
 	component.Status.GitOps.CommitID = commitID
 
 	// Remove the temp folder that was created
