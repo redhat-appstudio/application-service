@@ -564,7 +564,7 @@ func ConvertImageComponentToDevfile(comp appstudiov1alpha1.Component) (data.Devf
 	return devfileData, nil
 }
 
-// CreateDevfileForDockerfileBuild creates a devfile with the dockerfile uri and build context
+// CreateDevfileForDockerfileBuild creates a devfile with the Dockerfile uri and build context
 func CreateDevfileForDockerfileBuild(dockerfileUri, buildContext, name, application string) (data.DevfileData, error) {
 	devfileVersion := string(data.APISchemaVersion220)
 	devfileData, err := data.NewDevfileData(devfileVersion)
@@ -722,7 +722,7 @@ func FindAndDownloadDevfile(dir string) ([]byte, string, error) {
 	return nil, "", &NoDevfileFound{Location: dir}
 }
 
-// FindAndDownloadDockerfile downloads dockerfile from the various possible dockerfile, or containerfile locations in dir and returns the contents and its context
+// FindAndDownloadDockerfile downloads Dockerfile from the various possible Dockerfile, or Containerfile locations in dir and returns the contents and its context
 func FindAndDownloadDockerfile(dir string) ([]byte, string, error) {
 	var dockerfileBytes []byte
 	var err error
@@ -747,7 +747,7 @@ func DownloadFile(file string) ([]byte, error) {
 	return util.CurlEndpoint(file)
 }
 
-// DownloadDevfileAndDockerfile attempts to download and return the devfile, devfile context, dockerfile and dockerfile context from the root of the specified url
+// DownloadDevfileAndDockerfile attempts to download and return the devfile, devfile context, Dockerfile and Dockerfile context from the root of the specified url
 func DownloadDevfileAndDockerfile(url string) ([]byte, string, []byte, string) {
 	var devfileBytes, dockerfileBytes []byte
 	var devfilePath, dockerfilePath string
@@ -758,13 +758,13 @@ func DownloadDevfileAndDockerfile(url string) ([]byte, string, []byte, string) {
 	return devfileBytes, devfilePath, dockerfileBytes, dockerfilePath
 }
 
-// ScanRepo attempts to read and return devfiles and dockerfiles from the local path upto the specified depth
-// Iterate through each sub-folder under first level, and scan for component. (devfile, dockerfile, then Alizer)
-// If no devfile(s) or dockerfile(s) are found in sub-folders of the root directory, then the Alizer tool is used to detect and match a devfile/dockerfile from the devfile registry
+// ScanRepo attempts to read and return devfiles and Dockerfiles/Containerfiles from the local path upto the specified depth
+// Iterate through each sub-folder under first level, and scan for component. (devfile, Dockerfile/Containerfile, then Alizer)
+// If no devfile(s) or Dockerfile(s)/Containerfile(s) are found in sub-folders of the root directory, then the Alizer tool is used to detect and match a devfile/Dockerfile from the devfile registry
 // ScanRepo returns 3 maps and an error:
 // Map 1 returns a context to the devfile bytes if present.
 // Map 2 returns a context to the matched devfileURL from the devfile registry if no devfile is present in the context.
-// Map 3 returns a context to the dockerfile uri or a matched dockerfileURL from the devfile registry if no dockerfile is present in the context
+// Map 3 returns a context to the Dockerfile uri or a matched DockerfileURL from the devfile registry if no Dockerfile/Containerfile is present in the context
 // Map 4 returns a context to the list of ports that were detected by alizer in the source code, at that given context
 func ScanRepo(log logr.Logger, a Alizer, localpath string, devfileRegistryURL string, source appstudiov1alpha1.GitSource) (map[string][]byte, map[string]string, map[string]string, map[string][]int, error) {
 	return search(log, a, localpath, devfileRegistryURL, source)
@@ -885,11 +885,11 @@ func ValidateDevfile(log logr.Logger, URL string) (shouldIgnoreDevfile bool, dev
 						_, err = util.CurlEndpoint(dockerfileURI)
 					} else {
 						if devfileSrc.Path != "" {
-							// local devfile src with relative dockerfile uri
+							// local devfile src with relative Dockerfile uri
 							dockerfileURI = path.Join(path.Dir(URL), dockerfileURI)
 							err = parserUtil.ValidateFile(dockerfileURI)
 						} else {
-							// remote devfile src with relative dockerfile uri
+							// remote devfile src with relative Dockerfile uri
 							var u *url.URL
 							u, err = url.Parse(URL)
 							if err != nil {
@@ -902,8 +902,8 @@ func ValidateDevfile(log logr.Logger, URL string) (shouldIgnoreDevfile bool, dev
 						}
 					}
 					if err != nil {
-						log.Error(err, fmt.Sprintf("failed to get dockerfile from the URI %s, invalid image component: %s", URL, component.Name))
-						return shouldIgnoreDevfile, nil, fmt.Errorf(fmt.Sprintf("failed to get dockerfile from the URI %s, invalid image component: %s", URL, component.Name))
+						log.Error(err, fmt.Sprintf("failed to get Dockerfile from the URI %s, invalid image component: %s", URL, component.Name))
+						return shouldIgnoreDevfile, nil, fmt.Errorf(fmt.Sprintf("failed to get Dockerfile from the URI %s, invalid image component: %s", URL, component.Name))
 					}
 				}
 				if _, ok := deployCompMap[component.Name]; ok {

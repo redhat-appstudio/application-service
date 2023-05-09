@@ -477,7 +477,7 @@ func (r *ComponentDetectionQueryReconciler) updateComponentStub(req ctrl.Request
 			ComponentStub: componentStub,
 		}
 
-		// Once the dockerfile has been processed, remove it
+		// Once the Dockerfile has been processed, remove it
 		delete(dockerfileContextMap, context)
 	}
 
@@ -496,7 +496,7 @@ func (r *ComponentDetectionQueryReconciler) updateComponentStub(req ctrl.Request
 		componentName := getComponentName(gitSource)
 
 		detectComp := appstudiov1alpha1.ComponentDetectionDescription{
-			DevfileFound: false, // always false since there is only a dockerfile present for these contexts
+			DevfileFound: false, // always false since there is only a Dockerfile present for these contexts
 			Language:     "Dockerfile",
 			ProjectType:  "Dockerfile",
 			ComponentStub: appstudiov1alpha1.ComponentSpec{

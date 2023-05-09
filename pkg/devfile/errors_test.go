@@ -66,7 +66,7 @@ func TestNoDockerfileFoundErr(t *testing.T) {
 			args: NoDockerfileFound{
 				Location: "/path",
 			},
-			wantErrString: "unable to find dockerfile in the specified location /path",
+			wantErrString: "unable to find Dockerfile in the specified location /path",
 		},
 		{
 			name: "No Dockerfile Found at location due to an err",
@@ -74,7 +74,7 @@ func TestNoDockerfileFoundErr(t *testing.T) {
 				Location: "/path",
 				Err:      fmt.Errorf("a dummy err"),
 			},
-			wantErrString: "unable to find dockerfile in the specified location /path due to a dummy err",
+			wantErrString: "unable to find Dockerfile in the specified location /path due to a dummy err",
 		},
 	}
 

@@ -252,9 +252,9 @@ components:
 			} else if tt.wantErr && err == nil {
 				t.Errorf("Expected error but got nil")
 			} else if tt.found && dockerfileImage == nil {
-				t.Errorf("dockerfile should be found, but got %v", dockerfileImage)
+				t.Errorf("Dockerfile should be found, but got %v", dockerfileImage)
 			} else if !tt.found && dockerfileImage != nil {
-				t.Errorf("dockerfile should be found, but got %v", dockerfileImage)
+				t.Errorf("Dockerfile should be found, but got %v", dockerfileImage)
 			}
 		})
 	}

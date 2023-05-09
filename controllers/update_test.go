@@ -402,7 +402,7 @@ func TestUpdateComponentDevfileModel(t *testing.T) {
 			wantErr: true,
 		},
 		{
-			name: "image component with local dockerfile uri updated to component's absolute dockerfileURL",
+			name: "image component with local Dockerfile uri updated to component's absolute DockerfileURL",
 			components: []devfileAPIV1.Component{
 				{
 					Name:       "component1",
@@ -452,7 +452,7 @@ func TestUpdateComponentDevfileModel(t *testing.T) {
 			updateExpected: true,
 		},
 		{
-			name: "devfile with invalid components, error out when trying to update devfile's dockerfile uri",
+			name: "devfile with invalid components, error out when trying to update devfile's Dockerfile uri",
 			components: []devfileAPIV1.Component{
 				{
 					Name:       "component1",
@@ -881,7 +881,7 @@ func TestUpdateComponentStub(t *testing.T) {
 			},
 		},
 		{
-			name: "Kubernetes Components present with a devfile & dockerfile URL",
+			name: "Kubernetes Components present with a devfile & Dockerfile URL",
 			devfilesDataMap: map[string]*v2.DevfileV2{
 				"./": {
 					Devfile: devfileAPIV1.Devfile{
@@ -909,13 +909,13 @@ func TestUpdateComponentStub(t *testing.T) {
 			},
 		},
 		{
-			name: "dockerfile URL only",
+			name: "Dockerfile URL only",
 			dockerfileURLMap: map[string]string{
 				"./": "http://someotherlink",
 			},
 		},
 		{
-			name: "dockerfile URL with ports",
+			name: "Dockerfile URL with ports",
 			dockerfileURLMap: map[string]string{
 				"./": "Dockerfile",
 			},
@@ -1406,7 +1406,7 @@ func TestUpdateComponentStub(t *testing.T) {
 						if len(tt.dockerfileURLMap) > 0 {
 							assert.NotNil(t, hasCompDetection.ComponentStub.Source.GitSource, "The git source cannot be nil for this test")
 							assert.Equal(t, hasCompDetection.ComponentStub.Source.GitSource.URL, "url", "The URL should match")
-							assert.Equal(t, hasCompDetection.ComponentStub.Source.GitSource.DockerfileURL, tt.dockerfileURLMap[hasCompDetection.ComponentStub.Source.GitSource.Context], "The dockerfile URL should match")
+							assert.Equal(t, hasCompDetection.ComponentStub.Source.GitSource.DockerfileURL, tt.dockerfileURLMap[hasCompDetection.ComponentStub.Source.GitSource.Context], "The Dockerfile URL should match")
 						}
 
 						for _, devfileComponent := range tt.devfilesDataMap[hasCompDetection.ComponentStub.Source.GitSource.Context].Components {
@@ -1486,7 +1486,7 @@ func TestUpdateComponentStub(t *testing.T) {
 						if len(tt.dockerfileURLMap) > 0 {
 							assert.NotNil(t, hasCompDetection.ComponentStub.Source.GitSource, "The git source cannot be nil for this test")
 							assert.Equal(t, hasCompDetection.ComponentStub.Source.GitSource.URL, "url", "The URL should match")
-							assert.Equal(t, hasCompDetection.ComponentStub.Source.GitSource.DockerfileURL, tt.dockerfileURLMap[hasCompDetection.ComponentStub.Source.GitSource.Context], "The dockerfile URL should match")
+							assert.Equal(t, hasCompDetection.ComponentStub.Source.GitSource.DockerfileURL, tt.dockerfileURLMap[hasCompDetection.ComponentStub.Source.GitSource.Context], "The Dockerfile URL should match")
 						}
 					}
 				}
