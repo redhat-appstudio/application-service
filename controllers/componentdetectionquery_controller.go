@@ -274,7 +274,7 @@ func (r *ComponentDetectionQueryReconciler) Reconcile(ctx context.Context, req c
 				}
 			} else {
 				log.Info(fmt.Sprintf("Since this is not a multi-component, attempt will be made to read devfile at the root dir... %v", req.NamespacedName))
-				err := devfile.AnalyzePath(r.AlizerClient, componentPath, context, r.DevfileRegistryURL, devfilesMap, devfilesURLMap, dockerfileContextMap, componentPortsMap, isDevfilePresent, isDockerfilePresent)
+				err := devfile.AnalyzePath(log, r.AlizerClient, componentPath, context, r.DevfileRegistryURL, devfilesMap, devfilesURLMap, dockerfileContextMap, componentPortsMap, isDevfilePresent, isDockerfilePresent)
 				if err != nil {
 					log.Error(err, fmt.Sprintf("Unable to analyze path %s for a devfile, dockerfile or containerfile %v", componentPath, req.NamespacedName))
 					r.SetCompleteConditionAndUpdateCR(ctx, req, &componentDetectionQuery, copiedCDQ, err)
