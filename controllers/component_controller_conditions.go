@@ -23,6 +23,7 @@ import (
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	ctrl "sigs.k8s.io/controller-runtime"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	appstudiov1alpha1 "github.com/redhat-appstudio/application-api/api/v1alpha1"
 	logutil "github.com/redhat-appstudio/application-service/pkg/log"
@@ -32,6 +33,14 @@ func (r *ComponentReconciler) SetCreateConditionAndUpdateCR(ctx context.Context,
 	log := ctrl.LoggerFrom(ctx)
 
 	condition := metav1.Condition{}
+
+	var currentComponent *appstudiov1alpha1.Component
+	err := r.Get(ctx, req.NamespacedName, currentComponent)
+	if err != nil {
+		return nil
+	}
+	patch := client.MergeFrom(currentComponent.DeepCopy())
+
 	if createError == nil {
 		condition = metav1.Condition{
 			Type:    "Created",
@@ -50,7 +59,7 @@ func (r *ComponentReconciler) SetCreateConditionAndUpdateCR(ctx context.Context,
 	}
 	meta.SetStatusCondition(&component.Status.Conditions, condition)
 
-	err := r.Client.Status().Update(ctx, component)
+	err = r.Client.Status().Patch(ctx, component, patch)
 	if err != nil {
 		// Retry, and if still fails, then return an error
 		curComponent := &appstudiov1alpha1.Component{}
@@ -64,7 +73,7 @@ func (r *ComponentReconciler) SetCreateConditionAndUpdateCR(ctx context.Context,
 		curComponent.Status.GitOps = component.Status.GitOps
 		meta.SetStatusCondition(&curComponent.Status.Conditions, condition)
 
-		err = r.Client.Status().Update(ctx, curComponent)
+		err = r.Client.Status().Patch(ctx, curComponent, patch)
 		if err != nil {
 			log.Error(err, "Unable to update Component")
 		}
@@ -78,6 +87,12 @@ func (r *ComponentReconciler) SetUpdateConditionAndUpdateCR(ctx context.Context,
 	log := ctrl.LoggerFrom(ctx)
 
 	condition := metav1.Condition{}
+	var currentComponent *appstudiov1alpha1.Component
+	err := r.Get(ctx, req.NamespacedName, currentComponent)
+	if err != nil {
+		return nil
+	}
+	patch := client.MergeFrom(currentComponent.DeepCopy())
 	if updateError == nil {
 		condition = metav1.Condition{
 			Type:    "Updated",
@@ -96,7 +111,7 @@ func (r *ComponentReconciler) SetUpdateConditionAndUpdateCR(ctx context.Context,
 	}
 
 	meta.SetStatusCondition(&component.Status.Conditions, condition)
-	err := r.Client.Status().Update(ctx, component)
+	err = r.Client.Status().Patch(ctx, component, patch)
 	if err != nil {
 		// Retry, and if still fails, then return an error
 		curComponent := &appstudiov1alpha1.Component{}
@@ -110,7 +125,7 @@ func (r *ComponentReconciler) SetUpdateConditionAndUpdateCR(ctx context.Context,
 		curComponent.Status.GitOps = component.Status.GitOps
 		meta.SetStatusCondition(&curComponent.Status.Conditions, condition)
 
-		err = r.Client.Status().Update(ctx, curComponent)
+		err = r.Client.Status().Patch(ctx, curComponent, patch)
 		if err != nil {
 			log.Error(err, "Unable to update Component")
 		}
@@ -124,6 +139,12 @@ func (r *ComponentReconciler) SetUpdateConditionAndUpdateCR(ctx context.Context,
 func (r *ComponentReconciler) SetGitOpsGeneratedConditionAndUpdateCR(ctx context.Context, req ctrl.Request, component *appstudiov1alpha1.Component, generateError error) error {
 	log := ctrl.LoggerFrom(ctx)
 	condition := metav1.Condition{}
+	var currentComponent *appstudiov1alpha1.Component
+	err := r.Get(ctx, req.NamespacedName, currentComponent)
+	if err != nil {
+		return nil
+	}
+	patch := client.MergeFrom(currentComponent.DeepCopy())
 	if generateError == nil {
 		condition = metav1.Condition{
 			Type:    "GitOpsResourcesGenerated",
@@ -142,7 +163,7 @@ func (r *ComponentReconciler) SetGitOpsGeneratedConditionAndUpdateCR(ctx context
 	}
 	meta.SetStatusCondition(&component.Status.Conditions, condition)
 
-	err := r.Client.Status().Update(ctx, component)
+	err = r.Client.Status().Patch(ctx, component, patch)
 	if err != nil {
 		// Retry, and if still fails, then return an error
 		curComponent := &appstudiov1alpha1.Component{}
@@ -152,7 +173,7 @@ func (r *ComponentReconciler) SetGitOpsGeneratedConditionAndUpdateCR(ctx context
 		}
 		meta.SetStatusCondition(&curComponent.Status.Conditions, condition)
 
-		err = r.Client.Status().Update(ctx, curComponent)
+		err = r.Client.Status().Patch(ctx, curComponent, patch)
 		if err != nil {
 			log.Error(err, "Unable to update Component")
 		}
