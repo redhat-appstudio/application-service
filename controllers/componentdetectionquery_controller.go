@@ -168,6 +168,8 @@ func (r *ComponentDetectionQueryReconciler) Reconcile(ctx context.Context, req c
 				}
 			}
 		}
+		// set in the CDQ spec
+		componentDetectionQuery.Spec.GitSource.Revision = source.Revision
 
 		if source.DevfileURL == "" {
 			isMultiComponent := false
