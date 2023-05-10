@@ -71,15 +71,13 @@ func TestSetCompleteConditionAndUpdateCR(t *testing.T) {
 
 	tests := []struct {
 		name          string
-		originalCDQ   appstudiov1alpha1.ComponentDetectionQuery
 		updateCDQ     appstudiov1alpha1.ComponentDetectionQuery
 		err           error
 		wantCondition metav1.Condition
 	}{
 		{
-			name:        "Simple CDQ, no error",
-			originalCDQ: originalCDQ,
-			updateCDQ:   originalCDQ,
+			name:      "Simple CDQ, no error",
+			updateCDQ: originalCDQ,
 			wantCondition: metav1.Condition{
 				Type:    "Completed",
 				Status:  metav1.ConditionTrue,
@@ -88,10 +86,9 @@ func TestSetCompleteConditionAndUpdateCR(t *testing.T) {
 			},
 		},
 		{
-			name:        "Simple CDQ, with error",
-			originalCDQ: originalCDQ,
-			updateCDQ:   originalCDQ,
-			err:         fmt.Errorf("some error"),
+			name:      "Simple CDQ, with error",
+			updateCDQ: originalCDQ,
+			err:       fmt.Errorf("some error"),
 			wantCondition: metav1.Condition{
 				Type:    "Completed",
 				Status:  metav1.ConditionFalse,
@@ -100,8 +97,7 @@ func TestSetCompleteConditionAndUpdateCR(t *testing.T) {
 			},
 		},
 		{
-			name:        "CDQ with invalid status fields",
-			originalCDQ: originalCDQ,
+			name: "CDQ with invalid status fields",
 			updateCDQ: appstudiov1alpha1.ComponentDetectionQuery{
 				TypeMeta: metav1.TypeMeta{
 					APIVersion: "appstudio.redhat.com/v1alpha1",
@@ -137,7 +133,7 @@ func TestSetCompleteConditionAndUpdateCR(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			r.SetCompleteConditionAndUpdateCR(context.Background(), request, &tt.updateCDQ, &tt.originalCDQ, tt.err)
+			r.SetCompleteConditionAndUpdateCR(context.Background(), request, &tt.updateCDQ, tt.err)
 
 			// Now get the resource and verify its status condition
 			getCDQ := appstudiov1alpha1.ComponentDetectionQuery{}

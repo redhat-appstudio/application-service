@@ -31,8 +31,12 @@ import (
 
 func (r *ComponentDetectionQueryReconciler) SetDetectingConditionAndUpdateCR(ctx context.Context, req ctrl.Request, componentDetectionQuery *appstudiov1alpha1.ComponentDetectionQuery) {
 	log := ctrl.LoggerFrom(ctx)
-
-	patch := client.MergeFrom(componentDetectionQuery.DeepCopy())
+	var currentCDQ *appstudiov1alpha1.ComponentDetectionQuery
+	err := r.Get(ctx, req.NamespacedName, currentCDQ)
+	if err != nil {
+		return
+	}
+	patch := client.MergeFrom(currentCDQ.DeepCopy())
 
 	meta.SetStatusCondition(&componentDetectionQuery.Status.Conditions, metav1.Condition{
 		Type:    "Processing",
@@ -41,16 +45,21 @@ func (r *ComponentDetectionQueryReconciler) SetDetectingConditionAndUpdateCR(ctx
 		Message: "ComponentDetectionQuery is processing",
 	})
 
-	err := r.Client.Status().Patch(ctx, componentDetectionQuery, patch)
+	err = r.Client.Status().Patch(ctx, componentDetectionQuery, patch)
 	if err != nil {
 		log.Error(err, "Unable to update ComponentDetectionQuery")
 	}
 }
 
-func (r *ComponentDetectionQueryReconciler) SetCompleteConditionAndUpdateCR(ctx context.Context, req ctrl.Request, componentDetectionQuery *appstudiov1alpha1.ComponentDetectionQuery, originalCDQ *appstudiov1alpha1.ComponentDetectionQuery, completeError error) {
+func (r *ComponentDetectionQueryReconciler) SetCompleteConditionAndUpdateCR(ctx context.Context, req ctrl.Request, componentDetectionQuery *appstudiov1alpha1.ComponentDetectionQuery, completeError error) {
 	log := ctrl.LoggerFrom(ctx)
 
-	patch := client.MergeFrom(originalCDQ.DeepCopy())
+	var currentCDQ *appstudiov1alpha1.ComponentDetectionQuery
+	err := r.Get(ctx, req.NamespacedName, currentCDQ)
+	if err != nil {
+		return
+	}
+	patch := client.MergeFrom(currentCDQ.DeepCopy())
 
 	if completeError == nil {
 		meta.SetStatusCondition(&componentDetectionQuery.Status.Conditions, metav1.Condition{
@@ -70,13 +79,13 @@ func (r *ComponentDetectionQueryReconciler) SetCompleteConditionAndUpdateCR(ctx 
 		})
 		logutil.LogAPIResourceChangeEvent(log, componentDetectionQuery.Name, "ComponentDetectionQuery", logutil.ResourceComplete, completeError)
 	}
-	err := r.Client.Status().Patch(ctx, componentDetectionQuery, patch)
+	err = r.Client.Status().Patch(ctx, componentDetectionQuery, patch)
 	if err != nil {
 		// Error attempting to update the CDQ status. Since some CDQ status fields have specific validation rules (specifically the detected components), a bug could cause
 		// an invalid field to be present in the status. _If_ the status update fails, still attempt to update only the status conditions
 		log.Error(err, "Unable to update ComponentDetectionQuery. Will attempt to update only the status condition")
 
-		copiedCDQ := originalCDQ.DeepCopy()
+		copiedCDQ := currentCDQ.DeepCopy()
 		meta.SetStatusCondition(&copiedCDQ.Status.Conditions, metav1.Condition{
 			Type:    "Completed",
 			Status:  metav1.ConditionFalse,
