@@ -20,6 +20,7 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"path/filepath"
 	"reflect"
 	"time"
 
@@ -256,6 +257,34 @@ func (r *ComponentReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 				gitToken = string(gitSecret.Data["password"])
 			}
 
+			if source.GitSource.Revision == "" {
+				sourceURL := source.GitSource.URL
+				// If the repository URL ends in a forward slash, remove it to avoid issues with default branch lookup
+				if string(sourceURL[len(sourceURL)-1]) == "/" {
+					sourceURL = sourceURL[0 : len(sourceURL)-1]
+				}
+				log.Info(fmt.Sprintf("Look for default branch of repo %s... %v", source.GitSource.URL, req.NamespacedName))
+				metricsLabel := prometheus.Labels{"controller": cdqName, "tokenName": ghClient.TokenName, "operation": "GetDefaultBranchFromURL"}
+				metrics.ControllerGitRequest.With(metricsLabel).Inc()
+				source.GitSource.Revision, err = ghClient.GetDefaultBranchFromURL(sourceURL, ctx)
+				metrics.HandleRateLimitMetrics(err, metricsLabel)
+				if err != nil {
+					log.Error(err, fmt.Sprintf("Unable to get default branch of Github Repo %v, try to fall back to main branch... %v", source.GitSource.URL, req.NamespacedName))
+					metricsLabel := prometheus.Labels{"controller": cdqName, "tokenName": ghClient.TokenName, "operation": "GetBranchFromURL"}
+					metrics.ControllerGitRequest.With(metricsLabel).Inc()
+					_, err := ghClient.GetBranchFromURL(sourceURL, ctx, "main")
+					if err != nil {
+						metrics.HandleRateLimitMetrics(err, metricsLabel)
+						log.Error(err, fmt.Sprintf("Unable to get main branch of Github Repo %v ... %v", source.GitSource.URL, req.NamespacedName))
+						retErr := fmt.Errorf("unable to get default branch of Github Repo %v, try to fall back to main branch, failed to get main branch... %v", source.GitSource.URL, req.NamespacedName)
+						_ = r.SetCreateConditionAndUpdateCR(ctx, req, &component, retErr)
+						return ctrl.Result{}, retErr
+					} else {
+						source.GitSource.Revision = "main"
+					}
+				}
+			}
+
 			var gitURL string
 			if source.GitSource.DevfileURL == "" && source.GitSource.DockerfileURL == "" {
 				if gitToken == "" {
@@ -276,7 +305,7 @@ func (r *ComponentReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 					devfileLocation = gitURL + string(os.PathSeparator) + devfileLocation
 				} else {
 					// Use SPI to retrieve the devfile from the private repository
-					devfileBytes, err = spi.DownloadDevfileUsingSPI(r.SPIClient, ctx, component.Namespace, source.GitSource.URL, "main", context)
+					devfileBytes, err = spi.DownloadDevfileUsingSPI(r.SPIClient, ctx, component.Namespace, source.GitSource.URL, source.GitSource.Revision, context)
 					if err != nil {
 						log.Error(err, fmt.Sprintf("Unable to download from any known devfile locations from %s %v", source.GitSource.URL, req.NamespacedName))
 						_ = r.SetCreateConditionAndUpdateCR(ctx, req, &component, err)
@@ -296,7 +325,7 @@ func (r *ComponentReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 			} else if source.GitSource.DockerfileURL != "" {
 				devfileData, err := devfile.CreateDevfileForDockerfileBuild(source.GitSource.DockerfileURL, "./", component.Name, component.Spec.Application)
 				if err != nil {
-					log.Error(err, fmt.Sprintf("Unable to create devfile for dockerfile build %v", req.NamespacedName))
+					log.Error(err, fmt.Sprintf("Unable to create devfile for Dockerfile build %v", req.NamespacedName))
 					_ = r.SetCreateConditionAndUpdateCR(ctx, req, &component, err)
 					return ctrl.Result{}, err
 				}
@@ -578,22 +607,14 @@ func (r *ComponentReconciler) generateGitops(ctx context.Context, ghClient *gith
 
 	// Get the commit ID for the gitops repository
 	var commitID string
-	repoName, orgName, err := github.GetRepoAndOrgFromURL(gitOpsURL)
-	if err != nil {
-		gitOpsErr := &GitOpsParseRepoError{gitOpsURL, err}
-		log.Error(gitOpsErr, "")
-		return gitOpsErr
+	repoPath := filepath.Join(tempDir, component.Name)
+	metricsLabel := prometheus.Labels{"controller": componentName, "tokenName": ghClient.TokenName, "operation": "GetCommitIDFromRepo"}
+	metrics.ControllerGitRequest.With(metricsLabel).Inc()
+	if commitID, err = r.Generator.GetCommitIDFromRepo(r.AppFS, repoPath); err != nil {
+		log.Error(err, "")
+		return err
 	}
 
-	metricsLabel := prometheus.Labels{"controller": componentName, "tokenName": ghClient.TokenName, "operation": "GetLatestCommitSHAFromRepository"}
-	metrics.ControllerGitRequest.With(metricsLabel).Inc()
-	commitID, err = ghClient.GetLatestCommitSHAFromRepository(ctx, repoName, orgName, gitOpsBranch)
-	metrics.HandleRateLimitMetrics(err, metricsLabel)
-	if err != nil {
-		gitOpsErr := &GitOpsCommitIdError{err}
-		log.Error(gitOpsErr, "")
-		return gitOpsErr
-	}
 	component.Status.GitOps.CommitID = commitID
 
 	// Remove the temp folder that was created

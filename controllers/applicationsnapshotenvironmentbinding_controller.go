@@ -266,23 +266,14 @@ func (r *SnapshotEnvironmentBindingReconciler) Reconcile(ctx context.Context, re
 
 		// Retrieve the commit ID
 		var commitID string
-		repoName, orgName, err := github.GetRepoAndOrgFromURL(gitOpsRemoteURL)
-		if err != nil {
-			gitOpsErr := &GitOpsParseRepoError{gitOpsRemoteURL, err}
-			log.Error(gitOpsErr, "")
-			r.SetConditionAndUpdateCR(ctx, req, &appSnapshotEnvBinding, gitOpsErr)
-			return ctrl.Result{}, gitOpsErr
-		}
-
-		metricsLabel := prometheus.Labels{"controller": asebName, "tokenName": ghClient.TokenName, "operation": "GetLatestCommitSHAFromRepository"}
+		repoPath := filepath.Join(tempDir, applicationName)
+		metricsLabel := prometheus.Labels{"controller": asebName, "tokenName": ghClient.TokenName, "operation": "GetCommitIDFromRepo"}
 		metrics.ControllerGitRequest.With(metricsLabel).Inc()
-		commitID, err = ghClient.GetLatestCommitSHAFromRepository(ctx, repoName, orgName, gitOpsBranch)
-		if err != nil {
-			metrics.HandleRateLimitMetrics(err, metricsLabel)
-			gitOpsErr := &GitOpsCommitIdError{err}
-			log.Error(gitOpsErr, "")
-			r.SetConditionAndUpdateCR(ctx, req, &appSnapshotEnvBinding, gitOpsErr)
-			return ctrl.Result{}, gitOpsErr
+		if commitID, err = r.Generator.GetCommitIDFromRepo(r.AppFS, repoPath); err != nil {
+			//gitops generator errors are sanitized
+			log.Error(err, "")
+			r.SetConditionAndUpdateCR(ctx, req, &appSnapshotEnvBinding, err)
+			return ctrl.Result{}, err
 		}
 
 		if !isStatusUpdated {

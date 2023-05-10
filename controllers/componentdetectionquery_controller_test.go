@@ -195,7 +195,7 @@ var _ = Describe("Component Detection Query controller", func() {
 	})
 
 	Context("Create Component Detection Query with multi comp repo with no devfiles", func() {
-		It("Should successfully get the correct devfiles and dockerfiles", func() {
+		It("Should successfully get the correct devfiles and Dockerfiles", func() {
 			ctx := context.Background()
 
 			queryName := HASCompDetQuery + "4"
@@ -248,7 +248,7 @@ var _ = Describe("Component Detection Query controller", func() {
 	})
 
 	Context("Create Component Detection Query with a non component devfile repo", func() {
-		It("Should error out without any devfile or dockerfile detected", func() {
+		It("Should error out without any devfile or Dockerfile detected", func() {
 			ctx := context.Background()
 
 			queryName := HASCompDetQuery + "5"
@@ -282,7 +282,7 @@ var _ = Describe("Component Detection Query controller", func() {
 			}, timeout, interval).Should(BeTrue())
 
 			// Make sure the right err is set
-			Expect(createdHasCompDetectionQuery.Status.Conditions[1].Message).Should(ContainSubstring("no devfile or dockerfile found in the specified location"))
+			Expect(createdHasCompDetectionQuery.Status.Conditions[1].Message).Should(ContainSubstring("no devfile or Dockerfile found in the specified location"))
 
 			// Delete the specified Detection Query resource
 			deleteCompDetQueryCR(hasCompDetQueryLookupKey)
@@ -926,8 +926,8 @@ var _ = Describe("Component Detection Query controller", func() {
 		})
 	})
 
-	Context("Create Component Detection Query with multi component repo that has no devfile or dockerfile", func() {
-		It("Should attempt to match a devfile or dockerfile for every component", func() {
+	Context("Create Component Detection Query with multi component repo that has no devfile or Dockerfile", func() {
+		It("Should attempt to match a devfile or Dockerfile for every component", func() {
 			ctx := context.Background()
 
 			queryName := HASCompDetQuery + "20"
@@ -972,7 +972,7 @@ var _ = Describe("Component Detection Query controller", func() {
 			deleteCompDetQueryCR(hasCompDetQueryLookupKey)
 		})
 
-		Context("Create Component Detection Query with a dockerfile repo", func() {
+		Context("Create Component Detection Query with a Dockerfile repo", func() {
 			It("Should return successfully", func() {
 				ctx := context.Background()
 
@@ -1206,8 +1206,8 @@ var _ = Describe("Component Detection Query controller", func() {
 			})
 		})
 
-		Context("Create Component Detection Query with repo that has devfile but no dockerfile", func() {
-			It("Should successfully detect a devfile and match the proper dockerfile for it", func() {
+		Context("Create Component Detection Query with repo that has devfile but no Dockerfile", func() {
+			It("Should successfully detect a devfile and match the proper Dockerfile for it", func() {
 				ctx := context.Background()
 
 				queryName := "nodejs-no-dockerfile"
@@ -1355,7 +1355,7 @@ var _ = Describe("Component Detection Query controller", func() {
 			})
 		})
 
-		Context("Create Component Detection Query for dockerfile component", func() {
+		Context("Create Component Detection Query for Dockerfile component", func() {
 			It("Should only return one component, with target port set", func() {
 				ctx := context.Background()
 
@@ -1402,8 +1402,8 @@ var _ = Describe("Component Detection Query controller", func() {
 			})
 		})
 
-		Context("Create Component Detection Query with dockerfile under other common locations", func() {
-			It("Should return dockerfile under common sub folder", func() {
+		Context("Create Component Detection Query with Dockerfile under other common locations", func() {
+			It("Should return Dockerfile under common sub folder", func() {
 				ctx := context.Background()
 
 				queryName := HASCompDetQuery + "27"
