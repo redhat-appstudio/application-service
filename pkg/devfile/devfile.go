@@ -471,14 +471,14 @@ func GetIngressFromEndpoint(name, serviceName, port, path string, secure bool, a
 
 	implementationSpecific := networkingv1.PathTypeImplementationSpecific
 
-	portNumber, err := strconv.Atoi(port)
+	portNumber, err := strconv.ParseInt(port, 10, 32)
 	if err != nil {
-		return networkingv1.Ingress{}, nil
+		return networkingv1.Ingress{}, err
 	}
 
 	ingress := networkingv1.Ingress{
 		TypeMeta:   generator.GetTypeMeta("Ingress", "networking.k8s.io/v1"),
-		ObjectMeta: generator.GetObjectMeta(name, "", nil, nil),
+		ObjectMeta: generator.GetObjectMeta(name, "", nil, annotations),
 		Spec: networkingv1.IngressSpec{
 			Rules: []networkingv1.IngressRule{
 				{

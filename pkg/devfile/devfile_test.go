@@ -46,6 +46,7 @@ import (
 	routev1 "github.com/openshift/api/route/v1"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
+	networkingv1 "k8s.io/api/networking/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -1115,6 +1116,78 @@ metadata:
   name: java-springboot
 schemaVersion: 2.2.0`
 
+	kubernetesInlinedDevfileIngress := `
+commands:
+- apply:
+    component: image-build
+  id: build-image
+- apply:
+    component: kubernetes-deploy
+  id: deployk8s
+- composite:
+    commands:
+    - build-image
+    - deployk8s
+    group:
+      isDefault: true
+      kind: deploy
+    parallel: false
+  id: deploy
+components:
+- image:
+    autoBuild: false
+    dockerfile:
+      buildContext: .
+      rootRequired: false
+      uri: docker/Dockerfile
+    imageName: java-springboot-image:latest
+  name: image-build
+- attributes:
+    api.devfile.io/k8sLikeComponent-originalURI: deploy.yaml
+    deployment/container-port: 5566
+    deployment/containerENV:
+    - name: FOO
+      value: foo11
+    - name: BAR
+      value: bar11
+    deployment/cpuLimit: "2"
+    deployment/cpuRequest: 701m
+    deployment/memoryLimit: 500Mi
+    deployment/memoryRequest: 401Mi
+    deployment/replicas: 5
+    deployment/route: route111222
+    deployment/storageLimit: 400Mi
+    deployment/storageRequest: 201Mi
+  kubernetes:
+    deployByDefault: false
+    inlined: |-
+      apiVersion: networking.k8s.io/v1
+      kind: Ingress
+      metadata:
+        name: ingress-sample
+        labels:
+          test: test
+        annotations:
+          nginx.ingress.kubernetes.io/rewrite-target: /
+          test: yes
+      spec:
+        rules:
+        - host: "foo.bar.com"
+          http:
+            paths:
+            - path: /testpath
+              pathType: ImplementationSpecific
+              backend:
+                service:
+                  name: test
+                  port:
+                    number: 80
+      status: {}
+  name: kubernetes-deploy
+metadata:
+  name: java-springboot
+schemaVersion: 2.2.0`
+
 	kubernetesInlinedDevfileRoute := `
 commands:
 - apply:
@@ -2119,15 +2192,20 @@ schemaVersion: 2.2.0`
 	revHistoryLimit := int32(0)
 	setRevHistoryLimit := int32(5)
 
+	host := "host.example.com"
+	implementationSpecific := networkingv1.PathTypeImplementationSpecific
+
 	tests := []struct {
 		name          string
 		devfileString string
 		componentName string
 		appName       string
 		image         string
+		hostname      string
 		wantDeploy    appsv1.Deployment
 		wantService   corev1.Service
 		wantRoute     routev1.Route
+		wantIngress   networkingv1.Ingress
 		wantErr       bool
 	}{
 		{
@@ -2136,6 +2214,7 @@ schemaVersion: 2.2.0`
 			componentName: "component-sample",
 			appName:       "application-sample",
 			image:         "image1",
+			hostname:      host,
 			wantDeploy: appsv1.Deployment{
 				TypeMeta: metav1.TypeMeta{
 					Kind:       "Deployment",
@@ -2261,6 +2340,47 @@ schemaVersion: 2.2.0`
 					},
 				},
 			},
+			wantIngress: networkingv1.Ingress{
+				TypeMeta: metav1.TypeMeta{
+					Kind:       "Ingress",
+					APIVersion: "networking.k8s.io/v1",
+				},
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "component-sample",
+					Labels: map[string]string{
+						"app.kubernetes.io/created-by": "application-service",
+						"app.kubernetes.io/instance":   "component-sample",
+						"app.kubernetes.io/managed-by": "kustomize",
+						"app.kubernetes.io/name":       "component-sample",
+						"app.kubernetes.io/part-of":    "application-sample",
+					},
+				},
+				Spec: networkingv1.IngressSpec{
+					Rules: []networkingv1.IngressRule{
+						{
+							IngressRuleValue: networkingv1.IngressRuleValue{
+								HTTP: &networkingv1.HTTPIngressRuleValue{
+									Paths: []networkingv1.HTTPIngressPath{
+										{
+											Path:     "/",
+											PathType: &implementationSpecific,
+											Backend: networkingv1.IngressBackend{
+												Service: &networkingv1.IngressServiceBackend{
+													Name: "component-sample",
+													Port: networkingv1.ServiceBackendPort{
+														Number: 5566,
+													},
+												},
+											},
+										},
+									},
+								},
+							},
+							Host: host,
+						},
+					},
+				},
+			},
 			wantRoute: routev1.Route{
 				TypeMeta: metav1.TypeMeta{
 					Kind:       "Route",
@@ -2296,6 +2416,7 @@ schemaVersion: 2.2.0`
 			componentName: "component-sample",
 			appName:       "application-sample",
 			image:         "image1",
+			hostname:      host,
 			wantDeploy: appsv1.Deployment{
 				TypeMeta: metav1.TypeMeta{
 					Kind:       "Deployment",
@@ -2383,6 +2504,47 @@ schemaVersion: 2.2.0`
 					},
 				},
 			},
+			wantIngress: networkingv1.Ingress{
+				TypeMeta: metav1.TypeMeta{
+					Kind:       "Ingress",
+					APIVersion: "networking.k8s.io/v1",
+				},
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "component-sample",
+					Labels: map[string]string{
+						"app.kubernetes.io/created-by": "application-service",
+						"app.kubernetes.io/instance":   "component-sample",
+						"app.kubernetes.io/managed-by": "kustomize",
+						"app.kubernetes.io/name":       "component-sample",
+						"app.kubernetes.io/part-of":    "application-sample",
+					},
+				},
+				Spec: networkingv1.IngressSpec{
+					Rules: []networkingv1.IngressRule{
+						{
+							IngressRuleValue: networkingv1.IngressRuleValue{
+								HTTP: &networkingv1.HTTPIngressRuleValue{
+									Paths: []networkingv1.HTTPIngressPath{
+										{
+											Path:     "/",
+											PathType: &implementationSpecific,
+											Backend: networkingv1.IngressBackend{
+												Service: &networkingv1.IngressServiceBackend{
+													Name: "component-sample",
+													Port: networkingv1.ServiceBackendPort{
+														Number: 1111,
+													},
+												},
+											},
+										},
+									},
+								},
+							},
+							Host: host,
+						},
+					},
+				},
+			},
 			wantRoute: routev1.Route{
 				TypeMeta: metav1.TypeMeta{
 					Kind:       "Route",
@@ -2444,6 +2606,7 @@ schemaVersion: 2.2.0`
 			componentName: "component-sample",
 			appName:       "application-sample",
 			image:         "image1",
+			hostname:      host,
 			wantDeploy: appsv1.Deployment{
 				TypeMeta: metav1.TypeMeta{
 					Kind:       "Deployment",
@@ -2527,6 +2690,47 @@ schemaVersion: 2.2.0`
 									},
 								},
 							},
+						},
+					},
+				},
+			},
+			wantIngress: networkingv1.Ingress{
+				TypeMeta: metav1.TypeMeta{
+					Kind:       "Ingress",
+					APIVersion: "networking.k8s.io/v1",
+				},
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "component-sample",
+					Labels: map[string]string{
+						"app.kubernetes.io/created-by": "application-service",
+						"app.kubernetes.io/instance":   "component-sample",
+						"app.kubernetes.io/managed-by": "kustomize",
+						"app.kubernetes.io/name":       "component-sample",
+						"app.kubernetes.io/part-of":    "application-sample",
+					},
+				},
+				Spec: networkingv1.IngressSpec{
+					Rules: []networkingv1.IngressRule{
+						{
+							IngressRuleValue: networkingv1.IngressRuleValue{
+								HTTP: &networkingv1.HTTPIngressRuleValue{
+									Paths: []networkingv1.HTTPIngressPath{
+										{
+											Path:     "/",
+											PathType: &implementationSpecific,
+											Backend: networkingv1.IngressBackend{
+												Service: &networkingv1.IngressServiceBackend{
+													Name: "component-sample",
+													Port: networkingv1.ServiceBackendPort{
+														Number: 1111,
+													},
+												},
+											},
+										},
+									},
+								},
+							},
+							Host: host,
 						},
 					},
 				},
@@ -2626,6 +2830,60 @@ schemaVersion: 2.2.0`
 			},
 		},
 		{
+			name:          "Simple devfile from Inline with only Ingress",
+			devfileString: kubernetesInlinedDevfileIngress,
+			componentName: "component-sample",
+			appName:       "application-sample",
+			hostname:      host,
+			image:         "image1",
+			wantIngress: networkingv1.Ingress{
+				TypeMeta: metav1.TypeMeta{
+					Kind:       "Ingress",
+					APIVersion: "networking.k8s.io/v1",
+				},
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "component-sample",
+					Labels: map[string]string{
+						"app.kubernetes.io/created-by": "application-service",
+						"app.kubernetes.io/instance":   "component-sample",
+						"app.kubernetes.io/managed-by": "kustomize",
+						"app.kubernetes.io/name":       "component-sample",
+						"app.kubernetes.io/part-of":    "application-sample",
+						"test":                         "test",
+					},
+					Annotations: map[string]string{
+						"nginx.ingress.kubernetes.io/rewrite-target": "/",
+						"test": "yes",
+					},
+				},
+				Spec: networkingv1.IngressSpec{
+					Rules: []networkingv1.IngressRule{
+						{
+							IngressRuleValue: networkingv1.IngressRuleValue{
+								HTTP: &networkingv1.HTTPIngressRuleValue{
+									Paths: []networkingv1.HTTPIngressPath{
+										{
+											Path:     "/testpath",
+											PathType: &implementationSpecific,
+											Backend: networkingv1.IngressBackend{
+												Service: &networkingv1.IngressServiceBackend{
+													Name: "test",
+													Port: networkingv1.ServiceBackendPort{
+														Number: 5566,
+													},
+												},
+											},
+										},
+									},
+								},
+							},
+							Host: "foo.bar.com",
+						},
+					},
+				},
+			},
+		},
+		{
 			name:          "Simple devfile from Inline with only Svc",
 			devfileString: kubernetesInlinedDevfileSvc,
 			componentName: "component-sample",
@@ -2665,6 +2923,7 @@ schemaVersion: 2.2.0`
 			componentName: "component-sample",
 			appName:       "application-sample",
 			image:         "image1",
+			hostname:      host,
 			wantDeploy: appsv1.Deployment{
 				TypeMeta: metav1.TypeMeta{
 					Kind:       "Deployment",
@@ -2752,6 +3011,47 @@ schemaVersion: 2.2.0`
 					},
 				},
 			},
+			wantIngress: networkingv1.Ingress{
+				TypeMeta: metav1.TypeMeta{
+					Kind:       "Ingress",
+					APIVersion: "networking.k8s.io/v1",
+				},
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "component-sample",
+					Labels: map[string]string{
+						"app.kubernetes.io/created-by": "application-service",
+						"app.kubernetes.io/instance":   "component-sample",
+						"app.kubernetes.io/managed-by": "kustomize",
+						"app.kubernetes.io/name":       "component-sample",
+						"app.kubernetes.io/part-of":    "application-sample",
+					},
+				},
+				Spec: networkingv1.IngressSpec{
+					Rules: []networkingv1.IngressRule{
+						{
+							IngressRuleValue: networkingv1.IngressRuleValue{
+								HTTP: &networkingv1.HTTPIngressRuleValue{
+									Paths: []networkingv1.HTTPIngressPath{
+										{
+											Path:     "/",
+											PathType: &implementationSpecific,
+											Backend: networkingv1.IngressBackend{
+												Service: &networkingv1.IngressServiceBackend{
+													Name: "component-sample",
+													Port: networkingv1.ServiceBackendPort{
+														Number: 1111,
+													},
+												},
+											},
+										},
+									},
+								},
+							},
+							Host: host,
+						},
+					},
+				},
+			},
 			wantRoute: routev1.Route{
 				TypeMeta: metav1.TypeMeta{
 					Kind:       "Route",
@@ -2786,6 +3086,7 @@ schemaVersion: 2.2.0`
 			componentName: "component-sample-component-sample-component-sample",
 			appName:       "application-sample",
 			image:         "image1",
+			hostname:      host,
 			wantDeploy: appsv1.Deployment{
 				TypeMeta: metav1.TypeMeta{
 					Kind:       "Deployment",
@@ -2873,6 +3174,47 @@ schemaVersion: 2.2.0`
 					},
 				},
 			},
+			wantIngress: networkingv1.Ingress{
+				TypeMeta: metav1.TypeMeta{
+					Kind:       "Ingress",
+					APIVersion: "networking.k8s.io/v1",
+				},
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "component-sample-component-sample-component-sample",
+					Labels: map[string]string{
+						"app.kubernetes.io/created-by": "application-service",
+						"app.kubernetes.io/instance":   "component-sample-component-sample-component-sample",
+						"app.kubernetes.io/managed-by": "kustomize",
+						"app.kubernetes.io/name":       "component-sample-component-sample-component-sample",
+						"app.kubernetes.io/part-of":    "application-sample",
+					},
+				},
+				Spec: networkingv1.IngressSpec{
+					Rules: []networkingv1.IngressRule{
+						{
+							IngressRuleValue: networkingv1.IngressRuleValue{
+								HTTP: &networkingv1.HTTPIngressRuleValue{
+									Paths: []networkingv1.HTTPIngressPath{
+										{
+											Path:     "/",
+											PathType: &implementationSpecific,
+											Backend: networkingv1.IngressBackend{
+												Service: &networkingv1.IngressServiceBackend{
+													Name: "component-sample-component-sample-component-sample",
+													Port: networkingv1.ServiceBackendPort{
+														Number: 1111,
+													},
+												},
+											},
+										},
+									},
+								},
+							},
+							Host: host,
+						},
+					},
+				},
+			},
 			wantRoute: routev1.Route{
 				TypeMeta: metav1.TypeMeta{
 					Kind:       "Route",
@@ -2907,6 +3249,7 @@ schemaVersion: 2.2.0`
 			componentName: "component-sample",
 			appName:       "application-sample",
 			image:         "image1",
+			hostname:      host,
 			wantDeploy: appsv1.Deployment{
 				TypeMeta: metav1.TypeMeta{
 					Kind:       "Deployment",
@@ -2994,6 +3337,47 @@ schemaVersion: 2.2.0`
 									},
 								},
 							},
+						},
+					},
+				},
+			},
+			wantIngress: networkingv1.Ingress{
+				TypeMeta: metav1.TypeMeta{
+					Kind:       "Ingress",
+					APIVersion: "networking.k8s.io/v1",
+				},
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "component-sample",
+					Labels: map[string]string{
+						"app.kubernetes.io/created-by": "application-service",
+						"app.kubernetes.io/instance":   "component-sample",
+						"app.kubernetes.io/managed-by": "kustomize",
+						"app.kubernetes.io/name":       "component-sample",
+						"app.kubernetes.io/part-of":    "application-sample",
+					},
+				},
+				Spec: networkingv1.IngressSpec{
+					Rules: []networkingv1.IngressRule{
+						{
+							IngressRuleValue: networkingv1.IngressRuleValue{
+								HTTP: &networkingv1.HTTPIngressRuleValue{
+									Paths: []networkingv1.HTTPIngressPath{
+										{
+											Path:     "/",
+											PathType: &implementationSpecific,
+											Backend: networkingv1.IngressBackend{
+												Service: &networkingv1.IngressServiceBackend{
+													Name: "component-sample",
+													Port: networkingv1.ServiceBackendPort{
+														Number: 5566,
+													},
+												},
+											},
+										},
+									},
+								},
+							},
+							Host: host,
 						},
 					},
 				},
@@ -3170,7 +3554,7 @@ schemaVersion: 2.2.0`
 			}
 			logger := ctrl.Log.WithName("TestGetResourceFromDevfile")
 
-			actualResources, err := GetResourceFromDevfile(logger, devfileData, deployAssociatedComponents, tt.componentName, tt.appName, tt.image, "")
+			actualResources, err := GetResourceFromDevfile(logger, devfileData, deployAssociatedComponents, tt.componentName, tt.appName, tt.image, tt.hostname)
 			if tt.wantErr && (err == nil) {
 				t.Error("wanted error but got nil")
 			} else if !tt.wantErr && err != nil {
@@ -3184,6 +3568,10 @@ schemaVersion: 2.2.0`
 					assert.Equal(t, tt.wantService, actualResources.Services[0], "First Service did not match")
 				}
 
+				if len(actualResources.Ingresses) > 0 {
+					assert.Equal(t, tt.wantIngress, actualResources.Ingresses[0], "First Ingress did not match")
+				}
+
 				if len(actualResources.Routes) > 0 {
 					if tt.name == "Devfile with long component name - route name should be trimmed" {
 						if len(actualResources.Routes[0].Name) > 30 {
@@ -3195,7 +3583,6 @@ schemaVersion: 2.2.0`
 					} else {
 						assert.Equal(t, tt.wantRoute, actualResources.Routes[0], "First Route did not match")
 					}
-
 				}
 			}
 		})
@@ -3573,6 +3960,87 @@ func TestValidateDevfile(t *testing.T) {
 				}
 			}
 
+		})
+	}
+}
+
+func TestGetIngressFromEndpoint(t *testing.T) {
+
+	componentName := "test-component"
+
+	implementationSpecific := networkingv1.PathTypeImplementationSpecific
+
+	tests := []struct {
+		name        string
+		ingressName string
+		serviceName string
+		port        string
+		path        string
+		hostname    string
+		annotations map[string]string
+		wantErr     bool
+		wantIngress networkingv1.Ingress
+	}{
+		{
+			name:        "Get simple ingress",
+			ingressName: componentName,
+			serviceName: componentName,
+			port:        "5000",
+			path:        "",
+			hostname:    componentName + ".example.com",
+			annotations: map[string]string{
+				"test": "yes",
+			},
+			wantIngress: networkingv1.Ingress{
+				TypeMeta: metav1.TypeMeta{
+					Kind:       "Ingress",
+					APIVersion: "networking.k8s.io/v1",
+				},
+				ObjectMeta: metav1.ObjectMeta{
+					Name: componentName,
+					Annotations: map[string]string{
+						"test": "yes",
+					},
+				},
+				Spec: networkingv1.IngressSpec{
+					Rules: []networkingv1.IngressRule{
+						{
+							IngressRuleValue: networkingv1.IngressRuleValue{
+								HTTP: &networkingv1.HTTPIngressRuleValue{
+									Paths: []networkingv1.HTTPIngressPath{
+										{
+											Path:     "/",
+											PathType: &implementationSpecific,
+											Backend: networkingv1.IngressBackend{
+												Service: &networkingv1.IngressServiceBackend{
+													Name: componentName,
+													Port: networkingv1.ServiceBackendPort{
+														Number: 5000,
+													},
+												},
+											},
+										},
+									},
+								},
+							},
+							Host: componentName + ".example.com",
+						},
+					},
+				},
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			generatedIngress, err := GetIngressFromEndpoint(tt.ingressName, tt.serviceName, tt.port, tt.path, false, tt.annotations, tt.hostname)
+			if !tt.wantErr && err != nil {
+				t.Errorf("Unexpected err: %+v", err)
+			} else if tt.wantErr && err == nil {
+				t.Errorf("Expected error but got nil")
+			} else if !reflect.DeepEqual(tt.wantIngress, generatedIngress) {
+				t.Errorf("Expected: %+v, \nGot: %+v", tt.wantIngress, generatedIngress)
+			}
 		})
 	}
 }
