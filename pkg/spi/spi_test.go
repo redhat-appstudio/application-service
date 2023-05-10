@@ -101,7 +101,7 @@ func TestDownloadDevfileandDockerfileUsingSPI(t *testing.T) {
 			wantErr: true,
 		},
 		{
-			name:    "Error reading dockerfile",
+			name:    "Error reading Dockerfile",
 			repoUrl: "https://github.com/testrepo/test-error-dockerfile-response",
 			wantErr: true,
 		},
@@ -122,7 +122,7 @@ func TestDownloadDevfileandDockerfileUsingSPI(t *testing.T) {
 
 			dockerfileBytesString := string(dockerfileBytes)
 			if dockerfileBytesString != tt.wantDockerfile {
-				t.Errorf("dockerfile error: expected %v, got %v", tt.wantDockerfile, dockerfileBytesString)
+				t.Errorf("Dockerfile error: expected %v, got %v", tt.wantDockerfile, dockerfileBytesString)
 			}
 		})
 	}

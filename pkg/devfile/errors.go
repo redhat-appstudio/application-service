@@ -45,14 +45,14 @@ func (e *NoDevfileFound) Error() string {
 	return errMsg
 }
 
-// NoDockerfileFound returns an error if no dockerfile was found
+// NoDockerfileFound returns an error if no Dockerfile was found
 type NoDockerfileFound struct {
 	Location string
 	Err      error
 }
 
 func (e *NoDockerfileFound) Error() string {
-	errMsg := fmt.Sprintf("unable to find dockerfile in the specified location %s", e.Location)
+	errMsg := fmt.Sprintf("unable to find Dockerfile in the specified location %s", e.Location)
 	if e.Err != nil {
 		errMsg = fmt.Sprintf("%s due to %v", errMsg, e.Err)
 	}

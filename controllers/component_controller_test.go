@@ -1422,7 +1422,7 @@ var _ = Describe("Component controller", func() {
 		})
 	})
 
-	Context("Create Component with dockerfile URL set", func() {
+	Context("Create Component with Dockerfile URL set", func() {
 		It("Should create successfully and update the Application", func() {
 			ctx := context.Background()
 
@@ -1612,7 +1612,7 @@ var _ = Describe("Component controller", func() {
 		})
 	})
 
-	Context("Create Component with dockerfile URL set for repo with devfile URL", func() {
+	Context("Create Component with Dockerfile URL set for repo with devfile URL", func() {
 		It("Should create successfully and override local Dockerfile URL references in the Devfile", func() {
 			ctx := context.Background()
 
