@@ -496,8 +496,8 @@ func TestCreateDevfileForDockerfileBuild(t *testing.T) {
 					assert.Equal(t, "dockerfile-build", imageComponents[0].Name, "component name should be equal")
 					assert.NotNil(t, imageComponents[0].Image, "Image component should not be nil")
 					assert.NotNil(t, imageComponents[0].Image.Dockerfile, "Dockerfile Image component should not be nil")
-					assert.Equal(t, tt.uri, imageComponents[0].Image.Dockerfile.DockerfileSrc.Uri, "dockerfile uri should be equal")
-					assert.Equal(t, tt.context, imageComponents[0].Image.Dockerfile.Dockerfile.BuildContext, "dockerfile context should be equal")
+					assert.Equal(t, tt.uri, imageComponents[0].Image.Dockerfile.DockerfileSrc.Uri, "Dockerfile uri should be equal")
+					assert.Equal(t, tt.context, imageComponents[0].Image.Dockerfile.Dockerfile.BuildContext, "Dockerfile context should be equal")
 				}
 
 				// Apply Command
@@ -529,14 +529,14 @@ func TestDownloadDevfileAndDockerfile(t *testing.T) {
 		want                  bool
 	}{
 		{
-			name:                  "Curl devfile.yaml and dockerfile",
+			name:                  "Curl devfile.yaml and Dockerfile",
 			url:                   "https://raw.githubusercontent.com/maysunfaisal/devfile-sample-python-samelevel/main",
 			wantDevfileContext:    ".devfile.yaml",
 			wantDockerfileContext: "Dockerfile",
 			want:                  true,
 		},
 		{
-			name: "Cannot curl for a devfile nor a dockerfile",
+			name: "Cannot curl for a devfile nor a Dockerfile",
 			url:  "https://github.com/octocat/Hello-World",
 			want: false,
 		},
@@ -546,7 +546,7 @@ func TestDownloadDevfileAndDockerfile(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			devfile, devfileContext, dockerfile, dockerfileContext := DownloadDevfileAndDockerfile(tt.url)
 			if tt.want != (len(devfile) > 0 && len(dockerfile) > 0) {
-				t.Errorf("devfile and a dockerfile wanted: %v but got devfile: %v dockerfile: %v", tt.want, len(devfile) > 0, len(dockerfile) > 0)
+				t.Errorf("devfile and a Dockerfile wanted: %v but got devfile: %v Dockerfile: %v", tt.want, len(devfile) > 0, len(dockerfile) > 0)
 			}
 
 			if devfileContext != tt.wantDevfileContext {
@@ -554,7 +554,7 @@ func TestDownloadDevfileAndDockerfile(t *testing.T) {
 			}
 
 			if dockerfileContext != tt.wantDockerfileContext {
-				t.Errorf("dockerfile context did not match, got %v, wanted %v", dockerfileContext, tt.wantDockerfileContext)
+				t.Errorf("Dockerfile context did not match, got %v, wanted %v", dockerfileContext, tt.wantDockerfileContext)
 			}
 		})
 	}
@@ -624,7 +624,7 @@ func TestScanRepo(t *testing.T) {
 				"python":                               "https://raw.githubusercontent.com/devfile-samples/devfile-sample-python-basic/main/docker/Dockerfile"},
 		},
 		{
-			name:                   "Should return 4 devfiles, 5 devfile url and 5 dockerfile uri as this is a multi comp devfile",
+			name:                   "Should return 4 devfiles, 5 devfile url and 5 Dockerfile uri as this is a multi comp devfile",
 			clonePath:              "/tmp/testclone",
 			repo:                   "https://github.com/maysunfaisal/multi-components-dockerfile",
 			expectedDevfileContext: []string{"devfile-sample-java-springboot-basic", "devfile-sample-nodejs-basic", "devfile-sample-python-basic", "python-src-none"},
@@ -646,7 +646,7 @@ func TestScanRepo(t *testing.T) {
 			},
 		},
 		{
-			name:      "Should return 4 dockerfile contexts with dockerfile/containerfile path, and 4 devfileURLs ",
+			name:      "Should return 4 Dockerfile contexts with Dockerfile/Containerfile path, and 4 devfileURLs ",
 			clonePath: "/tmp/testclone",
 			repo:      "https://github.com/yangcao77/multi-components-dockerfile",
 			revision:  "containerfile",
@@ -718,7 +718,7 @@ func TestScanRepo(t *testing.T) {
 
 					for actualContext := range dockerfileMap {
 						if tt.expectedDockerfileContextMap[actualContext] != dockerfileMap[actualContext] {
-							t.Errorf("found dockerfile uri at context %v:%v but expected %v", actualContext, dockerfileMap[actualContext], tt.expectedDockerfileContextMap[actualContext])
+							t.Errorf("found Dockerfile uri at context %v:%v but expected %v", actualContext, dockerfileMap[actualContext], tt.expectedDockerfileContextMap[actualContext])
 						}
 					}
 
@@ -3211,7 +3211,7 @@ func TestUpdateLocalDockerfileURItoAbsolute(t *testing.T) {
 		wantErr       bool
 	}{
 		{
-			name: "devfile.yaml with local dockerfile URI references",
+			name: "devfile.yaml with local Dockerfile URI references",
 			devfile: &v2.DevfileV2{
 				Devfile: v1alpha2.Devfile{
 					DevfileHeader: devfile.DevfileHeader{
@@ -3282,7 +3282,7 @@ func TestUpdateLocalDockerfileURItoAbsolute(t *testing.T) {
 			wantErr: false,
 		},
 		{
-			name: "devfile.yaml with local dockerfile URI reference, and multiple other components",
+			name: "devfile.yaml with local Dockerfile URI reference, and multiple other components",
 			devfile: &v2.DevfileV2{
 				Devfile: v1alpha2.Devfile{
 					DevfileHeader: devfile.DevfileHeader{
@@ -3369,7 +3369,7 @@ func TestUpdateLocalDockerfileURItoAbsolute(t *testing.T) {
 			wantErr: false,
 		},
 		{
-			name: "devfile.yaml with no local dockerfile URI reference",
+			name: "devfile.yaml with no local Dockerfile URI reference",
 			devfile: &v2.DevfileV2{
 				Devfile: v1alpha2.Devfile{
 					DevfileHeader: devfile.DevfileHeader{
@@ -3513,14 +3513,14 @@ func TestValidateDevfile(t *testing.T) {
 		wantErr          bool
 	}{
 		{
-			name:             "should success with valid deploy.yaml URI and relative dockerfile URI references",
+			name:             "should success with valid deploy.yaml URI and relative Dockerfile URI references",
 			url:              springDevfileParser.URL,
 			wantDevfileBytes: springDevfileBytes,
 			wantIgnore:       false,
 			wantErr:          false,
 		},
 		{
-			name:             "should success with valid dockerfile absolute URL references",
+			name:             "should success with valid Dockerfile absolute URL references",
 			url:              springDevfileWithAbsoluteDockerfileParser.URL,
 			wantDevfileBytes: springDevfileWithAbsoluteDockerfileBytes,
 			wantIgnore:       false,
