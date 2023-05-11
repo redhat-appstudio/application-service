@@ -19,6 +19,7 @@ import (
 	"fmt"
 	"net/url"
 	"path"
+	"strconv"
 	"strings"
 
 	"github.com/devfile/api/v2/pkg/apis/workspaces/v1alpha2"
@@ -40,6 +41,7 @@ import (
 	routev1 "github.com/openshift/api/route/v1"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
+	networkingv1 "k8s.io/api/networking/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
@@ -79,7 +81,7 @@ const (
 	DevfileStageRegistryEndpoint = "https://registry.stage.devfile.io"
 )
 
-func GetResourceFromDevfile(log logr.Logger, devfileData data.DevfileData, deployAssociatedComponents map[string]string, compName, appName, image string) (parser.KubernetesResources, error) {
+func GetResourceFromDevfile(log logr.Logger, devfileData data.DevfileData, deployAssociatedComponents map[string]string, compName, appName, image, hostname string) (parser.KubernetesResources, error) {
 	kubernetesComponentFilter := common.DevfileOptions{
 		ComponentOptions: common.ComponentOptions{
 			ComponentType: v1alpha2.KubernetesComponentType,
@@ -119,6 +121,7 @@ func GetResourceFromDevfile(log logr.Logger, devfileData data.DevfileData, deplo
 				}
 
 				var endpointRoutes []routev1.Route
+				var endpointIngresses []networkingv1.Ingress
 				for _, endpoint := range component.Kubernetes.Endpoints {
 					if endpoint.Exposure != v1alpha2.NoneEndpointExposure && endpoint.Exposure != v1alpha2.InternalEndpointExposure {
 						var isSecure bool
@@ -126,10 +129,18 @@ func GetResourceFromDevfile(log logr.Logger, devfileData data.DevfileData, deplo
 							isSecure = *endpoint.Secure
 						}
 
+						ingressEndpoint, err := GetIngressFromEndpoint(endpoint.Name, compName, fmt.Sprintf("%d", endpoint.TargetPort), endpoint.Path, isSecure, endpoint.Annotations, hostname)
+						if err != nil {
+							return parser.KubernetesResources{}, err
+						}
+						endpointIngresses = append(endpointIngresses, ingressEndpoint)
+
 						endpointRoutes = append(endpointRoutes, GetRouteFromEndpoint(endpoint.Name, compName, fmt.Sprintf("%d", endpoint.TargetPort), endpoint.Path, isSecure, endpoint.Annotations))
 					}
 				}
-				resources.Routes = append(endpointRoutes, resources.Routes...) // attempt to always merge the devfile endpoints to the list first as it has priority
+				// attempt to always merge the devfile endpoints to the list first as it has priority
+				resources.Routes = append(endpointRoutes, resources.Routes...)
+				resources.Ingresses = append(endpointIngresses, resources.Ingresses...)
 
 				// update for port
 				currentPort := int(component.Attributes.GetNumber(ContainerImagePortKey, &err))
@@ -414,6 +425,28 @@ func GetResourceFromDevfile(log logr.Logger, devfileData data.DevfileData, deplo
 						}
 					}
 				}
+				if len(resources.Ingresses) > 0 {
+					// replace the ingress metadata.name to use the component name
+					ingressName := compName
+
+					resources.Ingresses[0].ObjectMeta.Name = ingressName
+
+					// generate and append the ingress labels with the hc & ha information
+					if resources.Ingresses[0].ObjectMeta.Labels != nil {
+						maps.Copy(resources.Ingresses[0].ObjectMeta.Labels, k8sLabels)
+					} else {
+						resources.Ingresses[0].ObjectMeta.Labels = k8sLabels
+					}
+					if currentPort > 0 {
+						if len(resources.Ingresses[0].Spec.Rules) > 0 {
+							if resources.Ingresses[0].Spec.Rules[0].HTTP != nil && len(resources.Ingresses[0].Spec.Rules[0].HTTP.Paths) > 0 {
+								if resources.Ingresses[0].Spec.Rules[0].HTTP.Paths[0].Backend.Service != nil {
+									resources.Ingresses[0].Spec.Rules[0].HTTP.Paths[0].Backend.Service.Port.Number = int32(currentPort)
+								}
+							}
+						}
+					}
+				}
 
 				appendedResources.Deployments = append(appendedResources.Deployments, resources.Deployments...)
 				appendedResources.Services = append(appendedResources.Services, resources.Services...)
@@ -427,6 +460,53 @@ func GetResourceFromDevfile(log logr.Logger, devfileData data.DevfileData, deplo
 	}
 
 	return appendedResources, err
+}
+
+// GetIngressFromEndpoint gets an ingress resource from the devfile endpoint information
+func GetIngressFromEndpoint(name, serviceName, port, path string, secure bool, annotations map[string]string, hostname string) (networkingv1.Ingress, error) {
+
+	if path == "" {
+		path = "/"
+	}
+
+	implementationSpecific := networkingv1.PathTypeImplementationSpecific
+
+	portNumber, err := strconv.ParseInt(port, 10, 32)
+	if err != nil {
+		return networkingv1.Ingress{}, err
+	}
+
+	ingress := networkingv1.Ingress{
+		TypeMeta:   generator.GetTypeMeta("Ingress", "networking.k8s.io/v1"),
+		ObjectMeta: generator.GetObjectMeta(name, "", nil, annotations),
+		Spec: networkingv1.IngressSpec{
+			Rules: []networkingv1.IngressRule{
+				{
+					Host: hostname,
+					IngressRuleValue: networkingv1.IngressRuleValue{
+						HTTP: &networkingv1.HTTPIngressRuleValue{
+							Paths: []networkingv1.HTTPIngressPath{
+								{
+									Path:     path,
+									PathType: &implementationSpecific,
+									Backend: networkingv1.IngressBackend{
+										Service: &networkingv1.IngressServiceBackend{
+											Name: serviceName,
+											Port: networkingv1.ServiceBackendPort{
+												Number: int32(portNumber),
+											},
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+	}
+
+	return ingress, nil
 }
 
 // GetRouteFromEndpoint gets the route resource

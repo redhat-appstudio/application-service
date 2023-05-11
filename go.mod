@@ -19,10 +19,10 @@ require (
 	github.com/openshift-pipelines/pipelines-as-code v0.0.0-20220622161720-2a6007e17200
 	github.com/openshift/api v0.0.0-20210503193030-25175d9d392d
 	github.com/prometheus/client_golang v1.14.0
-	github.com/redhat-appstudio/application-api v0.0.0-20230405183341-7a48b1d4c860
+	github.com/redhat-appstudio/application-api v0.0.0-20230427114540-a91722251e0a
 	github.com/redhat-appstudio/service-provider-integration-scm-file-retriever v0.8.3
 	github.com/redhat-developer/alizer/go v0.0.0-20230504143552-c2b889a2d327
-	github.com/redhat-developer/gitops-generator v0.0.0-20230406182916-65ab99a9113f
+	github.com/redhat-developer/gitops-generator v0.0.0-20230508195028-547148fd17fe
 	github.com/spf13/afero v1.8.0
 	github.com/stretchr/testify v1.8.1
 	go.uber.org/zap v1.24.0
