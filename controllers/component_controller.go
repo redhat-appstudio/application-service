@@ -580,7 +580,7 @@ func (r *ComponentReconciler) generateGitops(ctx context.Context, ghClient *gith
 		return err
 	}
 
-	kubernetesResources, err := devfile.GetResourceFromDevfile(log, compDevfileData, deployAssociatedComponents, component.Name, component.Spec.Application, component.Spec.ContainerImage)
+	kubernetesResources, err := devfile.GetResourceFromDevfile(log, compDevfileData, deployAssociatedComponents, component.Name, component.Spec.Application, component.Spec.ContainerImage, "")
 	if err != nil {
 		log.Error(err, "unable to get kubernetes resources from the devfile outerloop components")
 		return err
