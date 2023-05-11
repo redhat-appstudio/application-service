@@ -37,6 +37,8 @@ import (
 	"sigs.k8s.io/yaml"
 )
 
+var numReplica = 1
+
 func TestUpdateApplicationDevfileModel(t *testing.T) {
 	tests := []struct {
 		name           string
@@ -296,7 +298,7 @@ func TestUpdateComponentDevfileModel(t *testing.T) {
 						},
 					},
 					Route:      "route1",
-					Replicas:   1,
+					Replicas:   &numReplica,
 					TargetPort: 1111,
 					Env:        env,
 					Resources:  originalResources,
@@ -334,7 +336,7 @@ func TestUpdateComponentDevfileModel(t *testing.T) {
 						},
 					},
 					Route:      "route1",
-					Replicas:   1,
+					Replicas:   &numReplica,
 					TargetPort: 1111,
 					Env:        env,
 					Resources:  originalResources,
@@ -443,7 +445,7 @@ func TestUpdateComponentDevfileModel(t *testing.T) {
 						},
 					},
 					Route:      "route1",
-					Replicas:   1,
+					Replicas:   &numReplica,
 					TargetPort: 1111,
 					Env:        env,
 					Resources:  originalResources,
@@ -493,7 +495,7 @@ func TestUpdateComponentDevfileModel(t *testing.T) {
 						},
 					},
 					Route:      "route1",
-					Replicas:   1,
+					Replicas:   &numReplica,
 					TargetPort: 1111,
 					Env:        env,
 					Resources:  originalResources,
@@ -531,7 +533,7 @@ func TestUpdateComponentDevfileModel(t *testing.T) {
 					// it has been updated
 					checklist := updateChecklist{
 						route:     tt.component.Spec.Route,
-						replica:   tt.component.Spec.Replicas,
+						replica:   *tt.component.Spec.Replicas,
 						port:      tt.component.Spec.TargetPort,
 						env:       tt.component.Spec.Env,
 						resources: tt.component.Spec.Resources,
@@ -1455,7 +1457,7 @@ func TestUpdateComponentStub(t *testing.T) {
 									assert.Nil(t, err, "err should be nil")
 								}
 
-								assert.Equal(t, hasCompDetection.ComponentStub.Replicas, int(devfileComponent.Attributes.GetNumber(devfilePkg.ReplicaKey, &err)), "The replicas should be the same")
+								assert.Equal(t, *hasCompDetection.ComponentStub.Replicas, int(devfileComponent.Attributes.GetNumber(devfilePkg.ReplicaKey, &err)), "The replicas should be the same")
 								assert.Nil(t, err, "err should be nil")
 
 								assert.Equal(t, hasCompDetection.ComponentStub.TargetPort, int(devfileComponent.Attributes.GetNumber(devfilePkg.ContainerImagePortKey, &err)), "The target port should be the same")

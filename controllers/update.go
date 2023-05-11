@@ -72,9 +72,11 @@ func (r *ComponentReconciler) updateComponentDevfileModel(req ctrl.Request, hasC
 				}
 			}
 		}
-		if currentReplica != component.Spec.Replicas {
-			log.Info(fmt.Sprintf("setting devfile component %s attribute component.Spec.Replicas to %v", kubernetesComponent.Name, component.Spec.Replicas))
-			kubernetesComponent.Attributes = kubernetesComponent.Attributes.PutInteger(devfile.ReplicaKey, component.Spec.Replicas)
+
+		numReplicas := util.GetIntValue(component.Spec.Replicas)
+		if currentReplica != numReplicas {
+			log.Info(fmt.Sprintf("setting devfile component %s attribute component.Spec.Replicas to %v", kubernetesComponent.Name, numReplicas))
+			kubernetesComponent.Attributes = kubernetesComponent.Attributes.PutInteger(devfile.ReplicaKey, numReplicas)
 			compUpdateRequired = true
 		}
 
@@ -360,7 +362,8 @@ func (r *ComponentDetectionQueryReconciler) updateComponentStub(req ctrl.Request
 			}
 
 			// Devfile Replica
-			componentStub.Replicas = int(kubernetesComponentAttribute.GetNumber(devfile.ReplicaKey, &err))
+			numReplicas := int(kubernetesComponentAttribute.GetNumber(devfile.ReplicaKey, &err))
+			componentStub.Replicas = &numReplicas
 			if err != nil {
 				if _, ok := err.(*attributes.KeyNotFoundError); !ok {
 					return err
