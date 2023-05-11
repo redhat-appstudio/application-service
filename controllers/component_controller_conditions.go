@@ -102,7 +102,7 @@ func (r *ComponentReconciler) SetUpdateConditionAndUpdateCR(ctx context.Context,
 		logutil.LogAPIResourceChangeEvent(log, component.Name, "Component", logutil.ResourceUpdate, updateError)
 	}
 
-	meta.SetStatusCondition(&component.Status.Conditions, condition)
+	meta.SetStatusCondition(&currentComponent.Status.Conditions, condition)
 	currentComponent.Status.Devfile = component.Status.Devfile
 	currentComponent.Status.ContainerImage = component.Status.ContainerImage
 	currentComponent.Status.GitOps = component.Status.GitOps
@@ -145,7 +145,7 @@ func (r *ComponentReconciler) SetGitOpsGeneratedConditionAndUpdateCR(ctx context
 		}
 		logutil.LogAPIResourceChangeEvent(log, component.Name, "ComponentGitOpsResources", logutil.ResourceCreate, generateError)
 	}
-	meta.SetStatusCondition(&component.Status.Conditions, condition)
+	meta.SetStatusCondition(&currentComponent.Status.Conditions, condition)
 	currentComponent.Status.Devfile = component.Status.Devfile
 	currentComponent.Status.ContainerImage = component.Status.ContainerImage
 	currentComponent.Status.GitOps = component.Status.GitOps
