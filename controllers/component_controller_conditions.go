@@ -34,13 +34,6 @@ func (r *ComponentReconciler) SetCreateConditionAndUpdateCR(ctx context.Context,
 
 	condition := metav1.Condition{}
 
-	var currentComponent appstudiov1alpha1.Component
-	err := r.Get(ctx, req.NamespacedName, &currentComponent)
-	if err != nil {
-		return nil
-	}
-	patch := client.MergeFrom(currentComponent.DeepCopy())
-
 	if createError == nil {
 		condition = metav1.Condition{
 			Type:    "Created",
@@ -57,14 +50,21 @@ func (r *ComponentReconciler) SetCreateConditionAndUpdateCR(ctx context.Context,
 		}
 		logutil.LogAPIResourceChangeEvent(log, component.Name, "Component", logutil.ResourceCreate, createError)
 	}
-	meta.SetStatusCondition(&currentComponent.Status.Conditions, condition)
-	currentComponent.Status.Devfile = component.Status.Devfile
-	currentComponent.Status.ContainerImage = component.Status.ContainerImage
-	currentComponent.Status.GitOps = component.Status.GitOps
-
-	err = r.Client.Status().Patch(ctx, &currentComponent, patch)
+	meta.SetStatusCondition(&component.Status.Conditions, condition)
+	err := r.Client.Status().Update(ctx, component)
 	if err != nil {
 		// Retry, and if still fails, then return an error
+		var currentComponent appstudiov1alpha1.Component
+		err := r.Get(ctx, req.NamespacedName, &currentComponent)
+		if err != nil {
+			return nil
+		}
+		patch := client.MergeFrom(currentComponent.DeepCopy())
+
+		meta.SetStatusCondition(&currentComponent.Status.Conditions, condition)
+		currentComponent.Status.Devfile = component.Status.Devfile
+		currentComponent.Status.ContainerImage = component.Status.ContainerImage
+		currentComponent.Status.GitOps = component.Status.GitOps
 		err = r.Client.Status().Patch(ctx, &currentComponent, patch)
 		if err != nil {
 			log.Error(err, "Unable to update Component")
@@ -79,12 +79,6 @@ func (r *ComponentReconciler) SetUpdateConditionAndUpdateCR(ctx context.Context,
 	log := ctrl.LoggerFrom(ctx)
 
 	condition := metav1.Condition{}
-	var currentComponent appstudiov1alpha1.Component
-	err := r.Get(ctx, req.NamespacedName, &currentComponent)
-	if err != nil {
-		return nil
-	}
-	patch := client.MergeFrom(currentComponent.DeepCopy())
 	if updateError == nil {
 		condition = metav1.Condition{
 			Type:    "Updated",
@@ -102,13 +96,21 @@ func (r *ComponentReconciler) SetUpdateConditionAndUpdateCR(ctx context.Context,
 		logutil.LogAPIResourceChangeEvent(log, component.Name, "Component", logutil.ResourceUpdate, updateError)
 	}
 
-	meta.SetStatusCondition(&currentComponent.Status.Conditions, condition)
-	currentComponent.Status.Devfile = component.Status.Devfile
-	currentComponent.Status.ContainerImage = component.Status.ContainerImage
-	currentComponent.Status.GitOps = component.Status.GitOps
-	err = r.Client.Status().Patch(ctx, &currentComponent, patch)
+	meta.SetStatusCondition(&component.Status.Conditions, condition)
+	err := r.Client.Status().Update(ctx, component)
 	if err != nil {
 		// Retry, and if still fails, then return an error
+		var currentComponent appstudiov1alpha1.Component
+		err := r.Get(ctx, req.NamespacedName, &currentComponent)
+		if err != nil {
+			return nil
+		}
+		patch := client.MergeFrom(currentComponent.DeepCopy())
+
+		meta.SetStatusCondition(&currentComponent.Status.Conditions, condition)
+		currentComponent.Status.Devfile = component.Status.Devfile
+		currentComponent.Status.ContainerImage = component.Status.ContainerImage
+		currentComponent.Status.GitOps = component.Status.GitOps
 		err = r.Client.Status().Patch(ctx, &currentComponent, patch)
 		if err != nil {
 			log.Error(err, "Unable to update Component")
@@ -123,12 +125,7 @@ func (r *ComponentReconciler) SetUpdateConditionAndUpdateCR(ctx context.Context,
 func (r *ComponentReconciler) SetGitOpsGeneratedConditionAndUpdateCR(ctx context.Context, req ctrl.Request, component *appstudiov1alpha1.Component, generateError error) error {
 	log := ctrl.LoggerFrom(ctx)
 	condition := metav1.Condition{}
-	var currentComponent appstudiov1alpha1.Component
-	err := r.Get(ctx, req.NamespacedName, &currentComponent)
-	if err != nil {
-		return nil
-	}
-	patch := client.MergeFrom(currentComponent.DeepCopy())
+
 	if generateError == nil {
 		condition = metav1.Condition{
 			Type:    "GitOpsResourcesGenerated",
@@ -145,15 +142,21 @@ func (r *ComponentReconciler) SetGitOpsGeneratedConditionAndUpdateCR(ctx context
 		}
 		logutil.LogAPIResourceChangeEvent(log, component.Name, "ComponentGitOpsResources", logutil.ResourceCreate, generateError)
 	}
-	meta.SetStatusCondition(&currentComponent.Status.Conditions, condition)
-	currentComponent.Status.Devfile = component.Status.Devfile
-	currentComponent.Status.ContainerImage = component.Status.ContainerImage
-	currentComponent.Status.GitOps = component.Status.GitOps
-
-	err = r.Client.Status().Patch(ctx, &currentComponent, patch)
+	meta.SetStatusCondition(&component.Status.Conditions, condition)
+	err := r.Client.Status().Update(ctx, component)
 	if err != nil {
 		// Retry, and if still fails, then return an error
+		var currentComponent appstudiov1alpha1.Component
+		err := r.Get(ctx, req.NamespacedName, &currentComponent)
+		if err != nil {
+			return nil
+		}
+		patch := client.MergeFrom(currentComponent.DeepCopy())
 
+		meta.SetStatusCondition(&currentComponent.Status.Conditions, condition)
+		currentComponent.Status.Devfile = component.Status.Devfile
+		currentComponent.Status.ContainerImage = component.Status.ContainerImage
+		currentComponent.Status.GitOps = component.Status.GitOps
 		err = r.Client.Status().Patch(ctx, &currentComponent, patch)
 		if err != nil {
 			log.Error(err, "Unable to update Component")
