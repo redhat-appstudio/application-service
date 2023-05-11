@@ -44,7 +44,8 @@ func (r *ComponentDetectionQueryReconciler) SetDetectingConditionAndUpdateCR(ctx
 		Reason:  "Success",
 		Message: "ComponentDetectionQuery is processing",
 	})
-	currentCDQ.Spec = *componentDetectionQuery.Spec.DeepCopy()
+	currentCDQ.Spec.GitSource = componentDetectionQuery.Spec.GitSource
+	currentCDQ.Spec.Secret = componentDetectionQuery.Spec.Secret
 	currentCDQ.Status.ComponentDetected = componentDetectionQuery.Status.ComponentDetected
 
 	err = r.Client.Status().Patch(ctx, &currentCDQ, patch)
