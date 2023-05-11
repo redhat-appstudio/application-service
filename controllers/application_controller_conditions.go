@@ -24,6 +24,7 @@ import (
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	ctrl "sigs.k8s.io/controller-runtime"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	appstudiov1alpha1 "github.com/redhat-appstudio/application-api/api/v1alpha1"
 )
@@ -31,24 +32,33 @@ import (
 func (r *ApplicationReconciler) SetCreateConditionAndUpdateCR(ctx context.Context, req ctrl.Request, application *appstudiov1alpha1.Application, createError error) {
 	log := ctrl.LoggerFrom(ctx)
 
+	condition := metav1.Condition{}
+	var currentApplication appstudiov1alpha1.Application
+	err := r.Get(ctx, req.NamespacedName, &currentApplication)
+	if err != nil {
+		return
+	}
+	patch := client.MergeFrom(currentApplication.DeepCopy())
+
 	if createError == nil {
-		meta.SetStatusCondition(&application.Status.Conditions, metav1.Condition{
+		condition = metav1.Condition{
 			Type:    "Created",
 			Status:  metav1.ConditionTrue,
 			Reason:  "OK",
 			Message: "Application has been successfully created",
-		})
+		}
 	} else {
-		meta.SetStatusCondition(&application.Status.Conditions, metav1.Condition{
+		condition = metav1.Condition{
 			Type:    "Created",
 			Status:  metav1.ConditionFalse,
 			Reason:  "Error",
 			Message: fmt.Sprintf("Application create failed: %v", createError),
-		})
+		}
 		logutil.LogAPIResourceChangeEvent(log, application.Name, "Application", logutil.ResourceCreate, createError)
 	}
-
-	err := r.Client.Status().Update(ctx, application)
+	meta.SetStatusCondition(&currentApplication.Status.Conditions, condition)
+	currentApplication.Status.Devfile = application.Status.Devfile
+	err = r.Client.Status().Patch(ctx, &currentApplication, patch)
 	if err != nil {
 		log.Error(err, "Unable to update Application status")
 	}
@@ -56,25 +66,33 @@ func (r *ApplicationReconciler) SetCreateConditionAndUpdateCR(ctx context.Contex
 
 func (r *ApplicationReconciler) SetUpdateConditionAndUpdateCR(ctx context.Context, req ctrl.Request, application *appstudiov1alpha1.Application, updateError error) {
 	log := ctrl.LoggerFrom(ctx)
-
+	condition := metav1.Condition{}
+	var currentApplication appstudiov1alpha1.Application
+	err := r.Get(ctx, req.NamespacedName, &currentApplication)
+	if err != nil {
+		return
+	}
+	patch := client.MergeFrom(currentApplication.DeepCopy())
 	if updateError == nil {
-		meta.SetStatusCondition(&application.Status.Conditions, metav1.Condition{
+		condition = metav1.Condition{
 			Type:    "Updated",
 			Status:  metav1.ConditionTrue,
 			Reason:  "OK",
 			Message: "Application has been successfully updated",
-		})
+		}
 	} else {
-		meta.SetStatusCondition(&application.Status.Conditions, metav1.Condition{
+		condition = metav1.Condition{
 			Type:    "Updated",
 			Status:  metav1.ConditionFalse,
 			Reason:  "Error",
 			Message: fmt.Sprintf("Application updated failed: %v", updateError),
-		})
+		}
 		logutil.LogAPIResourceChangeEvent(log, application.Name, "Application", logutil.ResourceUpdate, updateError)
 	}
 
-	err := r.Client.Status().Update(ctx, application)
+	meta.SetStatusCondition(&currentApplication.Status.Conditions, condition)
+	currentApplication.Status.Devfile = application.Status.Devfile
+	err = r.Client.Status().Patch(ctx, &currentApplication, patch)
 	if err != nil {
 		log.Error(err, "Unable to update Application status")
 	}

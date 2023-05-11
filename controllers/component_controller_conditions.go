@@ -34,8 +34,8 @@ func (r *ComponentReconciler) SetCreateConditionAndUpdateCR(ctx context.Context,
 
 	condition := metav1.Condition{}
 
-	var currentComponent *appstudiov1alpha1.Component
-	err := r.Get(ctx, req.NamespacedName, currentComponent)
+	var currentComponent appstudiov1alpha1.Component
+	err := r.Get(ctx, req.NamespacedName, &currentComponent)
 	if err != nil {
 		return nil
 	}
@@ -57,23 +57,15 @@ func (r *ComponentReconciler) SetCreateConditionAndUpdateCR(ctx context.Context,
 		}
 		logutil.LogAPIResourceChangeEvent(log, component.Name, "Component", logutil.ResourceCreate, createError)
 	}
-	meta.SetStatusCondition(&component.Status.Conditions, condition)
+	meta.SetStatusCondition(&currentComponent.Status.Conditions, condition)
+	currentComponent.Status.Devfile = component.Status.Devfile
+	currentComponent.Status.ContainerImage = component.Status.ContainerImage
+	currentComponent.Status.GitOps = component.Status.GitOps
 
-	err = r.Client.Status().Patch(ctx, component, patch)
+	err = r.Client.Status().Patch(ctx, &currentComponent, patch)
 	if err != nil {
 		// Retry, and if still fails, then return an error
-		curComponent := &appstudiov1alpha1.Component{}
-		err := r.Client.Get(ctx, req.NamespacedName, curComponent)
-		if err != nil {
-			return err
-		}
-
-		curComponent.Status.Devfile = component.Status.Devfile
-		curComponent.Status.ContainerImage = component.Status.ContainerImage
-		curComponent.Status.GitOps = component.Status.GitOps
-		meta.SetStatusCondition(&curComponent.Status.Conditions, condition)
-
-		err = r.Client.Status().Patch(ctx, curComponent, patch)
+		err = r.Client.Status().Patch(ctx, &currentComponent, patch)
 		if err != nil {
 			log.Error(err, "Unable to update Component")
 		}
@@ -87,8 +79,8 @@ func (r *ComponentReconciler) SetUpdateConditionAndUpdateCR(ctx context.Context,
 	log := ctrl.LoggerFrom(ctx)
 
 	condition := metav1.Condition{}
-	var currentComponent *appstudiov1alpha1.Component
-	err := r.Get(ctx, req.NamespacedName, currentComponent)
+	var currentComponent appstudiov1alpha1.Component
+	err := r.Get(ctx, req.NamespacedName, &currentComponent)
 	if err != nil {
 		return nil
 	}
@@ -111,21 +103,13 @@ func (r *ComponentReconciler) SetUpdateConditionAndUpdateCR(ctx context.Context,
 	}
 
 	meta.SetStatusCondition(&component.Status.Conditions, condition)
-	err = r.Client.Status().Patch(ctx, component, patch)
+	currentComponent.Status.Devfile = component.Status.Devfile
+	currentComponent.Status.ContainerImage = component.Status.ContainerImage
+	currentComponent.Status.GitOps = component.Status.GitOps
+	err = r.Client.Status().Patch(ctx, &currentComponent, patch)
 	if err != nil {
 		// Retry, and if still fails, then return an error
-		curComponent := &appstudiov1alpha1.Component{}
-		err := r.Client.Get(ctx, req.NamespacedName, curComponent)
-		if err != nil {
-			return err
-		}
-
-		curComponent.Status.Devfile = component.Status.Devfile
-		curComponent.Status.ContainerImage = component.Status.ContainerImage
-		curComponent.Status.GitOps = component.Status.GitOps
-		meta.SetStatusCondition(&curComponent.Status.Conditions, condition)
-
-		err = r.Client.Status().Patch(ctx, curComponent, patch)
+		err = r.Client.Status().Patch(ctx, &currentComponent, patch)
 		if err != nil {
 			log.Error(err, "Unable to update Component")
 		}
@@ -139,8 +123,8 @@ func (r *ComponentReconciler) SetUpdateConditionAndUpdateCR(ctx context.Context,
 func (r *ComponentReconciler) SetGitOpsGeneratedConditionAndUpdateCR(ctx context.Context, req ctrl.Request, component *appstudiov1alpha1.Component, generateError error) error {
 	log := ctrl.LoggerFrom(ctx)
 	condition := metav1.Condition{}
-	var currentComponent *appstudiov1alpha1.Component
-	err := r.Get(ctx, req.NamespacedName, currentComponent)
+	var currentComponent appstudiov1alpha1.Component
+	err := r.Get(ctx, req.NamespacedName, &currentComponent)
 	if err != nil {
 		return nil
 	}
@@ -162,18 +146,15 @@ func (r *ComponentReconciler) SetGitOpsGeneratedConditionAndUpdateCR(ctx context
 		logutil.LogAPIResourceChangeEvent(log, component.Name, "ComponentGitOpsResources", logutil.ResourceCreate, generateError)
 	}
 	meta.SetStatusCondition(&component.Status.Conditions, condition)
+	currentComponent.Status.Devfile = component.Status.Devfile
+	currentComponent.Status.ContainerImage = component.Status.ContainerImage
+	currentComponent.Status.GitOps = component.Status.GitOps
 
-	err = r.Client.Status().Patch(ctx, component, patch)
+	err = r.Client.Status().Patch(ctx, &currentComponent, patch)
 	if err != nil {
 		// Retry, and if still fails, then return an error
-		curComponent := &appstudiov1alpha1.Component{}
-		err := r.Client.Get(ctx, req.NamespacedName, curComponent)
-		if err != nil {
-			return err
-		}
-		meta.SetStatusCondition(&curComponent.Status.Conditions, condition)
 
-		err = r.Client.Status().Patch(ctx, curComponent, patch)
+		err = r.Client.Status().Patch(ctx, &currentComponent, patch)
 		if err != nil {
 			log.Error(err, "Unable to update Component")
 		}
