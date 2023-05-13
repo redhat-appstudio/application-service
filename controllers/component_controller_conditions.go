@@ -57,7 +57,7 @@ func (r *ComponentReconciler) SetCreateConditionAndUpdateCR(ctx context.Context,
 		var currentComponent appstudiov1alpha1.Component
 		err := r.Get(ctx, req.NamespacedName, &currentComponent)
 		if err != nil {
-			return nil
+			return err
 		}
 		patch := client.MergeFrom(currentComponent.DeepCopy())
 
@@ -103,7 +103,7 @@ func (r *ComponentReconciler) SetUpdateConditionAndUpdateCR(ctx context.Context,
 		var currentComponent appstudiov1alpha1.Component
 		err := r.Get(ctx, req.NamespacedName, &currentComponent)
 		if err != nil {
-			return nil
+			return err
 		}
 		patch := client.MergeFrom(currentComponent.DeepCopy())
 
@@ -149,7 +149,7 @@ func (r *ComponentReconciler) SetGitOpsGeneratedConditionAndUpdateCR(ctx context
 		var currentComponent appstudiov1alpha1.Component
 		err := r.Get(ctx, req.NamespacedName, &currentComponent)
 		if err != nil {
-			return nil
+			return err
 		}
 		patch := client.MergeFrom(currentComponent.DeepCopy())
 
