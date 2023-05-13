@@ -36,6 +36,7 @@ func (r *ApplicationReconciler) SetCreateConditionAndUpdateCR(ctx context.Contex
 	var currentApplication appstudiov1alpha1.Application
 	err := r.Get(ctx, req.NamespacedName, &currentApplication)
 	if err != nil {
+		log.Error(err, "Unable to get current Application status")
 		return
 	}
 	patch := client.MergeFrom(currentApplication.DeepCopy())
@@ -70,6 +71,7 @@ func (r *ApplicationReconciler) SetUpdateConditionAndUpdateCR(ctx context.Contex
 	var currentApplication appstudiov1alpha1.Application
 	err := r.Get(ctx, req.NamespacedName, &currentApplication)
 	if err != nil {
+		log.Error(err, "Unable to get current Application status")
 		return
 	}
 	patch := client.MergeFrom(currentApplication.DeepCopy())

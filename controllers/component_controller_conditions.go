@@ -51,8 +51,8 @@ func (r *ComponentReconciler) SetCreateConditionAndUpdateCR(ctx context.Context,
 		logutil.LogAPIResourceChangeEvent(log, component.Name, "Component", logutil.ResourceCreate, createError)
 	}
 	meta.SetStatusCondition(&component.Status.Conditions, condition)
-	err := r.Client.Status().Update(ctx, component)
-	if err != nil {
+	updateErr := r.Client.Status().Update(ctx, component)
+	if updateErr != nil {
 		// Retry, and if still fails, then return an error
 		var currentComponent appstudiov1alpha1.Component
 		err := r.Get(ctx, req.NamespacedName, &currentComponent)
@@ -97,8 +97,8 @@ func (r *ComponentReconciler) SetUpdateConditionAndUpdateCR(ctx context.Context,
 	}
 
 	meta.SetStatusCondition(&component.Status.Conditions, condition)
-	err := r.Client.Status().Update(ctx, component)
-	if err != nil {
+	updateErr := r.Client.Status().Update(ctx, component)
+	if updateErr != nil {
 		// Retry, and if still fails, then return an error
 		var currentComponent appstudiov1alpha1.Component
 		err := r.Get(ctx, req.NamespacedName, &currentComponent)
@@ -143,8 +143,8 @@ func (r *ComponentReconciler) SetGitOpsGeneratedConditionAndUpdateCR(ctx context
 		logutil.LogAPIResourceChangeEvent(log, component.Name, "ComponentGitOpsResources", logutil.ResourceCreate, generateError)
 	}
 	meta.SetStatusCondition(&component.Status.Conditions, condition)
-	err := r.Client.Status().Update(ctx, component)
-	if err != nil {
+	updateErr := r.Client.Status().Update(ctx, component)
+	if updateErr != nil {
 		// Retry, and if still fails, then return an error
 		var currentComponent appstudiov1alpha1.Component
 		err := r.Get(ctx, req.NamespacedName, &currentComponent)
