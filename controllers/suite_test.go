@@ -66,7 +66,7 @@ var _ = BeforeSuite(func() {
 	logf.SetLogger(zap.New(zap.WriteTo(GinkgoWriter), zap.UseDevMode(true)))
 
 	ctx, cancel = context.WithCancel(context.TODO())
-	applicationAPIDepVersion := "v0.0.0-20230427114540-a91722251e0a"
+	applicationAPIDepVersion := "v0.0.0-20230509152222-ef5c4dcebc94"
 
 	By("bootstrapping test environment")
 	testEnv = &envtest.Environment{

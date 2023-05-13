@@ -21,8 +21,12 @@ import (
 	"math/rand"
 	"net/http"
 	"os"
+	"strconv"
 	"strings"
 	"time"
+
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/redhat-appstudio/application-service/pkg/metrics"
 
 	"github.com/gofri/go-github-ratelimit/github_ratelimit"
 	"github.com/google/go-github/v41/github"
@@ -127,6 +131,7 @@ func getRandomClient(clientPool map[string]*GitHubClient) (*GitHubClient, error)
 				newClientPool[k] = v
 			}
 		}
+		metrics.TokenPoolCounter.With(prometheus.Labels{"rateLimited": "primary", "tokenName": ghClient.TokenName, "tokensRemaining": strconv.Itoa(len(newClientPool))}).Inc()
 		return getRandomClient(newClientPool)
 	}
 
@@ -143,6 +148,7 @@ func getRandomClient(clientPool map[string]*GitHubClient) (*GitHubClient, error)
 				newClientPool[k] = v
 			}
 		}
+		metrics.TokenPoolCounter.With(prometheus.Labels{"rateLimited": "secondary", "tokenName": ghClient.TokenName, "tokensRemaining": strconv.Itoa(len(newClientPool))}).Inc()
 		return getRandomClient(newClientPool)
 	}
 	return ghClient, nil
