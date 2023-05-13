@@ -799,3 +799,31 @@ func TestGetMappedComponent(t *testing.T) {
 		})
 	}
 }
+
+func TestGetIntValue(t *testing.T) {
+
+	value := 7
+
+	tests := []struct {
+		name      string
+		replica   *int
+		wantValue int
+		wantErr   bool
+	}{
+		{
+			name:      "Unset value, expect default 0",
+			replica:   nil,
+			wantValue: 0,
+		},
+		{
+			name:      "set value, expect set number",
+			replica:   &value,
+			wantValue: 7,
+		},
+	}
+
+	for _, tt := range tests {
+		val := GetIntValue(tt.replica)
+		assert.True(t, val == tt.wantValue, "Expected int value %d got %d", tt.wantValue, val)
+	}
+}

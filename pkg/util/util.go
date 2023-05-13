@@ -60,6 +60,15 @@ func IsExist(path string) (bool, error) {
 	return false, err
 }
 
+//GetIntValue returns the value of an int pointer, with the default of 0 if nil
+func GetIntValue(intPtr *int) int {
+	if intPtr != nil {
+		return *intPtr
+	}
+
+	return 0
+}
+
 // ProcessGitOpsStatus processes the GitOps status and returns the remote url, branch, context and the error
 func ProcessGitOpsStatus(gitopsStatus appstudiov1alpha1.GitOpsStatus, gitToken string) (string, string, string, error) {
 	var gitOpsURL, gitOpsBranch, gitOpsContext string
@@ -240,7 +249,7 @@ func GetMappedGitOpsComponent(component appstudiov1alpha1.Component, kubernetesR
 		Application:          component.Spec.Application,
 		Secret:               component.Spec.Secret,
 		Resources:            component.Spec.Resources,
-		Replicas:             component.Spec.Replicas,
+		Replicas:             GetIntValue(component.Spec.Replicas),
 		TargetPort:           component.Spec.TargetPort,
 		Route:                component.Spec.Route,
 		BaseEnvVar:           component.Spec.Env,

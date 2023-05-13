@@ -324,3 +324,51 @@ func TestGetRepoFromRegistry(t *testing.T) {
 		})
 	}
 }
+
+func TestGetIngressHostName(t *testing.T) {
+
+	tests := []struct {
+		name          string
+		componentName string
+		namespace     string
+		ingressDomain string
+		wantHostName  string
+		wantErr       bool
+	}{
+		{
+			name:          "all string present",
+			componentName: "my-component",
+			namespace:     "test",
+			ingressDomain: "domain.example.com",
+			wantHostName:  "my-component-test.domain.example.com",
+		},
+		{
+			name:          "Capitalized component name should be ok",
+			componentName: "my-Component",
+			namespace:     "test",
+			ingressDomain: "domain.example.com",
+			wantHostName:  "my-Component-test.domain.example.com",
+		},
+		{
+			name:          "invalid char in string",
+			componentName: "&",
+			namespace:     "$",
+			ingressDomain: "$",
+			wantErr:       true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+
+			gotHostName, err := GetIngressHostName(tt.componentName, tt.namespace, tt.ingressDomain)
+			if !tt.wantErr && err != nil {
+				t.Errorf("Unexpected err: %+v", err)
+			} else if tt.wantErr && err == nil {
+				t.Errorf("Expected error but got nil")
+			} else if !reflect.DeepEqual(tt.wantHostName, gotHostName) {
+				t.Errorf("Expected: %+v, \nGot: %+v", tt.wantHostName, gotHostName)
+			}
+		})
+	}
+}

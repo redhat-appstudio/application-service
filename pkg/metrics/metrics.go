@@ -65,11 +65,23 @@ var (
 		},
 		[]string{"controller", "tokenName", "operation"},
 	)
+
+	TokenPoolCounter = prometheus.NewCounterVec(
+		prometheus.CounterOpts{
+			Name: "token_pool",
+			Help: "Details about the HAS token pool to determine what token has been primary/secondary rate limited and how many tokens are left.",
+		},
+
+		//rateLimited - can have the value of "primary" or "secondary"
+		//tokenName - the name of the token being rate limited
+		//tokensRemaining - the number of tokens left in the token pool
+		[]string{"rateLimited", "tokenName", "tokensRemaining"},
+	)
 )
 
 func init() {
 	// Register custom metrics with the global prometheus registry
-	metrics.Registry.MustRegister(GitOpsRepoCreationTotalReqs, GitOpsRepoCreationFailed, GitOpsRepoCreationSucceeded, ControllerGitRequest, SecondaryRateLimitCounter, PrimaryRateLimitCounter)
+	metrics.Registry.MustRegister(GitOpsRepoCreationTotalReqs, GitOpsRepoCreationFailed, GitOpsRepoCreationSucceeded, ControllerGitRequest, SecondaryRateLimitCounter, PrimaryRateLimitCounter, TokenPoolCounter)
 }
 
 // HandleRateLimitMetrics checks the error type to verify a primary or secondary rate limit has been encountered

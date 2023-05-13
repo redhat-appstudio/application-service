@@ -484,7 +484,7 @@ var _ = Describe("Component controller", func() {
 							},
 						},
 					},
-					Replicas:   originalReplica,
+					Replicas:   &originalReplica,
 					TargetPort: originalPort,
 					Route:      originalRoute,
 					Env:        originalEnv,
@@ -564,7 +564,7 @@ var _ = Describe("Component controller", func() {
 			Expect(repoLinkMatched).Should(Equal(true))
 
 			// update the hasComp and apply
-			createdHasComp.Spec.Replicas = updatedReplica
+			createdHasComp.Spec.Replicas = &updatedReplica
 			createdHasComp.Spec.Route = updatedRoute
 			createdHasComp.Spec.TargetPort = updatedPort
 			createdHasComp.Spec.Env = updatedEnv
@@ -1361,7 +1361,7 @@ var _ = Describe("Component controller", func() {
 		})
 	})
 
-	Context("Create Component with basic field set", func() {
+	Context("Create Component with basic field set and test updates to replicas", func() {
 		It("Should complete successfully", func() {
 			ctx := context.Background()
 
@@ -1403,6 +1403,9 @@ var _ = Describe("Component controller", func() {
 			Expect(createdHasComp.Status.Conditions[len(createdHasComp.Status.Conditions)-1].Message).Should(ContainSubstring("successfully created"))
 			Expect(createdHasComp.Status.Conditions[len(createdHasComp.Status.Conditions)-1].Reason).Should(Equal("OK"))
 
+			//If replica is unset upon creation, then it should be nil
+			Expect(createdHasComp.Spec.Replicas).Should(BeNil())
+
 			hasAppLookupKey := types.NamespacedName{Name: applicationName, Namespace: HASAppNamespace}
 			createdHasApp := &appstudiov1alpha1.Application{}
 			Eventually(func() bool {
@@ -1413,6 +1416,34 @@ var _ = Describe("Component controller", func() {
 			// Make sure the devfile model was properly set in Application
 			Expect(createdHasApp.Status.Devfile).Should(Not(Equal("")))
 			Expect(createdHasApp.Status.Devfile).Should(ContainSubstring("containerImage/backend"))
+
+			// Trigger a new reconcile that is not related to the replica
+			createdHasComp.Spec.ContainerImage = "Newimage"
+			Expect(k8sClient.Update(ctx, createdHasComp)).Should(Succeed())
+
+			updatedHasComp := &appstudiov1alpha1.Component{}
+			Eventually(func() bool {
+				k8sClient.Get(context.Background(), hasCompLookupKey, updatedHasComp)
+				return len(updatedHasComp.Status.Conditions) > 1 && updatedHasComp.Status.Conditions[len(updatedHasComp.Status.Conditions)-1].Type == "Updated" && updatedHasComp.Status.Conditions[len(updatedHasComp.Status.Conditions)-1].Status == metav1.ConditionTrue
+			}, timeout, interval).Should(BeTrue())
+
+			Expect(updatedHasComp.Status.Conditions[len(updatedHasComp.Status.Conditions)-1].Status).Should(Equal(metav1.ConditionTrue))
+			//replica should remain nil
+			Expect(createdHasComp.Spec.Replicas).Should(BeNil())
+
+			//Update replica
+			updatedHasComp.Spec.Replicas = &numReplica
+			Expect(k8sClient.Update(ctx, updatedHasComp)).Should(Succeed())
+			newUpdatedHasComp := &appstudiov1alpha1.Component{}
+			Eventually(func() bool {
+				k8sClient.Get(context.Background(), hasCompLookupKey, newUpdatedHasComp)
+				return len(newUpdatedHasComp.Status.Conditions) > 1 && newUpdatedHasComp.Status.Conditions[len(updatedHasComp.Status.Conditions)-1].Type == "Updated" && newUpdatedHasComp.Status.Conditions[len(updatedHasComp.Status.Conditions)-1].Status == metav1.ConditionTrue
+			}, timeout, interval).Should(BeTrue())
+
+			Expect(newUpdatedHasComp.Status.Conditions[len(newUpdatedHasComp.Status.Conditions)-1].Status).Should(Equal(metav1.ConditionTrue))
+			//replica should not be nil and should have a value
+			Expect(newUpdatedHasComp.Spec.Replicas).Should(Not(BeNil()))
+			Expect(*newUpdatedHasComp.Spec.Replicas).Should(Equal(numReplica))
 
 			// Delete the specified HASComp resource
 			deleteHASCompCR(hasCompLookupKey)
@@ -1938,6 +1969,7 @@ var _ = Describe("Component controller", func() {
 			deleteHASAppCR(hasAppLookupKey)
 		})
 	})
+
 })
 
 type updateChecklist struct {
