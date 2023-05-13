@@ -54,11 +54,5 @@ func (g MockPrimaryRateLimitGitHubTokenClient) GetNewGitHubClient(token string) 
 		Client:    GetMockedPrimaryRateLimitedClient(),
 	}
 
-	fakeClients["fake2"] = &GitHubClient{
-		TokenName: "fake2",
-		Token:     token,
-		Client:    GetMockedPrimaryRateLimitedClient(),
-	}
-
 	return getRandomClient(fakeClients)
 }

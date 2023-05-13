@@ -19,7 +19,6 @@ import (
 	"context"
 	"os"
 	"reflect"
-	"strconv"
 	"testing"
 	"time"
 
@@ -233,7 +232,7 @@ func TestGetRandomClient(t *testing.T) {
 		passedInToken      string
 		wantErr            bool
 		wantNumPRLTokens   int //expected number of primary rate limited tokens
-		wantNumSRLTokens   int //expectednumber of primary rate limited tokens
+		wantNumSRLTokens   int //expected number of secondary rate limited tokens
 	}{
 		{
 			name:             "Empty client pool - should return an error",
@@ -243,17 +242,17 @@ func TestGetRandomClient(t *testing.T) {
 			wantNumSRLTokens: 0,
 		},
 		{
-			name: "primary-rate-limit", //change the name so metrics do not conflict with other tests
+			name: "primary-rate-limit",
 			clientPool: map[string]*GitHubClient{
-				"fake2": {
-					TokenName: "fake2", //use a different mock token to avoid metrics conflics with previous tests
-					Token:     "fake",
+				"fake1": {
+					TokenName: "fake1",
+					Token:     "fake1",
 					Client:    GetMockedPrimaryRateLimitedClient(),
 				},
 			},
 			wantErr:          true,
 			passedInToken:    "fake1",
-			wantNumPRLTokens: 1,
+			wantNumPRLTokens: 2, //it's 2 because of expected failure in TestGetNewGitHubClient/Empty token passed in - should error out because rate limited
 			wantNumSRLTokens: 0,
 		},
 		{
@@ -298,12 +297,8 @@ func TestGetRandomClient(t *testing.T) {
 
 			}
 
-			clientPoolSize := len(tt.clientPool)
-			if clientPoolSize > 0 {
-				clientPoolSize--
-			}
-			assert.Equal(t, float64(tt.wantNumPRLTokens), testutil.ToFloat64(metrics.TokenPoolCounter.With(prometheus.Labels{"rateLimited": "primary", "tokenName": tt.passedInToken, "tokensRemaining": strconv.Itoa(clientPoolSize)})))
-			assert.Equal(t, float64(tt.wantNumSRLTokens), testutil.ToFloat64(metrics.TokenPoolCounter.With(prometheus.Labels{"rateLimited": "secondary", "tokenName": tt.passedInToken, "tokensRemaining": strconv.Itoa(clientPoolSize)})))
+			assert.Equal(t, float64(tt.wantNumPRLTokens), testutil.ToFloat64(metrics.TokenPoolCounter.With(prometheus.Labels{"rateLimited": "primary", "tokenName": tt.passedInToken})))
+			assert.Equal(t, float64(tt.wantNumSRLTokens), testutil.ToFloat64(metrics.TokenPoolCounter.With(prometheus.Labels{"rateLimited": "secondary", "tokenName": tt.passedInToken})))
 
 		})
 	}
