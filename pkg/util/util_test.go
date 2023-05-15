@@ -175,6 +175,48 @@ func TestISExist(t *testing.T) {
 	}
 }
 
+func TestValidateEndpoint(t *testing.T) {
+	invalidEndpoint := "failed to get the url"
+	parseFail := "failed to parse the url"
+
+	tests := []struct {
+		name    string
+		url     string
+		wantErr *string
+	}{
+		{
+			name: "Valid Endpoint",
+			url:  "https://google.ca",
+		},
+		{
+			name:    "Invalid Endpoint",
+			url:     "protocal://google.ca/somepath",
+			wantErr: &invalidEndpoint,
+		},
+		{
+			name:    "Invalid URL failed to be parsed",
+			url:     "\000x",
+			wantErr: &parseFail,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			err := ValidateEndpoint(tt.url)
+			if tt.wantErr != nil && (err == nil) {
+				t.Error("wanted error but got nil")
+				return
+			} else if tt.wantErr == nil && err != nil {
+				t.Errorf("got unexpected error %v", err)
+				return
+			}
+			if tt.wantErr != nil {
+				assert.Regexp(t, *tt.wantErr, err.Error(), "TestValidateEndpoint: Error message does not match")
+			}
+		})
+	}
+}
+
 func TestCurlEndpoint(t *testing.T) {
 	tests := []struct {
 		name    string

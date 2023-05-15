@@ -28,6 +28,7 @@ import (
 	"reflect"
 	"regexp"
 	"strings"
+	"time"
 
 	appstudiov1alpha1 "github.com/redhat-appstudio/application-api/api/v1alpha1"
 	gitopsgenv1alpha1 "github.com/redhat-developer/gitops-generator/api/v1alpha1"
@@ -162,6 +163,31 @@ func CurlEndpoint(endpoint string) ([]byte, error) {
 	}
 
 	return nil, fmt.Errorf("received a non-200 status when curling %s", endpoint)
+}
+
+func ValidateEndpoint(endpoint string) error {
+	var (
+		retries int = 3
+	)
+	u, err := url.Parse(endpoint)
+	if err != nil {
+		return fmt.Errorf("failed to parse the url: %v, err: %v", endpoint, err)
+	}
+
+	if len(u.Host) == 0 || len(u.Scheme) == 0 {
+		return fmt.Errorf("url %v is invalid", endpoint)
+	}
+
+	client := &http.Client{Timeout: 3 * time.Second}
+	for retries > 0 {
+		_, err := client.Get(endpoint)
+		if err != nil {
+			retries -= 1
+		} else {
+			return nil
+		}
+	}
+	return fmt.Errorf("failed to get the url: %v, might due to a network issue or the url is invalid", endpoint)
 }
 
 // CloneRepo clones the repoURL to clonePath
