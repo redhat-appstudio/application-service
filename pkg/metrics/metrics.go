@@ -16,7 +16,7 @@
 package metrics
 
 import (
-	gh "github.com/google/go-github/v41/github"
+	gh "github.com/google/go-github/v52/github"
 	"github.com/prometheus/client_golang/prometheus"
 	"sigs.k8s.io/controller-runtime/pkg/metrics"
 )
@@ -69,13 +69,12 @@ var (
 	TokenPoolCounter = prometheus.NewCounterVec(
 		prometheus.CounterOpts{
 			Name: "token_pool",
-			Help: "Details about the HAS token pool to determine what token has been primary/secondary rate limited and how many tokens are left.",
+			Help: "Counter to determine how many times a token has been primary/secondary rate limited",
 		},
 
 		//rateLimited - can have the value of "primary" or "secondary"
 		//tokenName - the name of the token being rate limited
-		//tokensRemaining - the number of tokens left in the token pool
-		[]string{"rateLimited", "tokenName", "tokensRemaining"},
+		[]string{"rateLimited", "tokenName"},
 	)
 )
 

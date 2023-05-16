@@ -21,6 +21,7 @@ import (
 	"fmt"
 	"path"
 	"strings"
+	"time"
 
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/redhat-appstudio/application-service/pkg/metrics"
@@ -61,6 +62,9 @@ type ComponentDetectionQueryReconciler struct {
 
 const cdqName = "ComponentDetectionQuery"
 
+// CDQReconcileTimeout is the default timeout, 5 mins, for the context of cdq reconcile
+const CDQReconcileTimeout = 5 * time.Minute
+
 //+kubebuilder:rbac:groups=appstudio.redhat.com,resources=componentdetectionqueries,verbs=get;list;watch;create;update;patch;delete
 //+kubebuilder:rbac:groups=appstudio.redhat.com,resources=componentdetectionqueries/status,verbs=get;update;patch
 //+kubebuilder:rbac:groups=appstudio.redhat.com,resources=componentdetectionqueries/finalizers,verbs=update
@@ -76,6 +80,10 @@ const cdqName = "ComponentDetectionQuery"
 // - https://pkg.go.dev/sigs.k8s.io/controller-runtime@v0.9.2/pkg/reconcile
 func (r *ComponentDetectionQueryReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
 	log := ctrl.LoggerFrom(ctx)
+
+	// set 5 mins timeout for cdq reconcile
+	ctx, cancel := context.WithTimeout(ctx, CDQReconcileTimeout)
+	defer cancel()
 
 	// Fetch the ComponentDetectionQuery instance
 	var componentDetectionQuery appstudiov1alpha1.ComponentDetectionQuery
@@ -143,6 +151,13 @@ func (r *ComponentDetectionQueryReconciler) Reconcile(ctx context.Context, req c
 		if string(sourceURL[len(sourceURL)-1]) == "/" {
 			sourceURL = sourceURL[0 : len(sourceURL)-1]
 		}
+		err = util.ValidateEndpoint(sourceURL)
+		if err != nil {
+			log.Error(err, fmt.Sprintf("Failed to validate the source URL %v... %v", source.URL, req.NamespacedName))
+			r.SetCompleteConditionAndUpdateCR(ctx, req, &componentDetectionQuery, copiedCDQ, err)
+			return ctrl.Result{}, nil
+		}
+
 		if source.Revision == "" {
 			log.Info(fmt.Sprintf("Look for default branch of repo %s... %v", source.URL, req.NamespacedName))
 			metricsLabel := prometheus.Labels{"controller": cdqName, "tokenName": ghClient.TokenName, "operation": "GetDefaultBranchFromURL"}
