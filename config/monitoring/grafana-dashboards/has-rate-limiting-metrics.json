@@ -24,8 +24,8 @@
   "editable": true,
   "gnetId": null,
   "graphTooltip": 0,
-  "id": 10,
-  "iteration": 1683726049194,
+  "id": 14,
+  "iteration": 1684247965309,
   "links": [],
   "panels": [
     {
@@ -2580,13 +2580,602 @@
       "type": "row"
     },
     {
-      "collapsed": true,
+      "collapsed": false,
       "datasource": null,
       "gridPos": {
         "h": 1,
         "w": 24,
         "x": 0,
         "y": 12
+      },
+      "id": 98,
+      "panels": [],
+      "title": "Token Pool Metrics",
+      "type": "row"
+    },
+    {
+      "aliasColors": {},
+      "bars": false,
+      "dashLength": 10,
+      "dashes": false,
+      "datasource": null,
+      "description": "The sum of tokens primary or secondary rate limited over the course of an hour",
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "fill": 1,
+      "fillGradient": 0,
+      "gridPos": {
+        "h": 8,
+        "w": 24,
+        "x": 0,
+        "y": 13
+      },
+      "hiddenSeries": false,
+      "id": 102,
+      "legend": {
+        "avg": false,
+        "current": false,
+        "max": false,
+        "min": false,
+        "show": true,
+        "total": false,
+        "values": false
+      },
+      "lines": true,
+      "linewidth": 1,
+      "nullPointMode": "null",
+      "options": {
+        "alertThreshold": true
+      },
+      "percentage": false,
+      "pluginVersion": "7.5.17",
+      "pointradius": 2,
+      "points": false,
+      "renderer": "flot",
+      "seriesOverrides": [],
+      "spaceLength": 10,
+      "stack": false,
+      "steppedLine": false,
+      "targets": [
+        {
+          "exemplar": true,
+          "expr": "sum(increase(token_pool{rateLimited=\"primary\"}[1h]))",
+          "interval": "",
+          "legendFormat": "primary_rate_limited",
+          "refId": "A"
+        },
+        {
+          "exemplar": true,
+          "expr": "sum(increase(token_pool{rateLimited=\"secondary\"}[1h]))",
+          "hide": false,
+          "interval": "",
+          "legendFormat": "secondary_rate_limited",
+          "refId": "B"
+        }
+      ],
+      "thresholds": [],
+      "timeFrom": null,
+      "timeRegions": [],
+      "timeShift": null,
+      "title": "Sum of All Tokens Rate Limited over an hour",
+      "tooltip": {
+        "shared": true,
+        "sort": 0,
+        "value_type": "individual"
+      },
+      "type": "graph",
+      "xaxis": {
+        "buckets": null,
+        "mode": "time",
+        "name": null,
+        "show": true,
+        "values": []
+      },
+      "yaxes": [
+        {
+          "format": "short",
+          "label": null,
+          "logBase": 1,
+          "max": null,
+          "min": null,
+          "show": true
+        },
+        {
+          "format": "short",
+          "label": null,
+          "logBase": 1,
+          "max": null,
+          "min": null,
+          "show": true
+        }
+      ],
+      "yaxis": {
+        "align": false,
+        "alignLevel": null
+      }
+    },
+    {
+      "datasource": null,
+      "description": "The number of tokens left in the token pool over the course of an hour",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "red",
+                "value": 2
+              },
+              {
+                "color": "#EAB839",
+                "value": 3
+              },
+              {
+                "color": "#6ED0E0",
+                "value": 5
+              }
+            ]
+          },
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 21
+      },
+      "id": 107,
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "showThresholdLabels": false,
+        "showThresholdMarkers": true,
+        "text": {}
+      },
+      "pluginVersion": "7.5.17",
+      "targets": [
+        {
+          "exemplar": true,
+          "expr": "10-sum(increase(token_pool{rateLimited=\"primary\"}[1h]))",
+          "interval": "",
+          "legendFormat": "Available Tokens",
+          "refId": "A"
+        }
+      ],
+      "title": "Available Tokens - Not Primary Rate Limited",
+      "type": "gauge"
+    },
+    {
+      "datasource": null,
+      "description": "The number of tokens left in the token pool over an hour",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "red",
+                "value": 2
+              },
+              {
+                "color": "#EAB839",
+                "value": 3
+              },
+              {
+                "color": "#6ED0E0",
+                "value": 5
+              }
+            ]
+          },
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 21
+      },
+      "id": 108,
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "showThresholdLabels": false,
+        "showThresholdMarkers": true,
+        "text": {}
+      },
+      "pluginVersion": "7.5.17",
+      "targets": [
+        {
+          "exemplar": true,
+          "expr": "10-sum(increase(token_pool{rateLimited=\"secondary\"}[1h]))",
+          "interval": "",
+          "legendFormat": "Available Tokens",
+          "refId": "A"
+        }
+      ],
+      "title": "Available Tokens - Not Secondary Rate Limited",
+      "type": "gauge"
+    },
+    {
+      "aliasColors": {},
+      "bars": false,
+      "dashLength": 10,
+      "dashes": false,
+      "datasource": null,
+      "description": "Tokens that have been primary rate limited  over the course of an hour.  ",
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "fill": 1,
+      "fillGradient": 0,
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 29
+      },
+      "hiddenSeries": false,
+      "id": 104,
+      "legend": {
+        "avg": false,
+        "current": false,
+        "max": false,
+        "min": false,
+        "show": true,
+        "total": false,
+        "values": false
+      },
+      "lines": true,
+      "linewidth": 1,
+      "nullPointMode": "null",
+      "options": {
+        "alertThreshold": true
+      },
+      "percentage": false,
+      "pluginVersion": "7.5.17",
+      "pointradius": 2,
+      "points": false,
+      "renderer": "flot",
+      "seriesOverrides": [],
+      "spaceLength": 10,
+      "stack": false,
+      "steppedLine": false,
+      "targets": [
+        {
+          "exemplar": true,
+          "expr": "increase(token_pool{rateLimited=\"primary\",tokenName=\"token1\"}[1h])",
+          "interval": "",
+          "legendFormat": "token1",
+          "refId": "A"
+        },
+        {
+          "exemplar": true,
+          "expr": "increase(token_pool{rateLimited=\"primary\",tokenName=\"token2\"}[1h])",
+          "hide": false,
+          "interval": "",
+          "legendFormat": "token2",
+          "refId": "B"
+        },
+        {
+          "exemplar": true,
+          "expr": "increase(token_pool{rateLimited=\"primary\",tokenName=\"token3\"}[1h])",
+          "hide": false,
+          "interval": "",
+          "legendFormat": "token3",
+          "refId": "C"
+        },
+        {
+          "exemplar": true,
+          "expr": "increase(token_pool{rateLimited=\"primary\",tokenName=\"token4\"}[1h])",
+          "hide": false,
+          "interval": "",
+          "legendFormat": "token4",
+          "refId": "D"
+        },
+        {
+          "exemplar": true,
+          "expr": "increase(token_pool{rateLimited=\"primary\",tokenName=\"token5\"}[1h])",
+          "hide": false,
+          "interval": "",
+          "legendFormat": "token5",
+          "refId": "E"
+        },
+        {
+          "exemplar": true,
+          "expr": "increase(token_pool{rateLimited=\"primary\",tokenName=\"token6\"}[1h])",
+          "hide": false,
+          "interval": "",
+          "legendFormat": "token6",
+          "refId": "F"
+        },
+        {
+          "exemplar": true,
+          "expr": "increase(token_pool{rateLimited=\"primary\",tokenName=\"token7\"}[1h])",
+          "hide": false,
+          "interval": "",
+          "legendFormat": "token7",
+          "refId": "G"
+        },
+        {
+          "exemplar": true,
+          "expr": "increase(token_pool{rateLimited=\"primary\",tokenName=\"token8\"}[1h])",
+          "hide": false,
+          "interval": "",
+          "legendFormat": "token8",
+          "refId": "H"
+        },
+        {
+          "exemplar": true,
+          "expr": "increase(token_pool{rateLimited=\"primary\",tokenName=\"token9\"}[1h])",
+          "hide": false,
+          "interval": "",
+          "legendFormat": "token9",
+          "refId": "I"
+        },
+        {
+          "exemplar": true,
+          "expr": "increase(token_pool{rateLimited=\"primary\",tokenName=\"token10\"}[1h])",
+          "hide": false,
+          "interval": "",
+          "legendFormat": "token110",
+          "refId": "J"
+        }
+      ],
+      "thresholds": [],
+      "timeFrom": null,
+      "timeRegions": [],
+      "timeShift": null,
+      "title": "Primary Rate limited Tokens",
+      "tooltip": {
+        "shared": true,
+        "sort": 0,
+        "value_type": "individual"
+      },
+      "type": "graph",
+      "xaxis": {
+        "buckets": null,
+        "mode": "time",
+        "name": null,
+        "show": true,
+        "values": []
+      },
+      "yaxes": [
+        {
+          "format": "short",
+          "label": null,
+          "logBase": 1,
+          "max": null,
+          "min": null,
+          "show": true
+        },
+        {
+          "format": "short",
+          "label": null,
+          "logBase": 1,
+          "max": null,
+          "min": null,
+          "show": true
+        }
+      ],
+      "yaxis": {
+        "align": false,
+        "alignLevel": null
+      }
+    },
+    {
+      "aliasColors": {},
+      "bars": false,
+      "dashLength": 10,
+      "dashes": false,
+      "datasource": null,
+      "description": "Tokens that have been secondary rate limited  over the course of an hour.  ",
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "fill": 1,
+      "fillGradient": 0,
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 29
+      },
+      "hiddenSeries": false,
+      "id": 105,
+      "legend": {
+        "avg": false,
+        "current": false,
+        "max": false,
+        "min": false,
+        "show": true,
+        "total": false,
+        "values": false
+      },
+      "lines": true,
+      "linewidth": 1,
+      "nullPointMode": "null",
+      "options": {
+        "alertThreshold": true
+      },
+      "percentage": false,
+      "pluginVersion": "7.5.17",
+      "pointradius": 2,
+      "points": false,
+      "renderer": "flot",
+      "seriesOverrides": [],
+      "spaceLength": 10,
+      "stack": false,
+      "steppedLine": false,
+      "targets": [
+        {
+          "exemplar": true,
+          "expr": "increase(token_pool{rateLimited=\"secondary\",tokenName=\"token1\"}[1h])",
+          "interval": "",
+          "legendFormat": "token1",
+          "refId": "A"
+        },
+        {
+          "exemplar": true,
+          "expr": "increase(token_pool{rateLimited=\"secondary\",tokenName=\"token2\"}[1h])",
+          "hide": false,
+          "interval": "",
+          "legendFormat": "token2",
+          "refId": "B"
+        },
+        {
+          "exemplar": true,
+          "expr": "increase(token_pool{rateLimited=\"secondary\",tokenName=\"token3\"}[1h])",
+          "hide": false,
+          "interval": "",
+          "legendFormat": "token3",
+          "refId": "C"
+        },
+        {
+          "exemplar": true,
+          "expr": "increase(token_pool{rateLimited=\"secondary\",tokenName=\"token4\"}[1h])",
+          "hide": false,
+          "interval": "",
+          "legendFormat": "token4",
+          "refId": "D"
+        },
+        {
+          "exemplar": true,
+          "expr": "increase(token_pool{rateLimited=\"secondary\",tokenName=\"token5\"}[1h])",
+          "hide": false,
+          "interval": "",
+          "legendFormat": "token5",
+          "refId": "E"
+        },
+        {
+          "exemplar": true,
+          "expr": "increase(token_pool{rateLimited=\"secondary\",tokenName=\"token6\"}[1h])",
+          "hide": false,
+          "interval": "",
+          "legendFormat": "token6",
+          "refId": "F"
+        },
+        {
+          "exemplar": true,
+          "expr": "increase(token_pool{rateLimited=\"secondary\",tokenName=\"token7\"}[1h])",
+          "hide": false,
+          "interval": "",
+          "legendFormat": "token7",
+          "refId": "G"
+        },
+        {
+          "exemplar": true,
+          "expr": "increase(token_pool{rateLimited=\"secondary\",tokenName=\"token8\"}[1h])",
+          "hide": false,
+          "interval": "",
+          "legendFormat": "token8",
+          "refId": "H"
+        },
+        {
+          "exemplar": true,
+          "expr": "increase(token_pool{rateLimited=\"secondary\",tokenName=\"token9\"}[1h])",
+          "hide": false,
+          "interval": "",
+          "legendFormat": "token9",
+          "refId": "I"
+        },
+        {
+          "exemplar": true,
+          "expr": "increase(token_pool{rateLimited=\"secondary\",tokenName=\"token10\"}[1h])",
+          "hide": false,
+          "interval": "",
+          "legendFormat": "token110",
+          "refId": "J"
+        }
+      ],
+      "thresholds": [],
+      "timeFrom": null,
+      "timeRegions": [],
+      "timeShift": null,
+      "title": "Secondary Rate limited Tokens",
+      "tooltip": {
+        "shared": true,
+        "sort": 0,
+        "value_type": "individual"
+      },
+      "type": "graph",
+      "xaxis": {
+        "buckets": null,
+        "mode": "time",
+        "name": null,
+        "show": true,
+        "values": []
+      },
+      "yaxes": [
+        {
+          "format": "short",
+          "label": null,
+          "logBase": 1,
+          "max": null,
+          "min": null,
+          "show": true
+        },
+        {
+          "format": "short",
+          "label": null,
+          "logBase": 1,
+          "max": null,
+          "min": null,
+          "show": true
+        }
+      ],
+      "yaxis": {
+        "align": false,
+        "alignLevel": null
+      }
+    },
+    {
+      "collapsed": true,
+      "datasource": null,
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 37
       },
       "id": 73,
       "panels": [
@@ -2641,7 +3230,7 @@
             "h": 8,
             "w": 12,
             "x": 0,
-            "y": 11
+            "y": 13
           },
           "id": 75,
           "options": {
@@ -2754,7 +3343,7 @@
             "h": 8,
             "w": 12,
             "x": 12,
-            "y": 11
+            "y": 13
           },
           "id": 76,
           "options": {
@@ -2867,7 +3456,7 @@
             "h": 8,
             "w": 12,
             "x": 0,
-            "y": 19
+            "y": 21
           },
           "id": 77,
           "options": {
@@ -2980,7 +3569,7 @@
             "h": 8,
             "w": 12,
             "x": 12,
-            "y": 19
+            "y": 21
           },
           "id": 78,
           "options": {
@@ -3093,7 +3682,7 @@
             "h": 8,
             "w": 12,
             "x": 0,
-            "y": 27
+            "y": 29
           },
           "id": 79,
           "options": {
@@ -3206,7 +3795,7 @@
             "h": 8,
             "w": 12,
             "x": 12,
-            "y": 27
+            "y": 29
           },
           "id": 80,
           "options": {
@@ -3319,7 +3908,7 @@
             "h": 8,
             "w": 12,
             "x": 0,
-            "y": 35
+            "y": 37
           },
           "id": 81,
           "options": {
@@ -3432,7 +4021,7 @@
             "h": 8,
             "w": 12,
             "x": 12,
-            "y": 35
+            "y": 37
           },
           "id": 82,
           "options": {
@@ -3545,7 +4134,7 @@
             "h": 8,
             "w": 12,
             "x": 0,
-            "y": 43
+            "y": 45
           },
           "id": 83,
           "options": {
@@ -3658,7 +4247,7 @@
             "h": 8,
             "w": 12,
             "x": 12,
-            "y": 43
+            "y": 45
           },
           "id": 84,
           "options": {
@@ -3731,7 +4320,7 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 13
+        "y": 38
       },
       "id": 86,
       "panels": [
@@ -4870,6 +5459,7 @@
       "type": "row"
     }
   ],
+  "refresh": "30s",
   "schemaVersion": 27,
   "style": "dark",
   "tags": [],
@@ -4906,5 +5496,5 @@
   "timezone": "",
   "title": "HAS Rate Limiting Metrics",
   "uid": "3e0a9e533b362be65d8262d0297eadb1576a5b8c",
-  "version": 2
+  "version": 28
 }
