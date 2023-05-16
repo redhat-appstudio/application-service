@@ -189,6 +189,10 @@ func TestValidateEndpoint(t *testing.T) {
 			url:  "https://google.ca",
 		},
 		{
+			name: "Valid private repo",
+			url:  "https://github.com/yangcao77/multi-components-private",
+		},
+		{
 			name:    "Invalid Endpoint",
 			url:     "protocal://google.ca/somepath",
 			wantErr: &invalidEndpoint,
