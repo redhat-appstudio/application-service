@@ -1439,7 +1439,7 @@ var _ = Describe("Component Detection Query controller", func() {
 				Expect(createdHasCompDetectionQuery.Status.Conditions[1].Message).Should(ContainSubstring("ComponentDetectionQuery has successfully finished"))
 
 				// Make sure the right branch is set
-				Expect(createdHasCompDetectionQuery.Spec.GitSource.Revision).Should(Equal("main"))
+				Expect(createdHasCompDetectionQuery.Status.ComponentDetected["devfile-sample-nodejs"].ComponentStub.Source.GitSource.Revision).Should(Equal("main"))
 
 				// Make sure the devfiles are detected
 				Expect(len(createdHasCompDetectionQuery.Status.ComponentDetected)).Should(Equal(3)) // mocked, not accurate. check unit test for accurate detection that uses the alizer client instead of the mock client.

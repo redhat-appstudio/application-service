@@ -154,7 +154,7 @@ func (r *ComponentDetectionQueryReconciler) Reconcile(ctx context.Context, req c
 		err = util.ValidateEndpoint(sourceURL)
 		if err != nil {
 			log.Error(err, fmt.Sprintf("Failed to validate the source URL %v... %v", source.URL, req.NamespacedName))
-			r.SetCompleteConditionAndUpdateCR(ctx, req, &componentDetectionQuery, copiedCDQ, err)
+			r.SetCompleteConditionAndUpdateCR(ctx, req, &componentDetectionQuery, err)
 			return ctrl.Result{}, nil
 		}
 
