@@ -307,6 +307,7 @@ func (r *SnapshotEnvironmentBindingReconciler) Reconcile(ctx context.Context, re
 			OverlayEnvVar:       environmentConfigEnvVars,
 			K8sLabels:           kubeLabels,
 			IsKubernetesCluster: isKubernetesCluster,
+			TargetPort:          hasComponent.Spec.TargetPort, // pass the target port to the gitops gen library as they may generate a route/ingress based on the target port if the devfile does not have an ingress/route or an endpoint
 		}
 
 		if !reflect.DeepEqual(kubernetesResources, devfileParser.KubernetesResources{}) {
