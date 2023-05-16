@@ -11,7 +11,7 @@ require (
 	github.com/go-logr/logr v1.2.3
 	github.com/gofri/go-github-ratelimit v1.0.3-0.20230428184158-a500e14de53f
 	github.com/golang/mock v1.6.0
-	github.com/google/go-github/v41 v41.0.0
+	github.com/google/go-github/v52 v52.0.1-0.20230514113659-60429b4ba0ba
 	github.com/migueleliasweb/go-github-mock v0.0.17
 	github.com/mitchellh/go-homedir v1.1.0
 	github.com/onsi/ginkgo v1.16.5
@@ -46,7 +46,7 @@ require (
 	github.com/bluekeyes/go-gitdiff v0.7.0 // indirect
 	github.com/cespare/xxhash/v2 v2.1.2 // indirect
 	github.com/cheekybits/genny v1.0.0 // indirect
-	github.com/cloudflare/circl v1.3.2 // indirect
+	github.com/cloudflare/circl v1.3.3 // indirect
 	github.com/containerd/containerd v1.6.10 // indirect
 	github.com/containerd/typeurl v1.0.2 // indirect
 	github.com/davecgh/go-spew v1.1.2-0.20180830191138-d8f796af33cc // indirect

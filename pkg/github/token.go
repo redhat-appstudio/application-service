@@ -28,7 +28,7 @@ import (
 	"github.com/redhat-appstudio/application-service/pkg/metrics"
 
 	"github.com/gofri/go-github-ratelimit/github_ratelimit"
-	"github.com/google/go-github/v41/github"
+	"github.com/google/go-github/v52/github"
 	"golang.org/x/oauth2"
 
 	ctrl "sigs.k8s.io/controller-runtime"

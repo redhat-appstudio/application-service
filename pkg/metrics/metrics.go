@@ -16,7 +16,7 @@
 package metrics
 
 import (
-	gh "github.com/google/go-github/v41/github"
+	gh "github.com/google/go-github/v52/github"
 	"github.com/prometheus/client_golang/prometheus"
 	"sigs.k8s.io/controller-runtime/pkg/metrics"
 )
