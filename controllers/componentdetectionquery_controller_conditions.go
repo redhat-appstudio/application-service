@@ -44,8 +44,6 @@ func (r *ComponentDetectionQueryReconciler) SetDetectingConditionAndUpdateCR(ctx
 		Reason:  "Success",
 		Message: "ComponentDetectionQuery is processing",
 	})
-	currentCDQ.Spec.GitSource = componentDetectionQuery.Spec.GitSource
-	currentCDQ.Spec.Secret = componentDetectionQuery.Spec.Secret
 	currentCDQ.Status.ComponentDetected = componentDetectionQuery.Status.ComponentDetected
 
 	err = r.Client.Status().Patch(ctx, &currentCDQ, patch)
@@ -82,8 +80,6 @@ func (r *ComponentDetectionQueryReconciler) SetCompleteConditionAndUpdateCR(ctx 
 	}
 	logutil.LogAPIResourceChangeEvent(log, componentDetectionQuery.Name, "ComponentDetectionQuery", logutil.ResourceComplete, completeError)
 	meta.SetStatusCondition(&currentCDQ.Status.Conditions, condition)
-	currentCDQ.Spec.GitSource = componentDetectionQuery.Spec.GitSource
-	currentCDQ.Spec.Secret = componentDetectionQuery.Spec.Secret
 	currentCDQ.Status.ComponentDetected = componentDetectionQuery.Status.ComponentDetected
 	err = r.Client.Status().Patch(ctx, &currentCDQ, patch)
 	if err != nil {
