@@ -110,6 +110,13 @@ jobs:
 
       - name: Upload coverage to Codecov
         uses: codecov/codecov-action@v2.1.0
+      - name: Test Pact contracts
+        continue-on-error: true
+        env: 
+          PACT_BROKER_USERNAME:  ${{ secrets.PACT_BROKER_USERNAME }}
+          PACT_BROKER_PASSWORD:  ${{ secrets.PACT_BROKER_PASSWORD }}
+        run: |
+          make pact
   docker:
     name: Check docker build
     runs-on: ubuntu-latest
@@ -120,3 +127,14 @@ jobs:
           fetch-depth: 0
       - name: Check if dockerimage build is working
         run: docker build -f ./Dockerfile .
+  # pact:
+  #   name: Pact tests
+  #   runs-on: ubuntu-latest
+  #   steps:
+  #     - name: Test Pact contracts
+  #       continue-on-error: true
+  #       env: 
+  #         PACT_BROKER_USERNAME:  ${{ secrets.PACT_BROKER_USERNAME }}
+  #         PACT_BROKER_PASSWORD:  ${{ secrets.PACT_BROKER_PASSWORD }}
+  #       run: |
+  #         make pact
