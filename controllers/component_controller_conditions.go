@@ -68,25 +68,6 @@ func (r *ComponentReconciler) SetCreateConditionAndUpdateCR(ctx context.Context,
 		return err
 	}
 
-	// if err != nil {
-	// 	// Retry, and if still fails, then return an error
-	// 	var currentComponent appstudiov1alpha1.Component
-	// 	err := r.Get(ctx, req.NamespacedName, &currentComponent)
-	// 	if err != nil {
-	// 		return err
-	// 	}
-	// 	patch := client.MergeFrom(currentComponent.DeepCopy())
-
-	// 	meta.SetStatusCondition(&currentComponent.Status.Conditions, condition)
-	// 	currentComponent.Status.Devfile = component.Status.Devfile
-	// 	currentComponent.Status.ContainerImage = component.Status.ContainerImage
-	// 	currentComponent.Status.GitOps = component.Status.GitOps
-	// 	err = r.Client.Status().Patch(ctx, &currentComponent, patch)
-	// 	if err != nil {
-	// 		log.Error(err, "Unable to update Component")
-	// 		return err
-	// 	}
-	// }
 	return nil
 }
 
@@ -127,26 +108,6 @@ func (r *ComponentReconciler) SetUpdateConditionAndUpdateCR(ctx context.Context,
 		log.Error(err, "Unable to update Component")
 		return err
 	}
-	// if err != nil {
-	// 	// Retry, and if still fails, then return an error
-	// 	var currentComponent appstudiov1alpha1.Component
-	// 	err := r.Get(ctx, req.NamespacedName, &currentComponent)
-	// 	if err != nil {
-	// 		return err
-	// 	}
-	// 	patch := client.MergeFrom(currentComponent.DeepCopy())
-
-	// 	meta.SetStatusCondition(&currentComponent.Status.Conditions, condition)
-	// 	currentComponent.Status.Devfile = component.Status.Devfile
-	// 	currentComponent.Status.ContainerImage = component.Status.ContainerImage
-	// 	currentComponent.Status.GitOps = component.Status.GitOps
-	// 	err = r.Client.Status().Patch(ctx, &currentComponent, patch)
-	// 	if err != nil {
-	// 		log.Error(err, "Unable to update Component")
-	// 	}
-
-	// 	return err
-	// }
 
 	return nil
 }
