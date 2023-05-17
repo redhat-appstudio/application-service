@@ -22,8 +22,8 @@ import (
 
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/client-go/util/retry"
 	ctrl "sigs.k8s.io/controller-runtime"
-	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	appstudiov1alpha1 "github.com/redhat-appstudio/application-api/api/v1alpha1"
 	logutil "github.com/redhat-appstudio/application-service/pkg/log"
@@ -50,28 +50,43 @@ func (r *ComponentReconciler) SetCreateConditionAndUpdateCR(ctx context.Context,
 		}
 		logutil.LogAPIResourceChangeEvent(log, component.Name, "Component", logutil.ResourceCreate, createError)
 	}
-	meta.SetStatusCondition(&component.Status.Conditions, condition)
-	updateErr := r.Client.Status().Update(ctx, component)
-	if updateErr != nil {
-		// Retry, and if still fails, then return an error
+	err := retry.RetryOnConflict(retry.DefaultRetry, func() error {
 		var currentComponent appstudiov1alpha1.Component
 		err := r.Get(ctx, req.NamespacedName, &currentComponent)
 		if err != nil {
 			return err
 		}
-		patch := client.MergeFrom(currentComponent.DeepCopy())
-
 		meta.SetStatusCondition(&currentComponent.Status.Conditions, condition)
 		currentComponent.Status.Devfile = component.Status.Devfile
 		currentComponent.Status.ContainerImage = component.Status.ContainerImage
 		currentComponent.Status.GitOps = component.Status.GitOps
-		err = r.Client.Status().Patch(ctx, &currentComponent, patch)
-		if err != nil {
-			log.Error(err, "Unable to update Component")
-		}
-
+		err = r.Client.Status().Update(ctx, &currentComponent)
+		return err
+	})
+	if err != nil {
+		log.Error(err, "Unable to update Component")
 		return err
 	}
+
+	// if err != nil {
+	// 	// Retry, and if still fails, then return an error
+	// 	var currentComponent appstudiov1alpha1.Component
+	// 	err := r.Get(ctx, req.NamespacedName, &currentComponent)
+	// 	if err != nil {
+	// 		return err
+	// 	}
+	// 	patch := client.MergeFrom(currentComponent.DeepCopy())
+
+	// 	meta.SetStatusCondition(&currentComponent.Status.Conditions, condition)
+	// 	currentComponent.Status.Devfile = component.Status.Devfile
+	// 	currentComponent.Status.ContainerImage = component.Status.ContainerImage
+	// 	currentComponent.Status.GitOps = component.Status.GitOps
+	// 	err = r.Client.Status().Patch(ctx, &currentComponent, patch)
+	// 	if err != nil {
+	// 		log.Error(err, "Unable to update Component")
+	// 		return err
+	// 	}
+	// }
 	return nil
 }
 
@@ -95,29 +110,43 @@ func (r *ComponentReconciler) SetUpdateConditionAndUpdateCR(ctx context.Context,
 		}
 		logutil.LogAPIResourceChangeEvent(log, component.Name, "Component", logutil.ResourceUpdate, updateError)
 	}
-
-	meta.SetStatusCondition(&component.Status.Conditions, condition)
-	updateErr := r.Client.Status().Update(ctx, component)
-	if updateErr != nil {
-		// Retry, and if still fails, then return an error
+	err := retry.RetryOnConflict(retry.DefaultRetry, func() error {
 		var currentComponent appstudiov1alpha1.Component
 		err := r.Get(ctx, req.NamespacedName, &currentComponent)
 		if err != nil {
 			return err
 		}
-		patch := client.MergeFrom(currentComponent.DeepCopy())
-
 		meta.SetStatusCondition(&currentComponent.Status.Conditions, condition)
 		currentComponent.Status.Devfile = component.Status.Devfile
 		currentComponent.Status.ContainerImage = component.Status.ContainerImage
 		currentComponent.Status.GitOps = component.Status.GitOps
-		err = r.Client.Status().Patch(ctx, &currentComponent, patch)
-		if err != nil {
-			log.Error(err, "Unable to update Component")
-		}
-
+		err = r.Client.Status().Update(ctx, &currentComponent)
+		return err
+	})
+	if err != nil {
+		log.Error(err, "Unable to update Component")
 		return err
 	}
+	// if err != nil {
+	// 	// Retry, and if still fails, then return an error
+	// 	var currentComponent appstudiov1alpha1.Component
+	// 	err := r.Get(ctx, req.NamespacedName, &currentComponent)
+	// 	if err != nil {
+	// 		return err
+	// 	}
+	// 	patch := client.MergeFrom(currentComponent.DeepCopy())
+
+	// 	meta.SetStatusCondition(&currentComponent.Status.Conditions, condition)
+	// 	currentComponent.Status.Devfile = component.Status.Devfile
+	// 	currentComponent.Status.ContainerImage = component.Status.ContainerImage
+	// 	currentComponent.Status.GitOps = component.Status.GitOps
+	// 	err = r.Client.Status().Patch(ctx, &currentComponent, patch)
+	// 	if err != nil {
+	// 		log.Error(err, "Unable to update Component")
+	// 	}
+
+	// 	return err
+	// }
 
 	return nil
 }
@@ -142,27 +171,42 @@ func (r *ComponentReconciler) SetGitOpsGeneratedConditionAndUpdateCR(ctx context
 		}
 		logutil.LogAPIResourceChangeEvent(log, component.Name, "ComponentGitOpsResources", logutil.ResourceCreate, generateError)
 	}
-	meta.SetStatusCondition(&component.Status.Conditions, condition)
-	updateErr := r.Client.Status().Update(ctx, component)
-	if updateErr != nil {
-		// Retry, and if still fails, then return an error
+	err := retry.RetryOnConflict(retry.DefaultRetry, func() error {
 		var currentComponent appstudiov1alpha1.Component
 		err := r.Get(ctx, req.NamespacedName, &currentComponent)
 		if err != nil {
 			return err
 		}
-		patch := client.MergeFrom(currentComponent.DeepCopy())
-
 		meta.SetStatusCondition(&currentComponent.Status.Conditions, condition)
 		currentComponent.Status.Devfile = component.Status.Devfile
 		currentComponent.Status.ContainerImage = component.Status.ContainerImage
 		currentComponent.Status.GitOps = component.Status.GitOps
-		err = r.Client.Status().Patch(ctx, &currentComponent, patch)
-		if err != nil {
-			log.Error(err, "Unable to update Component")
-		}
-
+		err = r.Client.Status().Update(ctx, &currentComponent)
+		return err
+	})
+	if err != nil {
+		log.Error(err, "Unable to update Component")
 		return err
 	}
+	// if err != nil {
+	// 	// Retry, and if still fails, then return an error
+	// 	var currentComponent appstudiov1alpha1.Component
+	// 	err := r.Get(ctx, req.NamespacedName, &currentComponent)
+	// 	if err != nil {
+	// 		return err
+	// 	}
+	// 	patch := client.MergeFrom(currentComponent.DeepCopy())
+
+	// 	meta.SetStatusCondition(&currentComponent.Status.Conditions, condition)
+	// 	currentComponent.Status.Devfile = component.Status.Devfile
+	// 	currentComponent.Status.ContainerImage = component.Status.ContainerImage
+	// 	currentComponent.Status.GitOps = component.Status.GitOps
+	// 	err = r.Client.Status().Patch(ctx, &currentComponent, patch)
+	// 	if err != nil {
+	// 		log.Error(err, "Unable to update Component")
+	// 	}
+
+	// 	return err
+	// }
 	return nil
 }
