@@ -173,7 +173,8 @@ func search(log logr.Logger, a Alizer, localpath string, devfileRegistryURL stri
 
 	if len(devfilesURLMapFromRepo) == 0 && len(devfileMapFromRepo) == 0 && len(dockerfileContextMapFromRepo) == 0 {
 		// if we didnt find any devfile or Dockerfile we should return an err
-		err = fmt.Errorf("no devfile or Dockerfile found in the specified location %s", localpath)
+		log.Info(fmt.Sprintf("no devfile or Dockerfile found in the specified location %s", localpath))
+		// err = fmt.Errorf("no devfile or Dockerfile found in the specified location %s", localpath)
 	}
 
 	return devfileMapFromRepo, devfilesURLMapFromRepo, dockerfileContextMapFromRepo, componentPortsMapFromRepo, err
