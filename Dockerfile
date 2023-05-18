@@ -33,6 +33,11 @@ COPY --from=builder /workspace/manager .
 COPY appdata.gitconfig /.gitconfig
 RUN chgrp -R 0 /.gitconfig && chmod -R g=u /.gitconfig
 
+# install tini to manage zombie proceses
+ENV TINI_VERSION v0.19.0
+ADD https://github.com/krallin/tini/releases/download/${TINI_VERSION}/tini /tini
+RUN chmod +x /tini
+
 USER 1001
 
-ENTRYPOINT ["/manager"]
+ENTRYPOINT ["/tini", "--", "/manager"]
