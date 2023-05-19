@@ -21,7 +21,7 @@ RUN CGO_ENABLED=0 GOOS=linux go build -a -o manager main.go
 
 
 FROM registry.access.redhat.com/ubi8/ubi-minimal:8.6-751
-RUN microdnf update --setopt=install_weak_deps=0 -y && microdnf install git
+RUN microdnf update --setopt=install_weak_deps=0 -y && microdnf install git cmake make gcc gcc-c++
 
 ARG ENABLE_WEBHOOKS=true
 ENV ENABLE_WEBHOOKS=${ENABLE_WEBHOOKS}
@@ -33,11 +33,16 @@ COPY --from=builder /workspace/manager .
 COPY appdata.gitconfig /.gitconfig
 RUN chgrp -R 0 /.gitconfig && chmod -R g=u /.gitconfig
 
-# install tini to manage zombie proceses
-ENV TINI_VERSION v0.19.0
-ADD https://github.com/krallin/tini/releases/download/${TINI_VERSION}/tini /tini
-RUN chmod +x /tini
+# build tini and install to manage zombie proceses
+RUN git clone --branch v0.19.0 https://github.com/krallin/tini /tini
+WORKDIR /tini
+ENV CFLAGS="-DPR_SET_CHILD_SUBREAPER=36 -DPR_GET_CHILD_SUBREAPER=37"
+RUN cmake . && make tini
+RUN cp ./tini /usr/bin/
+RUN rm -rf /tini #clean up directory
+WORKDIR /
 
 USER 1001
 
-ENTRYPOINT ["/tini", "--", "/manager"]
+ENTRYPOINT ["/usr/bin/tini", "--", "/manager"]
+
