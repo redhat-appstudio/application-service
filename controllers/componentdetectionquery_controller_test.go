@@ -248,7 +248,7 @@ var _ = Describe("Component Detection Query controller", func() {
 	})
 
 	Context("Create Component Detection Query with a non component devfile repo", func() {
-		It("Should error out without any devfile or Dockerfile detected", func() {
+		It("Should complete with no error if no devfile or Dockerfile detected", func() {
 			ctx := context.Background()
 
 			queryName := HASCompDetQuery + "5"
@@ -281,8 +281,8 @@ var _ = Describe("Component Detection Query controller", func() {
 				return len(createdHasCompDetectionQuery.Status.Conditions) > 1
 			}, timeout, interval).Should(BeTrue())
 
-			// Make sure the right err is set
-			Expect(createdHasCompDetectionQuery.Status.Conditions[1].Message).Should(ContainSubstring("no devfile or Dockerfile found in the specified location"))
+			// Make sure the cdq complete with success status
+			Expect(createdHasCompDetectionQuery.Status.Conditions[1].Message).Should(ContainSubstring("ComponentDetectionQuery has successfully finished"))
 
 			// Delete the specified Detection Query resource
 			deleteCompDetQueryCR(hasCompDetQueryLookupKey)
