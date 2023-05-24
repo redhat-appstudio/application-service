@@ -975,8 +975,8 @@ github.com/redhat-appstudio/service-provider-integration-operator v0.8.3 h1:Q2mz
 github.com/redhat-appstudio/service-provider-integration-operator v0.8.3/go.mod h1:o4C4n36pkQhmICnySJyAvmyj/SD97wwvQNkb+Rhiimg=
 github.com/redhat-appstudio/service-provider-integration-scm-file-retriever v0.8.3 h1:w6Z2olvMMBONiFTPHh3lNJTuOvgiRXZTrwOYUt7WTXQ=
 github.com/redhat-appstudio/service-provider-integration-scm-file-retriever v0.8.3/go.mod h1:nGIC0XrYoMm63q1qHS7h/7ktUliMzgQcOOd2XLpNDbA=
-github.com/redhat-developer/alizer/go v0.0.0-20230504143552-c2b889a2d327 h1:rvbNRUMZEG6nOlE+T7XhI4+INq6Mjny/SKOK4/qIK2A=
-github.com/redhat-developer/alizer/go v0.0.0-20230504143552-c2b889a2d327/go.mod h1:y7XToX/Yq1ASZY8hatAkmXJSzEXlHZV8lf59wliUfOw=
+github.com/redhat-developer/alizer/go v0.0.0-20230523154955-3593452b541b h1:Txd2j9L63fciPA8amIQuacFBr1Au8zoTFNA4N0wtPiw=
+github.com/redhat-developer/alizer/go v0.0.0-20230523154955-3593452b541b/go.mod h1:y7XToX/Yq1ASZY8hatAkmXJSzEXlHZV8lf59wliUfOw=
 github.com/redhat-developer/gitops-generator v0.0.0-20230508195028-547148fd17fe h1:rx3wuiYiCxPU1pZ7g0Vg1cCMIijF8rJm6hycYp/aasE=
 github.com/redhat-developer/gitops-generator v0.0.0-20230508195028-547148fd17fe/go.mod h1:pKJez873Y9lZwQAgm99i/y1SmPI2dMd19ID74C+CxpU=
 github.com/rogpeppe/fastuuid v0.0.0-20150106093220-6724a57986af/go.mod h1:XWv6SoW27p1b0cqNHllgS5HIMJraePCO15w5zCzIWYg=
