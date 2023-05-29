@@ -21,16 +21,13 @@ import (
 	"crypto/x509"
 	"fmt"
 	"os"
-	"strings"
 	"testing"
-	"time"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"github.com/pact-foundation/pact-go/dsl"
 	pactTypes "github.com/pact-foundation/pact-go/types"
 	appstudiov1alpha1 "github.com/redhat-appstudio/application-api/api/v1alpha1"
-	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
@@ -48,7 +45,7 @@ func TestContracts(t *testing.T) {
 		PublishVerificationResults: false,
 	}
 
-	// setup credentianls and publishing
+	// setup credentials and publishing
 	if os.Getenv("PR_CHECK") == "true" {
 		if os.Getenv("PACT_BROKER_USERNAME") == "" {
 			t.Skip("Skipping Pact tests from unit test suite during PR check.")
@@ -99,67 +96,11 @@ func TestContracts(t *testing.T) {
 
 	// setup state handlers
 	verifyRequest.StateHandlers = pactTypes.StateHandlers{
-		"No app with the name myapp in the default namespace exists.": func() error {
-			return nil
-		},
-		"App myapp exists and has component gh-component and quay-component": func() error {
-			appName := "myapp"
-			ghCompName := "gh-component"
-			quayCompName := "quay-component"
-			ghCompRepoLink := "https://github.com/devfile-samples/devfile-sample-java-springboot-basic"
-			quayRepoLink := "quay.io/test/test-image:latest"
-
-			hasApp := getApplicationSpec(appName, HASAppNamespace)
-			ghComp := getGhComponentSpec(ghCompName, HASAppNamespace, appName, ghCompRepoLink)
-			quayComp := getQuayComponentSpec(quayCompName, HASAppNamespace, appName, quayRepoLink)
-
-			k8sClient.Create(ctx, hasApp)
-			hasAppLookupKey := types.NamespacedName{Name: appName, Namespace: HASAppNamespace}
-			createdHasApp := &appstudiov1alpha1.Application{}
-			for i := 0; i < 12; i++ {
-				k8sClient.Get(context.Background(), hasAppLookupKey, createdHasApp)
-				if len(createdHasApp.Status.Conditions) > 0 {
-					if createdHasApp.Status.Conditions[0].Type == "Created" {
-						break
-					}
-				}
-				time.Sleep(10 * time.Second)
-			}
-
-			k8sClient.Create(ctx, ghComp)
-			hasCompLookupKey := types.NamespacedName{Name: ghCompName, Namespace: HASAppNamespace}
-			createdHasComp := &appstudiov1alpha1.Component{}
-			for i := 0; i < 12; i++ {
-				k8sClient.Get(context.Background(), hasCompLookupKey, createdHasComp)
-				if len(createdHasComp.Status.Conditions) > 1 {
-					break
-				}
-				time.Sleep(10 * time.Second)
-			}
-
-			k8sClient.Create(ctx, quayComp)
-			hasCompLookupKey2 := types.NamespacedName{Name: quayCompName, Namespace: HASAppNamespace}
-			createdHasComp2 := &appstudiov1alpha1.Component{}
-			for i := 0; i < 12; i++ {
-				k8sClient.Get(context.Background(), hasCompLookupKey2, createdHasComp2)
-				if len(createdHasComp2.Status.Conditions) > 1 {
-					break
-				}
-				time.Sleep(10 * time.Second)
-			}
-
-			for i := 0; i < 12; i++ {
-				k8sClient.Get(context.Background(), hasAppLookupKey, createdHasApp)
-				if len(createdHasApp.Status.Conditions) > 0 && strings.Contains(createdHasApp.Status.Devfile, ghCompName) {
-					break
-				}
-				time.Sleep(10 * time.Second)
-			}
-			return nil
-		},
+		"No app with the name myapp in the default namespace exists.":        func() error { return nil },
+		"App myapp exists and has component gh-component and quay-component": createAppAndComponents(HASAppNamespace),
 	}
 	verifyRequest.AfterEach = func() error {
-		//Remove all applications and components after each tests
+		// Remove all applications and components after each tests
 		k8sClient.DeleteAllOf(context.Background(), &appstudiov1alpha1.Application{}, client.InNamespace(HASAppNamespace))
 		k8sClient.DeleteAllOf(context.Background(), &appstudiov1alpha1.Component{}, client.InNamespace(HASAppNamespace))
 		return nil
