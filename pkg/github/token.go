@@ -236,7 +236,6 @@ func rateLimitCallBackfunc(cbContext *github_ratelimit.CallbackContext) {
 
 		client.SecondaryRateLimit.mu.Lock()
 		client.SecondaryRateLimit.isLimitReached = true
-		log.Info("SRL metric incremented ")
 		srlTokenMetric.Inc()
 		client.SecondaryRateLimit.mu.Unlock()
 
@@ -244,7 +243,6 @@ func rateLimitCallBackfunc(cbContext *github_ratelimit.CallbackContext) {
 		time.Sleep(time.Until(*cbContext.SleepUntil))
 		client.SecondaryRateLimit.mu.Lock()
 		client.SecondaryRateLimit.isLimitReached = false
-		log.Info("SRL metric decremented ")
 		srlTokenMetric.Dec()
 		client.SecondaryRateLimit.mu.Unlock()
 	}(ghClient)
