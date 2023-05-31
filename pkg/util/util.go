@@ -61,7 +61,7 @@ func IsExist(path string) (bool, error) {
 	return false, err
 }
 
-//GetIntValue returns the value of an int pointer, with the default of 0 if nil
+// GetIntValue returns the value of an int pointer, with the default of 0 if nil
 func GetIntValue(intPtr *int) int {
 	if intPtr != nil {
 		return *intPtr
