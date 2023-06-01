@@ -123,6 +123,8 @@ func getRandomClient(clientPool map[string]*GitHubClient) (*GitHubClient, error)
 	if err != nil {
 		return nil, err
 	}
+
+	prlTokenMetric := metrics.TokenPoolGauge.With(prometheus.Labels{"rateLimited": "primary", "tokenName": ghClient.TokenName})
 	if rl != nil && (rl.Core != nil && rl.Core.Remaining < 10) || (rl.Search != nil && rl.Search.Remaining < 2) {
 		newClientPool := make(map[string]*GitHubClient)
 		for k, v := range clientPool {
@@ -130,8 +132,20 @@ func getRandomClient(clientPool map[string]*GitHubClient) (*GitHubClient, error)
 				newClientPool[k] = v
 			}
 		}
-		metrics.TokenPoolCounter.With(prometheus.Labels{"rateLimited": "primary", "tokenName": ghClient.TokenName}).Inc()
+
+		// if token has not been previously rate limited, increment the metric
+		if !ghClient.PrimaryRateLimited {
+			prlTokenMetric.Inc()
+			ghClient.PrimaryRateLimited = true
+		}
+
 		return getRandomClient(newClientPool)
+	}
+
+	// if token has been previously rate limited, then decrement the counter and reset the boolean
+	if ghClient.PrimaryRateLimited {
+		prlTokenMetric.Dec()
+		ghClient.PrimaryRateLimited = false
 	}
 
 	// Check the secondary rate limit
@@ -147,7 +161,7 @@ func getRandomClient(clientPool map[string]*GitHubClient) (*GitHubClient, error)
 				newClientPool[k] = v
 			}
 		}
-		metrics.TokenPoolCounter.With(prometheus.Labels{"rateLimited": "secondary", "tokenName": ghClient.TokenName}).Inc()
+
 		return getRandomClient(newClientPool)
 	}
 	return ghClient, nil
@@ -218,14 +232,18 @@ func rateLimitCallBackfunc(cbContext *github_ratelimit.CallbackContext) {
 
 	// Start a goroutine that marks the given client as rate limited and sleeps for 'TotalSleepTime'
 	go func(client *GitHubClient) {
+		srlTokenMetric := metrics.TokenPoolGauge.With(prometheus.Labels{"rateLimited": "secondary", "tokenName": client.TokenName})
+
 		client.SecondaryRateLimit.mu.Lock()
 		client.SecondaryRateLimit.isLimitReached = true
+		srlTokenMetric.Inc()
 		client.SecondaryRateLimit.mu.Unlock()
 
 		// Sleep until the rate limit is over
 		time.Sleep(time.Until(*cbContext.SleepUntil))
 		client.SecondaryRateLimit.mu.Lock()
 		client.SecondaryRateLimit.isLimitReached = false
+		srlTokenMetric.Dec()
 		client.SecondaryRateLimit.mu.Unlock()
 	}(ghClient)
 
