@@ -31,6 +31,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/client-go/util/retry"
 	"k8s.io/client-go/util/workqueue"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/builder"
@@ -429,7 +430,17 @@ func (r *ComponentReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 				return ctrl.Result{}, err
 			}
 			hasApplication.Status.Devfile = string(yamlHASAppData)
-			err = r.Status().Update(ctx, &hasApplication)
+			err = retry.RetryOnConflict(retry.DefaultRetry, func() error {
+				var currentApp appstudiov1alpha1.Application
+				err := r.Get(ctx, req.NamespacedName, &currentApp)
+				if err != nil {
+					return err
+				}
+				currentApp.Status.Devfile = hasApplication.Status.Devfile
+				currentApp.Status.Conditions = hasApplication.Status.Conditions
+				err = r.Status().Update(ctx, &currentApp)
+				return err
+			})
 			if err != nil {
 				log.Error(err, "Unable to update Application")
 				// if we're unable to update the Application CR, then  we need to err out
@@ -519,7 +530,19 @@ func (r *ComponentReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 
 			component.Status.ContainerImage = component.Spec.ContainerImage
 			component.Status.Devfile = string(yamlHASCompData)
-			err = r.Client.Status().Update(ctx, &component)
+			err = retry.RetryOnConflict(retry.DefaultRetry, func() error {
+				var currentComponent appstudiov1alpha1.Component
+				err := r.Get(ctx, req.NamespacedName, &currentComponent)
+				if err != nil {
+					return err
+				}
+				currentComponent.Status.Devfile = component.Status.Devfile
+				currentComponent.Status.ContainerImage = component.Status.ContainerImage
+				currentComponent.Status.GitOps = component.Status.GitOps
+				currentComponent.Status.Conditions = component.Status.Conditions
+				err = r.Client.Status().Update(ctx, &currentComponent)
+				return err
+			})
 			if err != nil {
 				log.Error(err, "Unable to update Component status")
 				// if we're unable to update the Component CR status, then we need to err out
