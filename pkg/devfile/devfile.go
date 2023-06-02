@@ -410,7 +410,11 @@ func GetResourceFromDevfile(log logr.Logger, devfileData data.DevfileData, deplo
 					} else {
 						resources.Routes[0].ObjectMeta.Labels = k8sLabels
 					}
+
 					if currentPort > 0 {
+						if resources.Routes[0].Spec.Port == nil {
+							resources.Routes[0].Spec.Port = &routev1.RoutePort{}
+						}
 						resources.Routes[0].Spec.Port.TargetPort = intstr.FromInt(currentPort)
 						// Update for route
 						route := component.Attributes.GetString(RouteKey, &err)
