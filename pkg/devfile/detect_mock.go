@@ -30,6 +30,8 @@ type MockAlizerClient struct {
 func (a MockAlizerClient) DetectComponents(path string) ([]model.Component, error) {
 	if strings.Contains(path, "errorAnalyze") {
 		return nil, fmt.Errorf("dummy DetectComponents err")
+	} else if strings.Contains(path, "empty") {
+		return []model.Component{}, nil
 	} else if strings.Contains(path, "devfile-sample-nodejs-basic") {
 		return []model.Component{
 			{

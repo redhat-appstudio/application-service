@@ -62,6 +62,17 @@ func TestSetCompleteConditionAndUpdateCR(t *testing.T) {
 	}
 	r.Client.Create(context.Background(), &originalCDQ)
 
+	cdqWithComponentDetected := originalCDQ
+	cdqWithComponentDetected.Status = appstudiov1alpha1.ComponentDetectionQueryStatus{
+		ComponentDetected: appstudiov1alpha1.ComponentDetectionMap{
+			"component1": appstudiov1alpha1.ComponentDetectionDescription{
+				ComponentStub: appstudiov1alpha1.ComponentSpec{
+					ComponentName: "component1",
+				},
+			},
+		},
+	}
+
 	request := reconcile.Request{
 		NamespacedName: types.NamespacedName{
 			Namespace: "test-namespace",
@@ -78,13 +89,24 @@ func TestSetCompleteConditionAndUpdateCR(t *testing.T) {
 	}{
 		{
 			name:        "Simple CDQ, no error",
+			originalCDQ: cdqWithComponentDetected,
+			updateCDQ:   cdqWithComponentDetected,
+			wantCondition: metav1.Condition{
+				Type:    "Completed",
+				Status:  metav1.ConditionTrue,
+				Reason:  "OK",
+				Message: "ComponentDetectionQuery has successfully finished",
+			},
+		},
+		{
+			name:        "Simple CDQ, no component detected, no error",
 			originalCDQ: originalCDQ,
 			updateCDQ:   originalCDQ,
 			wantCondition: metav1.Condition{
 				Type:    "Completed",
 				Status:  metav1.ConditionTrue,
 				Reason:  "OK",
-				Message: "ComponentDetectionQuery has successfully finished",
+				Message: "ComponentDetectionQuery has successfully finished, no components detected",
 			},
 		},
 		{
