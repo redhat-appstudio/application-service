@@ -18,10 +18,11 @@ require (
 	github.com/onsi/gomega v1.24.1
 	github.com/openshift-pipelines/pipelines-as-code v0.0.0-20220622161720-2a6007e17200
 	github.com/openshift/api v0.0.0-20210503193030-25175d9d392d
+	github.com/pact-foundation/pact-go v1.7.0
 	github.com/prometheus/client_golang v1.14.0
 	github.com/redhat-appstudio/application-api v0.0.0-20230509152222-ef5c4dcebc94
 	github.com/redhat-appstudio/service-provider-integration-scm-file-retriever v0.8.3
-	github.com/redhat-developer/alizer/go v0.0.0-20230504143552-c2b889a2d327
+	github.com/redhat-developer/alizer/go v0.0.0-20230516215932-135a2bb3fb90
 	github.com/redhat-developer/gitops-generator v0.0.0-20230508195028-547148fd17fe
 	github.com/spf13/afero v1.8.0
 	github.com/stretchr/testify v1.8.1
@@ -87,6 +88,7 @@ require (
 	github.com/hashicorp/errwrap v1.1.0 // indirect
 	github.com/hashicorp/go-multierror v1.1.1 // indirect
 	github.com/hashicorp/go-version v1.6.0 // indirect
+	github.com/hashicorp/logutils v1.0.0 // indirect
 	github.com/imdario/mergo v0.3.15 // indirect
 	github.com/imroc/req/v3 v3.26.0 // indirect
 	github.com/jbenet/go-context v0.0.0-20150711004518-d14ea06fba99 // indirect
@@ -144,7 +146,7 @@ require (
 	golang.org/x/crypto v0.8.0 // indirect
 	golang.org/x/mod v0.10.0 // indirect
 	golang.org/x/net v0.9.0 // indirect
-	golang.org/x/sync v0.1.0 // indirect
+	golang.org/x/sync v0.2.0 // indirect
 	golang.org/x/sys v0.7.0 // indirect
 	golang.org/x/term v0.7.0 // indirect
 	golang.org/x/text v0.9.0 // indirect

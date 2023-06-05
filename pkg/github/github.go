@@ -36,6 +36,7 @@ type GitHubClient struct {
 	Token              string
 	Client             *github.Client
 	SecondaryRateLimit SecondaryRateLimit
+	PrimaryRateLimited bool // flag to denote if the token has been near primary rate limited
 }
 
 type SecondaryRateLimit struct {

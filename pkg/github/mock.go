@@ -204,6 +204,34 @@ func GetMockedPrimaryRateLimitedClient() *github.Client {
 
 }
 
+func GetMockedResetPrimaryRateLimitedClient() *github.Client {
+	mockedHTTPClient := mock.NewMockedHTTPClient(
+		mock.WithRequestMatchHandler(
+			mock.GetRateLimit,
+			http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
+				/* #nosec G104 -- test code */
+				response := new(struct {
+					Resources *github.RateLimits `json:"resources"`
+				})
+				response.Resources = &github.RateLimits{
+					Core: &github.Rate{
+						Limit:     5000,
+						Remaining: 4999,
+					},
+					Search: &github.Rate{
+						Limit:     30,
+						Remaining: 29,
+					},
+				}
+				w.Write(mock.MustMarshal(response))
+			}),
+		),
+	)
+
+	cl, _ := createGitHubClientFromToken(&mockedHTTPClient.Transport, "", "mock")
+	return cl.Client
+}
+
 func GetMockedSecondaryRateLimitedClient() *github.Client {
 	mockedHTTPClient := mock.NewMockedHTTPClient(
 		mock.WithRequestMatchHandler(

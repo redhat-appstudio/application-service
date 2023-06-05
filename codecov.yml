@@ -3,3 +3,6 @@ ignore:
   - "pkg/spi/spi_mock.go" # mock file for testing
   - "pkg/devfile/detect_mock.go" # mock file for testing
   - "gitops/generate_mock.go" # mock file for testing
+  - "controllers/start_test_env.go" # setup of a test environment for unit and Pact tests
+  - "controllers/application_pact_test_state_handlers.go" # state handlers for the Pact tests
+  - "controllers/application_pact_test_utils.go" # utils file for the Pact tests
