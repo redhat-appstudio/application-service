@@ -31,69 +31,59 @@ import (
 
 func (r *ComponentDetectionQueryReconciler) SetDetectingConditionAndUpdateCR(ctx context.Context, req ctrl.Request, componentDetectionQuery *appstudiov1alpha1.ComponentDetectionQuery) {
 	log := ctrl.LoggerFrom(ctx)
-	var currentCDQ appstudiov1alpha1.ComponentDetectionQuery
-	err := r.Get(ctx, req.NamespacedName, &currentCDQ)
-	if err != nil {
-		return
-	}
-	patch := client.MergeFrom(currentCDQ.DeepCopy())
 
-	meta.SetStatusCondition(&currentCDQ.Status.Conditions, metav1.Condition{
+	patch := client.MergeFrom(componentDetectionQuery.DeepCopy())
+
+	meta.SetStatusCondition(&componentDetectionQuery.Status.Conditions, metav1.Condition{
 		Type:    "Processing",
 		Status:  metav1.ConditionTrue,
 		Reason:  "Success",
 		Message: "ComponentDetectionQuery is processing",
 	})
-	currentCDQ.Status.ComponentDetected = componentDetectionQuery.Status.ComponentDetected
 
-	err = r.Client.Status().Patch(ctx, &currentCDQ, patch)
+	err := r.Client.Status().Patch(ctx, componentDetectionQuery, patch)
 	if err != nil {
 		log.Error(err, "Unable to update ComponentDetectionQuery")
 	}
 }
 
-func (r *ComponentDetectionQueryReconciler) SetCompleteConditionAndUpdateCR(ctx context.Context, req ctrl.Request, componentDetectionQuery *appstudiov1alpha1.ComponentDetectionQuery, completeError error) {
+func (r *ComponentDetectionQueryReconciler) SetCompleteConditionAndUpdateCR(ctx context.Context, req ctrl.Request, componentDetectionQuery *appstudiov1alpha1.ComponentDetectionQuery, originalCDQ *appstudiov1alpha1.ComponentDetectionQuery, completeError error) {
 	log := ctrl.LoggerFrom(ctx)
 
-	var currentCDQ appstudiov1alpha1.ComponentDetectionQuery
-	err := r.Get(ctx, req.NamespacedName, &currentCDQ)
-	if err != nil {
-		return
-	}
-	copiedCDQ := currentCDQ.DeepCopy()
-	patch := client.MergeFrom(currentCDQ.DeepCopy())
-	condition := metav1.Condition{}
+	patch := client.MergeFrom(originalCDQ.DeepCopy())
+
 	if completeError == nil {
-		condition = metav1.Condition{
+		meta.SetStatusCondition(&componentDetectionQuery.Status.Conditions, metav1.Condition{
 			Type:    "Completed",
 			Status:  metav1.ConditionTrue,
 			Reason:  "OK",
 			Message: "ComponentDetectionQuery has successfully finished",
-		}
+		})
+		logutil.LogAPIResourceChangeEvent(log, componentDetectionQuery.Name, "ComponentDetectionQuery", logutil.ResourceComplete, nil)
+
 	} else {
-		condition = metav1.Condition{
+		meta.SetStatusCondition(&componentDetectionQuery.Status.Conditions, metav1.Condition{
 			Type:    "Completed",
 			Status:  metav1.ConditionFalse,
 			Reason:  "Error",
 			Message: fmt.Sprintf("ComponentDetectionQuery failed: %v", completeError),
-		}
+		})
+		logutil.LogAPIResourceChangeEvent(log, componentDetectionQuery.Name, "ComponentDetectionQuery", logutil.ResourceComplete, completeError)
 	}
-	logutil.LogAPIResourceChangeEvent(log, componentDetectionQuery.Name, "ComponentDetectionQuery", logutil.ResourceComplete, completeError)
-	meta.SetStatusCondition(&currentCDQ.Status.Conditions, condition)
-	currentCDQ.Status.ComponentDetected = componentDetectionQuery.Status.ComponentDetected
-	err = r.Client.Status().Patch(ctx, &currentCDQ, patch)
+	err := r.Client.Status().Patch(ctx, componentDetectionQuery, patch)
 	if err != nil {
 		// Error attempting to update the CDQ status. Since some CDQ status fields have specific validation rules (specifically the detected components), a bug could cause
 		// an invalid field to be present in the status. _If_ the status update fails, still attempt to update only the status conditions
 		log.Error(err, "Unable to update ComponentDetectionQuery. Will attempt to update only the status condition")
 
+		copiedCDQ := originalCDQ.DeepCopy()
 		meta.SetStatusCondition(&copiedCDQ.Status.Conditions, metav1.Condition{
 			Type:    "Completed",
 			Status:  metav1.ConditionFalse,
 			Reason:  "Error",
 			Message: fmt.Sprintf("ComponentDetectionQuery failed: %v", completeError),
 		})
-		err := r.Client.Status().Patch(ctx, copiedCDQ, patch)
+		err := r.Client.Status().Patch(ctx, componentDetectionQuery, patch)
 		if err != nil {
 			log.Error(err, "Unable to update ComponentDetectionQuery status conditions")
 		}
