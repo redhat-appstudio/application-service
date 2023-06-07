@@ -229,7 +229,9 @@ func (r *ComponentDetectionQueryReconciler) Reconcile(ctx context.Context, req c
 					devfilesMap[context] = devfileBytes
 					devfilesURLMap[context] = updatedLink
 				}
-			} else if isDockerfilePresent {
+			}
+			// recheck if devfile presents, since the devfile may need to be ignored after validation
+			if !isDevfilePresent && isDockerfilePresent {
 				log.Info(fmt.Sprintf("Determined that this is a Dockerfile only component  %v", req.NamespacedName))
 				dockerfileContextMap[context] = dockerfilePath
 			}
