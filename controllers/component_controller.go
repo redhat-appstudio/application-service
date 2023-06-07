@@ -430,17 +430,7 @@ func (r *ComponentReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 				return ctrl.Result{}, err
 			}
 			hasApplication.Status.Devfile = string(yamlHASAppData)
-			err = retry.RetryOnConflict(retry.DefaultRetry, func() error {
-				var currentApp appstudiov1alpha1.Application
-				err := r.Get(ctx, req.NamespacedName, &currentApp)
-				if err != nil {
-					return err
-				}
-				currentApp.Status.Devfile = hasApplication.Status.Devfile
-				currentApp.Status.Conditions = hasApplication.Status.Conditions
-				err = r.Status().Update(ctx, &currentApp)
-				return err
-			})
+			err = r.Status().Update(ctx, &hasApplication)
 			if err != nil {
 				log.Error(err, "Unable to update Application")
 				// if we're unable to update the Application CR, then  we need to err out
