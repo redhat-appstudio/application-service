@@ -16,7 +16,9 @@ spec:
       value: 'quay.io/redhat-appstudio/application-service:{{revision}}'
     - name: infra-deployment-update-script
       value: |
-        sed -i -e 's|\(https://github.com/redhat-appstudio/application-service/.*?ref=\)\(.*\)|\1{{ revision }}|' -e 's/\(newTag: \).*/\1{{ revision }}/' components/has/base/kustomization.yaml
+        sed -i -e 's|\(https://github.com/redhat-appstudio/application-service/.*?ref=\)\(.*\)|\1{{ revision }}|' -e 's/\(newTag: \).*/\1{{ revision }}/' components/has/overlays/development/kustomization.yaml
+        sed -i -e 's|\(https://github.com/redhat-appstudio/application-service/.*?ref=\)\(.*\)|\1{{ revision }}|' -e 's/\(newTag: \).*/\1{{ revision }}/' components/has/overlays/staging/kustomization.yaml
+        sed -i -e 's|\(https://github.com/redhat-appstudio/application-service/.*?ref=\)\(.*\)|\1{{ revision }}|' -e 's/\(newTag: \).*/\1{{ revision }}/' components/has/overlays/production/kustomization.yaml        
         sed -i -e 's|\(https://github.com/redhat-appstudio/application-service/config/prometheus/?ref=\)\(.*\)|\1{{ revision }}|' -e 's/\(newTag: \).*/\1{{ revision }}/' components/has/production/kustomization.yaml
         sed -i -e 's|\(https://github.com/redhat-appstudio/application-service/config/prometheus/?ref=\)\(.*\)|\1{{ revision }}|' -e 's/\(newTag: \).*/\1{{ revision }}/' components/has/staging/kustomization.yaml
         sed -i -e 's|\(https://github.com/redhat-appstudio/application-service/config/monitoring/?ref=\)\(.*\)|\1{{ revision }}|' -e 's/\(newTag: \).*/\1{{ revision }}/' components/monitoring/grafana/base/has/kustomization.yaml
