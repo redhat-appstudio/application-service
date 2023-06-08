@@ -1438,6 +1438,11 @@ var _ = Describe("Component Detection Query controller", func() {
 				// Make sure the right status is set
 				Expect(createdHasCompDetectionQuery.Status.Conditions[1].Message).Should(ContainSubstring("ComponentDetectionQuery has successfully finished"))
 
+				// Make sure the right branch is set
+				for _, component := range createdHasCompDetectionQuery.Status.ComponentDetected {
+					Expect(component.ComponentStub.Source.GitSource.Revision).Should(Equal("main"))
+				}
+
 				// Make sure the devfiles are detected
 				Expect(len(createdHasCompDetectionQuery.Status.ComponentDetected)).Should(Equal(3)) // mocked, not accurate. check unit test for accurate detection that uses the alizer client instead of the mock client.
 				for _, componentDesc := range createdHasCompDetectionQuery.Status.ComponentDetected {
@@ -1453,7 +1458,7 @@ var _ = Describe("Component Detection Query controller", func() {
 			It("Should return successfully and properly set the DockerfileURL", func() {
 				ctx := context.Background()
 
-				queryName := HASCompDetQuery + "quality-dashboard" + "27"
+				queryName := HASCompDetQuery + "quality-dashboard" + "28"
 
 				hasCompDetectionQuery := &appstudiov1alpha1.ComponentDetectionQuery{
 					TypeMeta: metav1.TypeMeta{
@@ -1538,6 +1543,52 @@ var _ = Describe("Component Detection Query controller", func() {
 
 				// Make sure the right status is set
 				Expect(createdHasCompDetectionQuery.Status.Conditions[1].Message).Should(ContainSubstring("ComponentDetectionQuery has successfully finished, no components detected"))
+
+				// Delete the specified Detection Query resource
+				deleteCompDetQueryCR(hasCompDetQueryLookupKey)
+			})
+		})
+
+		Context("Create Component Detection Query for invalid outerloop devfile but valid Dockerfile component", func() {
+			It("Should return CDQ success status", func() {
+				ctx := context.Background()
+
+				queryName := HASCompDetQuery + "no-outerloop-with-dockerfile"
+
+				hasCompDetectionQuery := &appstudiov1alpha1.ComponentDetectionQuery{
+					TypeMeta: metav1.TypeMeta{
+						APIVersion: "appstudio.redhat.com/v1alpha1",
+						Kind:       "ComponentDetectionQuery",
+					},
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      queryName,
+						Namespace: HASNamespace,
+					},
+					Spec: appstudiov1alpha1.ComponentDetectionQuerySpec{
+						GitSource: appstudiov1alpha1.GitSource{
+							URL: "https://github.com/yangcao77/no-outerloop-python",
+						},
+					},
+				}
+
+				Expect(k8sClient.Create(ctx, hasCompDetectionQuery)).Should(Succeed())
+
+				// Look up the has app resource that was created.
+				// num(conditions) may still be < 1 on the first try, so retry until at least _some_ condition is set
+				hasCompDetQueryLookupKey := types.NamespacedName{Name: queryName, Namespace: HASNamespace}
+				createdHasCompDetectionQuery := &appstudiov1alpha1.ComponentDetectionQuery{}
+				Eventually(func() bool {
+					k8sClient.Get(context.Background(), hasCompDetQueryLookupKey, createdHasCompDetectionQuery)
+					return len(createdHasCompDetectionQuery.Status.Conditions) > 1
+				}, timeout, interval).Should(BeTrue())
+
+				// Make sure the a devfile is detected
+				Expect(len(createdHasCompDetectionQuery.Status.ComponentDetected)).Should(Equal(1))
+
+				for devfileName, devfileDesc := range createdHasCompDetectionQuery.Status.ComponentDetected {
+					Expect(devfileName).Should(ContainSubstring("python"))
+					Expect(devfileDesc.ComponentStub.Source.GitSource.DockerfileURL).Should(Equal("Dockerfile"))
+				}
 
 				// Delete the specified Detection Query resource
 				deleteCompDetQueryCR(hasCompDetQueryLookupKey)

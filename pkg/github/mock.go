@@ -122,6 +122,11 @@ func GetMockedClient() *github.Client {
 						http.StatusInternalServerError,
 						"github went belly up or something",
 					)
+				} else if strings.Contains(req.RequestURI, "multi-component-dockerfile-deep") {
+					w.Write(mock.MustMarshal(github.Repository{
+						Name:          github.String("multi-component-dockerfile-deep"),
+						DefaultBranch: github.String("main"),
+					}))
 				} else if strings.Contains(req.RequestURI, "test-repo-2") {
 					/* #nosec G104 -- test code */
 					w.Write(mock.MustMarshal(github.Repository{
@@ -146,6 +151,11 @@ func GetMockedClient() *github.Client {
 						Name: github.String("master"),
 					}))
 				} else if strings.Contains(req.RequestURI, "test-repo-1") && strings.Contains(req.RequestURI, "main") {
+					/* #nosec G104 -- test code */
+					w.Write(mock.MustMarshal(github.Branch{
+						Name: github.String("main"),
+					}))
+				} else if strings.Contains(req.RequestURI, "multi-component-dockerfile-deep") && strings.Contains(req.RequestURI, "main") {
 					/* #nosec G104 -- test code */
 					w.Write(mock.MustMarshal(github.Branch{
 						Name: github.String("main"),
