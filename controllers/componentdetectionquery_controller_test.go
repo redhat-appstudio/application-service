@@ -1438,6 +1438,11 @@ var _ = Describe("Component Detection Query controller", func() {
 				// Make sure the right status is set
 				Expect(createdHasCompDetectionQuery.Status.Conditions[1].Message).Should(ContainSubstring("ComponentDetectionQuery has successfully finished"))
 
+				// Make sure the right branch is set
+				for _, component := range createdHasCompDetectionQuery.Status.ComponentDetected {
+					Expect(component.ComponentStub.Source.GitSource.Revision).Should(Equal("main"))
+				}
+
 				// Make sure the devfiles are detected
 				Expect(len(createdHasCompDetectionQuery.Status.ComponentDetected)).Should(Equal(3)) // mocked, not accurate. check unit test for accurate detection that uses the alizer client instead of the mock client.
 				for _, componentDesc := range createdHasCompDetectionQuery.Status.ComponentDetected {
@@ -1453,7 +1458,7 @@ var _ = Describe("Component Detection Query controller", func() {
 			It("Should return successfully and properly set the DockerfileURL", func() {
 				ctx := context.Background()
 
-				queryName := HASCompDetQuery + "quality-dashboard" + "27"
+				queryName := HASCompDetQuery + "quality-dashboard" + "28"
 
 				hasCompDetectionQuery := &appstudiov1alpha1.ComponentDetectionQuery{
 					TypeMeta: metav1.TypeMeta{
