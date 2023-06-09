@@ -53,14 +53,17 @@ func (r *ComponentDetectionQueryReconciler) SetCompleteConditionAndUpdateCR(ctx 
 	patch := client.MergeFrom(originalCDQ.DeepCopy())
 
 	if completeError == nil {
+		message := "ComponentDetectionQuery has successfully finished"
+		if len(componentDetectionQuery.Status.ComponentDetected) == 0 {
+			message = "ComponentDetectionQuery has successfully finished, no components detected"
+		}
 		meta.SetStatusCondition(&componentDetectionQuery.Status.Conditions, metav1.Condition{
 			Type:    "Completed",
 			Status:  metav1.ConditionTrue,
 			Reason:  "OK",
-			Message: "ComponentDetectionQuery has successfully finished",
+			Message: message,
 		})
 		logutil.LogAPIResourceChangeEvent(log, componentDetectionQuery.Name, "ComponentDetectionQuery", logutil.ResourceComplete, nil)
-
 	} else {
 		meta.SetStatusCondition(&componentDetectionQuery.Status.Conditions, metav1.Condition{
 			Type:    "Completed",

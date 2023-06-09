@@ -343,12 +343,14 @@ func (r *ComponentDetectionQueryReconciler) Reconcile(ctx context.Context, req c
 				devfilesURLMap[context] = updatedLink
 			}
 		}
-
-		err = r.updateComponentStub(req, &componentDetectionQuery, devfilesMap, devfilesURLMap, dockerfileContextMap, componentPortsMap)
-		if err != nil {
-			log.Error(err, fmt.Sprintf("Unable to update the component stub %v", req.NamespacedName))
-			r.SetCompleteConditionAndUpdateCR(ctx, req, &componentDetectionQuery, copiedCDQ, err)
-			return ctrl.Result{}, nil
+		// only update the componentStub when a component has been detected
+		if len(devfilesMap) != 0 || len(devfilesURLMap) != 0 || len(dockerfileContextMap) != 0 {
+			err = r.updateComponentStub(req, &componentDetectionQuery, devfilesMap, devfilesURLMap, dockerfileContextMap, componentPortsMap)
+			if err != nil {
+				log.Error(err, fmt.Sprintf("Unable to update the component stub %v", req.NamespacedName))
+				r.SetCompleteConditionAndUpdateCR(ctx, req, &componentDetectionQuery, copiedCDQ, err)
+				return ctrl.Result{}, nil
+			}
 		}
 
 		r.SetCompleteConditionAndUpdateCR(ctx, req, &componentDetectionQuery, copiedCDQ, nil)
