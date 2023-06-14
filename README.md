@@ -5,7 +5,6 @@
 
 A Kubernetes operator to create and manage applications and control the lifecycle of applications.
 
-
 ## Building & Testing
 This operator provides a `Makefile` to run all the usual development tasks. If you simply run `make` without any arguments, you'll get a list of available "targets".
 
@@ -20,6 +19,8 @@ To test the code:
 ```
 make test
 ```
+
+**Note:** In order for the controller tests to run, follow the instructions for [installing the Pact tools](#installing-pact-tools)
 
 To build the docker image of the operator one can run:
 
@@ -43,6 +44,16 @@ The image being pushed can again be modified using the environment variable:
 ```
 IMG=quay.io/user/hasoperator:next make docker-push
 ```
+
+## Installing Pact Tools
+
+The Pact tests in the controller package require pact tooling to be installed and on your path. Follow these instructions to do so:
+
+1. Change directory to an appropriate folder (e.g. `/usr/local`)
+2. Run `curl -fsSL https://raw.githubusercontent.com/pact-foundation/pact-ruby-standalone/master/install.sh | bash`
+3. Add the pact tools' bin folder (e.g. `/usr/local/pact/bin`) to your path to your shell PATH. Might need to ensure the `bin/` folder has sufficient permissions
+4. Run `go install github.com/pact-foundation/pact-go@v1` to install the `pact-go` tool
+5. Run `pact-go install` to validate that all of the necessary Pact tools are installed
 
 ## Deploying the Operator
 
