@@ -20,6 +20,7 @@ import (
 	"context"
 	"fmt"
 	"path"
+	"reflect"
 	"strings"
 	"time"
 
@@ -345,7 +346,14 @@ func (r *ComponentDetectionQueryReconciler) Reconcile(ctx context.Context, req c
 		}
 		// only update the componentStub when a component has been detected
 		if len(devfilesMap) != 0 || len(devfilesURLMap) != 0 || len(dockerfileContextMap) != 0 {
-			err = r.updateComponentStub(req, &componentDetectionQuery, devfilesMap, devfilesURLMap, dockerfileContextMap, componentPortsMap)
+			var tempComp *appstudiov1alpha1.Component
+			r.Client.Get(ctx, req.NamespacedName, tempComp, &client.GetOptions{})
+			compExist := false
+			if tempComp != nil && reflect.DeepEqual(*tempComp, appstudiov1alpha1.Component{}) {
+				// a component with same name exist in the namespace
+				compExist = true
+			}
+			err = r.updateComponentStub(req, &componentDetectionQuery, devfilesMap, devfilesURLMap, dockerfileContextMap, componentPortsMap, compExist)
 			if err != nil {
 				log.Error(err, fmt.Sprintf("Unable to update the component stub %v", req.NamespacedName))
 				r.SetCompleteConditionAndUpdateCR(ctx, req, &componentDetectionQuery, copiedCDQ, err)

@@ -1370,9 +1370,9 @@ func TestUpdateComponentStub(t *testing.T) {
 			}
 			var err error
 			if tt.isNil {
-				err = r.updateComponentStub(ctrl.Request{}, nil, devfilesMap, nil, nil, nil)
+				err = r.updateComponentStub(ctrl.Request{}, nil, devfilesMap, nil, nil, nil, false)
 			} else {
-				err = r.updateComponentStub(ctrl.Request{}, &componentDetectionQuery, devfilesMap, tt.devfilesURLMap, tt.dockerfileURLMap, tt.componentPortsMap)
+				err = r.updateComponentStub(ctrl.Request{}, &componentDetectionQuery, devfilesMap, tt.devfilesURLMap, tt.dockerfileURLMap, tt.componentPortsMap, false)
 			}
 
 			if tt.wantErr && (err == nil) {
@@ -1566,10 +1566,10 @@ func TestGetComponentName(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			gotComponentName := getComponentName(tt.gitSource)
+			gotComponentName := getComponentName(tt.gitSource, false)
 			assert.Contains(t, gotComponentName, tt.expectedName, "the component name should contain repo name")
 			assert.NotEqual(t, tt.expectedName, gotComponentName, "the component name should not equal to repo name")
-			gotComponentName2 := getComponentName(tt.gitSource)
+			gotComponentName2 := getComponentName(tt.gitSource, false)
 			assert.Contains(t, gotComponentName2, tt.expectedName, "the component name should contain repo name")
 			assert.NotEqual(t, gotComponentName, gotComponentName2, "the two generated component names should not equal")
 		})
@@ -1617,7 +1617,7 @@ func TestSanitizeComponentName(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			sanitizedName := sanitizeComponentName(tt.componentName)
+			sanitizedName := sanitizeComponentName(tt.componentName, false)
 
 			if tt.componentName == "" {
 				splitString := strings.Split(sanitizedName, "-")

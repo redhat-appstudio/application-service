@@ -272,7 +272,7 @@ func (r *ComponentReconciler) updateApplicationDevfileModel(hasAppDevfileData da
 	return nil
 }
 
-func (r *ComponentDetectionQueryReconciler) updateComponentStub(req ctrl.Request, componentDetectionQuery *appstudiov1alpha1.ComponentDetectionQuery, devfilesMap map[string][]byte, devfilesURLMap map[string]string, dockerfileContextMap map[string]string, componentPortsMap map[string][]int) error {
+func (r *ComponentDetectionQueryReconciler) updateComponentStub(req ctrl.Request, componentDetectionQuery *appstudiov1alpha1.ComponentDetectionQuery, devfilesMap map[string][]byte, devfilesURLMap map[string]string, dockerfileContextMap map[string]string, componentPortsMap map[string][]int, compExist bool) error {
 
 	if componentDetectionQuery == nil {
 		return fmt.Errorf("componentDetectionQuery is nil")
@@ -315,7 +315,7 @@ func (r *ComponentDetectionQueryReconciler) updateComponentStub(req ctrl.Request
 			DevfileURL:    devfilesURLMap[context],
 			DockerfileURL: dockerfileContextMap[context],
 		}
-		componentName := getComponentName(gitSource)
+		componentName := getComponentName(gitSource, compExist)
 
 		componentStub := appstudiov1alpha1.ComponentSpec{
 			ComponentName: componentName,
@@ -496,7 +496,7 @@ func (r *ComponentDetectionQueryReconciler) updateComponentStub(req ctrl.Request
 			Revision:      componentDetectionQuery.Spec.GitSource.Revision,
 			DockerfileURL: link,
 		}
-		componentName := getComponentName(gitSource)
+		componentName := getComponentName(gitSource, compExist)
 
 		detectComp := appstudiov1alpha1.ComponentDetectionDescription{
 			DevfileFound: false, // always false since there is only a Dockerfile present for these contexts
@@ -524,7 +524,7 @@ func (r *ComponentDetectionQueryReconciler) updateComponentStub(req ctrl.Request
 	return nil
 }
 
-func getComponentName(gitSource *appstudiov1alpha1.GitSource) string {
+func getComponentName(gitSource *appstudiov1alpha1.GitSource, compExist bool) string {
 	var componentName string
 	repoUrl := gitSource.URL
 
@@ -544,7 +544,7 @@ func getComponentName(gitSource *appstudiov1alpha1.GitSource) string {
 
 	// Return a sanitized version of the component name
 	// If len(componentName) is 0, then it will also handle generating a random name for it.
-	return sanitizeComponentName(componentName)
+	return sanitizeComponentName(componentName, compExist)
 }
 
 // sanitizeComponentName sanitizes component name with the following requirements:
@@ -553,7 +553,7 @@ func getComponentName(gitSource *appstudiov1alpha1.GitSource) string {
 // - Start with an alphabet character
 // - End with an alphanumeric character
 // - Must not contain all numeric values
-func sanitizeComponentName(name string) string {
+func sanitizeComponentName(name string, compExist bool) string {
 	exclusive := regexp.MustCompile(`[^a-zA-Z0-9-]`)
 	// filter out invalid characters
 	name = exclusive.ReplaceAllString(name, "")
@@ -570,8 +570,10 @@ func sanitizeComponentName(name string) string {
 		name = name[0:58]
 	}
 
-	// to avoid name conflict with existing component, append random 4 chars at end of the name
-	name = fmt.Sprintf("%s-%s", name, util.GetRandomString(4, true))
+	if compExist {
+		// to avoid name conflict with existing component, append random 4 chars at end of the name
+		name = fmt.Sprintf("%s-%s", name, util.GetRandomString(4, true))
+	}
 
 	return name
 }
