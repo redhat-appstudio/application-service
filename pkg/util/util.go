@@ -323,3 +323,19 @@ func GenerateUniqueHashForWorkloadImageTag(namespace string) string {
 	h.Write([]byte(namespace))
 	return base64.URLEncoding.EncodeToString(h.Sum(nil))[0:5]
 }
+
+// GenerateUniqueRouteName returns a unique, trimmed route name based on the Component name based on the following criteria
+// 1. Under 30 characters
+// 2. Contains 4 random characters
+func GenerateUniqueRouteName(componentName string) string {
+	routeName := componentName
+	if len(componentName) > 25 {
+		routeName = componentName[0:24]
+	} else {
+		routeName = componentName
+	}
+
+	// Append random characters to the route name
+	routeName = routeName + GetRandomString(4, true)
+	return routeName
+}

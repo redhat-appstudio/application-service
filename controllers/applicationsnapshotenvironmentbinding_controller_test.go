@@ -171,6 +171,12 @@ var _ = Describe("SnapshotEnvironmentBinding controller", func() {
 			Expect(createdBinding.Status.Components[0].GitOpsRepository.Path).Should(Equal(fmt.Sprintf("components/%s/overlays/%s", componentName, environmentName)))
 			Expect(createdBinding.Status.Components[0].GitOpsRepository.URL).Should(Equal(hasComp.Status.GitOps.RepositoryURL))
 			Expect(createdBinding.Status.Components[0].GitOpsRepository.CommitID).Should(Equal("ca82a6dff817ec66f44342007202690a93763949"))
+
+			// Validate that the generated route name was created successfully.
+			// It should be based on the component name and also contain random characters at the end
+			Expect(createdBinding.Status.Components[0].GeneratedRouteName).Should(ContainSubstring(componentName))
+			Expect(createdBinding.Status.Components[0].GeneratedRouteName).ShouldNot(Equal(componentName))
+
 			bindingLabels := createdBinding.GetLabels()
 			// If no prior labels exist, SEB controllers should only add 2 label entries
 			Expect(len(bindingLabels)).Should(Equal(2))

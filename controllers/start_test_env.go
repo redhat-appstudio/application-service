@@ -53,7 +53,7 @@ func setupTestEnv() {
 	logf.SetLogger(zap.New(zap.WriteTo(ginkgo.GinkgoWriter), zap.UseDevMode(true)))
 
 	ctx, cancel = context.WithCancel(context.TODO())
-	applicationAPIDepVersion := "v0.0.0-20230509152222-ef5c4dcebc94"
+	applicationAPIDepVersion := "v0.0.0-20230616144210-9dad8e40e3ed"
 
 	ginkgo.By("bootstrapping test environment")
 	testEnv = &envtest.Environment{
