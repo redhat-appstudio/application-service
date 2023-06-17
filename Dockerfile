@@ -30,6 +30,8 @@ RUN cmake . && make tini
 
 FROM registry.access.redhat.com/ubi8/ubi-minimal:8.6-751
 RUN microdnf update --setopt=install_weak_deps=0 -y && microdnf install git
+COPY entrypoint.sh /usr/local/bin/entrypoint.sh
+RUN chmod +x /usr/local/bin/entrypoint.sh
 
 ARG ENABLE_WEBHOOKS=true
 ENV ENABLE_WEBHOOKS=${ENABLE_WEBHOOKS}
@@ -47,5 +49,5 @@ WORKDIR /
 
 USER 1001
 
-ENTRYPOINT ["/usr/bin/tini", "--", "/manager"]
+ENTRYPOINT ["entrypoint.sh"]
 
