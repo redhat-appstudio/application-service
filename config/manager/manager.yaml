@@ -26,7 +26,7 @@ spec:
         runAsNonRoot: true
       containers:
       - command:
-        - /manager
+          - entrypoint.sh
         args:
         - --leader-elect
         image: controller:latest
@@ -83,6 +83,12 @@ spec:
             configMapKeyRef:
               name: devfile-registry-config
               key: DEVFILE_REGISTRY_URL
+              optional: true
+        - name: ENVIRONMENT
+          valueFrom:
+            configMapKeyRef:
+              name: feature-flag-config
+              key: ENVIRONMENT
               optional: true
       serviceAccountName: controller-manager
       terminationGracePeriodSeconds: 10
