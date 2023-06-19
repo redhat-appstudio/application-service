@@ -234,7 +234,7 @@ func (r *SnapshotEnvironmentBindingReconciler) Reconcile(ctx context.Context, re
 			return ctrl.Result{}, err
 		}
 
-		// Create a unique, generated name for the route
+		// Create a random, generated name for the route
 		// ToDo: Ideally we wouldn't need to loop here, but since the Component status is a list, we can't avoid it
 		var routeName string
 		for _, compStatus := range appSnapshotEnvBinding.Status.Components {
