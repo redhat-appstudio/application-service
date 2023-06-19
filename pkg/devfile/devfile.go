@@ -395,6 +395,15 @@ func GetResourceFromDevfile(log logr.Logger, devfileData data.DevfileData, deplo
 					}
 				}
 				if len(resources.Routes) > 0 {
+					// replace the route metadata.name to use the component name
+					// Trim the route name if needed
+					routeName := compName
+					if len(routeName) >= 30 {
+						routeName = routeName[0:25] + util.GetRandomString(4, true)
+					}
+
+					resources.Routes[0].ObjectMeta.Name = routeName
+
 					// generate and append the route labels with the hc & ha information
 					if resources.Routes[0].ObjectMeta.Labels != nil {
 						maps.Copy(resources.Routes[0].ObjectMeta.Labels, k8sLabels)

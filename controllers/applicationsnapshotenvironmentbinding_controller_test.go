@@ -175,6 +175,7 @@ var _ = Describe("SnapshotEnvironmentBinding controller", func() {
 			// Validate that the generated route name was created successfully.
 			// It should be based on the component name and also contain random characters at the end
 			Expect(createdBinding.Status.Components[0].GeneratedRouteName).Should(ContainSubstring(componentName))
+			Expect(len(createdBinding.Status.Components[0].GeneratedRouteName)).Should(Equal(len(componentName) + 4))
 			Expect(createdBinding.Status.Components[0].GeneratedRouteName).ShouldNot(Equal(componentName))
 
 			bindingLabels := createdBinding.GetLabels()
