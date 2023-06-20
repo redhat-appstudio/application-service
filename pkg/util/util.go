@@ -330,7 +330,7 @@ func GenerateUniqueHashForWorkloadImageTag(namespace string) string {
 func GenerateRandomRouteName(componentName string) string {
 	routeName := componentName
 	if len(componentName) > 25 {
-		routeName = componentName[0:24]
+		routeName = componentName[0:25]
 	} else {
 		routeName = componentName
 	}

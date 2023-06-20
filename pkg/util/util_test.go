@@ -896,10 +896,10 @@ func TestGenerateRandomRouteName(t *testing.T) {
 			t.Errorf("TestGenerateRandomRouteName() error: expected generated route name %s to be less than 30 chars", routeName)
 		}
 		if tt.name == "long component name" {
-			if !strings.Contains(routeName, tt.componentName[0:24]) {
+			if !strings.Contains(routeName, tt.componentName[0:25]) {
 				t.Errorf("TestGenerateRandomRouteName() error: expected generated route name %s to contain first 25 chars of component name %s", routeName, tt.componentName)
 			}
-			if routeName == tt.componentName[0:24] {
+			if routeName == tt.componentName[0:25] {
 				t.Errorf("TestGenerateRandomRouteName() error: expected generated route name %s to contain 25 char slice from component name %s", routeName, tt.componentName)
 			}
 		} else {
