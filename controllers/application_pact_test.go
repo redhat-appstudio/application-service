@@ -41,7 +41,6 @@ func TestContracts(t *testing.T) {
 		// ConsumerVersionSelectors:   []pactTypes.ConsumerVersionSelector{{Branch: "main"}, {Environment: "stage"}, {Environment: "production"}},
 		ConsumerVersionSelectors:   []pactTypes.ConsumerVersionSelector{{Branch: "main"}},
 		ProviderVersion:            os.Getenv("COMMIT_SHA"),
-		ProviderTags:               []string{"PR" + os.Getenv("PR_NUMBER")},
 		BrokerURL:                  "https://pact-broker-hac-pact-broker.apps.hac-devsandbox.5unc.p1.openshiftapps.com",
 		Verbose:                    true,
 		PublishVerificationResults: false,
@@ -72,6 +71,7 @@ func TestContracts(t *testing.T) {
 			t.Log("Running tests post-merge. Verifying against main branch and all environments. Pushing results to Pact broker with the branch \"main\".")
 			verifyRequest.BrokerUsername = os.Getenv("PACT_BROKER_USERNAME")
 			verifyRequest.BrokerPassword = os.Getenv("PACT_BROKER_PASSWORD")
+			verifyRequest.ProviderBranch = os.Getenv("PROVIDER_BRANCH")
 			verifyRequest.PublishVerificationResults = true
 		}
 	}
