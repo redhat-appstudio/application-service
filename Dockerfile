@@ -44,7 +44,7 @@ COPY appdata.gitconfig /.gitconfig
 RUN chgrp -R 0 /.gitconfig && chmod -R g=u /.gitconfig
 
 # copy tini
-COPY --from=tini-builder /tini /usr/bin
+COPY --from=tini-builder /tini/tini /usr/bin
 WORKDIR /
 
 USER 1001
