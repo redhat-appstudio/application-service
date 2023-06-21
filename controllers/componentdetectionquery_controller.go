@@ -20,7 +20,6 @@ import (
 	"context"
 	"fmt"
 	"path"
-	"reflect"
 	"strings"
 	"time"
 
@@ -70,7 +69,6 @@ const CDQReconcileTimeout = 5 * time.Minute
 //+kubebuilder:rbac:groups=appstudio.redhat.com,resources=componentdetectionqueries/status,verbs=get;update;patch
 //+kubebuilder:rbac:groups=appstudio.redhat.com,resources=componentdetectionqueries/finalizers,verbs=update
 //+kubebuilder:rbac:groups=appstudio.redhat.com,resources=components,verbs=get;list;watch;create;update;patch;delete
-//+kubebuilder:rbac:groups=appstudio.redhat.com,resources=components/status,verbs=get;update;patch
 
 // Reconcile is part of the main kubernetes reconciliation loop which aims to
 // move the current state of the cluster closer to the desired state.
@@ -348,14 +346,7 @@ func (r *ComponentDetectionQueryReconciler) Reconcile(ctx context.Context, req c
 		}
 		// only update the componentStub when a component has been detected
 		if len(devfilesMap) != 0 || len(devfilesURLMap) != 0 || len(dockerfileContextMap) != 0 {
-			var tempComp *appstudiov1alpha1.Component
-			r.Client.Get(ctx, req.NamespacedName, tempComp, &client.GetOptions{})
-			compExist := false
-			if tempComp != nil && reflect.DeepEqual(*tempComp, appstudiov1alpha1.Component{}) {
-				// a component with same name exist in the namespace
-				compExist = true
-			}
-			err = r.updateComponentStub(req, &componentDetectionQuery, devfilesMap, devfilesURLMap, dockerfileContextMap, componentPortsMap, compExist)
+			err = r.updateComponentStub(req, ctx, &componentDetectionQuery, devfilesMap, devfilesURLMap, dockerfileContextMap, componentPortsMap)
 			if err != nil {
 				log.Error(err, fmt.Sprintf("Unable to update the component stub %v", req.NamespacedName))
 				r.SetCompleteConditionAndUpdateCR(ctx, req, &componentDetectionQuery, copiedCDQ, err)
