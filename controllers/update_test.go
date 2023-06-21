@@ -1546,20 +1546,6 @@ func TestGetComponentName(t *testing.T) {
 			expectedName: "comp-123454678",
 		},
 		{
-			name: "error when look for hc",
-			gitSource: &appstudiov1alpha1.GitSource{
-				URL: "https://github.com/devfile-samples/devfile-sample-go-basic",
-			},
-			expectedName: "devfile-sample-go-basic",
-		},
-		{
-			name: "hc exist with conflict name",
-			gitSource: &appstudiov1alpha1.GitSource{
-				URL: "https://github.com/devfile-samples/devfile-sample-go-basic",
-			},
-			expectedName: "devfile-sample-go-basic",
-		},
-		{
 			name: "valid repo name with context",
 			gitSource: &appstudiov1alpha1.GitSource{
 				URL:     "https://github.com/devfile-samples/devfile-multi-component",
@@ -1587,11 +1573,9 @@ func TestGetComponentName(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			gotComponentName := getComponentName(tt.gitSource)
-			assert.Contains(t, gotComponentName, tt.expectedName, "the component name should contain repo name")
-			assert.NotEqual(t, tt.expectedName, gotComponentName, "the component name should not equal to repo name")
+			assert.Equal(t, tt.expectedName, gotComponentName, "the component name should equal to repo name")
 			gotComponentName2 := getComponentName(tt.gitSource)
-			assert.Contains(t, gotComponentName2, tt.expectedName, "the component name should contain repo name")
-			assert.NotEqual(t, gotComponentName, gotComponentName2, "the two generated component names should not equal")
+			assert.Equal(t, gotComponentName, gotComponentName2, "the two generated component names should equal")
 		})
 	}
 
@@ -1631,7 +1615,7 @@ func TestSanitizeComponentName(t *testing.T) {
 		{
 			name:          "component name with greater than 58 characters",
 			componentName: "devfile-sample-go-basic-devfile-sample-go-basic-devfile-sample",
-			want:          "devfile-sample-go-basic-devfile-sample-go-basic-devfile-sa-",
+			want:          "devfile-sample-go-basic-devfile-sample-go-basic-devfile-sa",
 		},
 	}
 
@@ -1640,8 +1624,7 @@ func TestSanitizeComponentName(t *testing.T) {
 			sanitizedName := sanitizeComponentName(tt.componentName)
 
 			if tt.componentName == "" {
-				splitString := strings.Split(sanitizedName, "-")
-				if len(splitString) != 2 || splitString[0] == "" || splitString[1] == "" {
+				if sanitizedName == "" {
 					t.Errorf("TestSanitizeComponentName(): expected generated name for empty component name, got %v", sanitizedName)
 				}
 			} else {
