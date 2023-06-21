@@ -873,3 +873,43 @@ func TestGetIntValue(t *testing.T) {
 		assert.True(t, val == tt.wantValue, "Expected int value %d got %d", tt.wantValue, val)
 	}
 }
+
+func TestGenerateRandomRouteName(t *testing.T) {
+
+	tests := []struct {
+		name          string
+		componentName string
+	}{
+		{
+			name:          "Simple component name, less than 25 characters",
+			componentName: "test-comp",
+		},
+		{
+			name:          "long component name",
+			componentName: "test-test-test-test-test-test-test-test-test",
+		},
+	}
+
+	for _, tt := range tests {
+		routeName := GenerateRandomRouteName(tt.componentName)
+		if len(routeName) >= 30 {
+			t.Errorf("TestGenerateRandomRouteName() error: expected generated route name %s to be less than 30 chars", routeName)
+		}
+		if tt.name == "long component name" {
+			if !strings.Contains(routeName, tt.componentName[0:25]) {
+				t.Errorf("TestGenerateRandomRouteName() error: expected generated route name %s to contain first 25 chars of component name %s", routeName, tt.componentName)
+			}
+			if routeName == tt.componentName[0:25] {
+				t.Errorf("TestGenerateRandomRouteName() error: expected generated route name %s to contain 25 char slice from component name %s", routeName, tt.componentName)
+			}
+		} else {
+			if !strings.Contains(routeName, tt.componentName) {
+				t.Errorf("TestGenerateRandomRouteName() error: expected generated route name %s to contain component name %s", routeName, tt.componentName)
+			}
+			if routeName == tt.componentName {
+				t.Errorf("TestGenerateRandomRouteName() error: expected generated route name %s to be unique from component name %s", routeName, tt.componentName)
+			}
+		}
+
+	}
+}
