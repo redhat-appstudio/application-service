@@ -42,6 +42,8 @@ IMG ?= $(IMAGE_TAG_BASE):$(TAG_NAME)
 
 GITHUB_ORG ?= redhat-appstudio-appdata
 DEVFILE_REGISTRY_URL ?= https://registry.devfile.io
+# ENVIRONMENT is used for feature flagging.  For testing, values should be development, staging, and production
+ENVIRONMENT ?= ""
 ENABLE_WEBHOOKS ?= true
 
 APPLICATION_API_CRD = https://raw.githubusercontent.com/redhat-appstudio/application-api/main/manifests/application-api-customresourcedefinitions.yaml
@@ -177,7 +179,7 @@ uninstall: manifests kustomize #uninstall-cert ## Uninstall CRDs from the K8s cl
 
 deploy: manifests kustomize ## Deploy controller to the K8s cluster specified in ~/.kube/config.
 	cd config/manager && $(KUSTOMIZE) edit set image controller=${IMG}
-	GITHUB_ORG=${GITHUB_ORG} DEVFILE_REGISTRY_URL=${DEVFILE_REGISTRY_URL} $(KUSTOMIZE) build config/default | kubectl apply -f -
+	GITHUB_ORG=${GITHUB_ORG} DEVFILE_REGISTRY_URL=${DEVFILE_REGISTRY_URL} ENVIRONMENT=${ENVIRONMENT} $(KUSTOMIZE) build config/default | kubectl apply -f -
 
 undeploy: ## Undeploy controller from the K8s cluster specified in ~/.kube/config.
 	$(KUSTOMIZE) build config/default | kubectl delete -f -
