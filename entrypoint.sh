@@ -3,8 +3,8 @@ set -eux
 
 if [[ "$ENVIRONMENT" == "staging" ]]; then
   echo "running tini"
-  exec tini -- /manager
+  exec tini -- /manager $*
 else
   echo "running manager"
-  exec /manager
+  exec /manager $*
 fi
