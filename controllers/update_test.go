@@ -1518,10 +1518,25 @@ func TestUpdateComponentStub(t *testing.T) {
 }
 
 func TestGetComponentName(t *testing.T) {
+	ctx := context.TODO()
+	fakeClientNoErr := NewFakeClient(t)
+	fakeClientNoErr.MockGet = func(ctx context.Context, key types.NamespacedName, obj client.Object, opts ...client.GetOption) error {
+		return nil
+	}
+
+	fakeClientWithErr := NewFakeClient(t)
+	fakeClientWithErr.MockGet = func(ctx context.Context, key types.NamespacedName, obj client.Object, opts ...client.GetOption) error {
+		return errors.NewNotFound(schema.GroupResource{}, "not found")
+	}
+
+	r := ComponentDetectionQueryReconciler{
+		Log: ctrl.Log.WithName("TestGetComponentName"),
+	}
 
 	tests := []struct {
 		name         string
 		gitSource    *appstudiov1alpha1.GitSource
+		testNoDup    bool
 		expectedName string
 	}{
 		{
@@ -1529,6 +1544,7 @@ func TestGetComponentName(t *testing.T) {
 			gitSource: &appstudiov1alpha1.GitSource{
 				URL: "https://github.com/devfile-samples/devfile-sample-go-basic",
 			},
+			testNoDup:    true,
 			expectedName: "devfile-sample-go-basic",
 		},
 		{
@@ -1536,6 +1552,7 @@ func TestGetComponentName(t *testing.T) {
 			gitSource: &appstudiov1alpha1.GitSource{
 				URL: "https://github.com/devfile-samples/123-testdevfilego--ImportRepository--withaverylongreporitoryname-test-validation-and-generation",
 			},
+			testNoDup:    true,
 			expectedName: "comp-123-testdevfilego--importrepository--withaverylongrep",
 		},
 		{
@@ -1572,10 +1589,20 @@ func TestGetComponentName(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			gotComponentName := getComponentName(tt.gitSource)
-			assert.Equal(t, tt.expectedName, gotComponentName, "the component name should equal to repo name")
-			gotComponentName2 := getComponentName(tt.gitSource)
-			assert.Equal(t, gotComponentName, gotComponentName2, "the two generated component names should equal")
+			if tt.testNoDup {
+				r.Client = fakeClientWithErr
+			} else {
+				r.Client = fakeClientNoErr
+			}
+
+			gotComponentName := r.getComponentName(r.Log, ctx, "default", tt.gitSource)
+			if tt.testNoDup {
+				assert.Equal(t, tt.expectedName, gotComponentName, "the component name should equal to repo name")
+			} else {
+				assert.Contains(t, gotComponentName, tt.expectedName, "the component name should contains the expected name")
+				assert.NotEqual(t, tt.expectedName, gotComponentName, "the component name should not equal to repo name")
+			}
+
 		})
 	}
 

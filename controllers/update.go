@@ -28,6 +28,7 @@ import (
 	"github.com/devfile/api/v2/pkg/attributes"
 	data "github.com/devfile/library/v2/pkg/devfile/parser/data"
 	"github.com/devfile/library/v2/pkg/devfile/parser/data/v2/common"
+	"github.com/go-logr/logr"
 	appstudiov1alpha1 "github.com/redhat-appstudio/application-api/api/v1alpha1"
 	devfile "github.com/redhat-appstudio/application-service/pkg/devfile"
 	"github.com/redhat-appstudio/application-service/pkg/util"
@@ -317,18 +318,7 @@ func (r *ComponentDetectionQueryReconciler) updateComponentStub(req ctrl.Request
 			DevfileURL:    devfilesURLMap[context],
 			DockerfileURL: dockerfileContextMap[context],
 		}
-		componentName := getComponentName(gitSource)
-		compNamespacedName := types.NamespacedName{
-			Namespace: req.Namespace,
-			Name:      componentName,
-		}
-		// Fetch the Component instance
-		var tempComp appstudiov1alpha1.Component
-		err = r.Get(ctx, compNamespacedName, &tempComp)
-		if err == nil || !errors.IsNotFound(err) {
-			log.Info(fmt.Sprintf("the component %v already exist, appending random chars at the end...", compNamespacedName))
-			componentName = fmt.Sprintf("%s-%s", componentName, util.GetRandomString(4, true))
-		}
+		componentName := r.getComponentName(log, ctx, req.Namespace, gitSource)
 
 		componentStub := appstudiov1alpha1.ComponentSpec{
 			ComponentName: componentName,
@@ -509,18 +499,7 @@ func (r *ComponentDetectionQueryReconciler) updateComponentStub(req ctrl.Request
 			Revision:      componentDetectionQuery.Spec.GitSource.Revision,
 			DockerfileURL: link,
 		}
-		componentName := getComponentName(gitSource)
-		compNamespacedName := types.NamespacedName{
-			Namespace: req.Namespace,
-			Name:      componentName,
-		}
-		// Fetch the Component instance
-		var tempComp appstudiov1alpha1.Component
-		err := r.Get(ctx, compNamespacedName, &tempComp)
-		if err == nil || !errors.IsNotFound(err) {
-			log.Info(fmt.Sprintf("the component %v already exist, appending random chars at the end...", compNamespacedName))
-			componentName = fmt.Sprintf("%s-%s", componentName, util.GetRandomString(4, true))
-		}
+		componentName := r.getComponentName(log, ctx, req.Namespace, gitSource)
 
 		detectComp := appstudiov1alpha1.ComponentDetectionDescription{
 			DevfileFound: false, // always false since there is only a Dockerfile present for these contexts
@@ -548,7 +527,7 @@ func (r *ComponentDetectionQueryReconciler) updateComponentStub(req ctrl.Request
 	return nil
 }
 
-func getComponentName(gitSource *appstudiov1alpha1.GitSource) string {
+func (r *ComponentDetectionQueryReconciler) getComponentName(log logr.Logger, ctx context.Context, namespace string, gitSource *appstudiov1alpha1.GitSource) string {
 	var componentName string
 	repoUrl := gitSource.URL
 
@@ -568,7 +547,21 @@ func getComponentName(gitSource *appstudiov1alpha1.GitSource) string {
 
 	// Return a sanitized version of the component name
 	// If len(componentName) is 0, then it will also handle generating a random name for it.
-	return sanitizeComponentName(componentName)
+	componentName = sanitizeComponentName(componentName)
+
+	compNamespacedName := types.NamespacedName{
+		Namespace: namespace,
+		Name:      componentName,
+	}
+	// Fetch the Component instance
+	var tempComp appstudiov1alpha1.Component
+	err := r.Get(ctx, compNamespacedName, &tempComp)
+	if err == nil || !errors.IsNotFound(err) {
+		log.Info(fmt.Sprintf("the component %v already exist, appending random chars at the end...", compNamespacedName))
+		componentName = fmt.Sprintf("%s-%s", componentName, util.GetRandomString(4, true))
+	}
+
+	return componentName
 }
 
 // sanitizeComponentName sanitizes component name with the following requirements:
