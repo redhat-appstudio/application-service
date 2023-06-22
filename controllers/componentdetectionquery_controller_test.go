@@ -136,7 +136,7 @@ var _ = Describe("Component Detection Query controller", func() {
 				Expect(devfileName).Should(ContainSubstring("spring"))
 				Expect(devfileDesc.ComponentStub.Source.GitSource.Context).Should(ContainSubstring("./"))
 				Expect(devfileDesc.ComponentStub.ComponentName).Should(ContainSubstring(ComponentName))
-				Expect(devfileDesc.ComponentStub.ComponentName).ShouldNot(Equal(ComponentName))
+				Expect(devfileDesc.ComponentStub.ComponentName).Should(Equal(ComponentName))
 			}
 
 			// Delete the specified Detection Query resource
