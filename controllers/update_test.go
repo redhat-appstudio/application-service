@@ -29,7 +29,9 @@ import (
 	devfilePkg "github.com/redhat-appstudio/application-service/pkg/devfile"
 	"github.com/stretchr/testify/assert"
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/resource"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/types"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -552,6 +554,16 @@ func TestUpdateComponentStub(t *testing.T) {
 	if err != nil {
 		t.Error(err)
 	}
+	ctx := context.TODO()
+	fakeClientNoErr := NewFakeClient(t)
+	fakeClientNoErr.MockGet = func(ctx context.Context, key types.NamespacedName, obj client.Object, opts ...client.GetOption) error {
+		return nil
+	}
+
+	fakeClientWithErr := NewFakeClient(t)
+	fakeClientWithErr.MockGet = func(ctx context.Context, key types.NamespacedName, obj client.Object, opts ...client.GetOption) error {
+		return errors.NewNotFound(schema.GroupResource{}, "not found")
+	}
 
 	componentsValid := []devfileAPIV1.Component{
 		{
@@ -808,6 +820,7 @@ func TestUpdateComponentStub(t *testing.T) {
 		dockerfileURLMap  map[string]string
 		componentPortsMap map[string][]int
 		isNil             bool
+		testNoDup         bool
 		wantErr           bool
 	}{
 		{
@@ -833,7 +846,7 @@ func TestUpdateComponentStub(t *testing.T) {
 			},
 		},
 		{
-			name: "Detected ports present",
+			name: "Detected ports present and with component exist",
 			devfilesDataMap: map[string]*v2.DevfileV2{
 				"./": {
 					Devfile: devfileAPIV1.Devfile{
@@ -853,6 +866,7 @@ func TestUpdateComponentStub(t *testing.T) {
 					},
 				},
 			},
+			testNoDup: true,
 			componentPortsMap: map[string][]int{
 				"./": {8080},
 			},
@@ -1360,19 +1374,20 @@ func TestUpdateComponentStub(t *testing.T) {
 			ctrl.SetLogger(zap.New(zap.UseFlagOptions(&zap.Options{
 				Development: true,
 			})))
-			fakeClient := NewFakeClient(t)
-			fakeClient.MockGet = func(ctx context.Context, key types.NamespacedName, obj client.Object, opts ...client.GetOption) error {
-				return nil
-			}
+
 			r := ComponentDetectionQueryReconciler{
-				Client: fakeClient,
-				Log:    ctrl.Log.WithName("TestUpdateComponentStub"),
+				Log: ctrl.Log.WithName("TestUpdateComponentStub"),
+			}
+			if tt.testNoDup {
+				r.Client = fakeClientWithErr
+			} else {
+				r.Client = fakeClientNoErr
 			}
 			var err error
 			if tt.isNil {
-				err = r.updateComponentStub(ctrl.Request{}, nil, devfilesMap, nil, nil, nil)
+				err = r.updateComponentStub(ctrl.Request{}, ctx, nil, devfilesMap, nil, nil, nil)
 			} else {
-				err = r.updateComponentStub(ctrl.Request{}, &componentDetectionQuery, devfilesMap, tt.devfilesURLMap, tt.dockerfileURLMap, tt.componentPortsMap)
+				err = r.updateComponentStub(ctrl.Request{}, ctx, &componentDetectionQuery, devfilesMap, tt.devfilesURLMap, tt.dockerfileURLMap, tt.componentPortsMap)
 			}
 
 			if tt.wantErr && (err == nil) {
@@ -1380,7 +1395,12 @@ func TestUpdateComponentStub(t *testing.T) {
 			} else if !tt.wantErr && err != nil {
 				t.Errorf("got unexpected error %v", err)
 			} else if err == nil {
-				for _, hasCompDetection := range componentDetectionQuery.Status.ComponentDetected {
+				for compName, hasCompDetection := range componentDetectionQuery.Status.ComponentDetected {
+					if tt.testNoDup {
+						assert.Equal(t, "url", compName, "The component name should match the expected name")
+					} else {
+						assert.NotEqual(t, "url", compName, "The component name should not exactly match the expected name")
+					}
 					// Application Name
 					assert.Equal(t, hasCompDetection.ComponentStub.Application, "insert-application-name", "The application name should match the generic name")
 
@@ -1498,10 +1518,25 @@ func TestUpdateComponentStub(t *testing.T) {
 }
 
 func TestGetComponentName(t *testing.T) {
+	ctx := context.TODO()
+	fakeClientNoErr := NewFakeClient(t)
+	fakeClientNoErr.MockGet = func(ctx context.Context, key types.NamespacedName, obj client.Object, opts ...client.GetOption) error {
+		return nil
+	}
+
+	fakeClientWithErr := NewFakeClient(t)
+	fakeClientWithErr.MockGet = func(ctx context.Context, key types.NamespacedName, obj client.Object, opts ...client.GetOption) error {
+		return errors.NewNotFound(schema.GroupResource{}, "not found")
+	}
+
+	r := ComponentDetectionQueryReconciler{
+		Log: ctrl.Log.WithName("TestGetComponentName"),
+	}
 
 	tests := []struct {
 		name         string
 		gitSource    *appstudiov1alpha1.GitSource
+		testNoDup    bool
 		expectedName string
 	}{
 		{
@@ -1509,6 +1544,7 @@ func TestGetComponentName(t *testing.T) {
 			gitSource: &appstudiov1alpha1.GitSource{
 				URL: "https://github.com/devfile-samples/devfile-sample-go-basic",
 			},
+			testNoDup:    true,
 			expectedName: "devfile-sample-go-basic",
 		},
 		{
@@ -1516,6 +1552,7 @@ func TestGetComponentName(t *testing.T) {
 			gitSource: &appstudiov1alpha1.GitSource{
 				URL: "https://github.com/devfile-samples/123-testdevfilego--ImportRepository--withaverylongreporitoryname-test-validation-and-generation",
 			},
+			testNoDup:    true,
 			expectedName: "comp-123-testdevfilego--importrepository--withaverylongrep",
 		},
 		{
@@ -1524,20 +1561,6 @@ func TestGetComponentName(t *testing.T) {
 				URL: "https://github.com/devfile-samples/123454678.git",
 			},
 			expectedName: "comp-123454678",
-		},
-		{
-			name: "error when look for hc",
-			gitSource: &appstudiov1alpha1.GitSource{
-				URL: "https://github.com/devfile-samples/devfile-sample-go-basic",
-			},
-			expectedName: "devfile-sample-go-basic",
-		},
-		{
-			name: "hc exist with conflict name",
-			gitSource: &appstudiov1alpha1.GitSource{
-				URL: "https://github.com/devfile-samples/devfile-sample-go-basic",
-			},
-			expectedName: "devfile-sample-go-basic",
 		},
 		{
 			name: "valid repo name with context",
@@ -1566,12 +1589,20 @@ func TestGetComponentName(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			gotComponentName := getComponentName(tt.gitSource)
-			assert.Contains(t, gotComponentName, tt.expectedName, "the component name should contain repo name")
-			assert.NotEqual(t, tt.expectedName, gotComponentName, "the component name should not equal to repo name")
-			gotComponentName2 := getComponentName(tt.gitSource)
-			assert.Contains(t, gotComponentName2, tt.expectedName, "the component name should contain repo name")
-			assert.NotEqual(t, gotComponentName, gotComponentName2, "the two generated component names should not equal")
+			if tt.testNoDup {
+				r.Client = fakeClientWithErr
+			} else {
+				r.Client = fakeClientNoErr
+			}
+
+			gotComponentName := r.getComponentName(r.Log, ctx, "default", tt.gitSource)
+			if tt.testNoDup {
+				assert.Equal(t, tt.expectedName, gotComponentName, "the component name should equal to repo name")
+			} else {
+				assert.Contains(t, gotComponentName, tt.expectedName, "the component name should contains the expected name")
+				assert.NotEqual(t, tt.expectedName, gotComponentName, "the component name should not equal to repo name")
+			}
+
 		})
 	}
 
@@ -1611,7 +1642,7 @@ func TestSanitizeComponentName(t *testing.T) {
 		{
 			name:          "component name with greater than 58 characters",
 			componentName: "devfile-sample-go-basic-devfile-sample-go-basic-devfile-sample",
-			want:          "devfile-sample-go-basic-devfile-sample-go-basic-devfile-sa-",
+			want:          "devfile-sample-go-basic-devfile-sample-go-basic-devfile-sa",
 		},
 	}
 
@@ -1620,8 +1651,7 @@ func TestSanitizeComponentName(t *testing.T) {
 			sanitizedName := sanitizeComponentName(tt.componentName)
 
 			if tt.componentName == "" {
-				splitString := strings.Split(sanitizedName, "-")
-				if len(splitString) != 2 || splitString[0] == "" || splitString[1] == "" {
+				if sanitizedName == "" {
 					t.Errorf("TestSanitizeComponentName(): expected generated name for empty component name, got %v", sanitizedName)
 				}
 			} else {
