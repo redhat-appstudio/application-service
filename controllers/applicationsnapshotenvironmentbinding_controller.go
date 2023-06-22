@@ -225,11 +225,33 @@ func (r *SnapshotEnvironmentBindingReconciler) Reconcile(ctx context.Context, re
 			}
 		}
 
+		// Generate a route name for the component
+
 		kubernetesResources, err := devfile.GetResourceFromDevfile(log, compDevfileData, deployAssociatedComponents, hasComponent.Name, hasComponent.Spec.Application, hasComponent.Spec.ContainerImage, hostname)
 		if err != nil {
 			log.Error(err, "unable to get kubernetes resources from the devfile outerloop components")
 			r.SetConditionAndUpdateCR(ctx, req, &appSnapshotEnvBinding, err)
 			return ctrl.Result{}, err
+		}
+
+		// Create a random, generated name for the route
+		// ToDo: Ideally we wouldn't need to loop here, but since the Component status is a list, we can't avoid it
+		var routeName string
+		for _, compStatus := range appSnapshotEnvBinding.Status.Components {
+			if compStatus.Name == componentName {
+				if compStatus.GeneratedRouteName != "" {
+					routeName = compStatus.GeneratedRouteName
+				}
+				break
+			}
+		}
+		if routeName == "" {
+			routeName = util.GenerateRandomRouteName(hasComponent.Name)
+		}
+
+		// If a route is present, update the first instance's name
+		if len(kubernetesResources.Routes) > 0 {
+			kubernetesResources.Routes[0].ObjectMeta.Name = routeName
 		}
 
 		var imageName string
@@ -301,6 +323,7 @@ func (r *SnapshotEnvironmentBindingReconciler) Reconcile(ctx context.Context, re
 		}
 		genOptions := gitopsgenv1alpha1.GeneratorOptions{
 			Name:                component.Name,
+			RouteName:           routeName,
 			Replicas:            component.Configuration.Replicas,
 			Resources:           componentResources,
 			BaseEnvVar:          envVars,
@@ -352,6 +375,11 @@ func (r *SnapshotEnvironmentBindingReconciler) Reconcile(ctx context.Context, re
 					Path:     filepath.Join(gitOpsContext, "components", componentName, "overlays", environmentName),
 					CommitID: commitID,
 				},
+			}
+
+			// On OpenShift, we generate a unique route name for each Component, so include that in the status
+			if !isKubernetesCluster {
+				componentStatus.GeneratedRouteName = routeName
 			}
 
 			if _, ok := componentGeneratedResources[componentName]; ok {
