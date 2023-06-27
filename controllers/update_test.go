@@ -1534,33 +1534,37 @@ func TestGetComponentName(t *testing.T) {
 	}
 
 	tests := []struct {
-		name         string
-		gitSource    *appstudiov1alpha1.GitSource
-		testNoDup    bool
-		expectedName string
+		name                  string
+		gitSource             *appstudiov1alpha1.GitSource
+		testNoDup             bool
+		expectedName          string
+		generateComponentName bool
 	}{
 		{
 			name: "valid repo name",
 			gitSource: &appstudiov1alpha1.GitSource{
 				URL: "https://github.com/devfile-samples/devfile-sample-go-basic",
 			},
-			testNoDup:    true,
-			expectedName: "devfile-sample-go-basic",
+			testNoDup:             true,
+			generateComponentName: false,
+			expectedName:          "devfile-sample-go-basic",
 		},
 		{
 			name: "long repo name with special chars",
 			gitSource: &appstudiov1alpha1.GitSource{
 				URL: "https://github.com/devfile-samples/123-testdevfilego--ImportRepository--withaverylongreporitoryname-test-validation-and-generation",
 			},
-			testNoDup:    true,
-			expectedName: "comp-123-testdevfilego--importrepository--withaverylongrep",
+			testNoDup:             true,
+			generateComponentName: false,
+			expectedName:          "comp-123-testdevfilego--importrepository--withaverylongrep",
 		},
 		{
 			name: "numeric repo name",
 			gitSource: &appstudiov1alpha1.GitSource{
 				URL: "https://github.com/devfile-samples/123454678.git",
 			},
-			expectedName: "comp-123454678",
+			generateComponentName: false,
+			expectedName:          "comp-123454678",
 		},
 		{
 			name: "valid repo name with context",
@@ -1568,14 +1572,16 @@ func TestGetComponentName(t *testing.T) {
 				URL:     "https://github.com/devfile-samples/devfile-multi-component",
 				Context: "nodejs",
 			},
-			expectedName: "nodejs-devfile-multi-component",
+			expectedName:          "nodejs-devfile-multi-component",
+			generateComponentName: true,
 		},
 		{
 			name: "repo URL with forward slash at the end",
 			gitSource: &appstudiov1alpha1.GitSource{
 				URL: "https://github.com/devfile-samples/devfile-multi-component/",
 			},
-			expectedName: "devfile-multi-component",
+			expectedName:          "devfile-multi-component",
+			generateComponentName: true,
 		},
 		{
 			name: "repo URL with forward slash and context",
@@ -1583,7 +1589,8 @@ func TestGetComponentName(t *testing.T) {
 				URL:     "https://github.com/devfile-samples/devfile-multi-component/",
 				Context: "nodejs",
 			},
-			expectedName: "nodejs-devfile-multi-component",
+			expectedName:          "nodejs-devfile-multi-component",
+			generateComponentName: false,
 		},
 	}
 
@@ -1595,8 +1602,8 @@ func TestGetComponentName(t *testing.T) {
 				r.Client = fakeClientNoErr
 			}
 
-			gotComponentName := r.getComponentName(r.Log, ctx, "default", tt.gitSource)
-			if tt.testNoDup {
+			gotComponentName := r.getComponentName(r.Log, ctx, "default", tt.gitSource, tt.generateComponentName)
+			if !tt.generateComponentName && tt.testNoDup {
 				assert.Equal(t, tt.expectedName, gotComponentName, "the component name should equal to repo name")
 			} else {
 				assert.Contains(t, gotComponentName, tt.expectedName, "the component name should contains the expected name")

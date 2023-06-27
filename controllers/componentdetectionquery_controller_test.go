@@ -1493,11 +1493,6 @@ var _ = Describe("Component Detection Query controller", func() {
 				for devfileName, devfileDesc := range createdHasCompDetectionQuery.Status.ComponentDetected {
 					Expect(devfileName).Should(Or(ContainSubstring("backend-quality-dashboard"), ContainSubstring("frontend-quality-dashboard")))
 					Expect(devfileDesc.ComponentStub.Source.GitSource.DockerfileURL).Should(Equal("Dockerfile"))
-					//Expect(devfileDesc.ComponentStub.Source.GitSource.Context).Should(ContainSubstring("nodejs"))
-					//Expect(devfileDesc.ComponentStub.Source.GitSource.Revision).Should(ContainSubstring("main"))
-					//Expect(devfileDesc.ComponentStub.Source.GitSource.DevfileURL).Should(Equal("https://raw.githubusercontent.com/nodeshift-starters/devfile-sample/main/devfile.yaml"))
-					//Expect(devfileDesc.ComponentStub.TargetPort).Should(Equal(8080))
-					//Expect(devfileDesc.DevfileFound).Should(BeTrue())
 				}
 
 				// Delete the specified Detection Query resource
