@@ -241,12 +241,14 @@ func (r *SnapshotEnvironmentBindingReconciler) Reconcile(ctx context.Context, re
 			if compStatus.Name == componentName {
 				if compStatus.GeneratedRouteName != "" {
 					routeName = compStatus.GeneratedRouteName
+					log.Info(fmt.Sprintf("route name for component is %s", routeName))
 				}
 				break
 			}
 		}
 		if routeName == "" {
 			routeName = util.GenerateRandomRouteName(hasComponent.Name)
+			log.Info(fmt.Sprintf("generated route name %s", routeName))
 		}
 
 		// If a route is present, update the first instance's name
@@ -380,6 +382,7 @@ func (r *SnapshotEnvironmentBindingReconciler) Reconcile(ctx context.Context, re
 			// On OpenShift, we generate a unique route name for each Component, so include that in the status
 			if !isKubernetesCluster {
 				componentStatus.GeneratedRouteName = routeName
+				log.Info(fmt.Sprintf("added RouteName %s for Component %s to status", routeName, componentName))
 			}
 
 			if _, ok := componentGeneratedResources[componentName]; ok {
