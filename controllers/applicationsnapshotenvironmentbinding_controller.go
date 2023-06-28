@@ -241,14 +241,14 @@ func (r *SnapshotEnvironmentBindingReconciler) Reconcile(ctx context.Context, re
 			if compStatus.Name == componentName {
 				if compStatus.GeneratedRouteName != "" {
 					routeName = compStatus.GeneratedRouteName
-					log.Info(fmt.Sprintf("route name for component is %s", routeName)
+					log.Info(fmt.Sprintf("route name for component is %s", routeName))
 				}
 				break
 			}
 		}
 		if routeName == "" {
 			routeName = util.GenerateRandomRouteName(hasComponent.Name)
-			log.Info(fmt.Sprintf("generated route name %s", routeName)
+			log.Info(fmt.Sprintf("generated route name %s", routeName))
 		}
 
 		// If a route is present, update the first instance's name
