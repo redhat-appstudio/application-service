@@ -382,6 +382,7 @@ func (r *SnapshotEnvironmentBindingReconciler) Reconcile(ctx context.Context, re
 			// On OpenShift, we generate a unique route name for each Component, so include that in the status
 			if !isKubernetesCluster {
 				componentStatus.GeneratedRouteName = routeName
+				log.Info(fmt.Sprintf("added RouteName %s for Component %s to status", routeName, componentName))
 			}
 
 			if _, ok := componentGeneratedResources[componentName]; ok {
