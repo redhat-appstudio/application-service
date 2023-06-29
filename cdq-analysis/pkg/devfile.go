@@ -17,10 +17,17 @@ package pkg
 
 import (
 	"fmt"
+	"net/url"
+	"path"
+	"strings"
 
+	"github.com/devfile/api/v2/pkg/apis/workspaces/v1alpha2"
 	devfilePkg "github.com/devfile/library/v2/pkg/devfile"
 	"github.com/devfile/library/v2/pkg/devfile/parser"
 	"github.com/devfile/library/v2/pkg/devfile/parser/data"
+	"github.com/devfile/library/v2/pkg/devfile/parser/data/v2/common"
+	"github.com/redhat-appstudio/application-service/pkg/util"
+	"gopkg.in/yaml.v2"
 
 	"github.com/go-logr/logr"
 )
@@ -30,11 +37,25 @@ const (
 	HiddenDevfileName = ".devfile.yaml"
 	HiddenDevfileDir  = ".devfile"
 	DockerfileName    = "Dockerfile"
+	ContainerfileName = "Containerfile"
+	HiddenDockerDir   = ".docker"
+	DockerDir         = "docker"
+	BuildDir          = "build"
 
 	Devfile                = DevfileName                                // devfile.yaml
 	HiddenDevfile          = HiddenDevfileName                          // .devfile.yaml
 	HiddenDirDevfile       = HiddenDevfileDir + "/" + DevfileName       // .devfile/devfile.yaml
 	HiddenDirHiddenDevfile = HiddenDevfileDir + "/" + HiddenDevfileName // .devfile/.devfile.yaml
+
+	Dockerfile          = DockerfileName                         // Dockerfile
+	HiddenDirDockerfile = HiddenDockerDir + "/" + DockerfileName // .docker/Dockerfile
+	DockerDirDockerfile = DockerDir + "/" + DockerfileName       // docker/Dockerfile
+	BuildDirDockerfile  = BuildDir + "/" + DockerfileName        // build/Dockerfile
+
+	Containerfile          = ContainerfileName                         // Containerfile
+	HiddenDirContainerfile = HiddenDockerDir + "/" + ContainerfileName // .docker/Containerfile
+	DockerDirContainerfile = DockerDir + "/" + ContainerfileName       // docker/Containerfile
+	BuildDirContainerfile  = BuildDir + "/" + ContainerfileName        // build/Containerfile
 
 	// DevfileRegistryEndpoint is the endpoint of the devfile registry
 	DevfileRegistryEndpoint = "https://registry.devfile.io"
@@ -81,4 +102,133 @@ func ParseDevfile(src DevfileSrc) (data.DevfileData, error) {
 // Map 3 returns a context to the dockerfile uri or a matched dockerfileURL from the devfile registry if no dockerfile is present in the context
 func ScanRepo(log logr.Logger, a Alizer, localpath string, devfileRegistryURL string, URL, revision, srcContext string) (map[string][]byte, map[string]string, map[string]string, error) {
 	return search(log, a, localpath, devfileRegistryURL, URL, revision, srcContext)
+}
+
+// ValidateDevfile parse and validate a devfile from it's URL, returns if the devfile should be ignored, the devfile raw content and an error if devfile is invalid
+// If the devfile failed to parse, or the kubernetes uri is invalid or kubernetes file content is invalid. return an error.
+// If no kubernetes components being defined in devfile, then it's not a valid outerloop devfile, the devfile should be ignored.
+// If more than one kubernetes components in the devfile, but no deploy commands being defined. return an error
+// If more than one image components in the devfile, but no apply commands being defined. return an error
+func ValidateDevfile(log logr.Logger, URL string) (shouldIgnoreDevfile bool, devfileBytes []byte, err error) {
+	log.Info(fmt.Sprintf("Validating devfile from %s...", URL))
+	shouldIgnoreDevfile = false
+	var devfileSrc DevfileSrc
+	if strings.HasPrefix(URL, "http://") || strings.HasPrefix(URL, "https://") {
+		devfileSrc = DevfileSrc{
+			URL: URL,
+		}
+	} else {
+		devfileSrc = DevfileSrc{
+			Path: URL,
+		}
+	}
+
+	devfileData, err := ParseDevfile(devfileSrc)
+	if err != nil {
+		log.Error(err, fmt.Sprintf("failed to parse the devfile content from %s", URL))
+		return shouldIgnoreDevfile, nil, fmt.Errorf(fmt.Sprintf("err: %v, failed to parse the devfile content from %s", err, URL))
+	}
+	deployCompMap, err := parser.GetDeployComponents(devfileData)
+	if err != nil {
+		log.Error(err, fmt.Sprintf("failed to get deploy components from %s", URL))
+		return shouldIgnoreDevfile, nil, fmt.Errorf(fmt.Sprintf("err: %v, failed to get deploy components from %s", err, URL))
+	}
+	devfileBytes, err = yaml.Marshal(devfileData)
+	if err != nil {
+		return shouldIgnoreDevfile, nil, err
+	}
+	kubeCompFilter := common.DevfileOptions{
+		ComponentOptions: common.ComponentOptions{
+			ComponentType: v1alpha2.KubernetesComponentType,
+		},
+	}
+	kubeComp, err := devfileData.GetComponents(kubeCompFilter)
+	if err != nil {
+		log.Error(err, fmt.Sprintf("failed to get kubernetes component from %s", URL))
+		shouldIgnoreDevfile = true
+		return shouldIgnoreDevfile, nil, nil
+	}
+	if len(kubeComp) == 0 {
+		log.Info(fmt.Sprintf("Found 0 kubernetes components being defined in devfile from %s, it is not a valid outerloop definition, the devfile will be ignored. A devfile will be matched from registry...", URL))
+		shouldIgnoreDevfile = true
+		return shouldIgnoreDevfile, nil, nil
+	} else {
+		if len(kubeComp) > 1 {
+			found := false
+			for _, component := range kubeComp {
+				if _, ok := deployCompMap[component.Name]; ok {
+					found = true
+					break
+				}
+			}
+			if !found {
+				err = fmt.Errorf("found more than one kubernetes components, but no deploy command associated with any being defined in the devfile from %s", URL)
+				log.Error(err, "failed to validate devfile")
+				return shouldIgnoreDevfile, nil, err
+			}
+		}
+		// TODO: if only one kube component, should return a warning that no deploy command being defined
+	}
+	imageCompFilter := common.DevfileOptions{
+		ComponentOptions: common.ComponentOptions{
+			ComponentType: v1alpha2.ImageComponentType,
+		},
+	}
+	imageComp, err := devfileData.GetComponents(imageCompFilter)
+	if err != nil {
+		log.Error(err, fmt.Sprintf("failed to get image component from %s", URL))
+		return shouldIgnoreDevfile, nil, fmt.Errorf(fmt.Sprintf("err: %v, failed to get image component from %s", err, URL))
+	}
+	if len(imageComp) == 0 {
+		log.Info(fmt.Sprintf("Found 0 image components being defined in devfile from %s, it is not a valid outerloop definition, the devfile will be ignored. A devfile will be matched from registry...", URL))
+		shouldIgnoreDevfile = true
+		return shouldIgnoreDevfile, nil, nil
+	} else {
+		if len(imageComp) > 1 {
+			found := false
+			for _, component := range imageComp {
+				if component.Image != nil && component.Image.Dockerfile != nil && component.Image.Dockerfile.DockerfileSrc.Uri != "" {
+					dockerfileURI := component.Image.Dockerfile.DockerfileSrc.Uri
+					absoluteURI := strings.HasPrefix(dockerfileURI, "http://") || strings.HasPrefix(dockerfileURI, "https://")
+					if absoluteURI {
+						// image uri
+						_, err = util.CurlEndpoint(dockerfileURI)
+					} else {
+						if devfileSrc.Path != "" {
+							// local devfile src with relative Dockerfile uri
+							dockerfileURI = path.Join(path.Dir(URL), dockerfileURI)
+							err = parserUtil.ValidateFile(dockerfileURI)
+						} else {
+							// remote devfile src with relative Dockerfile uri
+							var u *url.URL
+							u, err = url.Parse(URL)
+							if err != nil {
+								log.Error(err, fmt.Sprintf("failed to parse URL from %s", URL))
+								return shouldIgnoreDevfile, nil, fmt.Errorf(fmt.Sprintf("failed to parse URL from %s", URL))
+							}
+							u.Path = path.Join(u.Path, dockerfileURI)
+							dockerfileURI = u.String()
+							_, err = util.CurlEndpoint(dockerfileURI)
+						}
+					}
+					if err != nil {
+						log.Error(err, fmt.Sprintf("failed to get Dockerfile from the URI %s, invalid image component: %s", URL, component.Name))
+						return shouldIgnoreDevfile, nil, fmt.Errorf(fmt.Sprintf("failed to get Dockerfile from the URI %s, invalid image component: %s", URL, component.Name))
+					}
+				}
+				if _, ok := deployCompMap[component.Name]; ok {
+					found = true
+					break
+				}
+			}
+			if !found {
+				err = fmt.Errorf("found more than one image components, but no deploy command associated with any being defined in the devfile from %s", URL)
+				log.Error(err, "failed to validate devfile")
+				return shouldIgnoreDevfile, nil, err
+			}
+		}
+		// TODO: if only one image component, should return a warning that no apply command being defined
+	}
+
+	return shouldIgnoreDevfile, devfileBytes, nil
 }

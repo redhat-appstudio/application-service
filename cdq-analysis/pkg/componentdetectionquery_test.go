@@ -200,7 +200,7 @@ language: JavaScript
 					if len(devfilesMap) != len(tt.wantDevfilesMap) {
 						t.Errorf("Expected devfilesMap lenth: %+v, Got: %+v, devfileMap is %+v", len(tt.wantDevfilesMap), len(devfilesMap), devfilesMap)
 					} else {
-						for key, _ := range tt.wantDevfilesMap {
+						for key := range tt.wantDevfilesMap {
 							if _, ok := devfilesMap[key]; !ok {
 								t.Errorf("Expected devfilesMap contains context: %+v, devfileMap is %+v", key, devfilesMap)
 							}
