@@ -142,12 +142,19 @@ gosec:
 lint:
 	golangci-lint --version
 	GOMAXPROCS=2 golangci-lint run --fix --verbose --timeout 300s
+	
+unit-tests: 
+	KUBEBUILDER_ASSETS="$(shell $(ENVTEST) use $(ENVTEST_K8S_VERSION) -p path)" SKIP_PACT_TESTS=true go test ./... -coverprofile cover.out -v
 
-test: manifests generate fmt vet envtest ## Run tests.
-	KUBEBUILDER_ASSETS="$(shell $(ENVTEST) use $(ENVTEST_K8S_VERSION) -p path)" go test ./... -coverprofile cover.out -v
+pact-tests: 
+	KUBEBUILDER_ASSETS="$(shell $(ENVTEST) use $(ENVTEST_K8S_VERSION) -p path)" go test ./... -v --run TestContracts 
 
 pact: manifests generate fmt vet envtest ## Run just Pact tests.
-	KUBEBUILDER_ASSETS="$(shell $(ENVTEST) use $(ENVTEST_K8S_VERSION) -p path)" go test ./... -v --run TestContracts 
+	make pact-tests
+
+test: manifests generate fmt vet envtest ## Run tests.
+	make unit-tests
+	make pact-tests
 
 ##@ Build
 

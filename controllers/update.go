@@ -318,11 +318,7 @@ func (r *ComponentDetectionQueryReconciler) updateComponentStub(req ctrl.Request
 			DevfileURL:    devfilesURLMap[context],
 			DockerfileURL: dockerfileContextMap[context],
 		}
-		generateComponentName := false
-		if componentDetectionQuery.Spec.GenerateComponentName {
-			generateComponentName = componentDetectionQuery.Spec.GenerateComponentName
-		}
-		componentName := r.getComponentName(log, ctx, req.Namespace, gitSource, generateComponentName)
+		componentName := r.getComponentName(log, ctx, req.Namespace, gitSource, componentDetectionQuery.Spec.GenerateComponentName)
 
 		componentStub := appstudiov1alpha1.ComponentSpec{
 			ComponentName: componentName,
@@ -503,11 +499,7 @@ func (r *ComponentDetectionQueryReconciler) updateComponentStub(req ctrl.Request
 			Revision:      componentDetectionQuery.Spec.GitSource.Revision,
 			DockerfileURL: link,
 		}
-		generateComponentName := false
-		if componentDetectionQuery.Spec.GenerateComponentName {
-			generateComponentName = componentDetectionQuery.Spec.GenerateComponentName
-		}
-		componentName := r.getComponentName(log, ctx, req.Namespace, gitSource, generateComponentName)
+		componentName := r.getComponentName(log, ctx, req.Namespace, gitSource, componentDetectionQuery.Spec.GenerateComponentName)
 
 		detectComp := appstudiov1alpha1.ComponentDetectionDescription{
 			DevfileFound: false, // always false since there is only a Dockerfile present for these contexts
@@ -539,6 +531,11 @@ func (r *ComponentDetectionQueryReconciler) getComponentName(log logr.Logger, ct
 	var componentName string
 	repoUrl := gitSource.URL
 
+	generateCompName := false
+	if generateComponentName {
+		generateCompName = generateComponentName
+	}
+
 	if len(repoUrl) != 0 {
 		// If the repository URL ends in a forward slash, remove it to avoid issues with parsing the repository name
 		if string(repoUrl[len(repoUrl)-1]) == "/" {
@@ -556,7 +553,7 @@ func (r *ComponentDetectionQueryReconciler) getComponentName(log logr.Logger, ct
 	// Return a sanitized version of the component name
 	// If len(componentName) is 0, then it will also handle generating a random name for it.
 	componentName = sanitizeComponentName(componentName)
-	if generateComponentName {
+	if generateCompName {
 		componentName = fmt.Sprintf("%s-%s", componentName, util.GetRandomString(4, true))
 	} else {
 		compNamespacedName := types.NamespacedName{

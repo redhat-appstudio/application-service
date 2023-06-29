@@ -1563,8 +1563,7 @@ func TestGetComponentName(t *testing.T) {
 			gitSource: &appstudiov1alpha1.GitSource{
 				URL: "https://github.com/devfile-samples/123454678.git",
 			},
-			generateComponentName: false,
-			expectedName:          "comp-123454678",
+			expectedName: "comp-123454678",
 		},
 		{
 			name: "valid repo name with context",
@@ -1589,8 +1588,7 @@ func TestGetComponentName(t *testing.T) {
 				URL:     "https://github.com/devfile-samples/devfile-multi-component/",
 				Context: "nodejs",
 			},
-			expectedName:          "nodejs-devfile-multi-component",
-			generateComponentName: false,
+			expectedName: "nodejs-devfile-multi-component",
 		},
 	}
 
