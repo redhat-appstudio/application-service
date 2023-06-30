@@ -584,18 +584,21 @@ func (r *ComponentReconciler) generateGitops(ctx context.Context, ghClient *gith
 	tempDir, err := ioutils.CreateTempPath(component.Name, r.AppFS)
 	if err != nil {
 		log.Error(err, "unable to create temp directory for GitOps resources due to error")
+		ioutils.RemoveFolderAndLogError(log, r.AppFS, tempDir)
 		return fmt.Errorf("unable to create temp directory for GitOps resources due to error: %v", err)
 	}
 
 	deployAssociatedComponents, err := devfileParser.GetDeployComponents(compDevfileData)
 	if err != nil {
 		log.Error(err, "unable to get deploy components")
+		ioutils.RemoveFolderAndLogError(log, r.AppFS, tempDir)
 		return err
 	}
 
 	kubernetesResources, err := devfile.GetResourceFromDevfile(log, compDevfileData, deployAssociatedComponents, component.Name, component.Spec.Application, component.Spec.ContainerImage, "")
 	if err != nil {
 		log.Error(err, "unable to get kubernetes resources from the devfile outerloop components")
+		ioutils.RemoveFolderAndLogError(log, r.AppFS, tempDir)
 		return err
 	}
 
@@ -607,6 +610,7 @@ func (r *ComponentReconciler) generateGitops(ctx context.Context, ghClient *gith
 	err = r.Generator.CloneGenerateAndPush(tempDir, gitOpsURL, mappedGitOpsComponent, r.AppFS, gitOpsBranch, gitOpsContext, false)
 	if err != nil {
 		log.Error(err, "unable to generate gitops resources due to error")
+		ioutils.RemoveFolderAndLogError(log, r.AppFS, tempDir)
 		return err
 	}
 
@@ -615,6 +619,7 @@ func (r *ComponentReconciler) generateGitops(ctx context.Context, ghClient *gith
 	err = r.Generator.CommitAndPush(tempDir, "", gitOpsURL, mappedGitOpsComponent.Name, gitOpsBranch, "Generating GitOps resources")
 	if err != nil {
 		log.Error(err, "unable to commit and push gitops resources due to error")
+		ioutils.RemoveFolderAndLogError(log, r.AppFS, tempDir)
 		return err
 	}
 
@@ -625,6 +630,7 @@ func (r *ComponentReconciler) generateGitops(ctx context.Context, ghClient *gith
 	metrics.ControllerGitRequest.With(metricsLabel).Inc()
 	if commitID, err = r.Generator.GetCommitIDFromRepo(r.AppFS, repoPath); err != nil {
 		log.Error(err, "")
+		ioutils.RemoveFolderAndLogError(log, r.AppFS, tempDir)
 		return err
 	}
 

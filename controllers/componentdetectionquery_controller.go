@@ -249,6 +249,7 @@ func (r *ComponentDetectionQueryReconciler) Reconcile(ctx context.Context, req c
 			err = util.CloneRepo(clonePath, source.URL, source.Revision, gitToken)
 			if err != nil {
 				log.Error(err, fmt.Sprintf("Unable to clone repo %s to path %s, exiting reconcile loop %v", source.URL, clonePath, req.NamespacedName))
+				ioutils.RemoveFolderAndLogError(log, r.AppFS, clonePath)
 				r.SetCompleteConditionAndUpdateCR(ctx, req, &componentDetectionQuery, copiedCDQ, err)
 				return ctrl.Result{}, nil
 			}
@@ -267,6 +268,7 @@ func (r *ComponentDetectionQueryReconciler) Reconcile(ctx context.Context, req c
 					components, err = r.AlizerClient.DetectComponents(componentPath)
 					if err != nil {
 						log.Error(err, fmt.Sprintf("Unable to detect components using Alizer for repo %v, under path %v... %v ", source.URL, componentPath, req.NamespacedName))
+						ioutils.RemoveFolderAndLogError(log, r.AppFS, clonePath)
 						r.SetCompleteConditionAndUpdateCR(ctx, req, &componentDetectionQuery, copiedCDQ, err)
 						return ctrl.Result{}, nil
 					}
@@ -288,6 +290,7 @@ func (r *ComponentDetectionQueryReconciler) Reconcile(ctx context.Context, req c
 				if err != nil {
 					if _, ok := err.(*devfile.NoDevfileFound); !ok {
 						log.Error(err, fmt.Sprintf("Unable to find devfile(s) in repo %s due to an error %s, exiting reconcile loop %v", source.URL, err.Error(), req.NamespacedName))
+						ioutils.RemoveFolderAndLogError(log, r.AppFS, clonePath)
 						r.SetCompleteConditionAndUpdateCR(ctx, req, &componentDetectionQuery, copiedCDQ, err)
 						return ctrl.Result{}, nil
 					}
@@ -297,6 +300,7 @@ func (r *ComponentDetectionQueryReconciler) Reconcile(ctx context.Context, req c
 				err := devfile.AnalyzePath(log, r.AlizerClient, componentPath, context, r.DevfileRegistryURL, devfilesMap, devfilesURLMap, dockerfileContextMap, componentPortsMap, isDevfilePresent, isDockerfilePresent)
 				if err != nil {
 					log.Error(err, fmt.Sprintf("Unable to analyze path %s for a devfile, Dockerfile or Containerfile %v", componentPath, req.NamespacedName))
+					ioutils.RemoveFolderAndLogError(log, r.AppFS, clonePath)
 					r.SetCompleteConditionAndUpdateCR(ctx, req, &componentDetectionQuery, copiedCDQ, err)
 					return ctrl.Result{}, nil
 				}
@@ -309,6 +313,7 @@ func (r *ComponentDetectionQueryReconciler) Reconcile(ctx context.Context, req c
 				// if a direct devfileURL is provided and errors out, we dont do an alizer detection
 				log.Error(err, fmt.Sprintf("Unable to GET %s, exiting reconcile loop %v", source.DevfileURL, req.NamespacedName))
 				err := fmt.Errorf("unable to GET from %s", source.DevfileURL)
+				ioutils.RemoveFolderAndLogError(log, r.AppFS, clonePath)
 				r.SetCompleteConditionAndUpdateCR(ctx, req, &componentDetectionQuery, copiedCDQ, err)
 				return ctrl.Result{}, nil
 			}
@@ -316,6 +321,7 @@ func (r *ComponentDetectionQueryReconciler) Reconcile(ctx context.Context, req c
 				// if a direct devfileURL is provided and errors out, we dont do an alizer detection
 				log.Error(err, fmt.Sprintf("the provided devfileURL %s does not contain a valid outerloop definition, exiting reconcile loop %v", source.DevfileURL, req.NamespacedName))
 				err := fmt.Errorf("the provided devfileURL %s does not contain a valid outerloop definition", source.DevfileURL)
+				ioutils.RemoveFolderAndLogError(log, r.AppFS, clonePath)
 				r.SetCompleteConditionAndUpdateCR(ctx, req, &componentDetectionQuery, copiedCDQ, err)
 				return ctrl.Result{}, nil
 			}
