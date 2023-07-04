@@ -48,6 +48,10 @@ func TestContracts(t *testing.T) {
 		BrokerPassword:             "pactCommonPassword123",
 	}
 
+	if os.Getenv("SKIP_PACT_TESTS") == "true" {
+		t.Skip("Skipping Pact tests as SKIP_PACT_TESTS is set to true.")
+	}
+
 	// setup credentials and publishing
 	if os.Getenv("PR_CHECK") == "true" {
 		if os.Getenv("COMMIT_SHA") == "" {
