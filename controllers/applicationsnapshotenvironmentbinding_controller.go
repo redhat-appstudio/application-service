@@ -276,14 +276,6 @@ func (r *SnapshotEnvironmentBindingReconciler) Reconcile(ctx context.Context, re
 			return ctrl.Result{}, err
 		}
 
-		isStatusUpdated := false
-		for _, bindingStatusComponent := range appSnapshotEnvBinding.Status.Components {
-			if bindingStatusComponent.Name == componentName {
-				isStatusUpdated = true
-				break
-			}
-		}
-
 		if clone {
 			// Create a temp folder to create the gitops resources in
 			tempDir, err = ioutils.CreateTempPath(appSnapshotEnvBinding.Name, r.AppFS)
@@ -366,28 +358,27 @@ func (r *SnapshotEnvironmentBindingReconciler) Reconcile(ctx context.Context, re
 			return ctrl.Result{}, err
 		}
 
-		if !isStatusUpdated {
-			componentStatus := appstudiov1alpha1.BindingComponentStatus{
-				Name: componentName,
-				GitOpsRepository: appstudiov1alpha1.BindingComponentGitOpsRepository{
-					URL:      hasComponent.Status.GitOps.RepositoryURL,
-					Branch:   gitOpsBranch,
-					Path:     filepath.Join(gitOpsContext, "components", componentName, "overlays", environmentName),
-					CommitID: commitID,
-				},
-			}
-
-			// On OpenShift, we generate a unique route name for each Component, so include that in the status
-			if !isKubernetesCluster {
-				componentStatus.GeneratedRouteName = routeName
-			}
-
-			if _, ok := componentGeneratedResources[componentName]; ok {
-				componentStatus.GitOpsRepository.GeneratedResources = componentGeneratedResources[componentName]
-			}
-
-			appSnapshotEnvBinding.Status.Components = append(appSnapshotEnvBinding.Status.Components, componentStatus)
+		// Set the BindingComponent status
+		componentStatus := appstudiov1alpha1.BindingComponentStatus{
+			Name: componentName,
+			GitOpsRepository: appstudiov1alpha1.BindingComponentGitOpsRepository{
+				URL:      hasComponent.Status.GitOps.RepositoryURL,
+				Branch:   gitOpsBranch,
+				Path:     filepath.Join(gitOpsContext, "components", componentName, "overlays", environmentName),
+				CommitID: commitID,
+			},
 		}
+
+		// On OpenShift, we generate a unique route name for each Component, so include that in the status
+		if !isKubernetesCluster {
+			componentStatus.GeneratedRouteName = routeName
+		}
+
+		if _, ok := componentGeneratedResources[componentName]; ok {
+			componentStatus.GitOpsRepository.GeneratedResources = componentGeneratedResources[componentName]
+		}
+
+		appSnapshotEnvBinding.Status.Components = append(appSnapshotEnvBinding.Status.Components, componentStatus)
 
 		// Set the clone to false, since we dont want to clone the repo again for the other components
 		clone = false
