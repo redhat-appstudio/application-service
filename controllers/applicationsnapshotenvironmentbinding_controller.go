@@ -158,6 +158,7 @@ func (r *SnapshotEnvironmentBindingReconciler) Reconcile(ctx context.Context, re
 	var tempDir string
 	clone := true
 
+	appSnapshotEnvBinding.Status.Components = []appstudiov1alpha1.BindingComponentStatus{}
 	for _, component := range components {
 		componentName := component.Name
 
