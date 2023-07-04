@@ -384,17 +384,6 @@ func (r *SnapshotEnvironmentBindingReconciler) Reconcile(ctx context.Context, re
 
 		appSnapshotEnvBinding.Status.Components = append(appSnapshotEnvBinding.Status.Components, componentStatus)
 
-		// On OpenShift, we generate a unique route name for each Component, so include that in the status
-		if !isKubernetesCluster {
-			componentStatus.GeneratedRouteName = routeName
-		}
-
-		if _, ok := componentGeneratedResources[componentName]; ok {
-			componentStatus.GitOpsRepository.GeneratedResources = componentGeneratedResources[componentName]
-		}
-
-		appSnapshotEnvBinding.Status.Components = append(appSnapshotEnvBinding.Status.Components, componentStatus)
-
 		// Set the clone to false, since we dont want to clone the repo again for the other components
 		clone = false
 	}
