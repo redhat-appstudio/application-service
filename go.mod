@@ -20,7 +20,7 @@ require (
 	github.com/openshift/api v0.0.0-20210503193030-25175d9d392d
 	github.com/pact-foundation/pact-go v1.7.0
 	github.com/prometheus/client_golang v1.14.0
-	github.com/redhat-appstudio/application-api v0.0.0-20230626203819-64362e46f669
+	github.com/redhat-appstudio/application-api v0.0.0-20230704143842-035c661f115f
 	github.com/redhat-appstudio/service-provider-integration-scm-file-retriever v0.8.3
 	github.com/redhat-developer/alizer/go v0.0.0-20230516215932-135a2bb3fb90
 	github.com/redhat-developer/gitops-generator v0.0.0-20230614175323-aff86c6bc55e

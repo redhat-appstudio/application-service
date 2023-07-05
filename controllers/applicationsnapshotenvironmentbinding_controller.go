@@ -326,13 +326,16 @@ func (r *SnapshotEnvironmentBindingReconciler) Reconcile(ctx context.Context, re
 		genOptions := gitopsgenv1alpha1.GeneratorOptions{
 			Name:                component.Name,
 			RouteName:           routeName,
-			Replicas:            component.Configuration.Replicas,
 			Resources:           componentResources,
 			BaseEnvVar:          envVars,
 			OverlayEnvVar:       environmentConfigEnvVars,
 			K8sLabels:           kubeLabels,
 			IsKubernetesCluster: isKubernetesCluster,
 			TargetPort:          hasComponent.Spec.TargetPort, // pass the target port to the gitops gen library as they may generate a route/ingress based on the target port if the devfile does not have an ingress/route or an endpoint
+		}
+
+		if component.Configuration.Replicas != nil {
+			genOptions.Replicas = *component.Configuration.Replicas
 		}
 
 		if !reflect.DeepEqual(kubernetesResources, devfileParser.KubernetesResources{}) {
