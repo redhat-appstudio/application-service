@@ -59,7 +59,7 @@ var _ = Describe("SnapshotEnvironmentBinding controller", func() {
 				"deployment-patch.yaml": true,
 			}
 
-			replicas := int32(3)
+			replicas := 3
 
 			createAndFetchSimpleApp(applicationName, HASAppNamespace, DisplayName, Description)
 
@@ -139,7 +139,7 @@ var _ = Describe("SnapshotEnvironmentBinding controller", func() {
 						{
 							Name: componentName,
 							Configuration: appstudiov1alpha1.BindingComponentConfiguration{
-								Replicas: int(replicas),
+								Replicas: &replicas,
 								Env: []appstudiov1alpha1.EnvVarPair{
 									{
 										Name:  "FOO",
@@ -220,7 +220,7 @@ var _ = Describe("SnapshotEnvironmentBinding controller", func() {
 			bindingName := HASBindingName + "2"
 			environmentName := "staging" + "2"
 
-			replicas := int32(3)
+			replicas := 3
 
 			createAndFetchSimpleApp(applicationName, HASAppNamespace, DisplayName, Description)
 
@@ -300,7 +300,7 @@ var _ = Describe("SnapshotEnvironmentBinding controller", func() {
 						{
 							Name: componentName,
 							Configuration: appstudiov1alpha1.BindingComponentConfiguration{
-								Replicas: int(replicas),
+								Replicas: &replicas,
 								Env: []appstudiov1alpha1.EnvVarPair{
 									{
 										Name:  "FOO",
@@ -317,7 +317,7 @@ var _ = Describe("SnapshotEnvironmentBinding controller", func() {
 						{
 							Name: componentName2,
 							Configuration: appstudiov1alpha1.BindingComponentConfiguration{
-								Replicas: int(replicas),
+								Replicas: &replicas,
 							},
 						},
 					},
@@ -365,7 +365,7 @@ var _ = Describe("SnapshotEnvironmentBinding controller", func() {
 			bindingName := HASBindingName + "3"
 			environmentName := "staging" + "3"
 
-			replicas := int32(3)
+			replicas := 3
 
 			createAndFetchSimpleApp(applicationName, HASAppNamespace, DisplayName, Description)
 
@@ -415,7 +415,7 @@ var _ = Describe("SnapshotEnvironmentBinding controller", func() {
 						{
 							Name: componentName,
 							Configuration: appstudiov1alpha1.BindingComponentConfiguration{
-								Replicas: int(replicas),
+								Replicas: &replicas,
 								Env: []appstudiov1alpha1.EnvVarPair{
 									{
 										Name:  "FOO",
@@ -472,7 +472,7 @@ var _ = Describe("SnapshotEnvironmentBinding controller", func() {
 			bindingName := HASBindingName + "4"
 			environmentName := "staging" + "4"
 
-			replicas := int32(3)
+			replicas := 3
 
 			createAndFetchSimpleApp(applicationName, HASAppNamespace, DisplayName, Description)
 
@@ -552,7 +552,7 @@ var _ = Describe("SnapshotEnvironmentBinding controller", func() {
 						{
 							Name: componentName,
 							Configuration: appstudiov1alpha1.BindingComponentConfiguration{
-								Replicas: int(replicas),
+								Replicas: &replicas,
 								Env: []appstudiov1alpha1.EnvVarPair{
 									{
 										Name:  "FOO",
@@ -613,7 +613,7 @@ var _ = Describe("SnapshotEnvironmentBinding controller", func() {
 			bindingName := HASBindingName + "5"
 			environmentName := "staging" + "5"
 
-			replicas := int32(3)
+			replicas := 3
 
 			createAndFetchSimpleApp(applicationName, HASAppNamespace, DisplayName, Description)
 			createAndFetchSimpleApp(applicationName2, HASAppNamespace, DisplayName, Description)
@@ -698,7 +698,7 @@ var _ = Describe("SnapshotEnvironmentBinding controller", func() {
 						{
 							Name: componentName,
 							Configuration: appstudiov1alpha1.BindingComponentConfiguration{
-								Replicas: int(replicas),
+								Replicas: &replicas,
 								Env: []appstudiov1alpha1.EnvVarPair{
 									{
 										Name:  "FOO",
@@ -715,7 +715,7 @@ var _ = Describe("SnapshotEnvironmentBinding controller", func() {
 						{
 							Name: componentName2,
 							Configuration: appstudiov1alpha1.BindingComponentConfiguration{
-								Replicas: int(replicas),
+								Replicas: &replicas,
 							},
 						},
 					},
@@ -768,7 +768,7 @@ var _ = Describe("SnapshotEnvironmentBinding controller", func() {
 			bindingName := HASBindingName + "6"
 			environmentName := "staging" + "6"
 
-			replicas := int32(3)
+			replicas := 3
 
 			createAndFetchSimpleApp(applicationName, HASAppNamespace, DisplayName, Description)
 
@@ -852,7 +852,7 @@ var _ = Describe("SnapshotEnvironmentBinding controller", func() {
 						{
 							Name: componentName,
 							Configuration: appstudiov1alpha1.BindingComponentConfiguration{
-								Replicas: int(replicas),
+								Replicas: &replicas,
 								Env: []appstudiov1alpha1.EnvVarPair{
 									{
 										Name:  "FOO",
@@ -869,7 +869,7 @@ var _ = Describe("SnapshotEnvironmentBinding controller", func() {
 						{
 							Name: componentName2,
 							Configuration: appstudiov1alpha1.BindingComponentConfiguration{
-								Replicas: int(replicas),
+								Replicas: &replicas,
 							},
 						},
 					},
@@ -919,8 +919,8 @@ var _ = Describe("SnapshotEnvironmentBinding controller", func() {
 			bindingName := HASBindingName + "7"
 			environmentName := "staging" + "7"
 
-			replicas := int32(3)
-			newReplicas := int32(4)
+			replicas := 3
+			newReplicas := 4
 
 			createAndFetchSimpleApp(applicationName, HASAppNamespace, DisplayName, Description)
 
@@ -1003,7 +1003,7 @@ var _ = Describe("SnapshotEnvironmentBinding controller", func() {
 						{
 							Name: componentName,
 							Configuration: appstudiov1alpha1.BindingComponentConfiguration{
-								Replicas: int(replicas),
+								Replicas: &replicas,
 								Env: []appstudiov1alpha1.EnvVarPair{
 									{
 										Name:  "FOO",
@@ -1037,7 +1037,7 @@ var _ = Describe("SnapshotEnvironmentBinding controller", func() {
 			Expect(bindingLabels["appstudio.application"]).Should(Equal(applicationName))
 			Expect(bindingLabels["appstudio.environment"]).Should(Equal(environmentName))
 
-			createdBinding.Spec.Components[0].Configuration.Replicas = int(newReplicas)
+			createdBinding.Spec.Components[0].Configuration.Replicas = &newReplicas
 
 			Expect(k8sClient.Update(ctx, createdBinding)).Should(Succeed())
 
@@ -1078,7 +1078,7 @@ var _ = Describe("SnapshotEnvironmentBinding controller", func() {
 			bindingName := HASBindingName + "8"
 			environmentName := "staging" + "8"
 
-			replicas := int32(3)
+			replicas := 3
 
 			hasApp := &appstudiov1alpha1.Application{
 				TypeMeta: metav1.TypeMeta{
@@ -1185,7 +1185,7 @@ var _ = Describe("SnapshotEnvironmentBinding controller", func() {
 						{
 							Name: componentName,
 							Configuration: appstudiov1alpha1.BindingComponentConfiguration{
-								Replicas: int(replicas),
+								Replicas: &replicas,
 							},
 						},
 					},
@@ -1232,7 +1232,7 @@ var _ = Describe("SnapshotEnvironmentBinding controller", func() {
 			bindingName := HASBindingName + "9"
 			environmentName := "staging" + "9"
 
-			replicas := int32(3)
+			replicas := 3
 
 			createAndFetchSimpleApp(applicationName, HASAppNamespace, DisplayName, Description)
 
@@ -1287,7 +1287,7 @@ var _ = Describe("SnapshotEnvironmentBinding controller", func() {
 						{
 							Name: componentName,
 							Configuration: appstudiov1alpha1.BindingComponentConfiguration{
-								Replicas: int(replicas),
+								Replicas: &replicas,
 								Env: []appstudiov1alpha1.EnvVarPair{
 									{
 										Name:  "FOO",
@@ -1347,7 +1347,7 @@ var _ = Describe("SnapshotEnvironmentBinding controller", func() {
 			environmentName := "staging" + "10"
 			environmentName2 := "staging" + "10-2"
 
-			replicas := int32(3)
+			replicas := 3
 
 			createAndFetchSimpleApp(applicationName, HASAppNamespace, DisplayName, Description)
 			createAndFetchSimpleApp(applicationName2, HASAppNamespace, DisplayName, Description)
@@ -1491,7 +1491,7 @@ var _ = Describe("SnapshotEnvironmentBinding controller", func() {
 						{
 							Name: componentName,
 							Configuration: appstudiov1alpha1.BindingComponentConfiguration{
-								Replicas: int(replicas),
+								Replicas: &replicas,
 							},
 						},
 					},
@@ -1528,7 +1528,7 @@ var _ = Describe("SnapshotEnvironmentBinding controller", func() {
 						{
 							Name: componentName2,
 							Configuration: appstudiov1alpha1.BindingComponentConfiguration{
-								Replicas: int(replicas),
+								Replicas: &replicas,
 							},
 						},
 					},
@@ -1612,7 +1612,7 @@ var _ = Describe("SnapshotEnvironmentBinding controller", func() {
 				"deployment-patch.yaml": true,
 			}
 
-			replicas := int32(3)
+			replicas := 3
 
 			createAndFetchSimpleApp(applicationName, HASAppNamespace, DisplayName, Description)
 			hasComp := createAndFetchSimpleComponent(componentName, HASAppNamespace, ComponentName, applicationName, SampleRepoLink, true)
@@ -1697,7 +1697,7 @@ var _ = Describe("SnapshotEnvironmentBinding controller", func() {
 						{
 							Name: componentName,
 							Configuration: appstudiov1alpha1.BindingComponentConfiguration{
-								Replicas: int(replicas),
+								Replicas: &replicas,
 								Env: []appstudiov1alpha1.EnvVarPair{
 									{
 										Name:  "FOO",
@@ -1714,7 +1714,7 @@ var _ = Describe("SnapshotEnvironmentBinding controller", func() {
 						{
 							Name: secondComponentName,
 							Configuration: appstudiov1alpha1.BindingComponentConfiguration{
-								Replicas: int(replicas),
+								Replicas: &replicas,
 								Env: []appstudiov1alpha1.EnvVarPair{
 									{
 										Name:  "FOO",
@@ -1787,7 +1787,7 @@ var _ = Describe("SnapshotEnvironmentBinding controller", func() {
 			bindingName := HASBindingName + "12"
 			environmentName := "staging"
 
-			replicas := int32(3)
+			replicas := 3
 
 			createAndFetchSimpleAppWithRepo(applicationName, HASAppNamespace, DisplayName, Description, "https://github.com/fakeorg/test-error-response")
 			hasComp := createAndFetchSimpleComponent(componentName, HASAppNamespace, ComponentName, applicationName, SampleRepoLink, false)
@@ -1866,7 +1866,7 @@ var _ = Describe("SnapshotEnvironmentBinding controller", func() {
 						{
 							Name: componentName,
 							Configuration: appstudiov1alpha1.BindingComponentConfiguration{
-								Replicas: int(replicas),
+								Replicas: &replicas,
 								Env: []appstudiov1alpha1.EnvVarPair{
 									{
 										Name:  "FOO",
@@ -1929,7 +1929,7 @@ var _ = Describe("SnapshotEnvironmentBinding controller", func() {
 			bindingName := HASBindingName + "14"
 			environmentName := "staging" + "14"
 
-			replicas := int32(3)
+			replicas := 3
 
 			createAndFetchSimpleApp(applicationName, HASAppNamespace, DisplayName, Description)
 
@@ -2018,7 +2018,7 @@ var _ = Describe("SnapshotEnvironmentBinding controller", func() {
 						{
 							Name: componentName,
 							Configuration: appstudiov1alpha1.BindingComponentConfiguration{
-								Replicas: int(replicas),
+								Replicas: &replicas,
 								Env: []appstudiov1alpha1.EnvVarPair{
 									{
 										Name:  "FOO",
@@ -2077,7 +2077,7 @@ var _ = Describe("SnapshotEnvironmentBinding controller", func() {
 			bindingName := HASBindingName + "15"
 			environmentName := "staging" + "15"
 
-			replicas := int32(3)
+			replicas := 3
 
 			hasGitopsGeneratedResource := map[string]bool{
 				"deployment-patch.yaml": true,
@@ -2171,7 +2171,7 @@ var _ = Describe("SnapshotEnvironmentBinding controller", func() {
 						{
 							Name: componentName,
 							Configuration: appstudiov1alpha1.BindingComponentConfiguration{
-								Replicas: int(replicas),
+								Replicas: &replicas,
 								Env: []appstudiov1alpha1.EnvVarPair{
 									{
 										Name:  "FOO",
@@ -2244,7 +2244,7 @@ var _ = Describe("SnapshotEnvironmentBinding controller", func() {
 			bindingName := HASBindingName + "16"
 			environmentName := "staging" + "16"
 
-			replicas := int32(3)
+			replicas := 3
 
 			createAndFetchSimpleApp(applicationName, HASAppNamespace, DisplayName, Description)
 
@@ -2344,7 +2344,7 @@ var _ = Describe("SnapshotEnvironmentBinding controller", func() {
 						{
 							Name: componentName,
 							Configuration: appstudiov1alpha1.BindingComponentConfiguration{
-								Replicas: int(replicas),
+								Replicas: &replicas,
 								Env: []appstudiov1alpha1.EnvVarPair{
 									{
 										Name:  "FOO",
@@ -2402,7 +2402,7 @@ var _ = Describe("SnapshotEnvironmentBinding controller", func() {
 			bindingName := HASBindingName + "17"
 			environmentName := "staging" + "17"
 
-			replicas := int32(3)
+			replicas := 3
 
 			hasGitopsGeneratedResource := map[string]bool{
 				"deployment-patch.yaml": true,
@@ -2594,7 +2594,7 @@ schemaVersion: 2.2.0`
 						{
 							Name: componentName,
 							Configuration: appstudiov1alpha1.BindingComponentConfiguration{
-								Replicas: int(replicas),
+								Replicas: &replicas,
 								Env: []appstudiov1alpha1.EnvVarPair{
 									{
 										Name:  "FOO",

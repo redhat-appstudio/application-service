@@ -993,8 +993,8 @@ github.com/prometheus/procfs v0.7.3/go.mod h1:cz+aTbrPOrUb4q7XlbU9ygM+/jj0fzG6c1
 github.com/prometheus/procfs v0.8.0 h1:ODq8ZFEaYeCaZOJlZZdJA2AbQR98dSHSM1KW/You5mo=
 github.com/prometheus/procfs v0.8.0/go.mod h1:z7EfXMXOkbkqb9IINtpCn86r/to3BnA0uaxHdg830/4=
 github.com/prometheus/tsdb v0.7.1/go.mod h1:qhTCs0VvXwvX/y3TZrWD7rabWM+ijKTux40TwIPHuXU=
-github.com/redhat-appstudio/application-api v0.0.0-20230626203819-64362e46f669 h1:xQ4++DnQCKmNu++wPyX3aJrlNafdf7B/5nUKLL4mw84=
-github.com/redhat-appstudio/application-api v0.0.0-20230626203819-64362e46f669/go.mod h1:LpcTNLCDMf1CUNTw2bgTiz8M49sUsN2F9T7bOSKcJEo=
+github.com/redhat-appstudio/application-api v0.0.0-20230704143842-035c661f115f h1:XeHZfA9nZQjLBfjwWo2EvL8TiF3vUZLj7AlY19yTUoM=
+github.com/redhat-appstudio/application-api v0.0.0-20230704143842-035c661f115f/go.mod h1:LpcTNLCDMf1CUNTw2bgTiz8M49sUsN2F9T7bOSKcJEo=
 github.com/redhat-appstudio/service-provider-integration-operator v0.8.3 h1:Q2mzasHJr3PmXjPscUCx6JDH9Ku39Y2h3T53zb5MU0o=
 github.com/redhat-appstudio/service-provider-integration-operator v0.8.3/go.mod h1:o4C4n36pkQhmICnySJyAvmyj/SD97wwvQNkb+Rhiimg=
 github.com/redhat-appstudio/service-provider-integration-scm-file-retriever v0.8.3 h1:w6Z2olvMMBONiFTPHh3lNJTuOvgiRXZTrwOYUt7WTXQ=
