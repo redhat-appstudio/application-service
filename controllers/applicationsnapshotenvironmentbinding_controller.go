@@ -168,6 +168,7 @@ func (r *SnapshotEnvironmentBindingReconciler) Reconcile(ctx context.Context, re
 		if err != nil {
 			log.Error(err, fmt.Sprintf("unable to get the Component %s %v", componentName, req.NamespacedName))
 			r.SetConditionAndUpdateCR(ctx, req, &appSnapshotEnvBinding, err)
+			ioutils.RemoveFolderAndLogError(log, r.AppFS, tempDir)
 			return ctrl.Result{}, err
 		}
 
@@ -179,6 +180,7 @@ func (r *SnapshotEnvironmentBindingReconciler) Reconcile(ctx context.Context, re
 		if hasComponent.Spec.Application != applicationName {
 			err := fmt.Errorf("component %s does not belong to the application %s", componentName, applicationName)
 			log.Error(err, "")
+			ioutils.RemoveFolderAndLogError(log, r.AppFS, tempDir)
 			r.SetConditionAndUpdateCR(ctx, req, &appSnapshotEnvBinding, err)
 			return ctrl.Result{}, err
 		}
@@ -194,6 +196,7 @@ func (r *SnapshotEnvironmentBindingReconciler) Reconcile(ctx context.Context, re
 		if isKubernetesCluster && clusterIngressDomain == "" {
 			err = fmt.Errorf("ingress domain cannot be empty on a Kubernetes cluster")
 			log.Error(err, "unable to create an ingress resource on a Kubernetes cluster")
+			ioutils.RemoveFolderAndLogError(log, r.AppFS, tempDir)
 			r.SetConditionAndUpdateCR(ctx, req, &appSnapshotEnvBinding, err)
 			return ctrl.Result{}, err
 		}
@@ -205,6 +208,7 @@ func (r *SnapshotEnvironmentBindingReconciler) Reconcile(ctx context.Context, re
 		if err != nil {
 			errMsg := fmt.Sprintf("Unable to parse the devfile from Component status, exiting reconcile loop %v", req.NamespacedName)
 			log.Error(err, errMsg)
+			ioutils.RemoveFolderAndLogError(log, r.AppFS, tempDir)
 			r.SetConditionAndUpdateCR(ctx, req, &appSnapshotEnvBinding, fmt.Errorf("%v: %v", errMsg, err))
 			return ctrl.Result{}, err
 		}
@@ -212,6 +216,7 @@ func (r *SnapshotEnvironmentBindingReconciler) Reconcile(ctx context.Context, re
 		deployAssociatedComponents, err := devfileParser.GetDeployComponents(compDevfileData)
 		if err != nil {
 			log.Error(err, "unable to get deploy components")
+			ioutils.RemoveFolderAndLogError(log, r.AppFS, tempDir)
 			r.SetConditionAndUpdateCR(ctx, req, &appSnapshotEnvBinding, err)
 			return ctrl.Result{}, err
 		}
@@ -221,6 +226,7 @@ func (r *SnapshotEnvironmentBindingReconciler) Reconcile(ctx context.Context, re
 			hostname, err = devfile.GetIngressHostName(hasComponent.Name, appSnapshotEnvBinding.Namespace, clusterIngressDomain)
 			if err != nil {
 				log.Error(err, fmt.Sprintf("unable to get generate a host name from an ingress domain for %s %v", hasComponent.Name, req.NamespacedName))
+				ioutils.RemoveFolderAndLogError(log, r.AppFS, tempDir)
 				r.SetConditionAndUpdateCR(ctx, req, &appSnapshotEnvBinding, err)
 				return ctrl.Result{}, err
 			}
@@ -231,6 +237,7 @@ func (r *SnapshotEnvironmentBindingReconciler) Reconcile(ctx context.Context, re
 		kubernetesResources, err := devfile.GetResourceFromDevfile(log, compDevfileData, deployAssociatedComponents, hasComponent.Name, hasComponent.Spec.Application, hasComponent.Spec.ContainerImage, hostname)
 		if err != nil {
 			log.Error(err, "unable to get kubernetes resources from the devfile outerloop components")
+			ioutils.RemoveFolderAndLogError(log, r.AppFS, tempDir)
 			r.SetConditionAndUpdateCR(ctx, req, &appSnapshotEnvBinding, err)
 			return ctrl.Result{}, err
 		}
@@ -269,13 +276,14 @@ func (r *SnapshotEnvironmentBindingReconciler) Reconcile(ctx context.Context, re
 		if imageName == "" {
 			err := fmt.Errorf("application snapshot %s did not reference component %s", snapshotName, componentName)
 			log.Error(err, "")
-			r.SetConditionAndUpdateCR(ctx, req, &appSnapshotEnvBinding, err)
+			ioutils.RemoveFolderAndLogError(log, r.AppFS, tempDir)
 			return ctrl.Result{}, err
 		}
 
 		gitOpsRemoteURL, gitOpsBranch, gitOpsContext, err := util.ProcessGitOpsStatus(hasComponent.Status.GitOps, ghClient.Token)
 		if err != nil {
 			r.SetConditionAndUpdateCR(ctx, req, &appSnapshotEnvBinding, err)
+			ioutils.RemoveFolderAndLogError(log, r.AppFS, tempDir)
 			return ctrl.Result{}, err
 		}
 
@@ -347,7 +355,7 @@ func (r *SnapshotEnvironmentBindingReconciler) Reconcile(ctx context.Context, re
 		err = r.Generator.GenerateOverlaysAndPush(tempDir, clone, gitOpsRemoteURL, genOptions, applicationName, environmentName, imageName, "", r.AppFS, gitOpsBranch, gitOpsContext, true, componentGeneratedResources)
 		if err != nil {
 			log.Error(err, fmt.Sprintf("unable to get generate gitops resources for %s %v", componentName, req.NamespacedName))
-			_ = r.AppFS.RemoveAll(tempDir) // not worried with an err, its a best case attempt to delete the temp clone dir
+			ioutils.RemoveFolderAndLogError(log, r.AppFS, tempDir) // not worried with an err, its a best case attempt to delete the temp clone dir
 			r.SetConditionAndUpdateCR(ctx, req, &appSnapshotEnvBinding, err)
 			return ctrl.Result{}, err
 		}
@@ -360,6 +368,7 @@ func (r *SnapshotEnvironmentBindingReconciler) Reconcile(ctx context.Context, re
 		if commitID, err = r.Generator.GetCommitIDFromRepo(r.AppFS, repoPath); err != nil {
 			//gitops generator errors are sanitized
 			log.Error(err, "")
+			ioutils.RemoveFolderAndLogError(log, r.AppFS, tempDir)
 			r.SetConditionAndUpdateCR(ctx, req, &appSnapshotEnvBinding, err)
 			return ctrl.Result{}, err
 		}
