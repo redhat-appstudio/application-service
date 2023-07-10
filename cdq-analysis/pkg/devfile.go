@@ -26,6 +26,7 @@ import (
 	"github.com/devfile/library/v2/pkg/devfile/parser"
 	"github.com/devfile/library/v2/pkg/devfile/parser/data"
 	"github.com/devfile/library/v2/pkg/devfile/parser/data/v2/common"
+	parserUtil "github.com/devfile/library/v2/pkg/util"
 	"github.com/redhat-appstudio/application-service/pkg/util"
 	"gopkg.in/yaml.v2"
 
@@ -68,6 +69,7 @@ const (
 type DevfileSrc struct {
 	Data string
 	URL  string
+	Path string
 }
 
 // ParseDevfile calls the devfile library's parse and returns the devfile data.
@@ -100,7 +102,8 @@ func ParseDevfile(src DevfileSrc) (data.DevfileData, error) {
 // Map 1 returns a context to the devfile bytes if present.
 // Map 2 returns a context to the matched devfileURL from the devfile registry if no devfile is present in the context.
 // Map 3 returns a context to the dockerfile uri or a matched dockerfileURL from the devfile registry if no dockerfile is present in the context
-func ScanRepo(log logr.Logger, a Alizer, localpath string, devfileRegistryURL string, URL, revision, srcContext string) (map[string][]byte, map[string]string, map[string]string, error) {
+// Map 4 returns a context to the list of ports that were detected by alizer in the source code, at that given context
+func ScanRepo(log logr.Logger, a Alizer, localpath string, devfileRegistryURL string, URL, revision, srcContext string) (map[string][]byte, map[string]string, map[string]string, map[string][]int, error) {
 	return search(log, a, localpath, devfileRegistryURL, URL, revision, srcContext)
 }
 

@@ -36,6 +36,7 @@ func TestAnalyzeAndDetectDevfile(t *testing.T) {
 		registryURL         string
 		wantDevfile         bool
 		wantDevfileEndpoint string
+		wantDetectedPorts   []int
 		wantErr             bool
 	}{
 		{
@@ -91,13 +92,13 @@ func TestAnalyzeAndDetectDevfile(t *testing.T) {
 			wantErr:     true,
 		},
 		{
-			name:                "Successfully detect a devfile from the registry using an alternate branch",
-			clonePath:           "/tmp/java-springboot-basic",
-			repo:                "https://github.com/devfile-samples/devfile-sample-java-springboot-basic",
-			revision:            "testbranch",
+			name:                "Component detected successfully with Port(s) detected",
+			clonePath:           "/tmp/nodejsports-devfile-sample-nodejs-basic",
+			repo:                "https://github.com/devfile-resources/node-express-hello-no-devfile",
 			registryURL:         DevfileStageRegistryEndpoint,
 			wantDevfile:         true,
-			wantDevfileEndpoint: "https://registry.stage.devfile.io/devfiles/java-springboot-basic",
+			wantDevfileEndpoint: "https://raw.githubusercontent.com/nodeshift-starters/devfile-sample/main/devfile.yaml",
+			wantDetectedPorts:   []int{8080},
 		},
 	}
 
@@ -107,7 +108,7 @@ func TestAnalyzeAndDetectDevfile(t *testing.T) {
 			if err != nil {
 				t.Errorf("got unexpected error %v", err)
 			} else {
-				devfileBytes, detectedDevfileEndpoint, _, err := AnalyzeAndDetectDevfile(mockClient, tt.clonePath, tt.registryURL)
+				devfileBytes, detectedDevfileEndpoint, _, detectedPorts, err := AnalyzeAndDetectDevfile(mockClient, tt.clonePath, tt.registryURL)
 				if !tt.wantErr && err != nil {
 					t.Errorf("Unexpected err: %+v", err)
 				} else if tt.wantErr && err == nil {
@@ -116,6 +117,8 @@ func TestAnalyzeAndDetectDevfile(t *testing.T) {
 					t.Errorf("Expected devfile: %+v, Got: %+v, devfile %+v", tt.wantDevfile, len(devfileBytes) > 0, string(devfileBytes))
 				} else if !reflect.DeepEqual(detectedDevfileEndpoint, tt.wantDevfileEndpoint) {
 					t.Errorf("Expected devfile endpoint: %+v, Got: %+v", tt.wantDevfileEndpoint, detectedDevfileEndpoint)
+				} else if !reflect.DeepEqual(detectedPorts, tt.wantDetectedPorts) {
+					t.Errorf("Expected detected ports: %+v, Got: %+v", tt.wantDetectedPorts, detectedPorts)
 				}
 			}
 			os.RemoveAll(tt.clonePath)
