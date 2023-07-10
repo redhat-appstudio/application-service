@@ -63,3 +63,22 @@ func MapToBindingByBoundObjectName(cl client.Client, objectType, label string) f
 		return req
 	}
 }
+
+// MapComponentToApplication returns an event handler that will convert events on a Component CR to events on its parent Application
+func MapComponentToApplication() func(object client.Object) []reconcile.Request {
+	return func(obj client.Object) []reconcile.Request {
+		component := obj.(*appstudiov1alpha1.Component)
+		if component != nil && component.Spec.Application != "" {
+			return []reconcile.Request{
+				{
+					NamespacedName: types.NamespacedName{
+						Namespace: component.Namespace,
+						Name:      component.Spec.Application,
+					},
+				},
+			}
+		}
+		// the obj was not a namespace or it did not have the required label.
+		return []reconcile.Request{}
+	}
+}

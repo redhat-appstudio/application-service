@@ -406,13 +406,6 @@ func (r *ComponentReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 				return ctrl.Result{}, err
 			}
 
-			err = r.updateApplicationDevfileModel(hasAppDevfileData, component)
-			if err != nil {
-				log.Error(err, fmt.Sprintf("Unable to update the HAS Application Devfile model %v", req.NamespacedName))
-				_ = r.SetCreateConditionAndUpdateCR(ctx, req, &component, err)
-				return ctrl.Result{}, err
-			}
-
 			yamlHASCompData, err := yaml.Marshal(compDevfileData)
 			if err != nil {
 				log.Error(err, fmt.Sprintf("Unable to marshall the Component devfile, exiting reconcile loop %v", req.NamespacedName))
@@ -421,23 +414,6 @@ func (r *ComponentReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 			}
 
 			component.Status.Devfile = string(yamlHASCompData)
-
-			// Update the HASApp CR with the new devfile
-			yamlHASAppData, err := yaml.Marshal(hasAppDevfileData)
-			if err != nil {
-				log.Error(err, fmt.Sprintf("Unable to marshall the Application devfile, exiting reconcile loop %v", req.NamespacedName))
-				_ = r.SetCreateConditionAndUpdateCR(ctx, req, &component, err)
-				return ctrl.Result{}, err
-			}
-			hasApplication.Status.Devfile = string(yamlHASAppData)
-			err = r.Status().Update(ctx, &hasApplication)
-			if err != nil {
-				log.Error(err, "Unable to update Application")
-				// if we're unable to update the Application CR, then  we need to err out
-				// since we need to save a reference of the Component in Application
-				_ = r.SetCreateConditionAndUpdateCR(ctx, req, &component, err)
-				return ctrl.Result{}, err
-			}
 
 			// Set the container image in the status
 			component.Status.ContainerImage = component.Spec.ContainerImage
