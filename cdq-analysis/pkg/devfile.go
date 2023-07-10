@@ -27,7 +27,6 @@ import (
 	"github.com/devfile/library/v2/pkg/devfile/parser/data"
 	"github.com/devfile/library/v2/pkg/devfile/parser/data/v2/common"
 	parserUtil "github.com/devfile/library/v2/pkg/util"
-	"github.com/redhat-appstudio/application-service/pkg/util"
 	"gopkg.in/yaml.v2"
 
 	"github.com/go-logr/logr"
@@ -195,7 +194,7 @@ func ValidateDevfile(log logr.Logger, URL string) (shouldIgnoreDevfile bool, dev
 					absoluteURI := strings.HasPrefix(dockerfileURI, "http://") || strings.HasPrefix(dockerfileURI, "https://")
 					if absoluteURI {
 						// image uri
-						_, err = util.CurlEndpoint(dockerfileURI)
+						_, err = CurlEndpoint(dockerfileURI)
 					} else {
 						if devfileSrc.Path != "" {
 							// local devfile src with relative Dockerfile uri
@@ -211,7 +210,7 @@ func ValidateDevfile(log logr.Logger, URL string) (shouldIgnoreDevfile bool, dev
 							}
 							u.Path = path.Join(u.Path, dockerfileURI)
 							dockerfileURI = u.String()
-							_, err = util.CurlEndpoint(dockerfileURI)
+							_, err = CurlEndpoint(dockerfileURI)
 						}
 					}
 					if err != nil {

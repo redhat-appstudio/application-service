@@ -32,7 +32,6 @@ import (
 	data "github.com/devfile/library/v2/pkg/devfile/parser/data"
 	v2 "github.com/devfile/library/v2/pkg/devfile/parser/data/v2"
 	"github.com/go-logr/logr"
-	"github.com/redhat-appstudio/application-service/pkg/util"
 	"gopkg.in/yaml.v2"
 	ctrl "sigs.k8s.io/controller-runtime"
 )
@@ -282,7 +281,7 @@ func TestScanRepo(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			logger = ctrl.Log.WithName("TestScanRepo")
-			err := util.CloneRepo(tt.clonePath, tt.repo, tt.revision, tt.token)
+			err := CloneRepo(tt.clonePath, tt.repo, tt.revision, tt.token)
 			URL := tt.repo
 			if err != nil {
 				t.Errorf("got unexpected error %v", err)

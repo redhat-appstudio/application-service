@@ -95,6 +95,7 @@ language: JavaScript
 		wantDevfilesMap          map[string][]byte
 		wantDevfilesURLMap       map[string]string
 		wantDockerfileContextMap map[string]string
+		wantComponentsPortMap    map[string][]int
 	}{
 		{
 			testCase:            "repo with devfile - should successfully detect spring component",
@@ -107,6 +108,7 @@ language: JavaScript
 			wantDockerfileContextMap: map[string]string{
 				"./": "https://raw.githubusercontent.com/devfile-samples/devfile-sample-java-springboot-basic/main/docker/Dockerfile",
 			},
+			wantComponentsPortMap: map[string][]int{},
 		},
 		{
 			testCase:            "repo without devfile and dockerfile - should successfully detect spring component",
@@ -123,6 +125,7 @@ language: JavaScript
 			wantDockerfileContextMap: map[string]string{
 				"./": "https://raw.githubusercontent.com/devfile-samples/devfile-sample-java-springboot-basic/main/docker/Dockerfile",
 			},
+			wantComponentsPortMap: map[string][]int{},
 		},
 		{
 			testCase:                 "private repo - should error out with no token provided",
@@ -133,6 +136,7 @@ language: JavaScript
 			wantDevfilesMap:          map[string][]byte{},
 			wantDevfilesURLMap:       map[string]string{},
 			wantDockerfileContextMap: map[string]string{},
+			wantComponentsPortMap:    map[string][]int{},
 			wantErr:                  failedToCloneRepoErr,
 		},
 		{
@@ -145,6 +149,7 @@ language: JavaScript
 			wantDevfilesMap:          map[string][]byte{},
 			wantDevfilesURLMap:       map[string]string{},
 			wantDockerfileContextMap: map[string]string{},
+			wantComponentsPortMap:    map[string][]int{},
 			wantErr:                  failedToCloneRepoErr,
 		},
 		{
@@ -171,16 +176,18 @@ language: JavaScript
 				"python-src-docker":           "python-src-docker/Dockerfile",
 				"python-src-none":             "https://raw.githubusercontent.com/devfile-samples/devfile-sample-python-basic/main/docker/Dockerfile",
 			},
+			wantComponentsPortMap: map[string][]int{},
 		},
 		{
-			testCase:            "should successfully detect single component when context is provided",
-			context:             "devfile-sample-nodejs-basic",
-			URL:                 multiComponentRepoURL,
-			DevfileRegistryURL:  DevfileRegistryEndpoint,
-			isDevfilePresent:    true,
-			isDockerfilePresent: false,
-			wantDevfilesMap:     map[string][]byte{},
-			wantDevfilesURLMap:  map[string]string{},
+			testCase:              "should successfully detect single component when context is provided",
+			context:               "devfile-sample-nodejs-basic",
+			URL:                   multiComponentRepoURL,
+			DevfileRegistryURL:    DevfileRegistryEndpoint,
+			isDevfilePresent:      true,
+			isDockerfilePresent:   false,
+			wantDevfilesMap:       map[string][]byte{},
+			wantDevfilesURLMap:    map[string]string{},
+			wantComponentsPortMap: map[string][]int{},
 			wantDockerfileContextMap: map[string]string{
 				"devfile-sample-nodejs-basic": "https://raw.githubusercontent.com/nodeshift-starters/devfile-sample/main/Dockerfile",
 			},
@@ -189,7 +196,7 @@ language: JavaScript
 
 	for _, tt := range tests {
 		t.Run(tt.testCase, func(t *testing.T) {
-			devfilesMap, devfilesURLMap, dockerfileContextMap, err := CloneAndAnalyze(k8sClient, tt.gitToken, namespaceName, compName, tt.context, tt.devfilePath, tt.URL, tt.Revision, tt.DevfileRegistryURL, tt.isDevfilePresent, tt.isDockerfilePresent)
+			devfilesMap, devfilesURLMap, dockerfileContextMap, componentsPortMap, err := CloneAndAnalyze(k8sClient, tt.gitToken, namespaceName, compName, tt.context, tt.devfilePath, tt.URL, tt.Revision, tt.DevfileRegistryURL, tt.isDevfilePresent, tt.isDockerfilePresent)
 			if (err != nil) != (tt.wantErr != "") {
 				t.Errorf("got unexpected error %v", err)
 			} else if err == nil {
@@ -212,6 +219,9 @@ language: JavaScript
 				}
 				if !reflect.DeepEqual(dockerfileContextMap, tt.wantDockerfileContextMap) {
 					t.Errorf("Expected dockerfileContextMap: %+v, Got: %+v", tt.wantDockerfileContextMap, dockerfileContextMap)
+				}
+				if !reflect.DeepEqual(componentsPortMap, tt.wantComponentsPortMap) {
+					t.Errorf("Expected componentsPortMap: %+v, Got: %+v", tt.wantComponentsPortMap, componentsPortMap)
 				}
 			} else if err != nil {
 				assert.Regexp(t, tt.wantErr, err.Error(), "Error message should match")
