@@ -59,7 +59,7 @@ func TestMapToBindingByBoundObject(t *testing.T) {
 	staging := "staging"
 	dev := "dev"
 	prod := "prod"
-	replicas := int32(3)
+	replicas := 3
 
 	// given
 	binding1 := &appstudiov1alpha1.SnapshotEnvironmentBinding{
@@ -83,7 +83,7 @@ func TestMapToBindingByBoundObject(t *testing.T) {
 				{
 					Name: componentName,
 					Configuration: appstudiov1alpha1.BindingComponentConfiguration{
-						Replicas: int(replicas),
+						Replicas: &replicas,
 					},
 				},
 			},
@@ -111,7 +111,7 @@ func TestMapToBindingByBoundObject(t *testing.T) {
 				{
 					Name: componentName2,
 					Configuration: appstudiov1alpha1.BindingComponentConfiguration{
-						Replicas: int(replicas),
+						Replicas: &replicas,
 					},
 				},
 			},
@@ -139,7 +139,7 @@ func TestMapToBindingByBoundObject(t *testing.T) {
 				{
 					Name: componentName,
 					Configuration: appstudiov1alpha1.BindingComponentConfiguration{
-						Replicas: int(replicas),
+						Replicas: &replicas,
 					},
 				},
 			},
@@ -163,7 +163,7 @@ func TestMapToBindingByBoundObject(t *testing.T) {
 				{
 					Name: componentName,
 					Configuration: appstudiov1alpha1.BindingComponentConfiguration{
-						Replicas: int(replicas),
+						Replicas: &replicas,
 					},
 				},
 			},

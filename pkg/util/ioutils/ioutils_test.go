@@ -22,6 +22,8 @@ import (
 
 	"github.com/spf13/afero"
 	"github.com/stretchr/testify/assert"
+	"go.uber.org/zap/zapcore"
+	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 )
 
 func TestIsExisting(t *testing.T) {
@@ -150,6 +152,41 @@ func TestCreateTempPath(t *testing.T) {
 					t.Errorf("TestCreateTempPath unexpected error: %v", err)
 				}
 			}
+		})
+	}
+}
+
+func TestRemoveFolderAndLogError(t *testing.T) {
+	fs := NewFilesystem()
+	inmemoryFs := NewMemoryFilesystem()
+	readOnlyFs := NewReadOnlyFs()
+
+	tests := []struct {
+		name string
+		fs   afero.Afero
+	}{
+		{
+			name: "inmemory fs",
+			fs:   inmemoryFs,
+		},
+		{
+			name: "read only fs",
+			fs:   readOnlyFs,
+		},
+		{
+			name: "local fs",
+			fs:   fs,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			path, _ := CreateTempPath("TestCreateTempPath", tt.fs)
+			log := zap.New(zap.UseFlagOptions(&zap.Options{
+				Development: true,
+				TimeEncoder: zapcore.ISO8601TimeEncoder,
+			}))
+			RemoveFolderAndLogError(log, tt.fs, path)
 		})
 	}
 }
