@@ -158,7 +158,6 @@ func (r *SnapshotEnvironmentBindingReconciler) Reconcile(ctx context.Context, re
 	var tempDir string
 	clone := true
 
-	//appSnapshotEnvBinding.Status.Components = []appstudiov1alpha1.BindingComponentStatus{}
 	for _, component := range components {
 		componentName := component.Name
 
@@ -385,15 +384,15 @@ func (r *SnapshotEnvironmentBindingReconciler) Reconcile(ctx context.Context, re
 			componentStatus.GitOpsRepository.GeneratedResources = componentGeneratedResources[componentName]
 		}
 
-		componentUpdated := false
+		isNewComponent := true
 		for i := range appSnapshotEnvBinding.Status.Components {
 			if appSnapshotEnvBinding.Status.Components[i].Name == componentStatus.Name {
 				appSnapshotEnvBinding.Status.Components[i] = componentStatus
-				componentUpdated = true
+				isNewComponent = false
 				break
 			}
 		}
-		if !componentUpdated {
+		if isNewComponent {
 			appSnapshotEnvBinding.Status.Components = append(appSnapshotEnvBinding.Status.Components, componentStatus)
 		}
 
