@@ -158,7 +158,6 @@ func (r *SnapshotEnvironmentBindingReconciler) Reconcile(ctx context.Context, re
 	var tempDir string
 	clone := true
 
-	appSnapshotEnvBinding.Status.Components = []appstudiov1alpha1.BindingComponentStatus{}
 	for _, component := range components {
 		componentName := component.Name
 
@@ -385,7 +384,17 @@ func (r *SnapshotEnvironmentBindingReconciler) Reconcile(ctx context.Context, re
 			componentStatus.GitOpsRepository.GeneratedResources = componentGeneratedResources[componentName]
 		}
 
-		appSnapshotEnvBinding.Status.Components = append(appSnapshotEnvBinding.Status.Components, componentStatus)
+		isNewComponent := true
+		for i := range appSnapshotEnvBinding.Status.Components {
+			if appSnapshotEnvBinding.Status.Components[i].Name == componentStatus.Name {
+				appSnapshotEnvBinding.Status.Components[i] = componentStatus
+				isNewComponent = false
+				break
+			}
+		}
+		if isNewComponent {
+			appSnapshotEnvBinding.Status.Components = append(appSnapshotEnvBinding.Status.Components, componentStatus)
+		}
 
 		// Set the clone to false, since we dont want to clone the repo again for the other components
 		clone = false
