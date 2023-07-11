@@ -277,6 +277,7 @@ func (r *SnapshotEnvironmentBindingReconciler) Reconcile(ctx context.Context, re
 			err := fmt.Errorf("application snapshot %s did not reference component %s", snapshotName, componentName)
 			log.Error(err, "")
 			ioutils.RemoveFolderAndLogError(log, r.AppFS, tempDir)
+			r.SetConditionAndUpdateCR(ctx, req, &appSnapshotEnvBinding, err)
 			return ctrl.Result{}, err
 		}
 
