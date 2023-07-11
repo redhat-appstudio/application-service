@@ -385,11 +385,16 @@ func (r *SnapshotEnvironmentBindingReconciler) Reconcile(ctx context.Context, re
 			componentStatus.GitOpsRepository.GeneratedResources = componentGeneratedResources[componentName]
 		}
 
+		componentUpdated := false
 		for i := range appSnapshotEnvBinding.Status.Components {
 			if appSnapshotEnvBinding.Status.Components[i].Name == componentStatus.Name {
 				appSnapshotEnvBinding.Status.Components[i] = componentStatus
+				componentUpdated = true
 				break
 			}
+		}
+		if !componentUpdated {
+			appSnapshotEnvBinding.Status.Components = append(appSnapshotEnvBinding.Status.Components, componentStatus)
 		}
 
 		// Set the clone to false, since we dont want to clone the repo again for the other components
