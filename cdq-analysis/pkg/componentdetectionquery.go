@@ -30,9 +30,10 @@ import (
 )
 
 type K8sInfoClient struct {
-	Ctx       context.Context
-	Clientset kubernetes.Interface
-	Log       logr.Logger
+	Ctx          context.Context
+	Clientset    kubernetes.Interface
+	Log          logr.Logger
+	CreateK8sJob bool
 }
 
 // CDQ analyzer
@@ -128,6 +129,10 @@ func CloneAndAnalyze(k K8sInfoClient, gitToken, namespace, name, context, devfil
 
 func (k K8sInfoClient) SendBackDetectionResult(devfilesMap map[string][]byte, devfilesURLMap map[string]string, dockerfileContextMap map[string]string, componentPortsMap map[string][]int, name, namespace string, completeError error) {
 	log := k.Log
+	if !k.CreateK8sJob {
+		log.Info("Skip creating the job...")
+		return
+	}
 	log.Info(fmt.Sprintf("Sending back result, devfilesMap %v,devfilesURLMap %v, dockerfileContextMap %v , error %v ... %v", devfilesMap, devfilesURLMap, dockerfileContextMap, completeError, namespace))
 
 	configMapBinaryData := make(map[string][]byte)

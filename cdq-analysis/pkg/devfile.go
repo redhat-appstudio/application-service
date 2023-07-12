@@ -22,11 +22,13 @@ import (
 	"strings"
 
 	"github.com/devfile/api/v2/pkg/apis/workspaces/v1alpha2"
+	devfileValidation "github.com/devfile/api/v2/pkg/validation"
 	devfilePkg "github.com/devfile/library/v2/pkg/devfile"
 	"github.com/devfile/library/v2/pkg/devfile/parser"
 	"github.com/devfile/library/v2/pkg/devfile/parser/data"
 	"github.com/devfile/library/v2/pkg/devfile/parser/data/v2/common"
 	parserUtil "github.com/devfile/library/v2/pkg/util"
+	"github.com/hashicorp/go-multierror"
 	"gopkg.in/yaml.v2"
 
 	"github.com/go-logr/logr"
@@ -86,6 +88,8 @@ func ParseDevfile(src DevfileSrc) (data.DevfileData, error) {
 		parserArgs.Data = []byte(src.Data)
 	} else if src.URL != "" {
 		parserArgs.URL = src.URL
+	} else if src.Path != "" {
+		parserArgs.Path = src.Path
 	} else {
 		return nil, fmt.Errorf("cannot parse devfile without a src")
 	}
@@ -100,7 +104,7 @@ func ParseDevfile(src DevfileSrc) (data.DevfileData, error) {
 // ScanRepo returns 3 maps and an error:
 // Map 1 returns a context to the devfile bytes if present.
 // Map 2 returns a context to the matched devfileURL from the devfile registry if no devfile is present in the context.
-// Map 3 returns a context to the dockerfile uri or a matched dockerfileURL from the devfile registry if no dockerfile is present in the context
+// Map 3 returns a context to the Dockerfile uri or a matched DockerfileURL from the devfile registry if no Dockerfile/Containerfile is present in the context
 // Map 4 returns a context to the list of ports that were detected by alizer in the source code, at that given context
 func ScanRepo(log logr.Logger, a Alizer, localpath string, devfileRegistryURL string, URL, revision, srcContext string) (map[string][]byte, map[string]string, map[string]string, map[string][]int, error) {
 	return search(log, a, localpath, devfileRegistryURL, URL, revision, srcContext)
@@ -127,8 +131,25 @@ func ValidateDevfile(log logr.Logger, URL string) (shouldIgnoreDevfile bool, dev
 
 	devfileData, err := ParseDevfile(devfileSrc)
 	if err != nil {
-		log.Error(err, fmt.Sprintf("failed to parse the devfile content from %s", URL))
-		return shouldIgnoreDevfile, nil, fmt.Errorf(fmt.Sprintf("err: %v, failed to parse the devfile content from %s", err, URL))
+		var newErr error
+		if merr, ok := err.(*multierror.Error); ok {
+			for i := range merr.Errors {
+				switch merr.Errors[i].(type) {
+				case *devfileValidation.MissingDefaultCmdWarning:
+					log.Info(fmt.Sprintf("devfile is missing default command, found a warning: %v", merr.Errors[i]))
+				default:
+					newErr = multierror.Append(newErr, merr.Errors[i])
+				}
+			}
+		} else {
+			newErr = err
+		}
+		if newErr != nil {
+			if merr, ok := newErr.(*multierror.Error); !ok || len(merr.Errors) != 0 {
+				log.Error(err, fmt.Sprintf("failed to parse the devfile content from %s", URL))
+				return shouldIgnoreDevfile, nil, fmt.Errorf(fmt.Sprintf("err: %v, failed to parse the devfile content from %s", err, URL))
+			}
+		}
 	}
 	deployCompMap, err := parser.GetDeployComponents(devfileData)
 	if err != nil {

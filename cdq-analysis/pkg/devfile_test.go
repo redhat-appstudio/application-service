@@ -403,6 +403,12 @@ func TestValidateDevfile(t *testing.T) {
 			wantErr:    false,
 		},
 		{
+			name:       "devfile.yaml with no outerloop definition and missing command group",
+			url:        "https://raw.githubusercontent.com/yangcao77/missing-cmd-group/main/devfile.yaml",
+			wantIgnore: true,
+			wantErr:    false,
+		},
+		{
 			name:       "should error out with multiple kubernetes components but no deploy command",
 			url:        "https://raw.githubusercontent.com/yangcao77/spring-multi-kubecomps-no-deploycmd/main/devfile.yaml",
 			wantIgnore: false,

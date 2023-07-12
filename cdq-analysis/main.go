@@ -47,6 +47,7 @@ func main() {
 	DevfileRegistryURL := os.Args[8]
 	isDevfilePresent, _ := strconv.ParseBool(os.Args[9])
 	isDockerfilePresent, _ := strconv.ParseBool(os.Args[10])
+	createK8sJob, _ := strconv.ParseBool(os.Args[11])
 
 	ctx := context.Background()
 	config, err := rest.InClusterConfig()
@@ -64,9 +65,10 @@ func main() {
 	ctrl.SetLogger(zap.New(zap.UseFlagOptions(&opts)))
 	log := ctrl.Log.WithName("cdq-analysis").WithName("CloneAndAnalyze")
 	k8sInfoClient := pkg.K8sInfoClient{
-		Ctx:       ctx,
-		Clientset: clientset,
-		Log:       log,
+		Ctx:          ctx,
+		Clientset:    clientset,
+		Log:          log,
+		CreateK8sJob: createK8sJob,
 	}
 	pkg.CloneAndAnalyze(k8sInfoClient, gitToken, namespace, name, contextPath, devfilePath, URL, Revision, DevfileRegistryURL, isDevfilePresent, isDockerfilePresent)
 }

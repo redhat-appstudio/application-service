@@ -62,7 +62,7 @@ func search(log logr.Logger, a Alizer, localpath string, devfileRegistryURL stri
 			isDevfilePresent := false
 			isDockerfilePresent := false
 			curPath := path.Join(localpath, f.Name())
-			context := f.Name()
+			context := path.Join(srcContext, f.Name())
 			files, err := ioutil.ReadDir(curPath)
 			if err != nil {
 				return nil, nil, nil, nil, err
@@ -73,7 +73,7 @@ func search(log logr.Logger, a Alizer, localpath string, devfileRegistryURL stri
 					/* #nosec G304 -- false positive, filename is not based on user input*/
 					devfilePath := path.Join(curPath, f.Name())
 					// Set the proper devfile URL for the detected devfile
-					updatedLink, err := UpdateGitLink(URL, revision, path.Join(srcContext, path.Join(context, f.Name())))
+					updatedLink, err := UpdateGitLink(URL, revision, path.Join(context, f.Name()))
 					if err != nil {
 						return nil, nil, nil, nil, err
 					}
@@ -103,7 +103,7 @@ func search(log logr.Logger, a Alizer, localpath string, devfileRegistryURL stri
 							/* #nosec G304 -- false positive, filename is not based on user input*/
 							devfilePath := path.Join(hiddenDirPath, f.Name())
 							// Set the proper devfile URL for the detected devfile
-							updatedLink, err := UpdateGitLink(URL, revision, path.Join(srcContext, path.Join(context, HiddenDevfileDir, f.Name())))
+							updatedLink, err := UpdateGitLink(URL, revision, path.Join(context, HiddenDevfileDir, f.Name()))
 							if err != nil {
 								return nil, nil, nil, nil, err
 							}

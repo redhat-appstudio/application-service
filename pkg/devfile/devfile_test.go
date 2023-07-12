@@ -4026,6 +4026,12 @@ func TestValidateDevfile(t *testing.T) {
 			wantErr:    true,
 		},
 		{
+			name:       "devfile.yaml with no outerloop definition and missing command group",
+			url:        "https://raw.githubusercontent.com/yangcao77/missing-cmd-group/main/devfile.yaml",
+			wantIgnore: true,
+			wantErr:    false,
+		},
+		{
 			name:       "devfile.yaml should be ignored if no kubernetes components defined",
 			url:        "https://raw.githubusercontent.com/devfile/registry/main/stacks/java-springboot/1.2.0/devfile.yaml",
 			wantIgnore: true,

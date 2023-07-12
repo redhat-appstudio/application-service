@@ -1500,6 +1500,60 @@ var _ = Describe("Component Detection Query controller", func() {
 			})
 		})
 
+		Context("Create Component Detection Query with multi comp repo with no devfiles and context path set", func() {
+			It("Should successfully get the correct devfiles and Dockerfiles", func() {
+				ctx := context.Background()
+
+				queryName := HASCompDetQuery + "multicontext" + "29"
+
+				hasCompDetectionQuery := &appstudiov1alpha1.ComponentDetectionQuery{
+					TypeMeta: metav1.TypeMeta{
+						APIVersion: "appstudio.redhat.com/v1alpha1",
+						Kind:       "ComponentDetectionQuery",
+					},
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      queryName,
+						Namespace: HASNamespace,
+					},
+					Spec: appstudiov1alpha1.ComponentDetectionQuerySpec{
+						GitSource: appstudiov1alpha1.GitSource{
+							URL:     "https://github.com/stuartwdouglas/multi-components-none-path",
+							Context: "context",
+						},
+					},
+				}
+
+				Expect(k8sClient.Create(ctx, hasCompDetectionQuery)).Should(Succeed())
+
+				// Look up the has app resource that was created.
+				// num(conditions) may still be < 1 on the first try, so retry until at least _some_ condition is set
+				hasCompDetQueryLookupKey := types.NamespacedName{Name: queryName, Namespace: HASNamespace}
+				createdHasCompDetectionQuery := &appstudiov1alpha1.ComponentDetectionQuery{}
+				Eventually(func() bool {
+					k8sClient.Get(context.Background(), hasCompDetQueryLookupKey, createdHasCompDetectionQuery)
+					return len(createdHasCompDetectionQuery.Status.Conditions) > 1
+				}, timeout, interval).Should(BeTrue())
+
+				// Make sure the a devfile is detected
+				Expect(len(createdHasCompDetectionQuery.Status.ComponentDetected)).Should(Equal(2))
+
+				for devfileName, devfileDesc := range createdHasCompDetectionQuery.Status.ComponentDetected {
+					Expect(devfileName).Should(Or(ContainSubstring("java-springboot"), ContainSubstring("python")))
+					Expect(devfileDesc.ComponentStub.Source.GitSource.Context).Should(BeElementOf([]string{"context/devfile-sample-java-springboot-basic", "context/devfile-sample-python-basic"}))
+					if strings.Contains(devfileName, "java-springboot") {
+						Expect(devfileDesc.ComponentStub.Source.GitSource.DevfileURL).Should(Equal("https://raw.githubusercontent.com/devfile-samples/devfile-sample-java-springboot-basic/main/devfile.yaml"))
+						Expect(devfileDesc.ComponentStub.Source.GitSource.DockerfileURL).Should(Equal("https://raw.githubusercontent.com/devfile-samples/devfile-sample-java-springboot-basic/main/docker/Dockerfile"))
+					} else if strings.Contains(devfileName, "python") {
+						Expect(devfileDesc.ComponentStub.Source.GitSource.DevfileURL).Should(Equal("https://raw.githubusercontent.com/devfile-samples/devfile-sample-python-basic/main/devfile.yaml"))
+						Expect(devfileDesc.ComponentStub.Source.GitSource.DockerfileURL).Should(Equal("https://raw.githubusercontent.com/devfile-samples/devfile-sample-python-basic/main/docker/Dockerfile"))
+					}
+				}
+
+				// Delete the specified Detection Query resource
+				deleteCompDetQueryCR(hasCompDetQueryLookupKey)
+			})
+		})
+
 		Context("Create Component Detection Query with repo that cannot find and dockerfile or devfile match", func() {
 			It("Should successfully return the CDQ", func() {
 				ctx := context.Background()

@@ -12,6 +12,7 @@ require (
 	github.com/gofri/go-github-ratelimit v1.0.3-0.20230428184158-a500e14de53f
 	github.com/golang/mock v1.6.0
 	github.com/google/go-github/v52 v52.0.1-0.20230514113659-60429b4ba0ba
+	github.com/hashicorp/go-multierror v1.1.1
 	github.com/migueleliasweb/go-github-mock v0.0.17
 	github.com/mitchellh/go-homedir v1.1.0
 	github.com/onsi/ginkgo v1.16.5
@@ -86,7 +87,6 @@ require (
 	github.com/gorilla/mux v1.8.0 // indirect
 	github.com/gregjones/httpcache v0.0.0-20190611155906-901d90724c79 // indirect
 	github.com/hashicorp/errwrap v1.1.0 // indirect
-	github.com/hashicorp/go-multierror v1.1.1 // indirect
 	github.com/hashicorp/go-version v1.6.0 // indirect
 	github.com/hashicorp/logutils v1.0.0 // indirect
 	github.com/imdario/mergo v0.3.15 // indirect

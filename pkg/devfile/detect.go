@@ -47,7 +47,6 @@ type AlizerClient struct {
 // Map 3 returns a context to the Dockerfile uri or a matched DockerfileURL from the devfile registry if no Dockerfile is present in the context
 // Map 4 returns a context to the list of ports that were detected by alizer in the source code, at that given context
 func search(log logr.Logger, a Alizer, localpath string, devfileRegistryURL string, source appstudiov1alpha1.GitSource) (map[string][]byte, map[string]string, map[string]string, map[string][]int, error) {
-
 	devfileMapFromRepo := make(map[string][]byte)
 	devfilesURLMapFromRepo := make(map[string]string)
 	dockerfileContextMapFromRepo := make(map[string]string)
@@ -63,7 +62,8 @@ func search(log logr.Logger, a Alizer, localpath string, devfileRegistryURL stri
 			isDevfilePresent := false
 			isDockerfilePresent := false
 			curPath := path.Join(localpath, f.Name())
-			context := f.Name()
+			dirName := f.Name()
+			context := path.Join(source.Context, f.Name())
 			files, err := ioutil.ReadDir(curPath)
 			if err != nil {
 				return nil, nil, nil, nil, err
@@ -74,7 +74,7 @@ func search(log logr.Logger, a Alizer, localpath string, devfileRegistryURL stri
 					/* #nosec G304 -- false positive, filename is not based on user input*/
 					devfilePath := path.Join(curPath, f.Name())
 					// Set the proper devfile URL for the detected devfile
-					updatedLink, err := UpdateGitLink(source.URL, source.Revision, path.Join(source.Context, path.Join(context, f.Name())))
+					updatedLink, err := UpdateGitLink(source.URL, source.Revision, path.Join(source.Context, path.Join(dirName, f.Name())))
 					if err != nil {
 						return nil, nil, nil, nil, err
 					}
@@ -105,7 +105,7 @@ func search(log logr.Logger, a Alizer, localpath string, devfileRegistryURL stri
 							devfilePath := path.Join(hiddenDirPath, f.Name())
 
 							// Set the proper devfile URL for the detected devfile
-							updatedLink, err := UpdateGitLink(source.URL, source.Revision, path.Join(source.Context, path.Join(context, HiddenDevfileDir, f.Name())))
+							updatedLink, err := UpdateGitLink(source.URL, source.Revision, path.Join(source.Context, path.Join(dirName, HiddenDevfileDir, f.Name())))
 							if err != nil {
 								return nil, nil, nil, nil, err
 							}
