@@ -174,6 +174,29 @@ func (r *ApplicationReconciler) Reconcile(ctx context.Context, req ctrl.Request)
 			r.SetCreateConditionAndUpdateCR(ctx, req, &application, err)
 			return reconcile.Result{}, err
 		}
+
+		// Find all components owned by the application
+		var components []appstudiov1alpha1.Component
+		var componentList appstudiov1alpha1.ComponentList
+		err = r.Client.List(ctx, &componentList, &client.ListOptions{
+			Namespace: req.NamespacedName.Namespace,
+		})
+		if err != nil {
+			log.Error(err, fmt.Sprintf("Unable to convert Application CR to devfile, exiting reconcile loop %v", req.NamespacedName))
+			return reconcile.Result{}, err
+		}
+
+		for _, component := range componentList.Items {
+			if component.Spec.Application == application.GetName() {
+				components = append(components, component)
+			}
+		}
+
+		err = r.addComponentsToApplicationDevfileModel(devfileData, components)
+		if err != nil {
+			return reconcile.Result{}, err
+		}
+
 		yamlData, err := yaml.Marshal(devfileData)
 		if err != nil {
 			log.Error(err, fmt.Sprintf("Unable to marshall Application devfile, exiting reconcile loop %v", req.NamespacedName))
