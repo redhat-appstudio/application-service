@@ -86,6 +86,7 @@ func (r *ComponentReconciler) Finalize(ctx context.Context, component *appstudio
 	//Gitops functions return sanitized error messages
 	err = r.Generator.GitRemoveComponent(tempDir, gitOpsURL, component.Name, gitOpsBranch, gitOpsContext)
 	if err != nil {
+		ioutils.RemoveFolderAndLogError(r.Log, r.AppFS, tempDir)
 		return err
 	}
 

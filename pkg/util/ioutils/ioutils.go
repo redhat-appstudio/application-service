@@ -61,8 +61,10 @@ func CreateTempPath(prefix string, appFs afero.Afero) (string, error) {
 // RemoveFolderAndLogError removes the specified folder. If the delete fails, no error is returned, but an error is logged
 // Used in cases where we're cleaning up after encountering an error, but want to return the original error instead.
 func RemoveFolderAndLogError(log logr.Logger, fs afero.Fs, path string) {
-	err := fs.RemoveAll(path)
-	if err != nil {
-		log.Error(err, fmt.Sprintf("Unable to delete folder %s", path))
+	if path != "" {
+		err := fs.RemoveAll(path)
+		if err != nil {
+			log.Error(err, fmt.Sprintf("Unable to delete folder %s", path))
+		}
 	}
 }

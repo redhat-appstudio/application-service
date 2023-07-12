@@ -164,6 +164,7 @@ func TestRemoveFolderAndLogError(t *testing.T) {
 	tests := []struct {
 		name string
 		fs   afero.Afero
+		path string
 	}{
 		{
 			name: "inmemory fs",
@@ -172,21 +173,29 @@ func TestRemoveFolderAndLogError(t *testing.T) {
 		{
 			name: "read only fs",
 			fs:   readOnlyFs,
+			path: "/somepath",
 		},
 		{
 			name: "local fs",
 			fs:   fs,
 		},
+		{
+			name: "empty path",
+			fs:   fs,
+			path: "",
+		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			path, _ := CreateTempPath("TestCreateTempPath", tt.fs)
+			if tt.path == "" && tt.name != "empty path" {
+				tt.path, _ = CreateTempPath("TestCreateTempPath", tt.fs)
+			}
 			log := zap.New(zap.UseFlagOptions(&zap.Options{
 				Development: true,
 				TimeEncoder: zapcore.ISO8601TimeEncoder,
 			}))
-			RemoveFolderAndLogError(log, tt.fs, path)
+			RemoveFolderAndLogError(log, tt.fs, tt.path)
 		})
 	}
 }
