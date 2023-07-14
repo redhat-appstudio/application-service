@@ -3,7 +3,6 @@ module github.com/redhat-appstudio/application-service/cdq-analysis
 go 1.18
 
 require (
-	github.com/devfile/api v0.0.0-20201222180101-071eecafa93c
 	github.com/devfile/api/v2 v2.2.1-alpha.0.20230413012049-a6c32fca0dbd
 	github.com/devfile/library v1.2.1-0.20220308191614-f0f7e11b17de
 	github.com/devfile/library/v2 v2.2.1-0.20230418160146-e75481b7eebd
