@@ -30,31 +30,3 @@ func (e *NoFileFound) Error() string {
 	}
 	return errMsg
 }
-
-// NoDevfileFound returns an error if no devfile was found
-type NoDevfileFound struct {
-	Location string
-	Err      error
-}
-
-func (e *NoDevfileFound) Error() string {
-	errMsg := fmt.Sprintf("unable to find devfile in the specified location %s", e.Location)
-	if e.Err != nil {
-		errMsg = fmt.Sprintf("%s due to %v", errMsg, e.Err)
-	}
-	return errMsg
-}
-
-// NoDockerfileFound returns an error if no Dockerfile was found
-type NoDockerfileFound struct {
-	Location string
-	Err      error
-}
-
-func (e *NoDockerfileFound) Error() string {
-	errMsg := fmt.Sprintf("unable to find Dockerfile in the specified location %s", e.Location)
-	if e.Err != nil {
-		errMsg = fmt.Sprintf("%s due to %v", errMsg, e.Err)
-	}
-	return errMsg
-}

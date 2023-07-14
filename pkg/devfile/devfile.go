@@ -26,6 +26,7 @@ import (
 	parser "github.com/devfile/library/v2/pkg/devfile/parser"
 	data "github.com/devfile/library/v2/pkg/devfile/parser/data"
 	"github.com/devfile/library/v2/pkg/devfile/parser/data/v2/common"
+	cdqanalysis "github.com/redhat-appstudio/application-service/cdq-analysis/pkg"
 	"golang.org/x/exp/maps"
 
 	appstudiov1alpha1 "github.com/redhat-appstudio/application-api/api/v1alpha1"
@@ -42,38 +43,6 @@ import (
 
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"sigs.k8s.io/yaml"
-)
-
-const (
-	DevfileName       = "devfile.yaml"
-	HiddenDevfileName = ".devfile.yaml"
-	HiddenDevfileDir  = ".devfile"
-	DockerfileName    = "Dockerfile"
-	ContainerfileName = "Containerfile"
-	HiddenDockerDir   = ".docker"
-	DockerDir         = "docker"
-	BuildDir          = "build"
-
-	Devfile                = DevfileName                                // devfile.yaml
-	HiddenDevfile          = HiddenDevfileName                          // .devfile.yaml
-	HiddenDirDevfile       = HiddenDevfileDir + "/" + DevfileName       // .devfile/devfile.yaml
-	HiddenDirHiddenDevfile = HiddenDevfileDir + "/" + HiddenDevfileName // .devfile/.devfile.yaml
-
-	Dockerfile          = DockerfileName                         // Dockerfile
-	HiddenDirDockerfile = HiddenDockerDir + "/" + DockerfileName // .docker/Dockerfile
-	DockerDirDockerfile = DockerDir + "/" + DockerfileName       // docker/Dockerfile
-	BuildDirDockerfile  = BuildDir + "/" + DockerfileName        // build/Dockerfile
-
-	Containerfile          = ContainerfileName                         // Containerfile
-	HiddenDirContainerfile = HiddenDockerDir + "/" + ContainerfileName // .docker/Containerfile
-	DockerDirContainerfile = DockerDir + "/" + ContainerfileName       // docker/Containerfile
-	BuildDirContainerfile  = BuildDir + "/" + ContainerfileName        // build/Containerfile
-
-	// DevfileRegistryEndpoint is the endpoint of the devfile registry
-	DevfileRegistryEndpoint = "https://registry.devfile.io"
-
-	// DevfileStageRegistryEndpoint is the endpoint of the staging devfile registry
-	DevfileStageRegistryEndpoint = "https://registry.stage.devfile.io"
 )
 
 func GetResourceFromDevfile(log logr.Logger, devfileData data.DevfileData, deployAssociatedComponents map[string]string, compName, appName, image, hostname string) (parser.KubernetesResources, error) {
@@ -755,7 +724,7 @@ func getMatchLabel(name string) map[string]string {
 func FindAndDownloadDevfile(dir string) ([]byte, string, error) {
 	var devfileBytes []byte
 	var err error
-	validDevfileLocations := []string{Devfile, HiddenDevfile, HiddenDirDevfile, HiddenDirHiddenDevfile}
+	validDevfileLocations := []string{cdqanalysis.Devfile, cdqanalysis.HiddenDevfile, cdqanalysis.HiddenDirDevfile, cdqanalysis.HiddenDirHiddenDevfile}
 
 	for _, path := range validDevfileLocations {
 		devfilePath := dir + "/" + path
@@ -766,7 +735,7 @@ func FindAndDownloadDevfile(dir string) ([]byte, string, error) {
 		}
 	}
 
-	return nil, "", &NoDevfileFound{Location: dir}
+	return nil, "", &cdqanalysis.NoDevfileFound{Location: dir}
 }
 
 // FindAndDownloadDockerfile downloads Dockerfile from the various possible Dockerfile, or Containerfile locations in dir and returns the contents and its context
@@ -774,8 +743,8 @@ func FindAndDownloadDockerfile(dir string) ([]byte, string, error) {
 	var dockerfileBytes []byte
 	var err error
 	// Containerfile is an alternate name for Dockerfile
-	validDockerfileLocations := []string{Dockerfile, DockerDirDockerfile, HiddenDirDockerfile, BuildDirDockerfile,
-		Containerfile, DockerDirContainerfile, HiddenDirContainerfile, BuildDirContainerfile}
+	validDockerfileLocations := []string{cdqanalysis.Dockerfile, cdqanalysis.DockerDirDockerfile, cdqanalysis.HiddenDirDockerfile, cdqanalysis.BuildDirDockerfile,
+		cdqanalysis.Containerfile, cdqanalysis.DockerDirContainerfile, cdqanalysis.HiddenDirContainerfile, cdqanalysis.BuildDirContainerfile}
 
 	for _, path := range validDockerfileLocations {
 		dockerfilePath := dir + "/" + path
@@ -786,7 +755,7 @@ func FindAndDownloadDockerfile(dir string) ([]byte, string, error) {
 		}
 	}
 
-	return nil, "", &NoDockerfileFound{Location: dir}
+	return nil, "", &cdqanalysis.NoDockerfileFound{Location: dir}
 }
 
 // DownloadFile downloads the specified file
