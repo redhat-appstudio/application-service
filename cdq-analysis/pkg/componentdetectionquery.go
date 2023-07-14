@@ -38,7 +38,7 @@ type K8sInfoClient struct {
 
 // CDQ analyzer
 // return values are for testing purpose
-func CloneAndAnalyze(k K8sInfoClient, gitToken, namespace, name, context, devfilePath, URL, Revision, DevfileRegistryURL string, isDevfilePresent, isDockerfilePresent bool) (map[string][]byte, map[string]string, map[string]string, map[string][]int, error) {
+func CloneAndAnalyze(k K8sInfoClient, gitToken, namespace, name, context, devfilePath, dockerfilePath, URL, Revision, DevfileRegistryURL string, isDevfilePresent, isDockerfilePresent bool) (map[string][]byte, map[string]string, map[string]string, map[string][]int, error) {
 	log := k.Log
 	var clonePath, componentPath string
 	alizerClient := AlizerClient{}
@@ -55,6 +55,31 @@ func CloneAndAnalyze(k K8sInfoClient, gitToken, namespace, name, context, devfil
 	}
 
 	isMultiComponent := false
+	if isDevfilePresent {
+		updatedLink, err := UpdateGitLink(URL, Revision, path.Join(context, devfilePath))
+		if err != nil {
+			log.Error(err, fmt.Sprintf("Unable to update the devfile link for CDQ %v... %v", name, namespace))
+			k.SendBackDetectionResult(devfilesMap, devfilesURLMap, dockerfileContextMap, componentPortsMap, name, namespace, err)
+			return nil, nil, nil, nil, err
+		}
+		shouldIgnoreDevfile, devfileBytes, err := ValidateDevfile(log, updatedLink)
+		if err != nil {
+			k.SendBackDetectionResult(devfilesMap, devfilesURLMap, dockerfileContextMap, componentPortsMap, name, namespace, err)
+			return nil, nil, nil, nil, err
+		}
+		if shouldIgnoreDevfile {
+			isDevfilePresent = false
+		} else {
+			log.Info(fmt.Sprintf("Found a devfile, devfile to be analyzed to see if a Dockerfile is referenced for CDQ %v...%v", name, namespace))
+			devfilesMap[context] = devfileBytes
+			devfilesURLMap[context] = updatedLink
+		}
+	}
+	// recheck if devfile presents, since the devfile may need to be ignored after validation
+	if !isDevfilePresent && isDockerfilePresent {
+		log.Info(fmt.Sprintf("Determined that this is a Dockerfile only component for cdq %v... %v", name, namespace))
+		dockerfileContextMap[context] = dockerfilePath
+	}
 
 	clonePath, err = CreateTempPath(name, Fs)
 	if err != nil {

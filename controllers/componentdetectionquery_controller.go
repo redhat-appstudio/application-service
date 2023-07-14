@@ -53,7 +53,7 @@ type ComponentDetectionQueryReconciler struct {
 	client.Client
 	Scheme             *runtime.Scheme
 	SPIClient          spi.SPI
-	AlizerClient       devfile.Alizer
+	AlizerClient       cdqanalysis.Alizer
 	Log                logr.Logger
 	GitHubTokenClient  github.GitHubToken
 	DevfileRegistryURL string
@@ -211,37 +211,12 @@ func (r *ComponentDetectionQueryReconciler) Reconcile(ctx context.Context, req c
 
 			isDevfilePresent = len(devfileBytes) != 0
 			isDockerfilePresent = len(dockerfileBytes) != 0
-			if isDevfilePresent {
-				updatedLink, err := devfile.UpdateGitLink(source.URL, source.Revision, path.Join(context, devfilePath))
-				if err != nil {
-					log.Error(err, fmt.Sprintf("Unable to update the devfile link %v", req.NamespacedName))
-					r.SetCompleteConditionAndUpdateCR(ctx, req, &componentDetectionQuery, copiedCDQ, err)
-					return ctrl.Result{}, nil
-				}
-				shouldIgnoreDevfile, devfileBytes, err := devfile.ValidateDevfile(log, updatedLink)
-				if err != nil {
-					r.SetCompleteConditionAndUpdateCR(ctx, req, &componentDetectionQuery, copiedCDQ, err)
-					return ctrl.Result{}, nil
-				}
-				if shouldIgnoreDevfile {
-					isDevfilePresent = false
-				} else {
-					log.Info(fmt.Sprintf("Found a devfile, devfile to be analyzed to see if a Dockerfile is referenced %v", req.NamespacedName))
-					devfilesMap[context] = devfileBytes
-					devfilesURLMap[context] = updatedLink
-				}
-			}
-			// recheck if devfile presents, since the devfile may need to be ignored after validation
-			if !isDevfilePresent && isDockerfilePresent {
-				log.Info(fmt.Sprintf("Determined that this is a Dockerfile only component  %v", req.NamespacedName))
-				dockerfileContextMap[context] = dockerfilePath
-			}
 			k8sInfoClient := cdqanalysis.K8sInfoClient{
 				Log:          log,
 				CreateK8sJob: false,
 			}
 
-			devfilesMapReturned, devfilesURLMapReturned, dockerfileContextMapReturned, componentPortsMapReturned, err := cdqanalysis.CloneAndAnalyze(k8sInfoClient, gitToken, req.Namespace, req.Name, context, devfilePath, source.URL, source.Revision, r.DevfileRegistryURL, isDevfilePresent, isDockerfilePresent)
+			devfilesMapReturned, devfilesURLMapReturned, dockerfileContextMapReturned, componentPortsMapReturned, err := cdqanalysis.CloneAndAnalyze(k8sInfoClient, gitToken, req.Namespace, req.Name, context, devfilePath, dockerfilePath, source.URL, source.Revision, r.DevfileRegistryURL, isDevfilePresent, isDockerfilePresent)
 			if err != nil {
 				log.Error(err, fmt.Sprintf("Error running cdq analysis... %v", req.NamespacedName))
 				r.SetCompleteConditionAndUpdateCR(ctx, req, &componentDetectionQuery, copiedCDQ, err)
@@ -255,7 +230,7 @@ func (r *ComponentDetectionQueryReconciler) Reconcile(ctx context.Context, req c
 		} else {
 			log.Info(fmt.Sprintf("devfile was explicitly specified at %s %v", source.DevfileURL, req.NamespacedName))
 
-			shouldIgnoreDevfile, devfileBytes, err := devfile.ValidateDevfile(log, source.DevfileURL)
+			shouldIgnoreDevfile, devfileBytes, err := cdqanalysis.ValidateDevfile(log, source.DevfileURL)
 			if err != nil {
 				// if a direct devfileURL is provided and errors out, we dont do an alizer detection
 				log.Error(err, fmt.Sprintf("Unable to GET %s, exiting reconcile loop %v", source.DevfileURL, req.NamespacedName))
@@ -287,7 +262,7 @@ func (r *ComponentDetectionQueryReconciler) Reconcile(ctx context.Context, req c
 
 		for context := range devfilesMap {
 			if _, ok := devfilesURLMap[context]; !ok {
-				updatedLink, err := devfile.UpdateGitLink(source.URL, source.Revision, path.Join(context, devfilePath))
+				updatedLink, err := cdqanalysis.UpdateGitLink(source.URL, source.Revision, path.Join(context, devfilePath))
 				if err != nil {
 					log.Error(err, fmt.Sprintf("Unable to update the devfile link %v", req.NamespacedName))
 					r.SetCompleteConditionAndUpdateCR(ctx, req, &componentDetectionQuery, copiedCDQ, err)

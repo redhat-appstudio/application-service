@@ -23,7 +23,7 @@ import (
 
 	"github.com/prometheus/client_golang/prometheus"
 	appstudiov1alpha1 "github.com/redhat-appstudio/application-api/api/v1alpha1"
-	devfile "github.com/redhat-appstudio/application-service/pkg/devfile"
+	cdqanalysis "github.com/redhat-appstudio/application-service/cdq-analysis/pkg"
 	github "github.com/redhat-appstudio/application-service/pkg/github"
 	"github.com/redhat-appstudio/application-service/pkg/metrics"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -50,10 +50,10 @@ func (r *ApplicationReconciler) AddFinalizer(ctx context.Context, application *a
 // Finalize deletes the corresponding GitOps repo for the given Application CR.
 func (r *ApplicationReconciler) Finalize(ctx context.Context, application *appstudiov1alpha1.Application, ghClient *github.GitHubClient) error {
 	// Get the GitOps repository URL
-	devfileSrc := devfile.DevfileSrc{
+	devfileSrc := cdqanalysis.DevfileSrc{
 		Data: application.Status.Devfile,
 	}
-	devfileObj, err := devfile.ParseDevfile(devfileSrc)
+	devfileObj, err := cdqanalysis.ParseDevfile(devfileSrc)
 	if err != nil {
 		return err
 	}

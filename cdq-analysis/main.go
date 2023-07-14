@@ -42,12 +42,13 @@ func main() {
 	name := os.Args[3]
 	contextPath := os.Args[4]
 	devfilePath := os.Args[5]
-	URL := os.Args[6]
-	Revision := os.Args[7]
-	DevfileRegistryURL := os.Args[8]
-	isDevfilePresent, _ := strconv.ParseBool(os.Args[9])
-	isDockerfilePresent, _ := strconv.ParseBool(os.Args[10])
-	createK8sJob, _ := strconv.ParseBool(os.Args[11])
+	dockerfilePath := os.Args[6]
+	URL := os.Args[7]
+	Revision := os.Args[8]
+	DevfileRegistryURL := os.Args[9]
+	isDevfilePresent, _ := strconv.ParseBool(os.Args[10])
+	isDockerfilePresent, _ := strconv.ParseBool(os.Args[11])
+	createK8sJob, _ := strconv.ParseBool(os.Args[12])
 
 	ctx := context.Background()
 	config, err := rest.InClusterConfig()
@@ -70,5 +71,5 @@ func main() {
 		Log:          log,
 		CreateK8sJob: createK8sJob,
 	}
-	pkg.CloneAndAnalyze(k8sInfoClient, gitToken, namespace, name, contextPath, devfilePath, URL, Revision, DevfileRegistryURL, isDevfilePresent, isDockerfilePresent)
+	pkg.CloneAndAnalyze(k8sInfoClient, gitToken, namespace, name, contextPath, devfilePath, dockerfilePath, URL, Revision, DevfileRegistryURL, isDevfilePresent, isDockerfilePresent)
 }

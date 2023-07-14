@@ -196,7 +196,7 @@ language: JavaScript
 
 	for _, tt := range tests {
 		t.Run(tt.testCase, func(t *testing.T) {
-			devfilesMap, devfilesURLMap, dockerfileContextMap, componentsPortMap, err := CloneAndAnalyze(k8sClient, tt.gitToken, namespaceName, compName, tt.context, tt.devfilePath, tt.URL, tt.Revision, tt.DevfileRegistryURL, tt.isDevfilePresent, tt.isDockerfilePresent)
+			devfilesMap, devfilesURLMap, dockerfileContextMap, componentsPortMap, err := CloneAndAnalyze(k8sClient, tt.gitToken, namespaceName, compName, tt.context, tt.devfilePath, "", tt.URL, tt.Revision, tt.DevfileRegistryURL, tt.isDevfilePresent, tt.isDockerfilePresent)
 			if (err != nil) != (tt.wantErr != "") {
 				t.Errorf("got unexpected error %v", err)
 			} else if err == nil {

@@ -28,10 +28,9 @@ import (
 	"github.com/devfile/library/v2/pkg/devfile/parser/data"
 	"github.com/devfile/library/v2/pkg/devfile/parser/data/v2/common"
 	parserUtil "github.com/devfile/library/v2/pkg/util"
+	"github.com/go-logr/logr"
 	"github.com/hashicorp/go-multierror"
 	"gopkg.in/yaml.v2"
-
-	"github.com/go-logr/logr"
 )
 
 const (
@@ -65,38 +64,6 @@ const (
 	// DevfileStageRegistryEndpoint is the endpoint of the staging devfile registry
 	DevfileStageRegistryEndpoint = "https://registry.stage.devfile.io"
 )
-
-// DevfileSrc specifies the src of the Devfile
-type DevfileSrc struct {
-	Data string
-	URL  string
-	Path string
-}
-
-// ParseDevfile calls the devfile library's parse and returns the devfile data.
-// Provide either a Data src or the URL src
-func ParseDevfile(src DevfileSrc) (data.DevfileData, error) {
-
-	httpTimeout := 10
-	convert := true
-	parserArgs := parser.ParserArgs{
-		HTTPTimeout:                   &httpTimeout,
-		ConvertKubernetesContentInUri: &convert,
-	}
-
-	if src.Data != "" {
-		parserArgs.Data = []byte(src.Data)
-	} else if src.URL != "" {
-		parserArgs.URL = src.URL
-	} else if src.Path != "" {
-		parserArgs.Path = src.Path
-	} else {
-		return nil, fmt.Errorf("cannot parse devfile without a src")
-	}
-
-	devfileObj, _, err := devfilePkg.ParseDevfileAndValidate(parserArgs)
-	return devfileObj.Data, err
-}
 
 // ScanRepo attempts to read and return devfiles and dockerfiles from the local path upto the specified depth
 // Iterate through each sub-folder under first level, and scan for component. (devfile, dockerfile, then Alizer)
@@ -254,4 +221,36 @@ func ValidateDevfile(log logr.Logger, URL string) (shouldIgnoreDevfile bool, dev
 	}
 
 	return shouldIgnoreDevfile, devfileBytes, nil
+}
+
+// DevfileSrc specifies the src of the Devfile
+type DevfileSrc struct {
+	Data string
+	URL  string
+	Path string
+}
+
+// ParseDevfile calls the devfile library's parse and returns the devfile data.
+// Provide either a Data src or the URL src
+func ParseDevfile(src DevfileSrc) (data.DevfileData, error) {
+
+	httpTimeout := 10
+	convert := true
+	parserArgs := parser.ParserArgs{
+		HTTPTimeout:                   &httpTimeout,
+		ConvertKubernetesContentInUri: &convert,
+	}
+
+	if src.Data != "" {
+		parserArgs.Data = []byte(src.Data)
+	} else if src.URL != "" {
+		parserArgs.URL = src.URL
+	} else if src.Path != "" {
+		parserArgs.Path = src.Path
+	} else {
+		return nil, fmt.Errorf("cannot parse devfile without a src")
+	}
+
+	devfileObj, _, err := devfilePkg.ParseDevfileAndValidate(parserArgs)
+	return devfileObj.Data, err
 }

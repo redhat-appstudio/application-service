@@ -25,6 +25,7 @@ import (
 	"time"
 
 	"github.com/prometheus/client_golang/prometheus"
+	cdqanalysis "github.com/redhat-appstudio/application-service/cdq-analysis/pkg"
 	"github.com/redhat-appstudio/application-service/pkg/metrics"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -185,10 +186,10 @@ func (r *ComponentReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 		if condition.Type == "GitOpsResourcesGenerated" && condition.Reason == "GenerateError" && condition.Status == metav1.ConditionFalse {
 			log.Info(fmt.Sprintf("Re-attempting GitOps generation for %s", component.Name))
 			// Parse the Component Devfile
-			devfileSrc := devfile.DevfileSrc{
+			devfileSrc := cdqanalysis.DevfileSrc{
 				Data: component.Status.Devfile,
 			}
-			compDevfileData, err := devfile.ParseDevfile(devfileSrc)
+			compDevfileData, err := cdqanalysis.ParseDevfile(devfileSrc)
 			if err != nil {
 				errMsg := fmt.Sprintf("Unable to parse the devfile from Component status and re-attempt GitOps generation, exiting reconcile loop %v", req.NamespacedName)
 				log.Error(err, errMsg)
@@ -365,10 +366,10 @@ func (r *ComponentReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 
 		if devfileLocation != "" {
 			// Parse the Component Devfile
-			devfileSrc := devfile.DevfileSrc{
+			devfileSrc := cdqanalysis.DevfileSrc{
 				URL: devfileLocation,
 			}
-			compDevfileData, err = devfile.ParseDevfile(devfileSrc)
+			compDevfileData, err = cdqanalysis.ParseDevfile(devfileSrc)
 			if err != nil {
 				log.Error(err, fmt.Sprintf("Unable to parse the devfile from Component devfile location, exiting reconcile loop %v", req.NamespacedName))
 				_ = r.SetCreateConditionAndUpdateCR(ctx, req, &component, err)
@@ -376,10 +377,10 @@ func (r *ComponentReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 			}
 		} else {
 			// Parse the Component Devfile
-			devfileSrc := devfile.DevfileSrc{
+			devfileSrc := cdqanalysis.DevfileSrc{
 				Data: string(devfileBytes),
 			}
-			compDevfileData, err = devfile.ParseDevfile(devfileSrc)
+			compDevfileData, err = cdqanalysis.ParseDevfile(devfileSrc)
 			if err != nil {
 				log.Error(err, fmt.Sprintf("Unable to parse the devfile from Component, exiting reconcile loop %v", req.NamespacedName))
 				_ = r.SetCreateConditionAndUpdateCR(ctx, req, &component, err)
@@ -396,10 +397,10 @@ func (r *ComponentReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 
 		if hasApplication.Status.Devfile != "" {
 			// Get the devfile of the hasApp CR
-			devfileSrc := devfile.DevfileSrc{
+			devfileSrc := cdqanalysis.DevfileSrc{
 				Data: hasApplication.Status.Devfile,
 			}
-			hasAppDevfileData, err := devfile.ParseDevfile(devfileSrc)
+			hasAppDevfileData, err := cdqanalysis.ParseDevfile(devfileSrc)
 			if err != nil {
 				log.Error(err, fmt.Sprintf("Unable to parse the devfile from Application, exiting reconcile loop %v", req.NamespacedName))
 				_ = r.SetCreateConditionAndUpdateCR(ctx, req, &component, err)
@@ -477,10 +478,10 @@ func (r *ComponentReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 		log.Info(fmt.Sprintf("Checking if the Component has been updated %v", req.NamespacedName))
 
 		// Parse the Component Devfile
-		devfileSrc := devfile.DevfileSrc{
+		devfileSrc := cdqanalysis.DevfileSrc{
 			Data: component.Status.Devfile,
 		}
-		hasCompDevfileData, err := devfile.ParseDevfile(devfileSrc)
+		hasCompDevfileData, err := cdqanalysis.ParseDevfile(devfileSrc)
 		if err != nil {
 			log.Error(err, fmt.Sprintf("Unable to parse the devfile from Component status, exiting reconcile loop %v", req.NamespacedName))
 			_ = r.SetUpdateConditionAndUpdateCR(ctx, req, &component, err)
@@ -495,10 +496,10 @@ func (r *ComponentReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 		}
 
 		// Read the devfile again to compare it with any updates
-		devfileSrc = devfile.DevfileSrc{
+		devfileSrc = cdqanalysis.DevfileSrc{
 			Data: component.Status.Devfile,
 		}
-		oldCompDevfileData, err := devfile.ParseDevfile(devfileSrc)
+		oldCompDevfileData, err := cdqanalysis.ParseDevfile(devfileSrc)
 		if err != nil {
 			log.Error(err, fmt.Sprintf("Unable to parse the devfile from Component status, exiting reconcile loop %v", req.NamespacedName))
 			_ = r.SetUpdateConditionAndUpdateCR(ctx, req, &component, err)

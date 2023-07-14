@@ -26,6 +26,7 @@ import (
 	gomega "github.com/onsi/gomega"
 	"k8s.io/client-go/kubernetes/scheme"
 
+	cdqanalysis "github.com/redhat-appstudio/application-service/cdq-analysis/pkg"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/envtest"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
@@ -113,7 +114,7 @@ func setupTestEnv() {
 		Scheme:             k8sManager.GetScheme(),
 		Log:                ctrl.Log.WithName("controllers").WithName("ComponentDetectionQuery"),
 		SPIClient:          spi.MockSPIClient{},
-		AlizerClient:       devfile.MockAlizerClient{},
+		AlizerClient:       cdqanalysis.MockAlizerClient{},
 		GitHubTokenClient:  mockGhTokenClient,
 		DevfileRegistryURL: devfile.DevfileStageRegistryEndpoint, // Use the staging devfile registry for tests
 		AppFS:              ioutils.NewMemoryFilesystem(),

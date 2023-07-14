@@ -23,6 +23,7 @@ import (
 	"reflect"
 
 	"github.com/prometheus/client_golang/prometheus"
+	cdqanalysis "github.com/redhat-appstudio/application-service/cdq-analysis/pkg"
 	"github.com/redhat-appstudio/application-service/pkg/metrics"
 	gitopsgenv1alpha1 "github.com/redhat-developer/gitops-generator/api/v1alpha1"
 	gitopsgen "github.com/redhat-developer/gitops-generator/pkg"
@@ -200,10 +201,10 @@ func (r *SnapshotEnvironmentBindingReconciler) Reconcile(ctx context.Context, re
 			return ctrl.Result{}, err
 		}
 
-		devfileSrc := devfile.DevfileSrc{
+		devfileSrc := cdqanalysis.DevfileSrc{
 			Data: hasComponent.Status.Devfile,
 		}
-		compDevfileData, err := devfile.ParseDevfile(devfileSrc)
+		compDevfileData, err := cdqanalysis.ParseDevfile(devfileSrc)
 		if err != nil {
 			errMsg := fmt.Sprintf("Unable to parse the devfile from Component status, exiting reconcile loop %v", req.NamespacedName)
 			log.Error(err, errMsg)

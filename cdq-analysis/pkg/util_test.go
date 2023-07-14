@@ -314,51 +314,6 @@ func TestGetContext(t *testing.T) {
 	}
 }
 
-func TestUpdateGitLink(t *testing.T) {
-
-	tests := []struct {
-		name     string
-		repo     string
-		context  string
-		wantLink string
-		wantErr  bool
-	}{
-		{
-			name:     "context has no http",
-			repo:     "https://github.com/maysunfaisal/multi-components-dockerfile/",
-			context:  "devfile-sample-java-springboot-basic/docker/Dockerfile",
-			wantLink: "https://raw.githubusercontent.com/maysunfaisal/multi-components-dockerfile/main/devfile-sample-java-springboot-basic/docker/Dockerfile",
-		},
-		{
-			name:     "context has http",
-			repo:     "https://github.com/maysunfaisal/multi-components-dockerfile/",
-			context:  "https://raw.githubusercontent.com/maysunfaisal/multi-components-dockerfile/main/devfile-sample-java-springboot-basic/docker/Dockerfile",
-			wantLink: "https://raw.githubusercontent.com/maysunfaisal/multi-components-dockerfile/main/devfile-sample-java-springboot-basic/docker/Dockerfile",
-		},
-		{
-			name:    "err case",
-			repo:    "\000x",
-			context: "test/dir",
-			wantErr: true,
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-
-			gotLink, err := UpdateGitLink(tt.repo, "", tt.context)
-			if !tt.wantErr && err != nil {
-				t.Errorf("Unexpected err: %+v", err)
-			} else if tt.wantErr && err == nil {
-				t.Errorf("Expected error but got nil")
-			} else if gotLink != tt.wantLink {
-				t.Errorf("Expected: %+v, Got: %+v", tt.wantLink, gotLink)
-			}
-
-		})
-	}
-}
-
 func TestGetAlizerDevfileTypes(t *testing.T) {
 	const serverIP = "127.0.0.1:9080"
 
@@ -571,6 +526,51 @@ func TestGetRepoFromRegistry(t *testing.T) {
 			} else if !reflect.DeepEqual(gotURL, tt.wantURL) {
 				t.Errorf("Expected: %+v, \nGot: %+v", tt.wantURL, gotURL)
 			}
+		})
+	}
+}
+
+func TestUpdateGitLink(t *testing.T) {
+
+	tests := []struct {
+		name     string
+		repo     string
+		context  string
+		wantLink string
+		wantErr  bool
+	}{
+		{
+			name:     "context has no http",
+			repo:     "https://github.com/maysunfaisal/multi-components-dockerfile/",
+			context:  "devfile-sample-java-springboot-basic/docker/Dockerfile",
+			wantLink: "https://raw.githubusercontent.com/maysunfaisal/multi-components-dockerfile/main/devfile-sample-java-springboot-basic/docker/Dockerfile",
+		},
+		{
+			name:     "context has http",
+			repo:     "https://github.com/maysunfaisal/multi-components-dockerfile/",
+			context:  "https://raw.githubusercontent.com/maysunfaisal/multi-components-dockerfile/main/devfile-sample-java-springboot-basic/docker/Dockerfile",
+			wantLink: "https://raw.githubusercontent.com/maysunfaisal/multi-components-dockerfile/main/devfile-sample-java-springboot-basic/docker/Dockerfile",
+		},
+		{
+			name:    "err case",
+			repo:    "\000x",
+			context: "test/dir",
+			wantErr: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+
+			gotLink, err := UpdateGitLink(tt.repo, "", tt.context)
+			if !tt.wantErr && err != nil {
+				t.Errorf("Unexpected err: %+v", err)
+			} else if tt.wantErr && err == nil {
+				t.Errorf("Expected error but got nil")
+			} else if gotLink != tt.wantLink {
+				t.Errorf("Expected: %+v, Got: %+v", tt.wantLink, gotLink)
+			}
+
 		})
 	}
 }
