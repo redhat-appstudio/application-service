@@ -37,7 +37,6 @@ import (
 	routev1 "github.com/openshift/api/route/v1"
 	appstudiov1alpha1 "github.com/redhat-appstudio/application-api/api/v1alpha1"
 
-	"github.com/redhat-appstudio/application-service/pkg/devfile"
 	github "github.com/redhat-appstudio/application-service/pkg/github"
 	"github.com/redhat-appstudio/application-service/pkg/spi"
 	"github.com/redhat-appstudio/application-service/pkg/util/ioutils"
@@ -116,7 +115,7 @@ func setupTestEnv() {
 		SPIClient:          spi.MockSPIClient{},
 		AlizerClient:       cdqanalysis.MockAlizerClient{},
 		GitHubTokenClient:  mockGhTokenClient,
-		DevfileRegistryURL: devfile.DevfileStageRegistryEndpoint, // Use the staging devfile registry for tests
+		DevfileRegistryURL: cdqanalysis.DevfileStageRegistryEndpoint, // Use the staging devfile registry for tests
 		AppFS:              ioutils.NewMemoryFilesystem(),
 	}).SetupWithManager(ctx, k8sManager)
 	gomega.Expect(err).ToNot(gomega.HaveOccurred())
