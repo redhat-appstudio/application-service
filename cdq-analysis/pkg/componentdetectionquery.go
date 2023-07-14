@@ -45,9 +45,10 @@ func CloneAndAnalyze(k K8sInfoClient, gitToken, namespace, name, context, devfil
 	devfilesMap := make(map[string][]byte)
 	devfilesURLMap := make(map[string]string)
 	dockerfileContextMap := make(map[string]string)
+	componentPortsMap := make(map[string][]int)
 	Fs := NewFilesystem()
 	var err error
-	componentPortsMap := make(map[string][]int)
+
 	var components []model.Component
 	if context == "" {
 		context = "./"
@@ -55,27 +56,27 @@ func CloneAndAnalyze(k K8sInfoClient, gitToken, namespace, name, context, devfil
 
 	isMultiComponent := false
 
+	clonePath, err = CreateTempPath(name, Fs)
+	if err != nil {
+		log.Error(err, fmt.Sprintf("Unable to create a temp path %s for cloning %v", clonePath, namespace))
+		k.SendBackDetectionResult(devfilesMap, devfilesURLMap, dockerfileContextMap, componentPortsMap, name, namespace, err)
+		return nil, nil, nil, nil, err
+	}
+
+	err = CloneRepo(clonePath, URL, Revision, gitToken)
+	if err != nil {
+		log.Error(err, fmt.Sprintf("Unable to clone repo %s to path %s, exiting reconcile loop %v", URL, clonePath, namespace))
+		k.SendBackDetectionResult(devfilesMap, devfilesURLMap, dockerfileContextMap, componentPortsMap, name, namespace, err)
+		return nil, nil, nil, nil, err
+	}
+	log.Info(fmt.Sprintf("cloned from %s to path %s... %v", URL, clonePath, namespace))
+	componentPath = clonePath
+	if context != "" {
+		componentPath = path.Join(clonePath, context)
+	}
+
 	if !isDockerfilePresent {
 		log.Info(fmt.Sprintf("Unable to find devfile, Dockerfile or Containerfile under root directory, run Alizer to detect components... %v", namespace))
-
-		clonePath, err = CreateTempPath(name, Fs)
-		if err != nil {
-			log.Error(err, fmt.Sprintf("Unable to create a temp path %s for cloning %v", clonePath, namespace))
-			k.SendBackDetectionResult(devfilesMap, devfilesURLMap, dockerfileContextMap, componentPortsMap, name, namespace, err)
-			return nil, nil, nil, nil, err
-		}
-
-		err = CloneRepo(clonePath, URL, Revision, gitToken)
-		if err != nil {
-			log.Error(err, fmt.Sprintf("Unable to clone repo %s to path %s, exiting reconcile loop %v", URL, clonePath, namespace))
-			k.SendBackDetectionResult(devfilesMap, devfilesURLMap, dockerfileContextMap, componentPortsMap, name, namespace, err)
-			return nil, nil, nil, nil, err
-		}
-		log.Info(fmt.Sprintf("cloned from %s to path %s... %v", URL, clonePath, namespace))
-		componentPath = clonePath
-		if context != "" {
-			componentPath = path.Join(clonePath, context)
-		}
 
 		if !isDevfilePresent {
 			components, err = alizerClient.DetectComponents(componentPath)

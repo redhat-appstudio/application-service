@@ -22,6 +22,7 @@ require (
 	github.com/pact-foundation/pact-go v1.7.0
 	github.com/prometheus/client_golang v1.14.0
 	github.com/redhat-appstudio/application-api v0.0.0-20230704143842-035c661f115f
+	github.com/redhat-appstudio/application-service/cdq-analysis v0.0.0
 	github.com/redhat-appstudio/service-provider-integration-scm-file-retriever v0.8.3
 	github.com/redhat-developer/alizer/go v0.0.0-20230516215932-135a2bb3fb90
 	github.com/redhat-developer/gitops-generator v0.0.0-20230614175323-aff86c6bc55e
@@ -176,3 +177,5 @@ require (
 )
 
 replace github.com/antlr/antlr4 => github.com/antlr/antlr4 v0.0.0-20211106181442-e4c1a74c66bd
+
+replace github.com/redhat-appstudio/application-service/cdq-analysis => ./cdq-analysis
