@@ -310,7 +310,6 @@ github.com/devfile/api/v2 v2.2.0/go.mod h1:dN7xFrOVG+iPqn4UKGibXLd5oVsdE8XyK9OEb
 github.com/devfile/api/v2 v2.2.1-alpha.0.20230413012049-a6c32fca0dbd h1:HpGR728CfB6BB9ZuFtQb0UeTIYNFgpuGsuoMOJNMUTM=
 github.com/devfile/api/v2 v2.2.1-alpha.0.20230413012049-a6c32fca0dbd/go.mod h1:qp8jcw12y1JdCsxjK/7LJ7uWaJOxcY1s2LUk5PhbkbM=
 github.com/devfile/library v1.2.1-0.20211104222135-49d635cb492f/go.mod h1:uFZZdTuRqA68FVe/JoJHP92CgINyQkyWnM2Qyiim+50=
-github.com/devfile/library v1.2.1-0.20220308191614-f0f7e11b17de h1:jImHtiAxjyul1UkPmf6C3EMS5wqNz+k84LKkCXkeqws=
 github.com/devfile/library v1.2.1-0.20220308191614-f0f7e11b17de/go.mod h1:GSPfJaBg0+bBjBHbwBE5aerJLH6tWGQu2q2rHYd9czM=
 github.com/devfile/library/v2 v2.0.1/go.mod h1:paJ0PARAVy0br13VpBEQ4fO3rZVDxWtooQ29+23PNBk=
 github.com/devfile/library/v2 v2.2.1-0.20230418160146-e75481b7eebd h1:YHSwUdfWsG9Qk7Vn+NfafELv6+G6a43RRE/NjS0TfK0=
