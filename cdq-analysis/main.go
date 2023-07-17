@@ -50,21 +50,25 @@ func main() {
 	isDockerfilePresent, _ := strconv.ParseBool(os.Args[11])
 	createK8sJob, _ := strconv.ParseBool(os.Args[12])
 
-	ctx := context.Background()
-	config, err := rest.InClusterConfig()
-	if err != nil {
-		fmt.Printf("Error creating InClusterConfig: %v", err)
-	}
-
-	clientset, err := kubernetes.NewForConfig(config)
-	if err != nil {
-		fmt.Printf("Error creating clientset with config %v: %v", config, err)
-	}
 	opts := zap.Options{
 		TimeEncoder: zapcore.ISO8601TimeEncoder,
 	}
 	ctrl.SetLogger(zap.New(zap.UseFlagOptions(&opts)))
 	log := ctrl.Log.WithName("cdq-analysis").WithName("CloneAndAnalyze")
+	var ctx context.Context
+	var clientset *kubernetes.Clientset
+	if createK8sJob {
+		ctx = context.Background()
+		config, err := rest.InClusterConfig()
+		if err != nil {
+			fmt.Printf("Error creating InClusterConfig: %v", err)
+		}
+
+		clientset, err = kubernetes.NewForConfig(config)
+		if err != nil {
+			fmt.Printf("Error creating clientset with config %v: %v", config, err)
+		}
+	}
 	k8sInfoClient := pkg.K8sInfoClient{
 		Ctx:          ctx,
 		Clientset:    clientset,

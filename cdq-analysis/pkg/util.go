@@ -214,6 +214,5 @@ func UpdateGitLink(repo, revision, context string) (string, error) {
 	} else {
 		return context, nil
 	}
-
 	return rawGitURL, nil
 }

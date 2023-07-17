@@ -30,7 +30,7 @@ import (
 	parserUtil "github.com/devfile/library/v2/pkg/util"
 	"github.com/go-logr/logr"
 	"github.com/hashicorp/go-multierror"
-	"gopkg.in/yaml.v2"
+	"sigs.k8s.io/yaml"
 )
 
 const (
@@ -250,7 +250,6 @@ func ParseDevfile(src DevfileSrc) (data.DevfileData, error) {
 	} else {
 		return nil, fmt.Errorf("cannot parse devfile without a src")
 	}
-
 	devfileObj, _, err := devfilePkg.ParseDevfileAndValidate(parserArgs)
 	return devfileObj.Data, err
 }

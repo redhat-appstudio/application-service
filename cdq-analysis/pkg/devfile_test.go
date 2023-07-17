@@ -32,8 +32,8 @@ import (
 	"github.com/devfile/library/v2/pkg/devfile/parser/data"
 	v2 "github.com/devfile/library/v2/pkg/devfile/parser/data/v2"
 	"github.com/go-logr/logr"
-	"gopkg.in/yaml.v2"
 	ctrl "sigs.k8s.io/controller-runtime"
+	"sigs.k8s.io/yaml"
 )
 
 func TestParseDevfileModel(t *testing.T) {
