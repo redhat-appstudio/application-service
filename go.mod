@@ -5,7 +5,7 @@ go 1.18
 require (
 	github.com/brianvoe/gofakeit/v6 v6.9.0
 	github.com/devfile/api/v2 v2.2.1-alpha.0.20230413012049-a6c32fca0dbd
-	github.com/devfile/library/v2 v2.2.1-0.20230418160146-e75481b7eebd
+	github.com/devfile/library/v2 v2.2.1-0.20230707200857-6c4a5b8686ba
 	github.com/devfile/registry-support/index/generator v0.0.0-20221018203505-df96d34d4273
 	github.com/devfile/registry-support/registry-library v0.0.0-20221018213054-47b3ffaeadba
 	github.com/go-logr/logr v1.2.3
@@ -52,6 +52,7 @@ require (
 	github.com/containerd/containerd v1.6.10 // indirect
 	github.com/containerd/typeurl v1.0.2 // indirect
 	github.com/davecgh/go-spew v1.1.2-0.20180830191138-d8f796af33cc // indirect
+	github.com/distribution/distribution/v3 v3.0.0-20211118083504-a29a3c99a684 // indirect
 	github.com/docker/cli v20.10.13+incompatible // indirect
 	github.com/docker/distribution v2.8.1+incompatible // indirect
 	github.com/docker/docker v20.10.11+incompatible // indirect
