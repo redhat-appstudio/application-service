@@ -68,6 +68,27 @@ func MapToBindingByBoundObjectName(cl client.Client, objectType, label string) f
 func MapComponentToApplication() func(object client.Object) []reconcile.Request {
 	return func(obj client.Object) []reconcile.Request {
 		component := obj.(*appstudiov1alpha1.Component)
+
+		/*// Before passing the reconcile request to the Application controller, we need to confirm the following:
+		// 1. That no components with the same name already belong to the application
+		// 2.
+
+		componentList := &appstudiov1alpha1.ComponentList{}
+		err := cl.List(ctx, componentList,
+			client.InNamespace(obj.GetNamespace()))
+
+		if err != nil {
+			log.Error(err, fmt.Sprintf("unable to list Components for Component object %s", obj.GetName()))
+			return []reconcile.Request{}
+		}
+
+		for _, comp := range componentList.Items {
+			if comp.Name != component.Name {
+
+			}
+			log.Info(fmt.Sprintf("The corresponding SnapshotEnvironmentBinding %s will be reconciled", item.Name))
+		}*/
+
 		if component != nil && component.Spec.Application != "" {
 			return []reconcile.Request{
 				{

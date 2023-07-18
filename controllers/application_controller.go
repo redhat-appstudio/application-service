@@ -21,6 +21,8 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/devfile/api/v2/pkg/apis/workspaces/v1alpha2"
+	"github.com/devfile/api/v2/pkg/attributes"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/redhat-appstudio/application-service/pkg/metrics"
 
@@ -182,7 +184,8 @@ func (r *ApplicationReconciler) Reconcile(ctx context.Context, req ctrl.Request)
 			Namespace: req.NamespacedName.Namespace,
 		})
 		if err != nil {
-			log.Error(err, fmt.Sprintf("Unable to convert Application CR to devfile, exiting reconcile loop %v", req.NamespacedName))
+			log.Error(err, fmt.Sprintf("Unable to list Components for %v", req.NamespacedName))
+			r.SetCreateConditionAndUpdateCR(ctx, req, &application, err)
 			return reconcile.Result{}, err
 		}
 
@@ -194,6 +197,8 @@ func (r *ApplicationReconciler) Reconcile(ctx context.Context, req ctrl.Request)
 
 		err = r.addComponentsToApplicationDevfileModel(devfileData, components)
 		if err != nil {
+			log.Error(err, fmt.Sprintf("Error adding components to devfile for Application %v", req.NamespacedName))
+			r.SetCreateConditionAndUpdateCR(ctx, req, &application, err)
 			return reconcile.Result{}, err
 		}
 
@@ -222,33 +227,58 @@ func (r *ApplicationReconciler) Reconcile(ctx context.Context, req ctrl.Request)
 			return ctrl.Result{}, err
 		}
 
+		// nil out the attributes and projects for the application devfile
+		// The Attributes contain any image components for the application
+		// And the projects contains any git components for the application
+		devWorkspacesSpec := devfileData.GetDevfileWorkspaceSpec()
+		devWorkspacesSpec.Attributes = attributes.Attributes{}
+		devWorkspacesSpec.Projects = []v1alpha2.Project{}
+		devfileData.SetDevfileWorkspaceSpec(*devWorkspacesSpec)
+
 		// Update any specific fields that changed
 		displayName := application.Spec.DisplayName
 		description := application.Spec.Description
 		devfileMeta := devfileData.GetMetadata()
-		updateRequired := false
-		if devfileMeta.Name != displayName {
-			devfileMeta.Name = displayName
-			updateRequired = true
-		}
-		if devfileMeta.Description != description {
-			devfileMeta.Description = description
-			updateRequired = true
-		}
-		if updateRequired {
-			devfileData.SetMetadata(devfileMeta)
+		devfileMeta.Name = displayName
+		devfileMeta.Description = description
+		devfileData.SetMetadata(devfileMeta)
 
-			// Update the hasApp CR with the new devfile
-			yamlData, err := yaml.Marshal(devfileData)
-			if err != nil {
-				log.Error(err, fmt.Sprintf("Unable to marshall Application devfile, exiting reconcile loop %v", req.NamespacedName))
-				r.SetUpdateConditionAndUpdateCR(ctx, req, &application, err)
-				return reconcile.Result{}, err
+		// Find all components owned by the application
+		var components []appstudiov1alpha1.Component
+		var componentList appstudiov1alpha1.ComponentList
+		err = r.Client.List(ctx, &componentList, &client.ListOptions{
+			Namespace: req.NamespacedName.Namespace,
+		})
+		if err != nil {
+			log.Error(err, fmt.Sprintf("Unable to list Components for %v", req.NamespacedName))
+			r.SetCreateConditionAndUpdateCR(ctx, req, &application, err)
+			return reconcile.Result{}, err
+		}
+
+		for _, component := range componentList.Items {
+			if component.Spec.Application == application.GetName() {
+				components = append(components, component)
 			}
-
-			application.Status.Devfile = string(yamlData)
-			r.SetUpdateConditionAndUpdateCR(ctx, req, &application, nil)
 		}
+
+		// Add the components to the Devfile model
+		err = r.addComponentsToApplicationDevfileModel(devfileData, components)
+		if err != nil {
+			log.Error(err, fmt.Sprintf("Error adding components to devfile for Application %v", req.NamespacedName))
+			r.SetCreateConditionAndUpdateCR(ctx, req, &application, err)
+			return reconcile.Result{}, err
+		}
+
+		// Update the Application CR with the new devfile
+		yamlData, err := yaml.Marshal(devfileData)
+		if err != nil {
+			log.Error(err, fmt.Sprintf("Unable to marshall Application devfile, exiting reconcile loop %v", req.NamespacedName))
+			r.SetUpdateConditionAndUpdateCR(ctx, req, &application, err)
+			return reconcile.Result{}, err
+		}
+
+		application.Status.Devfile = string(yamlData)
+		r.SetUpdateConditionAndUpdateCR(ctx, req, &application, nil)
 	}
 
 	log.Info(fmt.Sprintf("Finished reconcile loop for %v", req.NamespacedName))

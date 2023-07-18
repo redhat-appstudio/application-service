@@ -259,18 +259,22 @@ func (r *ApplicationReconciler) addComponentsToApplicationDevfileModel(hasAppDev
 				hasAppDevfileData.SetDevfileWorkspaceSpec(*devSpec)
 			}
 			imageAttrString := fmt.Sprintf("containerImage/%s", component.Spec.ComponentName)
-			_ = devfileAttributes.GetString(imageAttrString, &err)
+			componentImage := devfileAttributes.GetString(imageAttrString, &err)
 			if err != nil {
 				if _, ok := err.(*attributes.KeyNotFoundError); !ok {
 					return err
 				}
 			}
+			if componentImage != "" {
+				return fmt.Errorf("application already has a component with name %s", component.Name)
+			}
 			devSpec.Attributes = devfileAttributes.PutString(imageAttrString, component.Spec.ContainerImage)
 			hasAppDevfileData.SetDevfileWorkspaceSpec(*devSpec)
 
 		} else {
-			return fmt.Errorf("component %s source is nil", component.Name)
+			return fmt.Errorf("component source is nil")
 		}
+
 	}
 
 	return nil
