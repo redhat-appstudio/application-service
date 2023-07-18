@@ -17,6 +17,7 @@ package pkg
 
 import (
 	"fmt"
+	"path/filepath"
 	"strings"
 
 	"github.com/redhat-developer/alizer/go/pkg/apis/model"
@@ -29,6 +30,8 @@ type MockAlizerClient struct {
 func (a MockAlizerClient) DetectComponents(path string) ([]model.Component, error) {
 	if strings.Contains(path, "errorAnalyze") {
 		return nil, fmt.Errorf("dummy DetectComponents err")
+	} else if strings.Contains(path, "empty") {
+		return []model.Component{}, nil
 	} else if strings.Contains(path, "devfile-sample-nodejs-basic") {
 		return []model.Component{
 			{
@@ -40,12 +43,39 @@ func (a MockAlizerClient) DetectComponents(path string) ([]model.Component, erro
 						CanBeComponent: true,
 					},
 				},
+				Ports: []int{8080},
 			},
 		}, nil
 	} else if strings.Contains(path, "nodejs-no-dockerfile") {
 		return []model.Component{
 			{
 				Path: path,
+				Languages: []model.Language{
+					{
+						Name: "JavaScript",
+						Aliases: []string{
+							"js",
+							"node",
+							"nodejs",
+						},
+						Frameworks: []string{
+							"Express",
+						},
+						Tools: []string{
+							"NodeJs",
+							"Node.js",
+						},
+						Weight:         100,
+						CanBeComponent: true,
+					},
+				},
+			},
+		}, nil
+	} else if strings.Contains(path, "dockerfile-node-sample") {
+		return []model.Component{
+			{
+				Path:  path,
+				Ports: []int{5050},
 				Languages: []model.Language{
 					{
 						Name: "JavaScript",
@@ -75,6 +105,104 @@ func (a MockAlizerClient) DetectComponents(path string) ([]model.Component, erro
 					{
 						Name:           "python",
 						Weight:         99,
+						CanBeComponent: true,
+					},
+				},
+			},
+		}, nil
+	} else if strings.Contains(path, "python-src-docker") {
+		return []model.Component{
+			{
+				Path: path,
+				Languages: []model.Language{
+					{
+						Name:           "python",
+						Weight:         100,
+						CanBeComponent: true,
+					},
+				},
+			},
+		}, nil
+	} else if strings.Contains(path, "spring-boot-root-component") {
+		return []model.Component{
+			{
+				Path: path,
+				Languages: []model.Language{
+					{
+						Name: "Java",
+						Frameworks: []string{
+							"Spring",
+						},
+						Tools: []string{
+							"Maven",
+						},
+						Weight:         100,
+						CanBeComponent: true,
+					},
+				},
+			},
+			{
+				Path: filepath.Join(path, "src/main/resources/static"),
+				Languages: []model.Language{
+					{
+						Name: "JavaScript",
+						Aliases: []string{
+							"js",
+							"node",
+							"nodejs",
+							"TypeScript",
+						},
+						Frameworks: []string{
+							"Vue",
+						},
+						Tools: []string{
+							"NodeJs",
+							"Node.js",
+						},
+						Weight:         100,
+						CanBeComponent: true,
+					},
+				},
+			},
+		}, nil
+	} else if strings.Contains(path, "quality-dashboard") {
+		return []model.Component{
+			{
+				Path: filepath.Join(path, "backend"),
+				Languages: []model.Language{
+					{
+						Name: "Go",
+						Aliases: []string{
+							"golang",
+						},
+						Frameworks: []string{
+							"Mux",
+						},
+						Tools: []string{
+							"1.18",
+						},
+						Weight:         100,
+						CanBeComponent: true,
+					},
+				},
+			},
+			{
+				Path: filepath.Join(path, "frontend"),
+				Languages: []model.Language{
+					{
+						Name: "Typescript",
+						Aliases: []string{
+							"ts",
+							"Javascript",
+						},
+						Frameworks: []string{
+							"React",
+						},
+						Tools: []string{
+							"NodeJs",
+							"Node.js",
+						},
+						Weight:         100,
 						CanBeComponent: true,
 					},
 				},
@@ -111,7 +239,7 @@ func (a MockAlizerClient) SelectDevFileFromTypes(path string, devFileTypes []mod
 		return model.DevFileType{
 			Name: "fake",
 		}, nil
-	} else if strings.Contains(path, "java-springboot-basic") || strings.Contains(path, "springboot") {
+	} else if strings.Contains(path, "java-springboot-basic") || strings.Contains(path, "springboot") || strings.Contains(path, "spring-boot-root-component") {
 		return model.DevFileType{
 			Name: "java-springboot-basic",
 		}, nil
@@ -119,11 +247,11 @@ func (a MockAlizerClient) SelectDevFileFromTypes(path string, devFileTypes []mod
 		return model.DevFileType{
 			Name: "nodejs-basic",
 		}, nil
-	} else if strings.Contains(path, "python-basic") || strings.Contains(path, "python-src-none") {
+	} else if strings.Contains(path, "python-basic") || strings.Contains(path, "python-src-none") || strings.Contains(path, "python-src-docker") {
 		return model.DevFileType{
 			Name: "python-basic",
 		}, nil
-	} else if strings.Contains(path, "nodejs-no-dockerfile") {
+	} else if strings.Contains(path, "nodejs-no-dockerfile") || strings.Contains(path, "dockerfile-node-sample") {
 		return model.DevFileType{
 			Name:        "nodejs-basic",
 			Language:    "JavaScript",
