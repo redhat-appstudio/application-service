@@ -4,7 +4,7 @@ go 1.18
 
 require (
 	github.com/devfile/api/v2 v2.2.1-alpha.0.20230413012049-a6c32fca0dbd
-	github.com/devfile/library/v2 v2.2.0
+	github.com/devfile/library/v2 v2.2.1-0.20230418160146-e75481b7eebd
 	github.com/devfile/registry-support/index/generator v0.0.0-20221018203505-df96d34d4273
 	github.com/devfile/registry-support/registry-library v0.0.0-20221018213054-47b3ffaeadba
 	github.com/go-logr/logr v1.2.3
