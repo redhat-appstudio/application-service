@@ -113,7 +113,6 @@ func setupTestEnv() {
 		Scheme:             k8sManager.GetScheme(),
 		Log:                ctrl.Log.WithName("controllers").WithName("ComponentDetectionQuery"),
 		SPIClient:          spi.MockSPIClient{},
-		AlizerClient:       cdqanalysis.MockAlizerClient{},
 		GitHubTokenClient:  mockGhTokenClient,
 		DevfileRegistryURL: cdqanalysis.DevfileStageRegistryEndpoint, // Use the staging devfile registry for tests
 		AppFS:              ioutils.NewMemoryFilesystem(),

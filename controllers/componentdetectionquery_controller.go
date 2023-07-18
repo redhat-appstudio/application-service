@@ -53,7 +53,6 @@ type ComponentDetectionQueryReconciler struct {
 	client.Client
 	Scheme             *runtime.Scheme
 	SPIClient          spi.SPI
-	AlizerClient       cdqanalysis.Alizer
 	Log                logr.Logger
 	GitHubTokenClient  github.GitHubToken
 	DevfileRegistryURL string
