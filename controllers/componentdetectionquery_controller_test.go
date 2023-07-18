@@ -1394,7 +1394,7 @@ var _ = Describe("Component Detection Query controller", func() {
 				for devfileName, devfileDesc := range createdHasCompDetectionQuery.Status.ComponentDetected {
 					Expect(devfileName).Should(ContainSubstring("node-sample"))
 					Expect(devfileDesc.ComponentStub.Source.GitSource.DockerfileURL).Should(Equal("Dockerfile"))
-					Expect(devfileDesc.ComponentStub.TargetPort).Should(Equal(5050))
+					Expect(devfileDesc.ComponentStub.TargetPort).Should(Equal(5005))
 				}
 
 				// Delete the specified Detection Query resource
