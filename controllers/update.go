@@ -24,7 +24,6 @@ import (
 	"unicode"
 
 	"github.com/brianvoe/gofakeit/v6"
-	"github.com/devfile/api/v2/pkg/apis/workspaces/v1alpha2"
 	devfileAPIV1 "github.com/devfile/api/v2/pkg/apis/workspaces/v1alpha2"
 	"github.com/devfile/api/v2/pkg/attributes"
 	data "github.com/devfile/library/v2/pkg/devfile/parser/data"
@@ -219,7 +218,7 @@ func (r *ComponentReconciler) updateComponentDevfileModel(req ctrl.Request, hasC
 }
 
 // addComponentsToApplicationDevfileModel updates the Application's devfile model to include all of the
-func (r *ApplicationReconciler) addComponentsToApplicationDevfileModel(devSpec *v1alpha2.DevWorkspaceTemplateSpec, components []appstudiov1alpha1.Component) error {
+func (r *ApplicationReconciler) addComponentsToApplicationDevfileModel(devSpec *devfileAPIV1.DevWorkspaceTemplateSpec, components []appstudiov1alpha1.Component) error {
 
 	for _, component := range components {
 		if component.Spec.Source.GitSource != nil {
@@ -273,7 +272,7 @@ func (r *ApplicationReconciler) addComponentsToApplicationDevfileModel(devSpec *
 }
 
 // getAndAddComponentApplicationsToModel retrieves the list of components that belong to the application CR and adds them to the application's devfile model
-func (r *ApplicationReconciler) getAndAddComponentApplicationsToModel(log logr.Logger, req reconcile.Request, applicationName string, devSpec *v1alpha2.DevWorkspaceTemplateSpec) error {
+func (r *ApplicationReconciler) getAndAddComponentApplicationsToModel(log logr.Logger, req reconcile.Request, applicationName string, devSpec *devfileAPIV1.DevWorkspaceTemplateSpec) error {
 
 	// Find all components owned by the application
 	var components []appstudiov1alpha1.Component
