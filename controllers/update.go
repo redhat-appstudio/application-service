@@ -24,6 +24,7 @@ import (
 	"unicode"
 
 	"github.com/brianvoe/gofakeit/v6"
+	"github.com/devfile/api/v2/pkg/apis/workspaces/v1alpha2"
 	devfileAPIV1 "github.com/devfile/api/v2/pkg/apis/workspaces/v1alpha2"
 	"github.com/devfile/api/v2/pkg/attributes"
 	data "github.com/devfile/library/v2/pkg/devfile/parser/data"
@@ -216,7 +217,7 @@ func (r *ComponentReconciler) updateComponentDevfileModel(req ctrl.Request, hasC
 }
 
 // addComponentsToApplicationDevfileModel updates the Application's devfile model to include all of the
-func (r *ApplicationReconciler) addComponentsToApplicationDevfileModel(hasAppDevfileData data.DevfileData, components []appstudiov1alpha1.Component) error {
+func (r *ApplicationReconciler) addComponentsToApplicationDevfileModel(devSpec *v1alpha2.DevWorkspaceTemplateSpec, components []appstudiov1alpha1.Component) error {
 
 	for _, component := range components {
 		if component.Spec.Source.GitSource != nil {
@@ -232,31 +233,21 @@ func (r *ApplicationReconciler) addComponentsToApplicationDevfileModel(hasAppDev
 					},
 				},
 			}
-			projects, err := hasAppDevfileData.GetProjects(common.DevfileOptions{})
-			if err != nil {
-				return err
-			}
+			projects := devSpec.Projects
 			for _, project := range projects {
 				if project.Name == newProject.Name {
 					return fmt.Errorf("application already has a component with name %s", newProject.Name)
 				}
 			}
-			err = hasAppDevfileData.AddProjects([]devfileAPIV1.Project{newProject})
-			if err != nil {
-				return err
-			}
+			devSpec.Projects = append(devSpec.Projects, newProject)
 		} else if component.Spec.ContainerImage != "" {
 			var err error
-
-			// Initialize the attributes
-			devSpec := hasAppDevfileData.GetDevfileWorkspaceSpec()
 
 			// Add the image as a top level attribute
 			devfileAttributes := devSpec.Attributes
 			if devfileAttributes == nil {
 				devfileAttributes = attributes.Attributes{}
 				devSpec.Attributes = devfileAttributes
-				hasAppDevfileData.SetDevfileWorkspaceSpec(*devSpec)
 			}
 			imageAttrString := fmt.Sprintf("containerImage/%s", component.Spec.ComponentName)
 			componentImage := devfileAttributes.GetString(imageAttrString, &err)
@@ -269,7 +260,6 @@ func (r *ApplicationReconciler) addComponentsToApplicationDevfileModel(hasAppDev
 				return fmt.Errorf("application already has a component with name %s", component.Name)
 			}
 			devSpec.Attributes = devfileAttributes.PutString(imageAttrString, component.Spec.ContainerImage)
-			hasAppDevfileData.SetDevfileWorkspaceSpec(*devSpec)
 
 		} else {
 			return fmt.Errorf("component source is nil")

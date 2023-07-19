@@ -214,7 +214,7 @@ func TestUpdateApplicationDevfileModel(t *testing.T) {
 				},
 			}
 			r := ApplicationReconciler{}
-			err := r.addComponentsToApplicationDevfileModel(devfileData, tt.components)
+			err := r.addComponentsToApplicationDevfileModel(&devfileData.DevWorkspaceTemplateSpec, tt.components)
 			if tt.wantErr && (err == nil) {
 				t.Error("wanted error but got nil")
 			} else if !tt.wantErr && err != nil {
