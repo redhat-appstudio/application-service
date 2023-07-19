@@ -177,28 +177,11 @@ func (r *ApplicationReconciler) Reconcile(ctx context.Context, req ctrl.Request)
 		}
 
 		// Find all components owned by the application
-		var components []appstudiov1alpha1.Component
-		var componentList appstudiov1alpha1.ComponentList
-		err = r.Client.List(ctx, &componentList, &client.ListOptions{
-			Namespace: req.NamespacedName.Namespace,
-		})
+		err = r.getAndAddComponentApplicationsToModel(log, req, application.Name, devfileData.GetDevfileWorkspaceSpec())
 		if err != nil {
-			log.Error(err, fmt.Sprintf("Unable to list Components for %v", req.NamespacedName))
 			r.SetCreateConditionAndUpdateCR(ctx, req, &application, err)
-			return reconcile.Result{}, err
-		}
-
-		for _, component := range componentList.Items {
-			if component.Spec.Application == application.GetName() {
-				components = append(components, component)
-			}
-		}
-
-		err = r.addComponentsToApplicationDevfileModel(devfileData.GetDevfileWorkspaceSpec(), components)
-		if err != nil {
-			log.Error(err, fmt.Sprintf("Error adding components to devfile for Application %v", req.NamespacedName))
-			r.SetCreateConditionAndUpdateCR(ctx, req, &application, err)
-			return reconcile.Result{}, err
+			log.Error(err, fmt.Sprintf("Unable to add components to application model for %v", req.NamespacedName))
+			return ctrl.Result{}, err
 		}
 
 		yamlData, err := yaml.Marshal(devfileData)
@@ -234,32 +217,12 @@ func (r *ApplicationReconciler) Reconcile(ctx context.Context, req ctrl.Request)
 		devWorkspacesSpec.Attributes = nil
 		devWorkspacesSpec.Projects = nil
 
-		// Find all components owned by the application
-		var components []appstudiov1alpha1.Component
-		var componentList appstudiov1alpha1.ComponentList
-		err = r.Client.List(ctx, &componentList, &client.ListOptions{
-			Namespace: req.NamespacedName.Namespace,
-		})
+		err = r.getAndAddComponentApplicationsToModel(log, req, application.Name, devWorkspacesSpec)
 		if err != nil {
-			log.Error(err, fmt.Sprintf("Unable to list Components for %v", req.NamespacedName))
-			r.SetCreateConditionAndUpdateCR(ctx, req, &application, err)
-			return reconcile.Result{}, err
+			r.SetUpdateConditionAndUpdateCR(ctx, req, &application, err)
+			log.Error(err, fmt.Sprintf("Unable to add components to application model for %v", req.NamespacedName))
+			return ctrl.Result{}, err
 		}
-
-		for _, component := range componentList.Items {
-			if component.Spec.Application == application.GetName() {
-				components = append(components, component)
-			}
-		}
-
-		// Add the components to the Devfile model
-		err = r.addComponentsToApplicationDevfileModel(devWorkspacesSpec, components)
-		if err != nil {
-			log.Error(err, fmt.Sprintf("Error adding components to devfile for Application %v", req.NamespacedName))
-			r.SetCreateConditionAndUpdateCR(ctx, req, &application, err)
-			return reconcile.Result{}, err
-		}
-
 		// Update any specific fields that changed
 		displayName := application.Spec.DisplayName
 		description := application.Spec.Description
