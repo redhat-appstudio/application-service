@@ -40,8 +40,8 @@ import (
 	routev1 "github.com/openshift/api/route/v1"
 
 	appstudiov1alpha1 "github.com/redhat-appstudio/application-api/api/v1alpha1"
+	cdqanalysis "github.com/redhat-appstudio/application-service/cdq-analysis/pkg"
 	"github.com/redhat-appstudio/application-service/controllers"
-	"github.com/redhat-appstudio/application-service/pkg/devfile"
 	"github.com/redhat-appstudio/application-service/pkg/github"
 	"github.com/redhat-appstudio/application-service/pkg/spi"
 	"github.com/redhat-appstudio/application-service/pkg/util/ioutils"
@@ -127,7 +127,7 @@ func main() {
 	// Retrieve the option to specify a custom devfile registry
 	devfileRegistryURL := os.Getenv("DEVFILE_REGISTRY_URL")
 	if devfileRegistryURL == "" {
-		devfileRegistryURL = devfile.DevfileRegistryEndpoint
+		devfileRegistryURL = cdqanalysis.DevfileRegistryEndpoint
 	}
 
 	// Parse any passed in tokens and set up a client for handling the github tokens
@@ -166,7 +166,6 @@ func main() {
 		Scheme:             mgr.GetScheme(),
 		Log:                ctrl.Log.WithName("controllers").WithName("ComponentDetectionQuery"),
 		SPIClient:          spi.SPIClient{},
-		AlizerClient:       devfile.AlizerClient{},
 		GitHubTokenClient:  ghTokenClient,
 		DevfileRegistryURL: devfileRegistryURL,
 		AppFS:              ioutils.NewFilesystem(),

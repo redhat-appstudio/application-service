@@ -1,5 +1,5 @@
 //
-// Copyright 2022 Red Hat, Inc.
+// Copyright 2022-2023 Red Hat, Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -13,14 +13,13 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package devfile
+package pkg
 
 import (
 	"os"
 	"reflect"
 	"testing"
 
-	"github.com/redhat-appstudio/application-service/pkg/util"
 	"github.com/redhat-developer/alizer/go/pkg/apis/model"
 )
 
@@ -105,7 +104,7 @@ func TestAnalyzeAndDetectDevfile(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			err := util.CloneRepo(tt.clonePath, tt.repo, tt.revision, tt.token)
+			err := CloneRepo(tt.clonePath, tt.repo, tt.revision, tt.token)
 			if err != nil {
 				t.Errorf("got unexpected error %v", err)
 			} else {
@@ -184,7 +183,7 @@ func TestSelectDevfileFromTypes(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			os.RemoveAll(tt.clonePath)
-			err := util.CloneRepo(tt.clonePath, tt.repo, "main", "")
+			err := CloneRepo(tt.clonePath, tt.repo, "main", "")
 			if err != nil {
 				t.Errorf("got unexpected error %v", err)
 			}
@@ -252,9 +251,9 @@ components:
 			} else if tt.wantErr && err == nil {
 				t.Errorf("Expected error but got nil")
 			} else if tt.found && dockerfileImage == nil {
-				t.Errorf("Dockerfile should be found, but got %v", dockerfileImage)
+				t.Errorf("dockerfile should be found, but got %v", dockerfileImage)
 			} else if !tt.found && dockerfileImage != nil {
-				t.Errorf("Dockerfile should be found, but got %v", dockerfileImage)
+				t.Errorf("dockerfile should be found, but got %v", dockerfileImage)
 			}
 		})
 	}

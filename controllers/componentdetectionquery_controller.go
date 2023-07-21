@@ -23,8 +23,19 @@ import (
 	"strings"
 	"time"
 
+	"github.com/go-logr/logr"
 	"github.com/prometheus/client_golang/prometheus"
+	appstudiov1alpha1 "github.com/redhat-appstudio/application-api/api/v1alpha1"
+	cdqanalysis "github.com/redhat-appstudio/application-service/cdq-analysis/pkg"
+	devfile "github.com/redhat-appstudio/application-service/pkg/devfile"
+	"github.com/redhat-appstudio/application-service/pkg/github"
+	logutil "github.com/redhat-appstudio/application-service/pkg/log"
 	"github.com/redhat-appstudio/application-service/pkg/metrics"
+	"github.com/redhat-appstudio/application-service/pkg/spi"
+	"github.com/redhat-appstudio/application-service/pkg/util"
+	"github.com/redhat-appstudio/application-service/pkg/util/ioutils"
+	"github.com/spf13/afero"
+	"golang.org/x/exp/maps"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -35,17 +46,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/event"
 	"sigs.k8s.io/controller-runtime/pkg/predicate"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
-
-	"github.com/go-logr/logr"
-	appstudiov1alpha1 "github.com/redhat-appstudio/application-api/api/v1alpha1"
-	devfile "github.com/redhat-appstudio/application-service/pkg/devfile"
-	"github.com/redhat-appstudio/application-service/pkg/github"
-	logutil "github.com/redhat-appstudio/application-service/pkg/log"
-	"github.com/redhat-appstudio/application-service/pkg/spi"
-	"github.com/redhat-appstudio/application-service/pkg/util"
-	"github.com/redhat-appstudio/application-service/pkg/util/ioutils"
-	"github.com/redhat-developer/alizer/go/pkg/apis/model"
-	"github.com/spf13/afero"
 )
 
 // ComponentDetectionQueryReconciler reconciles a ComponentDetectionQuery object
@@ -53,7 +53,6 @@ type ComponentDetectionQueryReconciler struct {
 	client.Client
 	Scheme             *runtime.Scheme
 	SPIClient          spi.SPI
-	AlizerClient       devfile.Alizer
 	Log                logr.Logger
 	GitHubTokenClient  github.GitHubToken
 	DevfileRegistryURL string
@@ -136,13 +135,12 @@ func (r *ComponentDetectionQueryReconciler) Reconcile(ctx context.Context, req c
 
 		source := componentDetectionQuery.Spec.GitSource
 		var devfileBytes, dockerfileBytes []byte
-		var clonePath, componentPath, devfilePath, dockerfilePath string
+		var clonePath, devfilePath, dockerfilePath string
 		devfilesMap := make(map[string][]byte)
 		devfilesURLMap := make(map[string]string)
 		dockerfileContextMap := make(map[string]string)
 		componentPortsMap := make(map[string][]int)
 		context := source.Context
-		var components []model.Component
 
 		if context == "" {
 			context = "./"
@@ -188,7 +186,6 @@ func (r *ComponentDetectionQueryReconciler) Reconcile(ctx context.Context, req c
 		componentDetectionQuery.Spec.GitSource.Revision = source.Revision
 
 		if source.DevfileURL == "" {
-			isMultiComponent := false
 			isDockerfilePresent := false
 			isDevfilePresent := false
 			log.Info(fmt.Sprintf("Attempting to read a devfile from the URL %s... %v", source.URL, req.NamespacedName))
@@ -213,102 +210,26 @@ func (r *ComponentDetectionQueryReconciler) Reconcile(ctx context.Context, req c
 
 			isDevfilePresent = len(devfileBytes) != 0
 			isDockerfilePresent = len(dockerfileBytes) != 0
-			if isDevfilePresent {
-				updatedLink, err := devfile.UpdateGitLink(source.URL, source.Revision, path.Join(context, devfilePath))
-				if err != nil {
-					log.Error(err, fmt.Sprintf("Unable to update the devfile link %v", req.NamespacedName))
-					r.SetCompleteConditionAndUpdateCR(ctx, req, &componentDetectionQuery, copiedCDQ, err)
-					return ctrl.Result{}, nil
-				}
-				shouldIgnoreDevfile, devfileBytes, err := devfile.ValidateDevfile(log, updatedLink)
-				if err != nil {
-					r.SetCompleteConditionAndUpdateCR(ctx, req, &componentDetectionQuery, copiedCDQ, err)
-					return ctrl.Result{}, nil
-				}
-				if shouldIgnoreDevfile {
-					isDevfilePresent = false
-				} else {
-					log.Info(fmt.Sprintf("Found a devfile, devfile to be analyzed to see if a Dockerfile is referenced %v", req.NamespacedName))
-					devfilesMap[context] = devfileBytes
-					devfilesURLMap[context] = updatedLink
-				}
-			}
-			// recheck if devfile presents, since the devfile may need to be ignored after validation
-			if !isDevfilePresent && isDockerfilePresent {
-				log.Info(fmt.Sprintf("Determined that this is a Dockerfile only component  %v", req.NamespacedName))
-				dockerfileContextMap[context] = dockerfilePath
+			k8sInfoClient := cdqanalysis.K8sInfoClient{
+				Log:          log,
+				CreateK8sJob: false,
 			}
 
-			clonePath, err = ioutils.CreateTempPath(componentDetectionQuery.Name, r.AppFS)
+			devfilesMapReturned, devfilesURLMapReturned, dockerfileContextMapReturned, componentPortsMapReturned, err := cdqanalysis.CloneAndAnalyze(k8sInfoClient, gitToken, req.Namespace, req.Name, context, devfilePath, dockerfilePath, source.URL, source.Revision, r.DevfileRegistryURL, isDevfilePresent, isDockerfilePresent)
 			if err != nil {
-				log.Error(err, fmt.Sprintf("Unable to create a temp path %s for cloning %v", clonePath, req.NamespacedName))
+				log.Error(err, fmt.Sprintf("Error running cdq analysis... %v", req.NamespacedName))
 				r.SetCompleteConditionAndUpdateCR(ctx, req, &componentDetectionQuery, copiedCDQ, err)
 				return ctrl.Result{}, nil
 			}
+			maps.Copy(devfilesMap, devfilesMapReturned)
+			maps.Copy(dockerfileContextMap, dockerfileContextMapReturned)
+			maps.Copy(devfilesURLMap, devfilesURLMapReturned)
+			maps.Copy(componentPortsMap, componentPortsMapReturned)
 
-			err = util.CloneRepo(clonePath, source.URL, source.Revision, gitToken)
-			if err != nil {
-				log.Error(err, fmt.Sprintf("Unable to clone repo %s to path %s, exiting reconcile loop %v", source.URL, clonePath, req.NamespacedName))
-				ioutils.RemoveFolderAndLogError(log, r.AppFS, clonePath)
-				r.SetCompleteConditionAndUpdateCR(ctx, req, &componentDetectionQuery, copiedCDQ, err)
-				return ctrl.Result{}, nil
-			}
-
-			log.Info(fmt.Sprintf("cloned from %s to path %s... %v", source.URL, clonePath, req.NamespacedName))
-			componentPath = clonePath
-			if context != "" {
-				componentPath = path.Join(clonePath, context)
-			}
-
-			// Clone the repo if no Dockerfile or Containerfile present
-			if !isDockerfilePresent {
-				log.Info(fmt.Sprintf("Unable to find devfile, Dockerfile or Containerfile under root directory, run Alizer to detect components... %v", req.NamespacedName))
-
-				if !isDevfilePresent {
-					components, err = r.AlizerClient.DetectComponents(componentPath)
-					if err != nil {
-						log.Error(err, fmt.Sprintf("Unable to detect components using Alizer for repo %v, under path %v... %v ", source.URL, componentPath, req.NamespacedName))
-						ioutils.RemoveFolderAndLogError(log, r.AppFS, clonePath)
-						r.SetCompleteConditionAndUpdateCR(ctx, req, &componentDetectionQuery, copiedCDQ, err)
-						return ctrl.Result{}, nil
-					}
-					log.Info(fmt.Sprintf("components detected %v... %v", components, req.NamespacedName))
-					// If no devfile and no Dockerfile or Containerfile present in the root
-					// case 1: no components been detected by Alizer, might still has subfolders contains Dockerfile or Containerfile. Need to scan repo
-					// case 2: one or more than 1 compinents been detected by Alizer, and the first one in the list is under sub-folder. Need to scan repo.
-					if len(components) == 0 || (len(components) != 0 && path.Clean(components[0].Path) != path.Clean(componentPath)) {
-						isMultiComponent = true
-					}
-				}
-			}
-
-			// Logic to read multiple components in from git
-			if isMultiComponent {
-				log.Info(fmt.Sprintf("Since this is a multi-component, attempt will be made to read only level 1 dir for devfiles... %v", req.NamespacedName))
-
-				devfilesMap, devfilesURLMap, dockerfileContextMap, componentPortsMap, err = devfile.ScanRepo(log, r.AlizerClient, componentPath, r.DevfileRegistryURL, source)
-				if err != nil {
-					if _, ok := err.(*devfile.NoDevfileFound); !ok {
-						log.Error(err, fmt.Sprintf("Unable to find devfile(s) in repo %s due to an error %s, exiting reconcile loop %v", source.URL, err.Error(), req.NamespacedName))
-						ioutils.RemoveFolderAndLogError(log, r.AppFS, clonePath)
-						r.SetCompleteConditionAndUpdateCR(ctx, req, &componentDetectionQuery, copiedCDQ, err)
-						return ctrl.Result{}, nil
-					}
-				}
-			} else {
-				log.Info(fmt.Sprintf("Since this is not a multi-component, attempt will be made to read devfile at the root dir... %v", req.NamespacedName))
-				err := devfile.AnalyzePath(log, r.AlizerClient, componentPath, context, r.DevfileRegistryURL, devfilesMap, devfilesURLMap, dockerfileContextMap, componentPortsMap, isDevfilePresent, isDockerfilePresent)
-				if err != nil {
-					log.Error(err, fmt.Sprintf("Unable to analyze path %s for a devfile, Dockerfile or Containerfile %v", componentPath, req.NamespacedName))
-					ioutils.RemoveFolderAndLogError(log, r.AppFS, clonePath)
-					r.SetCompleteConditionAndUpdateCR(ctx, req, &componentDetectionQuery, copiedCDQ, err)
-					return ctrl.Result{}, nil
-				}
-			}
 		} else {
 			log.Info(fmt.Sprintf("devfile was explicitly specified at %s %v", source.DevfileURL, req.NamespacedName))
 
-			shouldIgnoreDevfile, devfileBytes, err := devfile.ValidateDevfile(log, source.DevfileURL)
+			shouldIgnoreDevfile, devfileBytes, err := cdqanalysis.ValidateDevfile(log, source.DevfileURL)
 			if err != nil {
 				// if a direct devfileURL is provided and errors out, we dont do an alizer detection
 				log.Error(err, fmt.Sprintf("Unable to GET %s, exiting reconcile loop %v", source.DevfileURL, req.NamespacedName))
@@ -340,7 +261,7 @@ func (r *ComponentDetectionQueryReconciler) Reconcile(ctx context.Context, req c
 
 		for context := range devfilesMap {
 			if _, ok := devfilesURLMap[context]; !ok {
-				updatedLink, err := devfile.UpdateGitLink(source.URL, source.Revision, path.Join(context, devfilePath))
+				updatedLink, err := cdqanalysis.UpdateGitLink(source.URL, source.Revision, path.Join(context, devfilePath))
 				if err != nil {
 					log.Error(err, fmt.Sprintf("Unable to update the devfile link %v", req.NamespacedName))
 					r.SetCompleteConditionAndUpdateCR(ctx, req, &componentDetectionQuery, copiedCDQ, err)

@@ -13,7 +13,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package devfile
+package pkg
 
 import (
 	"fmt"
@@ -25,7 +25,6 @@ import (
 	"github.com/devfile/api/v2/pkg/apis/workspaces/v1alpha2"
 	"github.com/devfile/library/v2/pkg/devfile/parser/data/v2/common"
 	"github.com/go-logr/logr"
-	appstudiov1alpha1 "github.com/redhat-appstudio/application-api/api/v1alpha1"
 	"github.com/redhat-developer/alizer/go/pkg/apis/model"
 	"github.com/redhat-developer/alizer/go/pkg/apis/recognizer"
 	"sigs.k8s.io/yaml"
@@ -46,7 +45,8 @@ type AlizerClient struct {
 // Map 2 returns a context to the matched devfileURL from the github repository. If no devfile was present, then a link to a matching devfile in the devfile registry will be used instead.
 // Map 3 returns a context to the Dockerfile uri or a matched DockerfileURL from the devfile registry if no Dockerfile is present in the context
 // Map 4 returns a context to the list of ports that were detected by alizer in the source code, at that given context
-func search(log logr.Logger, a Alizer, localpath string, devfileRegistryURL string, source appstudiov1alpha1.GitSource) (map[string][]byte, map[string]string, map[string]string, map[string][]int, error) {
+func search(log logr.Logger, a Alizer, localpath string, devfileRegistryURL string, URL string, revision string, srcContext string) (map[string][]byte, map[string]string, map[string]string, map[string][]int, error) {
+
 	devfileMapFromRepo := make(map[string][]byte)
 	devfilesURLMapFromRepo := make(map[string]string)
 	dockerfileContextMapFromRepo := make(map[string]string)
@@ -62,8 +62,7 @@ func search(log logr.Logger, a Alizer, localpath string, devfileRegistryURL stri
 			isDevfilePresent := false
 			isDockerfilePresent := false
 			curPath := path.Join(localpath, f.Name())
-			dirName := f.Name()
-			context := path.Join(source.Context, f.Name())
+			context := path.Join(srcContext, f.Name())
 			files, err := ioutil.ReadDir(curPath)
 			if err != nil {
 				return nil, nil, nil, nil, err
@@ -74,7 +73,7 @@ func search(log logr.Logger, a Alizer, localpath string, devfileRegistryURL stri
 					/* #nosec G304 -- false positive, filename is not based on user input*/
 					devfilePath := path.Join(curPath, f.Name())
 					// Set the proper devfile URL for the detected devfile
-					updatedLink, err := UpdateGitLink(source.URL, source.Revision, path.Join(source.Context, path.Join(dirName, f.Name())))
+					updatedLink, err := UpdateGitLink(URL, revision, path.Join(context, f.Name()))
 					if err != nil {
 						return nil, nil, nil, nil, err
 					}
@@ -103,9 +102,8 @@ func search(log logr.Logger, a Alizer, localpath string, devfileRegistryURL stri
 							// Check for devfile.yaml or .devfile.yaml
 							/* #nosec G304 -- false positive, filename is not based on user input*/
 							devfilePath := path.Join(hiddenDirPath, f.Name())
-
 							// Set the proper devfile URL for the detected devfile
-							updatedLink, err := UpdateGitLink(source.URL, source.Revision, path.Join(source.Context, path.Join(dirName, HiddenDevfileDir, f.Name())))
+							updatedLink, err := UpdateGitLink(URL, revision, path.Join(context, HiddenDevfileDir, f.Name()))
 							if err != nil {
 								return nil, nil, nil, nil, err
 							}
@@ -201,7 +199,6 @@ func AnalyzePath(log logr.Logger, a Alizer, localpath, context, devfileRegistryU
 			}
 			isDockerfilePresent = true
 		}
-
 	}
 
 	if !isDockerfilePresent {
@@ -258,7 +255,6 @@ func AnalyzePath(log logr.Logger, a Alizer, localpath, context, devfileRegistryU
 			log.Info(fmt.Sprintf("failed to detect port from context: %v, error: %v", context, err))
 		}
 	}
-
 	return nil
 }
 

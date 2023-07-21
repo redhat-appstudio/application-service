@@ -24,7 +24,7 @@ import (
 	"sigs.k8s.io/yaml"
 
 	appstudiov1alpha1 "github.com/redhat-appstudio/application-api/api/v1alpha1"
-	devfile "github.com/redhat-appstudio/application-service/pkg/devfile"
+	cdqanalysis "github.com/redhat-appstudio/application-service/cdq-analysis/pkg"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 )
@@ -182,10 +182,10 @@ var _ = Describe("Application controller finalizer counter tests", func() {
 			Expect(createdHasApp.Status.Devfile).Should(Not(Equal("")))
 
 			// delete the project so that the component delete finalizer fails
-			devfileSrc := devfile.DevfileSrc{
+			devfileSrc := cdqanalysis.DevfileSrc{
 				Data: createdHasApp.Status.Devfile,
 			}
-			appDevfile, err := devfile.ParseDevfile(devfileSrc)
+			appDevfile, err := cdqanalysis.ParseDevfile(devfileSrc)
 			Expect(err).ToNot(HaveOccurred())
 
 			err = appDevfile.DeleteProject(ComponentName)
