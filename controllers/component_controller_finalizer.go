@@ -20,6 +20,9 @@ import (
 	"context"
 	"fmt"
 
+	"k8s.io/apimachinery/pkg/api/errors"
+	ctrl "sigs.k8s.io/controller-runtime"
+
 	appstudiov1alpha1 "github.com/redhat-appstudio/application-api/api/v1alpha1"
 	devfile "github.com/redhat-appstudio/application-service/pkg/devfile"
 	github "github.com/redhat-appstudio/application-service/pkg/github"
@@ -72,6 +75,15 @@ func (r *ComponentReconciler) Finalize(ctx context.Context, component *appstudio
 
 	application.Status.Devfile = string(yamldevfileObj)
 
+	err = r.Status().Update(ctx, application)
+	if err != nil {
+		if errors.IsConflict(err) {
+			return err
+		}
+		log := ctrl.LoggerFrom(ctx)
+		log.Error(err, "Failed to update application in finalizer, will not retry to prevent finalizer loop")
+	}
+
 	gitOpsURL, gitOpsBranch, gitOpsContext, err := util.ProcessGitOpsStatus(component.Status.GitOps, ghClient.Token)
 	if err != nil {
 		return err
@@ -90,10 +102,5 @@ func (r *ComponentReconciler) Finalize(ctx context.Context, component *appstudio
 		return err
 	}
 
-	err = r.AppFS.RemoveAll(tempDir)
-	if err != nil {
-		return err
-	}
-
-	return r.Status().Update(ctx, application)
+	return r.AppFS.RemoveAll(tempDir)
 }
