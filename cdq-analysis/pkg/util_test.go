@@ -177,6 +177,59 @@ func TestCloneRepo(t *testing.T) {
 	}
 }
 
+func TestGetBranchFromRepo(t *testing.T) {
+	os.Mkdir("/tmp/alreadyexistingdir", 0755)
+
+	tests := []struct {
+		name      string
+		clonePath string
+		repo      string
+		revision  string
+		token     string
+		wantErr   bool
+		want      string
+	}{
+		{
+			name:      "Detect Successfully",
+			clonePath: "/tmp/testspringbootclone",
+			repo:      "https://github.com/devfile-samples/devfile-sample-java-springboot-basic",
+			want:      "main",
+		},
+		{
+			name:      "Detect alternate branch Successfully",
+			clonePath: "/tmp/testspringbootclonealt",
+			repo:      "https://github.com/devfile-samples/devfile-sample-java-springboot-basic",
+			revision:  "testbranch",
+			want:      "testbranch",
+		},
+		{
+			name:      "Repo not exist",
+			clonePath: "FDSFSDFSDFSDFjsdklfjsdklfjs",
+			repo:      "https://github.com/devfile-samples/devfile-sample-java-springboot-basic",
+			wantErr:   true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			os.RemoveAll(tt.clonePath)
+			if tt.name != "Repo not exist" {
+				CloneRepo(tt.clonePath, tt.repo, tt.revision, tt.token)
+			}
+
+			branch, err := GetBranchFromRepo(tt.clonePath)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("TestGetBranchFromRepo() unexpected error: %v", err)
+			}
+			if err != nil {
+				if branch != tt.want {
+					t.Errorf("TestGetBranchFromRepo() unexpected branch, expected %v got %v", tt.want, branch)
+				}
+			}
+		})
+	}
+}
+
 func TestConvertGitHubURL(t *testing.T) {
 	tests := []struct {
 		name     string

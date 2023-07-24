@@ -96,6 +96,7 @@ language: JavaScript
 		wantDevfilesURLMap       map[string]string
 		wantDockerfileContextMap map[string]string
 		wantComponentsPortMap    map[string][]int
+		wantBranch               string
 	}{
 		{
 			testCase:            "repo with devfile - should successfully detect spring component",
@@ -109,6 +110,7 @@ language: JavaScript
 				"./": "https://raw.githubusercontent.com/devfile-samples/devfile-sample-java-springboot-basic/main/docker/Dockerfile",
 			},
 			wantComponentsPortMap: map[string][]int{},
+			wantBranch:            "main",
 		},
 		{
 			testCase:            "repo without devfile and dockerfile - should successfully detect spring component",
@@ -126,6 +128,7 @@ language: JavaScript
 				"./": "https://raw.githubusercontent.com/devfile-samples/devfile-sample-java-springboot-basic/main/docker/Dockerfile",
 			},
 			wantComponentsPortMap: map[string][]int{},
+			wantBranch:            "main",
 		},
 		{
 			testCase:                 "private repo - should error out with no token provided",
@@ -177,6 +180,7 @@ language: JavaScript
 				"python-src-none":             "https://raw.githubusercontent.com/devfile-samples/devfile-sample-python-basic/main/docker/Dockerfile",
 			},
 			wantComponentsPortMap: map[string][]int{},
+			wantBranch:            "main",
 		},
 		{
 			testCase:              "should successfully detect single component when context is provided",
@@ -191,12 +195,13 @@ language: JavaScript
 			wantDockerfileContextMap: map[string]string{
 				"devfile-sample-nodejs-basic": "https://raw.githubusercontent.com/nodeshift-starters/devfile-sample/main/Dockerfile",
 			},
+			wantBranch: "main",
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.testCase, func(t *testing.T) {
-			devfilesMap, devfilesURLMap, dockerfileContextMap, componentsPortMap, err := CloneAndAnalyze(k8sClient, tt.gitToken, namespaceName, compName, tt.context, tt.devfilePath, "", tt.URL, tt.Revision, tt.DevfileRegistryURL, tt.isDevfilePresent, tt.isDockerfilePresent)
+			devfilesMap, devfilesURLMap, dockerfileContextMap, componentsPortMap, branch, err := CloneAndAnalyze(k8sClient, tt.gitToken, namespaceName, compName, tt.context, tt.devfilePath, "", tt.URL, tt.Revision, tt.DevfileRegistryURL, tt.isDevfilePresent, tt.isDockerfilePresent)
 			if (err != nil) != (tt.wantErr != "") {
 				t.Errorf("got unexpected error %v", err)
 			} else if err == nil {
@@ -222,6 +227,9 @@ language: JavaScript
 				}
 				if !reflect.DeepEqual(componentsPortMap, tt.wantComponentsPortMap) {
 					t.Errorf("Expected componentsPortMap: %+v, Got: %+v", tt.wantComponentsPortMap, componentsPortMap)
+				}
+				if branch != tt.wantBranch {
+					t.Errorf("Expected branch: %+v, Got: %+v", tt.wantBranch, branch)
 				}
 			} else if err != nil {
 				assert.Regexp(t, tt.wantErr, err.Error(), "Error message should match")

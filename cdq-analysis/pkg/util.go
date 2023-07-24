@@ -71,6 +71,24 @@ func CloneRepo(clonePath, repoURL string, revision string, token string) error {
 	return nil
 }
 
+// GetBranchFromRepo gets the current branch from the cloned repository
+func GetBranchFromRepo(clonePath string) (string, error) {
+	// Command we want to run is: git rev-parse --abbrev-ref HEAD
+	c := exec.Command("git", "rev-parse", "--abbrev-ref", "HEAD")
+	c.Dir = clonePath
+
+	// Get the output of the command
+	branchBytes, err := c.CombinedOutput()
+	if err != nil {
+		return "", fmt.Errorf("failed to get the branch from the repo: %v", err)
+	}
+	branch := string(branchBytes)
+
+	// Remove newline characters potentially present
+	branch = strings.Split(branch, "\n")[0]
+	return branch, nil
+}
+
 // CurlEndpoint curls the endpoint and returns the response or an error if the response is a non-200 status
 func CurlEndpoint(endpoint string) ([]byte, error) {
 	var respBytes []byte
