@@ -37,9 +37,10 @@ func TestCloneAndAnalyze(t *testing.T) {
 	log := ctrl.Log.WithName("TestCloneAndAnalyze")
 
 	k8sClient := K8sInfoClient{
-		Ctx:       ctx,
-		Clientset: clientset,
-		Log:       log,
+		Ctx:          ctx,
+		Clientset:    clientset,
+		Log:          log,
+		CreateK8sJob: false,
 	}
 
 	compName := "testComponent"
@@ -52,34 +53,34 @@ func TestCloneAndAnalyze(t *testing.T) {
 	failedToCloneRepoErr := "failed to clone the repo.*"
 
 	springDevfileContext := `
-schemaVersion: 2.2.0
-metadata:
-  name: java-springboot
-  version: 1.2.1
-  projectType: springboot
-  provider: Red Hat
-  language: Java
-`
+	schemaVersion: 2.2.0
+	metadata:
+	  name: java-springboot
+	  version: 1.2.1
+	  projectType: springboot
+	  provider: Red Hat
+	  language: Java
+	`
 
 	pythonDevfileContext := `
-schemaVersion: 2.2.0
-metadata:
-name: python
-version: 1.0.1
-projectType: Python
-provider: Red Hat
-language: Python
-`
+	schemaVersion: 2.2.0
+	metadata:
+	name: python
+	version: 1.0.1
+	projectType: Python
+	provider: Red Hat
+	language: Python
+	`
 
 	nodeJSDevfileContext := `
-schemaVersion: 2.2.0
-metadata:
-name: nodejs
-version: 2.1.1
-projectType: Node.js
-provider: Red Hat
-language: JavaScript
-`
+	schemaVersion: 2.2.0
+	metadata:
+	name: nodejs
+	version: 2.1.1
+	projectType: Node.js
+	provider: Red Hat
+	language: JavaScript
+	`
 
 	tests := []struct {
 		testCase                 string
@@ -101,14 +102,17 @@ language: JavaScript
 			testCase:            "repo with devfile - should successfully detect spring component",
 			URL:                 springSampleURL,
 			DevfileRegistryURL:  DevfileRegistryEndpoint,
+			devfilePath:         "devfile.yaml",
 			isDevfilePresent:    true,
 			isDockerfilePresent: false,
-			wantDevfilesMap:     map[string][]byte{},
-			wantDevfilesURLMap:  map[string]string{},
-			wantDockerfileContextMap: map[string]string{
-				"./": "https://raw.githubusercontent.com/devfile-samples/devfile-sample-java-springboot-basic/main/docker/Dockerfile",
+			wantDevfilesMap: map[string][]byte{
+				"./": []byte(springDevfileContext),
 			},
-			wantComponentsPortMap: map[string][]int{},
+			wantDevfilesURLMap: map[string]string{
+				"./": "https://raw.githubusercontent.com/devfile-samples/devfile-sample-java-springboot-basic/main/devfile.yaml",
+			},
+			wantDockerfileContextMap: map[string]string{},
+			wantComponentsPortMap:    map[string][]int{},
 		},
 		{
 			testCase:            "repo without devfile and dockerfile - should successfully detect spring component",
@@ -120,12 +124,14 @@ language: JavaScript
 				"./": []byte(springDevfileContext),
 			},
 			wantDevfilesURLMap: map[string]string{
-				"./": "https://registry.devfile.io/devfiles/java-springboot-basic",
+				"./": "https://raw.githubusercontent.com/devfile-samples/devfile-sample-java-springboot-basic/main/devfile.yaml",
 			},
 			wantDockerfileContextMap: map[string]string{
 				"./": "https://raw.githubusercontent.com/devfile-samples/devfile-sample-java-springboot-basic/main/docker/Dockerfile",
 			},
-			wantComponentsPortMap: map[string][]int{},
+			wantComponentsPortMap: map[string][]int{
+				"./": {8081},
+			},
 		},
 		{
 			testCase:                 "private repo - should error out with no token provided",
@@ -166,28 +172,37 @@ language: JavaScript
 			},
 			wantDevfilesURLMap: map[string]string{
 				"devfile-sample-java-springboot-basic": "https://raw.githubusercontent.com/maysunfaisal/multi-components-dockerfile/main/devfile-sample-java-springboot-basic/.devfile/.devfile.yaml",
-				"devfile-sample-nodejs-basic":          "https://raw.githubusercontent.com/maysunfaisal/multi-components-dockerfile/main/devfile-sample-nodejs-basic/devfile.yaml",
+				"devfile-sample-nodejs-basic":          "https://raw.githubusercontent.com/nodeshift-starters/devfile-sample/main/devfile.yaml",
 				"devfile-sample-python-basic":          "https://raw.githubusercontent.com/maysunfaisal/multi-components-dockerfile/main/devfile-sample-python-basic/.devfile.yaml",
-				"python-src-none":                      "https://registry.devfile.io/devfiles/python-basic",
+				"python-src-none":                      "https://raw.githubusercontent.com/devfile-samples/devfile-sample-python-basic/main/devfile.yaml",
 			},
 			wantDockerfileContextMap: map[string]string{
 				"devfile-sample-nodejs-basic": "https://raw.githubusercontent.com/nodeshift-starters/devfile-sample/main/Dockerfile",
 				"devfile-sample-python-basic": "https://raw.githubusercontent.com/maysunfaisal/multi-components-dockerfile/main/devfile-sample-python-basic/Dockerfile",
-				"python-src-docker":           "python-src-docker/Dockerfile",
+				"python-src-docker":           "Dockerfile",
 				"python-src-none":             "https://raw.githubusercontent.com/devfile-samples/devfile-sample-python-basic/main/docker/Dockerfile",
 			},
-			wantComponentsPortMap: map[string][]int{},
+			wantComponentsPortMap: map[string][]int{
+				"devfile-sample-nodejs-basic": {3000},
+			},
 		},
 		{
-			testCase:              "should successfully detect single component when context is provided",
-			context:               "devfile-sample-nodejs-basic",
-			URL:                   multiComponentRepoURL,
-			DevfileRegistryURL:    DevfileRegistryEndpoint,
-			isDevfilePresent:      true,
-			isDockerfilePresent:   false,
-			wantDevfilesMap:       map[string][]byte{},
-			wantDevfilesURLMap:    map[string]string{},
-			wantComponentsPortMap: map[string][]int{},
+			testCase:            "should successfully detect single component when context is provided",
+			context:             "devfile-sample-nodejs-basic",
+			URL:                 multiComponentRepoURL,
+			DevfileRegistryURL:  DevfileRegistryEndpoint,
+			devfilePath:         "devfile.yaml",
+			isDevfilePresent:    true,
+			isDockerfilePresent: false,
+			wantDevfilesMap: map[string][]byte{
+				"devfile-sample-nodejs-basic": []byte(nodeJSDevfileContext),
+			},
+			wantDevfilesURLMap: map[string]string{
+				"devfile-sample-nodejs-basic": "https://raw.githubusercontent.com/nodeshift-starters/devfile-sample/main/devfile.yaml",
+			},
+			wantComponentsPortMap: map[string][]int{
+				"devfile-sample-nodejs-basic": {3000},
+			},
 			wantDockerfileContextMap: map[string]string{
 				"devfile-sample-nodejs-basic": "https://raw.githubusercontent.com/nodeshift-starters/devfile-sample/main/Dockerfile",
 			},
@@ -239,9 +254,10 @@ func TestSendBackDetectionResult(t *testing.T) {
 	log := ctrl.Log.WithName("TestSendBackDetectionResult")
 
 	k8sClient := K8sInfoClient{
-		Ctx:       ctx,
-		Clientset: clientset,
-		Log:       log,
+		Ctx:          ctx,
+		Clientset:    clientset,
+		Log:          log,
+		CreateK8sJob: true,
 	}
 
 	compName := "testComponent"

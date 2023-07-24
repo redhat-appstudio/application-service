@@ -241,7 +241,10 @@ func AnalyzePath(log logr.Logger, a Alizer, localpath, context, devfileRegistryU
 			}
 
 			dockerfileContextMapFromRepo[context] = link
-			componentPortsMapFromRepo[context] = detectedPorts
+			// only set if not empty
+			if detectedPorts != nil && !reflect.DeepEqual(detectedPorts, []int{}) {
+				componentPortsMapFromRepo[context] = detectedPorts
+			}
 			isDockerfilePresent = true
 		}
 	}
@@ -250,7 +253,9 @@ func AnalyzePath(log logr.Logger, a Alizer, localpath, context, devfileRegistryU
 		// Still invoke alizer to detect the ports from the component
 		_, _, _, detectedPorts, err := AnalyzeAndDetectDevfile(a, localpath, devfileRegistryURL)
 		if err == nil {
-			componentPortsMapFromRepo[context] = detectedPorts
+			if detectedPorts != nil && !reflect.DeepEqual(detectedPorts, []int{}) {
+				componentPortsMapFromRepo[context] = detectedPorts
+			}
 		} else {
 			log.Info(fmt.Sprintf("failed to detect port from context: %v, error: %v", context, err))
 		}

@@ -22,7 +22,6 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/go-logr/logr"
 	"github.com/spf13/afero"
 )
 
@@ -56,13 +55,4 @@ func IsExisting(fs afero.Fs, path string) (bool, error) {
 // CreateTempPath creates a temp path with the prefix using the Afero FS
 func CreateTempPath(prefix string, appFs afero.Afero) (string, error) {
 	return appFs.TempDir(os.TempDir(), prefix)
-}
-
-// RemoveFolderAndLogError removes the specified folder. If the delete fails, no error is returned, but an error is logged
-// Used in cases where we're cleaning up after encountering an error, but want to return the original error instead.
-func RemoveFolderAndLogError(log logr.Logger, fs afero.Fs, path string) {
-	err := fs.RemoveAll(path)
-	if err != nil {
-		log.Error(err, fmt.Sprintf("Unable to delete folder %s", path))
-	}
 }
