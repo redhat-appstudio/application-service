@@ -569,7 +569,7 @@ var _ = Describe("Component Detection Query controller", func() {
 
 			// index is 1 because of CDQ status condition Processing
 			Expect(createdHasCompDetectionQuery.Status.Conditions[1].Status).Should(Equal(metav1.ConditionFalse))
-			Expect(createdHasCompDetectionQuery.Status.Conditions[1].Message).Should(ContainSubstring("error getting devfile info from url: failed to retrieve"))
+			Expect(createdHasCompDetectionQuery.Status.Conditions[1].Message).Should(ContainSubstring("failed to clone the repo: exit status 128"))
 
 			// Delete the specified Detection Query resource
 			deleteCompDetQueryCR(hasCompDetQueryLookupKey)
@@ -628,7 +628,7 @@ var _ = Describe("Component Detection Query controller", func() {
 
 			// index is 1 because of CDQ status condition Processing
 			Expect(createdHasCompDetectionQuery.Status.Conditions[1].Status).Should(Equal(metav1.ConditionFalse))
-			Expect(createdHasCompDetectionQuery.Status.Conditions[1].Message).Should(ContainSubstring("error getting devfile info from url: failed to retrieve"))
+			Expect(createdHasCompDetectionQuery.Status.Conditions[1].Message).Should(ContainSubstring("failed to clone the repo: exit status 128"))
 
 			// Delete the specified Detection Query resource
 			deleteCompDetQueryCR(hasCompDetQueryLookupKey)
