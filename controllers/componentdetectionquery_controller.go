@@ -159,32 +159,6 @@ func (r *ComponentDetectionQueryReconciler) Reconcile(ctx context.Context, req c
 			return ctrl.Result{}, nil
 		}
 
-		if source.Revision == "" {
-			log.Info(fmt.Sprintf("Look for default branch of repo %s... %v", source.URL, req.NamespacedName))
-			metricsLabel := prometheus.Labels{"controller": cdqName, "tokenName": ghClient.TokenName, "operation": "GetDefaultBranchFromURL"}
-			metrics.ControllerGitRequest.With(metricsLabel).Inc()
-			source.Revision, err = ghClient.GetDefaultBranchFromURL(sourceURL, ctx)
-			metrics.HandleRateLimitMetrics(err, metricsLabel)
-			if err != nil {
-				log.Error(err, fmt.Sprintf("Unable to get default branch of Github Repo %v, try to fall back to main branch... %v", source.URL, req.NamespacedName))
-				metricsLabel := prometheus.Labels{"controller": cdqName, "tokenName": ghClient.TokenName, "operation": "GetBranchFromURL"}
-				metrics.ControllerGitRequest.With(metricsLabel).Inc()
-				_, err := ghClient.GetBranchFromURL(sourceURL, ctx, "main")
-				if err != nil {
-					metrics.HandleRateLimitMetrics(err, metricsLabel)
-					log.Error(err, fmt.Sprintf("Unable to get main branch of Github Repo %v ... %v", source.URL, req.NamespacedName))
-					retErr := fmt.Errorf("unable to get default branch of Github Repo %v, try to fall back to main branch, failed to get main branch... %v", source.URL, req.NamespacedName)
-					r.SetCompleteConditionAndUpdateCR(ctx, req, &componentDetectionQuery, copiedCDQ, retErr)
-					return ctrl.Result{}, nil
-				} else {
-					source.Revision = "main"
-				}
-			}
-		}
-
-		// set in the CDQ spec
-		componentDetectionQuery.Spec.GitSource.Revision = source.Revision
-
 		if source.DevfileURL == "" {
 			isDockerfilePresent := false
 			isDevfilePresent := false
@@ -215,7 +189,8 @@ func (r *ComponentDetectionQueryReconciler) Reconcile(ctx context.Context, req c
 				CreateK8sJob: false,
 			}
 
-			devfilesMapReturned, devfilesURLMapReturned, dockerfileContextMapReturned, componentPortsMapReturned, err := cdqanalysis.CloneAndAnalyze(k8sInfoClient, gitToken, req.Namespace, req.Name, context, devfilePath, dockerfilePath, source.URL, source.Revision, r.DevfileRegistryURL, isDevfilePresent, isDockerfilePresent)
+			devfilesMapReturned, devfilesURLMapReturned, dockerfileContextMapReturned, componentPortsMapReturned, branch, err := cdqanalysis.CloneAndAnalyze(k8sInfoClient, gitToken, req.Namespace, req.Name, context, devfilePath, dockerfilePath, source.URL, source.Revision, r.DevfileRegistryURL, isDevfilePresent, isDockerfilePresent)
+			componentDetectionQuery.Spec.GitSource.Revision = branch
 			if err != nil {
 				log.Error(err, fmt.Sprintf("Error running cdq analysis... %v", req.NamespacedName))
 				r.SetCompleteConditionAndUpdateCR(ctx, req, &componentDetectionQuery, copiedCDQ, err)
@@ -228,6 +203,33 @@ func (r *ComponentDetectionQueryReconciler) Reconcile(ctx context.Context, req c
 
 		} else {
 			log.Info(fmt.Sprintf("devfile was explicitly specified at %s %v", source.DevfileURL, req.NamespacedName))
+
+			// For scenarios where a devfile is passed in, we still need to use the GH API for branch detection as we do not clone.
+			if source.Revision == "" {
+				log.Info(fmt.Sprintf("Look for default branch of repo %s... %v", source.URL, req.NamespacedName))
+				metricsLabel := prometheus.Labels{"controller": cdqName, "tokenName": ghClient.TokenName, "operation": "GetDefaultBranchFromURL"}
+				metrics.ControllerGitRequest.With(metricsLabel).Inc()
+				source.Revision, err = ghClient.GetDefaultBranchFromURL(sourceURL, ctx)
+				metrics.HandleRateLimitMetrics(err, metricsLabel)
+				if err != nil {
+					log.Error(err, fmt.Sprintf("Unable to get default branch of Github Repo %v, try to fall back to main branch... %v", source.URL, req.NamespacedName))
+					metricsLabel := prometheus.Labels{"controller": cdqName, "tokenName": ghClient.TokenName, "operation": "GetBranchFromURL"}
+					metrics.ControllerGitRequest.With(metricsLabel).Inc()
+					_, err := ghClient.GetBranchFromURL(sourceURL, ctx, "main")
+					if err != nil {
+						metrics.HandleRateLimitMetrics(err, metricsLabel)
+						log.Error(err, fmt.Sprintf("Unable to get main branch of Github Repo %v ... %v", source.URL, req.NamespacedName))
+						retErr := fmt.Errorf("unable to get default branch of Github Repo %v, try to fall back to main branch, failed to get main branch... %v", source.URL, req.NamespacedName)
+						r.SetCompleteConditionAndUpdateCR(ctx, req, &componentDetectionQuery, copiedCDQ, retErr)
+						return ctrl.Result{}, nil
+					} else {
+						source.Revision = "main"
+					}
+				}
+			}
+
+			// set in the CDQ spec
+			componentDetectionQuery.Spec.GitSource.Revision = source.Revision
 
 			shouldIgnoreDevfile, devfileBytes, err := cdqanalysis.ValidateDevfile(log, source.DevfileURL)
 			if err != nil {
