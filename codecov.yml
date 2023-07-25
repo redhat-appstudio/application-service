@@ -6,5 +6,6 @@ ignore:
   - "controllers/application_pact_test_state_handlers.go" # state handlers for the Pact tests
   - "controllers/application_pact_test_utils.go" # utils file for the Pact tests
   - "cdq-analysis/pkg/detect_mock.go" # mock file for testing
+  - "cdq-analysis/main.go" # entry point for cdq-analysis docker image
   - "pkg/github/mock.go" # mock file for testing
   - "pkg/github/token_moke.go" # mock file for testing
