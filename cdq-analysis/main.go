@@ -20,8 +20,6 @@ import (
 	"fmt"
 	"log"
 	"os"
-	"strconv"
-	"strings"
 
 	"go.uber.org/zap/zapcore"
 	ctrl "sigs.k8s.io/controller-runtime"
@@ -33,16 +31,6 @@ import (
 )
 
 func main() {
-	// remove the prefix and suffix quotes
-	for i := 1; i <= 10; i++ {
-		if strings.HasPrefix(os.Args[i], "\"") && strings.HasSuffix(os.Args[i], "\"") && len(os.Args[i]) > 1 {
-			os.Args[i] = os.Args[i][1 : len(os.Args[i])-1]
-		}
-	}
-	// gitToken := os.Args[1]
-	isDevfilePresent, _ := strconv.ParseBool(os.Args[10])
-	isDockerfilePresent, _ := strconv.ParseBool(os.Args[11])
-	createK8sJob, _ := strconv.ParseBool(os.Args[12])
 	if os.Getenv("GITHUB_TOKEN") == "" {
 		log.Fatal("GITHUB_TOKEN must be set as an environment variable")
 	}
@@ -50,6 +38,7 @@ func main() {
 
 	// Parse all of the possible command-line flags for the tool
 	var contextPath, URL, name, devfilePath, dockerfilePath, Revision, namespace, DevfileRegistryURL string
+	var isDevfilePresent, isDockerfilePresent, createK8sJob bool
 	flag.StringVar(&name, "name", "", "The ComponentDetectionQuery name")
 	flag.StringVar(&contextPath, "contextPath", "./", "The context path for the cdq analysis")
 	flag.StringVar(&URL, "URL", "", "The URL for the git repository")
