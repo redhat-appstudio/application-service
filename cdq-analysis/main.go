@@ -16,7 +16,9 @@ package main
 
 import (
 	"context"
+	"flag"
 	"fmt"
+	"log"
 	"os"
 	"strconv"
 	"strings"
@@ -37,18 +39,33 @@ func main() {
 			os.Args[i] = os.Args[i][1 : len(os.Args[i])-1]
 		}
 	}
-	gitToken := os.Args[1]
-	namespace := os.Args[2]
-	name := os.Args[3]
-	contextPath := os.Args[4]
-	devfilePath := os.Args[5]
-	dockerfilePath := os.Args[6]
-	URL := os.Args[7]
-	Revision := os.Args[8]
-	DevfileRegistryURL := os.Args[9]
+	// gitToken := os.Args[1]
 	isDevfilePresent, _ := strconv.ParseBool(os.Args[10])
 	isDockerfilePresent, _ := strconv.ParseBool(os.Args[11])
 	createK8sJob, _ := strconv.ParseBool(os.Args[12])
+	if os.Getenv("GITHUB_TOKEN") == "" {
+		log.Fatal("GITHUB_TOKEN must be set as an environment variable")
+	}
+	gitToken := os.Getenv("GITHUB_TOKEN")
+
+	// Parse all of the possible command-line flags for the tool
+	var contextPath, URL, name, devfilePath, dockerfilePath, Revision, namespace, DevfileRegistryURL string
+	flag.StringVar(&name, "name", "", "The ComponentDetectionQuery name")
+	flag.StringVar(&contextPath, "contextPath", "./", "The context path for the cdq analysis")
+	flag.StringVar(&URL, "URL", "", "The URL for the git repository")
+	flag.StringVar(&devfilePath, "devfilePath", "", "The devfile path if the devfile present")
+	flag.StringVar(&dockerfilePath, "dockerfilePath", "", "The dockerfile path if the dockerfile present")
+	flag.StringVar(&Revision, "revision", "", "The revision of the git repo to run cdq analysis against with")
+	flag.StringVar(&DevfileRegistryURL, "devfileRegistryURL", pkg.DevfileRegistryEndpoint, "The devfile registry URL")
+	flag.StringVar(&namespace, "namespace", "", "The namespace from which to fetch resources")
+	flag.BoolVar(&isDevfilePresent, "isDevfilePresent", false, "If the devfile present in the root of the repository")
+	flag.BoolVar(&isDockerfilePresent, "isDockerfilePresent", false, "If the dockerfile present in the root of the repository")
+	flag.BoolVar(&createK8sJob, "createK8sJob", false, "If a kubernetes job need to be created to send back the result")
+	flag.Parse()
+
+	if err := validateVariables(name, URL, namespace, Revision); err != nil {
+		log.Fatal(err)
+	}
 
 	opts := zap.Options{
 		TimeEncoder: zapcore.ISO8601TimeEncoder,
@@ -76,4 +93,30 @@ func main() {
 		CreateK8sJob: createK8sJob,
 	}
 	pkg.CloneAndAnalyze(k8sInfoClient, gitToken, namespace, name, contextPath, devfilePath, dockerfilePath, URL, Revision, DevfileRegistryURL, isDevfilePresent, isDockerfilePresent)
+}
+
+// validateVariables ensures that all of the necessary variables passed in are set to valid values
+func validateVariables(name, URL, namespace, revision string) error {
+
+	// The namespace flag must be passed in
+	if namespace == "" {
+		return fmt.Errorf("usage: --namespace must be set to a Kubernetes namespace")
+	}
+
+	// Parse the URL
+	if URL == "" {
+		return fmt.Errorf("usage: --URL <repository-url> must be passed in as a flag")
+	}
+
+	// The name flag must be passed in
+	if name == "" {
+		return fmt.Errorf("usage: --name <cdq-name> must be passed in as a flag")
+	}
+
+	// The revision flag must be passed in
+	if revision == "" {
+		return fmt.Errorf("usage: --revision <revision> must be passed in as a flag")
+	}
+
+	return nil
 }

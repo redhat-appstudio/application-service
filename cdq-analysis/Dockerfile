@@ -6,5 +6,9 @@ COPY  . .
 
 RUN go mod download
 
-RUN go build -o ./main
+RUN CGO_ENABLED=0 GOOS=linux go build -a -o cdq-analysis main.go
+
+USER 1001
+
+ENTRYPOINT ["/app/entrypoint.sh"]
 
