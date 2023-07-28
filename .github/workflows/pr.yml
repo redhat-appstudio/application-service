@@ -185,7 +185,7 @@ jobs:
         uses: actions/setup-go@v2
         with:
           go-version: 1.18
-      - name: Change to the GitOps Generator directory
+      - name: Change to the cdq-analysis directory
         run: cd cdq-analysis/
       - name: Check if dockerimage build is working
         run: docker build -f ./Dockerfile .
