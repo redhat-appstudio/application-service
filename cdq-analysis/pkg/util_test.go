@@ -24,8 +24,8 @@ import (
 	"reflect"
 	"testing"
 
+	"github.com/devfile/alizer/pkg/apis/model"
 	indexSchema "github.com/devfile/registry-support/index/generator/schema"
-	"github.com/redhat-developer/alizer/go/pkg/apis/model"
 )
 
 func TestISExist(t *testing.T) {

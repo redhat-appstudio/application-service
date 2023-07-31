@@ -27,9 +27,9 @@ import (
 	"regexp"
 	"strings"
 
+	"github.com/devfile/alizer/pkg/apis/model"
 	"github.com/devfile/registry-support/index/generator/schema"
 	registryLibrary "github.com/devfile/registry-support/registry-library/library"
-	"github.com/redhat-developer/alizer/go/pkg/apis/model"
 )
 
 // CloneRepo clones the repoURL to clonePath

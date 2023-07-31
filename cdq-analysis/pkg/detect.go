@@ -22,11 +22,11 @@ import (
 	"reflect"
 	"strings"
 
+	"github.com/devfile/alizer/pkg/apis/model"
+	"github.com/devfile/alizer/pkg/apis/recognizer"
 	"github.com/devfile/api/v2/pkg/apis/workspaces/v1alpha2"
 	"github.com/devfile/library/v2/pkg/devfile/parser/data/v2/common"
 	"github.com/go-logr/logr"
-	"github.com/redhat-developer/alizer/go/pkg/apis/model"
-	"github.com/redhat-developer/alizer/go/pkg/apis/recognizer"
 	"sigs.k8s.io/yaml"
 )
 
