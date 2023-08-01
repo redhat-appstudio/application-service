@@ -17,7 +17,7 @@ package pkg
 
 import (
 	"fmt"
-	"io/ioutil"
+	"os"
 	"path"
 	"reflect"
 	"strings"
@@ -52,7 +52,7 @@ func search(log logr.Logger, a Alizer, localpath string, devfileRegistryURL stri
 	dockerfileContextMapFromRepo := make(map[string]string)
 	componentPortsMapFromRepo := make(map[string][]int)
 
-	files, err := ioutil.ReadDir(localpath)
+	files, err := os.ReadDir(localpath)
 	if err != nil {
 		return nil, nil, nil, nil, err
 	}
@@ -63,7 +63,7 @@ func search(log logr.Logger, a Alizer, localpath string, devfileRegistryURL stri
 			isDockerfilePresent := false
 			curPath := path.Join(localpath, f.Name())
 			context := path.Join(srcContext, f.Name())
-			files, err := ioutil.ReadDir(curPath)
+			files, err := os.ReadDir(curPath)
 			if err != nil {
 				return nil, nil, nil, nil, err
 			}
@@ -93,7 +93,7 @@ func search(log logr.Logger, a Alizer, localpath string, devfileRegistryURL stri
 					// if the dir is .devfile, we dont increment currentLevel
 					// consider devfile.yaml and .devfile/devfile.yaml as the same level, for example
 					hiddenDirPath := path.Join(curPath, HiddenDevfileDir)
-					hiddenfiles, err := ioutil.ReadDir(hiddenDirPath)
+					hiddenfiles, err := os.ReadDir(hiddenDirPath)
 					if err != nil {
 						return nil, nil, nil, nil, err
 					}
@@ -140,7 +140,7 @@ func search(log logr.Logger, a Alizer, localpath string, devfileRegistryURL stri
 					// OR docker/Containerfile, .docker/Containerfile and build/Containerfile
 					dirName := f.Name()
 					dirPath := path.Join(curPath, dirName)
-					files, err := ioutil.ReadDir(dirPath)
+					files, err := os.ReadDir(dirPath)
 					if err != nil {
 						return nil, nil, nil, nil, err
 					}
