@@ -222,7 +222,7 @@ func TestMapToBindingByBoundObject(t *testing.T) {
 
 	t.Run("should return two Binding requests for staging Env", func(t *testing.T) {
 		// when
-		requests := MapToBindingByBoundObjectName(fakeClient, "Environment", "appstudio.environment")(stagingEnv)
+		requests := MapToBindingByBoundObjectName(ctx, fakeClient, "Environment", "appstudio.environment")(ctx, stagingEnv)
 
 		// then
 		require.Len(t, requests, 2) // binding4 is not returned because binding4 does not have a label matching the staging env
@@ -232,7 +232,7 @@ func TestMapToBindingByBoundObject(t *testing.T) {
 
 	t.Run("should return no Binding requests for prod Env", func(t *testing.T) {
 		// when
-		requests := MapToBindingByBoundObjectName(fakeClient, "Environment", "appstudio.environment")(prodEnv)
+		requests := MapToBindingByBoundObjectName(ctx, fakeClient, "Environment", "appstudio.environment")(ctx, prodEnv)
 
 		// then
 		require.Empty(t, requests)
@@ -243,7 +243,7 @@ func TestMapToBindingByBoundObject(t *testing.T) {
 			return fmt.Errorf("some error")
 		}
 		// when
-		requests := MapToBindingByBoundObjectName(fakeClient, "Environment", "appstudio.environment")(prodEnv)
+		requests := MapToBindingByBoundObjectName(ctx, fakeClient, "Environment", "appstudio.environment")(ctx, prodEnv)
 
 		// then
 		require.Empty(t, requests)
