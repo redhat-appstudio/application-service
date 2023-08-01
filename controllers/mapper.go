@@ -79,7 +79,7 @@ func MapComponentToApplication() func(object client.Object) []reconcile.Request 
 				},
 			}
 		}
-		// the obj was not a namespace or it did not have the required label.
+		// the obj was not in the namespace or it did not have the required Application.
 		return []reconcile.Request{}
 	}
 }
