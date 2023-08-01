@@ -49,7 +49,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/handler"
 	"sigs.k8s.io/controller-runtime/pkg/predicate"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
-	"sigs.k8s.io/controller-runtime/pkg/source"
 )
 
 // SnapshotEnvironmentBindingReconciler reconciles a SnapshotEnvironmentBinding object
@@ -451,8 +450,8 @@ func (r *SnapshotEnvironmentBindingReconciler) SetupWithManager(ctx context.Cont
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&appstudiov1alpha1.SnapshotEnvironmentBinding{}, builder.WithPredicates(predicate.GenerationChangedPredicate{})).
 		// Watch for Environment CR updates and reconcile all the Bindings that reference the Environment
-		Watches(&source.Kind{Type: &appstudiov1alpha1.Environment{}},
-			handler.EnqueueRequestsFromMapFunc(MapToBindingByBoundObjectName(r.Client, "Environment", "appstudio.environment")), builder.WithPredicates(predicate.Funcs{
+		Watches(&appstudiov1alpha1.Environment{},
+			handler.EnqueueRequestsFromMapFunc(MapToBindingByBoundObjectName(ctx, r.Client, "Environment", "appstudio.environment")), builder.WithPredicates(predicate.Funcs{
 				CreateFunc: func(e event.CreateEvent) bool {
 					log := log.WithValues("namespace", e.Object.GetNamespace())
 					logutil.LogAPIResourceChangeEvent(log, e.Object.GetName(), "Environment", logutil.ResourceCreate, nil)

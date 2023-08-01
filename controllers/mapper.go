@@ -29,11 +29,10 @@ import (
 // MapToBindingByBoundObjectName maps the bound object (Environment) to the associated Bindings.
 // The correct Bindings are listed using the given label whose value should equal to the object's name.
 // Adapted from https://github.com/codeready-toolchain/host-operator/blob/master/controllers/spacebindingcleanup/mapper.go#L17
-func MapToBindingByBoundObjectName(cl client.Client, objectType, label string) func(object client.Object) []reconcile.Request {
-	return func(obj client.Object) []reconcile.Request {
+func MapToBindingByBoundObjectName(ctx context.Context, cl client.Client, objectType, label string) func(ctx context.Context, object client.Object) []reconcile.Request {
+	return func(ctx context.Context, obj client.Object) []reconcile.Request {
 		mapperLog := ctrl.Log.WithName("MapToBindingByBoundObjectName")
 		log := mapperLog.WithValues("name", obj.GetName()).WithValues("namespace", obj.GetNamespace()).WithValues("controllerKind", obj.GetObjectKind())
-		ctx := context.Background()
 
 		bindingList := &appstudiov1alpha1.SnapshotEnvironmentBindingList{}
 		err := cl.List(ctx, bindingList,
