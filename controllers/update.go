@@ -30,6 +30,7 @@ import (
 	"github.com/devfile/library/v2/pkg/devfile/parser/data/v2/common"
 	"github.com/go-logr/logr"
 	appstudiov1alpha1 "github.com/redhat-appstudio/application-api/api/v1alpha1"
+	cdqanalysis "github.com/redhat-appstudio/application-service/cdq-analysis/pkg"
 	devfile "github.com/redhat-appstudio/application-service/pkg/devfile"
 	"github.com/redhat-appstudio/application-service/pkg/util"
 	corev1 "k8s.io/api/core/v1"
@@ -319,10 +320,10 @@ func (r *ComponentDetectionQueryReconciler) updateComponentStub(req ctrl.Request
 	for context, devfileBytes := range devfilesMap {
 		log.Info(fmt.Sprintf("Currently reading the devfile for context %v", context))
 		// Parse the Component Devfile
-		devfileSrc := devfile.DevfileSrc{
+		devfileSrc := cdqanalysis.DevfileSrc{
 			Data: string(devfileBytes),
 		}
-		compDevfileData, err := devfile.ParseDevfile(devfileSrc)
+		compDevfileData, err := cdqanalysis.ParseDevfile(devfileSrc)
 		if err != nil {
 			return err
 		}

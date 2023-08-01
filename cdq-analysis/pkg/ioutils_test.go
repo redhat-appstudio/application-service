@@ -1,5 +1,5 @@
 //
-// Copyright 2021-2022 Red Hat, Inc.
+// Copyright 2021-2023 Red Hat, Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -13,7 +13,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package ioutils
+package pkg
 
 import (
 	"os"
@@ -22,8 +22,6 @@ import (
 
 	"github.com/spf13/afero"
 	"github.com/stretchr/testify/assert"
-	"go.uber.org/zap/zapcore"
-	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 )
 
 func TestIsExisting(t *testing.T) {
@@ -152,50 +150,6 @@ func TestCreateTempPath(t *testing.T) {
 					t.Errorf("TestCreateTempPath unexpected error: %v", err)
 				}
 			}
-		})
-	}
-}
-
-func TestRemoveFolderAndLogError(t *testing.T) {
-	fs := NewFilesystem()
-	inmemoryFs := NewMemoryFilesystem()
-	readOnlyFs := NewReadOnlyFs()
-
-	tests := []struct {
-		name string
-		fs   afero.Afero
-		path string
-	}{
-		{
-			name: "inmemory fs",
-			fs:   inmemoryFs,
-		},
-		{
-			name: "read only fs",
-			fs:   readOnlyFs,
-			path: "/somepath",
-		},
-		{
-			name: "local fs",
-			fs:   fs,
-		},
-		{
-			name: "empty path",
-			fs:   fs,
-			path: "",
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			if tt.path == "" && tt.name != "empty path" {
-				tt.path, _ = CreateTempPath("TestCreateTempPath", tt.fs)
-			}
-			log := zap.New(zap.UseFlagOptions(&zap.Options{
-				Development: true,
-				TimeEncoder: zapcore.ISO8601TimeEncoder,
-			}))
-			RemoveFolderAndLogError(log, tt.fs, tt.path)
 		})
 	}
 }

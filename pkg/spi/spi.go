@@ -20,6 +20,7 @@ import (
 	"io"
 	"path/filepath"
 
+	cdqanalysis "github.com/redhat-appstudio/application-service/cdq-analysis/pkg"
 	"github.com/redhat-appstudio/application-service/pkg/devfile"
 	"github.com/redhat-appstudio/service-provider-integration-scm-file-retriever/gitfile"
 )
@@ -37,7 +38,7 @@ func (s SPIClient) GetFileContents(ctx context.Context, namespace string, repoUr
 }
 
 func DownloadDevfileUsingSPI(s SPI, ctx context.Context, namespace string, repoURL string, ref string, path string) ([]byte, error) {
-	validDevfileLocations := []string{devfile.Devfile, devfile.HiddenDevfile, devfile.HiddenDirDevfile, devfile.HiddenDirHiddenDevfile}
+	validDevfileLocations := []string{cdqanalysis.Devfile, cdqanalysis.HiddenDevfile, cdqanalysis.HiddenDirDevfile, cdqanalysis.HiddenDirHiddenDevfile}
 
 	for _, filename := range validDevfileLocations {
 		devfileBytes, err := DownloadFileUsingSPI(s, ctx, namespace, repoURL, ref, filepath.Join("/", path, filename))
@@ -50,7 +51,7 @@ func DownloadDevfileUsingSPI(s SPI, ctx context.Context, namespace string, repoU
 		}
 	}
 
-	return nil, &devfile.NoDevfileFound{Location: repoURL}
+	return nil, &cdqanalysis.NoDevfileFound{Location: repoURL}
 }
 
 func DownloadFileUsingSPI(s SPI, ctx context.Context, namespace string, repoURL string, ref string, filepath string) ([]byte, error) {
@@ -73,7 +74,7 @@ func DownloadDevfileandDockerfileUsingSPI(s SPI, ctx context.Context, namespace 
 
 	devfileBytes, err := DownloadDevfileUsingSPI(s, ctx, namespace, repoURL, ref, path)
 	if err != nil {
-		if _, ok := err.(*devfile.NoDevfileFound); !ok {
+		if _, ok := err.(*cdqanalysis.NoDevfileFound); !ok {
 			return nil, nil, err
 		}
 	}

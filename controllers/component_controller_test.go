@@ -29,6 +29,7 @@ import (
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	appstudiov1alpha1 "github.com/redhat-appstudio/application-api/api/v1alpha1"
+	cdqanalysis "github.com/redhat-appstudio/application-service/cdq-analysis/pkg"
 	devfilePkg "github.com/redhat-appstudio/application-service/pkg/devfile"
 	"sigs.k8s.io/yaml"
 
@@ -114,17 +115,17 @@ var _ = Describe("Component controller", func() {
 			Expect(createdHasApp.Status.Devfile).Should(Not(Equal("")))
 
 			// Check the Component devfile
-			devfileSrc := devfilePkg.DevfileSrc{
+			devfileSrc := cdqanalysis.DevfileSrc{
 				Data: createdHasComp.Status.Devfile,
 			}
-			_, err := devfilePkg.ParseDevfile(devfileSrc)
+			_, err := cdqanalysis.ParseDevfile(devfileSrc)
 			Expect(err).Should(Not(HaveOccurred()))
 
 			// Check the HAS Application devfile
-			devfileSrc = devfilePkg.DevfileSrc{
+			devfileSrc = cdqanalysis.DevfileSrc{
 				Data: createdHasApp.Status.Devfile,
 			}
-			hasAppDevfile, err := devfilePkg.ParseDevfile(devfileSrc)
+			hasAppDevfile, err := cdqanalysis.ParseDevfile(devfileSrc)
 			Expect(err).Should(Not(HaveOccurred()))
 
 			// gitOpsRepo and appModelRepo should both be set
@@ -220,20 +221,20 @@ var _ = Describe("Component controller", func() {
 			Expect(createdHasApp.Status.Devfile).Should(Not(Equal("")))
 
 			// Check the Component devfile
-			devfileSrc := devfilePkg.DevfileSrc{
+			devfileSrc := cdqanalysis.DevfileSrc{
 				Data: createdHasComp.Status.Devfile,
 			}
-			hasCompDevfile, err := devfilePkg.ParseDevfile(devfileSrc)
+			hasCompDevfile, err := cdqanalysis.ParseDevfile(devfileSrc)
 			Expect(err).Should(Not(HaveOccurred()))
 
 			// Check if its Liberty
 			Expect(string(hasCompDevfile.GetMetadata().DisplayName)).Should(ContainSubstring("Liberty"))
 
 			// Check the HAS Application devfile
-			devfileSrc = devfilePkg.DevfileSrc{
+			devfileSrc = cdqanalysis.DevfileSrc{
 				Data: createdHasApp.Status.Devfile,
 			}
-			hasAppDevfile, err := devfilePkg.ParseDevfile(devfileSrc)
+			hasAppDevfile, err := cdqanalysis.ParseDevfile(devfileSrc)
 			Expect(err).Should(Not(HaveOccurred()))
 
 			// gitOpsRepo and appModelRepo should both be set
@@ -518,10 +519,10 @@ var _ = Describe("Component controller", func() {
 			Expect(createdHasApp.Status.Devfile).Should(Not(Equal("")))
 
 			// Check the Component devfile
-			devfileSrc := devfilePkg.DevfileSrc{
+			devfileSrc := cdqanalysis.DevfileSrc{
 				Data: createdHasComp.Status.Devfile,
 			}
-			hasCompDevfile, err := devfilePkg.ParseDevfile(devfileSrc)
+			hasCompDevfile, err := cdqanalysis.ParseDevfile(devfileSrc)
 			Expect(err).Should(Not(HaveOccurred()))
 
 			checklist := updateChecklist{
@@ -535,10 +536,10 @@ var _ = Describe("Component controller", func() {
 			verifyHASComponentUpdates(hasCompDevfile, checklist, nil)
 
 			// Check the HAS Application devfile
-			devfileSrc = devfilePkg.DevfileSrc{
+			devfileSrc = cdqanalysis.DevfileSrc{
 				Data: createdHasApp.Status.Devfile,
 			}
-			hasAppDevfile, err := devfilePkg.ParseDevfile(devfileSrc)
+			hasAppDevfile, err := cdqanalysis.ParseDevfile(devfileSrc)
 			Expect(err).Should(Not(HaveOccurred()))
 
 			// gitOpsRepo and appModelRepo should both be set
@@ -586,10 +587,10 @@ var _ = Describe("Component controller", func() {
 			Expect(updatedHasComp.Status.Devfile).Should(Not(Equal("")))
 
 			// Check the Component updated devfile
-			devfileSrc = devfilePkg.DevfileSrc{
+			devfileSrc = cdqanalysis.DevfileSrc{
 				Data: updatedHasComp.Status.Devfile,
 			}
-			hasCompUpdatedDevfile, err := devfilePkg.ParseDevfile(devfileSrc)
+			hasCompUpdatedDevfile, err := cdqanalysis.ParseDevfile(devfileSrc)
 			Expect(err).Should(Not(HaveOccurred()))
 
 			checklist = updateChecklist{
@@ -666,10 +667,10 @@ var _ = Describe("Component controller", func() {
 			Expect(createdHasApp.Status.Devfile).Should(Not(Equal("")))
 
 			// Check the Component devfile
-			devfileSrc := devfilePkg.DevfileSrc{
+			devfileSrc := cdqanalysis.DevfileSrc{
 				Data: createdHasComp.Status.Devfile,
 			}
-			_, err := devfilePkg.ParseDevfile(devfileSrc)
+			_, err := cdqanalysis.ParseDevfile(devfileSrc)
 			Expect(err).Should(Not(HaveOccurred()))
 
 			// Make sure the component's built image is included in the status
@@ -920,10 +921,10 @@ var _ = Describe("Component controller", func() {
 			componentName := HASCompName + "10"
 
 			hasApp := createAndFetchSimpleApp(applicationName, HASAppNamespace, DisplayName, Description)
-			devfileSrc := devfilePkg.DevfileSrc{
+			devfileSrc := cdqanalysis.DevfileSrc{
 				Data: hasApp.Status.Devfile,
 			}
-			curDevfile, err := devfilePkg.ParseDevfile(devfileSrc)
+			curDevfile, err := cdqanalysis.ParseDevfile(devfileSrc)
 			Expect(err).ToNot(HaveOccurred())
 
 			// Remove the gitops URL and update the status of the resource
@@ -1510,10 +1511,10 @@ var _ = Describe("Component controller", func() {
 			Expect(createdHasApp.Status.Devfile).Should(Not(Equal("")))
 
 			// Check the Component devfile
-			devfileSrc := devfilePkg.DevfileSrc{
+			devfileSrc := cdqanalysis.DevfileSrc{
 				Data: createdHasComp.Status.Devfile,
 			}
-			hasCompDevfile, err := devfilePkg.ParseDevfile(devfileSrc)
+			hasCompDevfile, err := cdqanalysis.ParseDevfile(devfileSrc)
 			Expect(err).Should(Not(HaveOccurred()))
 
 			dockerfileComponents, err := hasCompDevfile.GetComponents(common.DevfileOptions{})
@@ -1531,10 +1532,10 @@ var _ = Describe("Component controller", func() {
 			}
 
 			// Check the HAS Application devfile
-			devfileSrc = devfilePkg.DevfileSrc{
+			devfileSrc = cdqanalysis.DevfileSrc{
 				Data: createdHasApp.Status.Devfile,
 			}
-			hasAppDevfile, err := devfilePkg.ParseDevfile(devfileSrc)
+			hasAppDevfile, err := cdqanalysis.ParseDevfile(devfileSrc)
 			Expect(err).Should(Not(HaveOccurred()))
 
 			// gitOpsRepo and appModelRepo should both be set
@@ -1700,10 +1701,10 @@ var _ = Describe("Component controller", func() {
 			Expect(createdHasApp.Status.Devfile).Should(Not(Equal("")))
 
 			// Check the Component devfile
-			src := devfilePkg.DevfileSrc{
+			src := cdqanalysis.DevfileSrc{
 				Data: createdHasComp.Status.Devfile,
 			}
-			hasCompDevfile, err := devfilePkg.ParseDevfile(src)
+			hasCompDevfile, err := cdqanalysis.ParseDevfile(src)
 			Expect(err).Should(Not(HaveOccurred()))
 
 			devfileComponents, err := hasCompDevfile.GetComponents(common.DevfileOptions{})
@@ -1718,10 +1719,10 @@ var _ = Describe("Component controller", func() {
 			}
 
 			// Check the HAS Application devfile
-			src = devfilePkg.DevfileSrc{
+			src = cdqanalysis.DevfileSrc{
 				Data: createdHasApp.Status.Devfile,
 			}
-			hasAppDevfile, err := devfilePkg.ParseDevfile(src)
+			hasAppDevfile, err := cdqanalysis.ParseDevfile(src)
 			Expect(err).Should(Not(HaveOccurred()))
 
 			// gitOpsRepo and appModelRepo should both be set
@@ -1775,7 +1776,7 @@ var _ = Describe("Component controller", func() {
 				return fetchedHasApp.Status.Devfile != ""
 			}, timeout, interval).Should(BeTrue())
 
-			hasAppDevfile, err := devfilePkg.ParseDevfile(devfilePkg.DevfileSrc{
+			hasAppDevfile, err := cdqanalysis.ParseDevfile(cdqanalysis.DevfileSrc{
 				Data: fetchedHasApp.Status.Devfile,
 			})
 			Expect(err).Should(Not(HaveOccurred()))
@@ -1791,7 +1792,7 @@ var _ = Describe("Component controller", func() {
 			fetchedHasApp = &appstudiov1alpha1.Application{}
 			Eventually(func() bool {
 				k8sClient.Get(context.Background(), hasAppLookupKey, fetchedHasApp)
-				hasAppDevfile, err := devfilePkg.ParseDevfile(devfilePkg.DevfileSrc{
+				hasAppDevfile, err := cdqanalysis.ParseDevfile(cdqanalysis.DevfileSrc{
 					Data: fetchedHasApp.Status.Devfile,
 				})
 				Expect(err).Should(Not(HaveOccurred()))
@@ -1890,7 +1891,7 @@ var _ = Describe("Component controller", func() {
 				return fetchedHasApp.Status.Devfile != ""
 			}, timeout, interval).Should(BeTrue())
 
-			hasAppDevfile, err := devfilePkg.ParseDevfile(devfilePkg.DevfileSrc{
+			hasAppDevfile, err := cdqanalysis.ParseDevfile(cdqanalysis.DevfileSrc{
 				Data: fetchedHasApp.Status.Devfile,
 			})
 			Expect(err).Should(Not(HaveOccurred()))
@@ -1906,7 +1907,7 @@ var _ = Describe("Component controller", func() {
 			fetchedHasApp = &appstudiov1alpha1.Application{}
 			Eventually(func() bool {
 				k8sClient.Get(context.Background(), hasAppLookupKey, fetchedHasApp)
-				hasAppDevfile, err := devfilePkg.ParseDevfile(devfilePkg.DevfileSrc{
+				hasAppDevfile, err := cdqanalysis.ParseDevfile(cdqanalysis.DevfileSrc{
 					Data: fetchedHasApp.Status.Devfile,
 				})
 				Expect(err).Should(Not(HaveOccurred()))

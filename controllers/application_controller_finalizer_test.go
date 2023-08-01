@@ -23,7 +23,7 @@ import (
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	appstudiov1alpha1 "github.com/redhat-appstudio/application-api/api/v1alpha1"
-	devfile "github.com/redhat-appstudio/application-service/pkg/devfile"
+	cdqanalysis "github.com/redhat-appstudio/application-service/cdq-analysis/pkg"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/yaml"
@@ -55,10 +55,10 @@ var _ = Describe("Application controller finalizer counter tests", func() {
 		It("Should delete successfully even when finalizer fails after 5 times", func() {
 			// Create a simple Application CR and get its devfile
 			fetchedApp := createAndFetchSimpleApp(AppName, AppNamespace, DisplayName, Description)
-			devfileSrc := devfile.DevfileSrc{
+			devfileSrc := cdqanalysis.DevfileSrc{
 				Data: fetchedApp.Status.Devfile,
 			}
-			curDevfile, err := devfile.ParseDevfile(devfileSrc)
+			curDevfile, err := cdqanalysis.ParseDevfile(devfileSrc)
 
 			// Make sure the devfile model was properly set
 			Expect(fetchedApp.Status.Devfile).Should(Not(Equal("")))
@@ -98,10 +98,10 @@ var _ = Describe("Application controller finalizer counter tests", func() {
 			// Create an Application resource and get its devfile
 			fetchedHasApp := createAndFetchSimpleApp(AppName, AppNamespace, DisplayName, Description)
 			Expect(fetchedHasApp.Status.Devfile).Should(Not(Equal("")))
-			devfileSrc := devfile.DevfileSrc{
+			devfileSrc := cdqanalysis.DevfileSrc{
 				Data: fetchedHasApp.Status.Devfile,
 			}
-			curDevfile, err := devfile.ParseDevfile(devfileSrc)
+			curDevfile, err := cdqanalysis.ParseDevfile(devfileSrc)
 			Expect(err).ToNot(HaveOccurred())
 
 			// Set an invalid gitops URL and update the status of the resource

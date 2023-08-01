@@ -146,6 +146,9 @@ lint:
 unit-tests: 
 	KUBEBUILDER_ASSETS="$(shell $(ENVTEST) use $(ENVTEST_K8S_VERSION) -p path)" SKIP_PACT_TESTS=true go test ./... -coverprofile cover.out -v
 
+cdq-analysis-unit-tests: 
+	cd ./cdq-analysis && go test ./... -coverprofile cover.out -v
+
 pact-tests: 
 	KUBEBUILDER_ASSETS="$(shell $(ENVTEST) use $(ENVTEST_K8S_VERSION) -p path)" go test ./... -v --run TestContracts 
 
@@ -155,6 +158,7 @@ pact: manifests generate fmt vet envtest ## Run just Pact tests.
 test: manifests generate fmt vet envtest ## Run tests.
 	make unit-tests
 	make pact-tests
+	make cdq-analysis-unit-tests
 
 ##@ Build
 

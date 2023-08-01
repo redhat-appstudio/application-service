@@ -21,7 +21,7 @@ import (
 	"fmt"
 
 	appstudiov1alpha1 "github.com/redhat-appstudio/application-api/api/v1alpha1"
-	devfile "github.com/redhat-appstudio/application-service/pkg/devfile"
+	cdqanalysis "github.com/redhat-appstudio/application-service/cdq-analysis/pkg"
 	github "github.com/redhat-appstudio/application-service/pkg/github"
 	"github.com/redhat-appstudio/application-service/pkg/util"
 	"github.com/redhat-appstudio/application-service/pkg/util/ioutils"
@@ -41,10 +41,10 @@ func (r *ComponentReconciler) AddFinalizer(ctx context.Context, component *appst
 // & updates the parent kustomize for the given Component CR.
 func (r *ComponentReconciler) Finalize(ctx context.Context, component *appstudiov1alpha1.Component, application *appstudiov1alpha1.Application, ghClient *github.GitHubClient) error {
 	// Get the Application CR devfile
-	devfileSrc := devfile.DevfileSrc{
+	devfileSrc := cdqanalysis.DevfileSrc{
 		Data: application.Status.Devfile,
 	}
-	devfileObj, err := devfile.ParseDevfile(devfileSrc)
+	devfileObj, err := cdqanalysis.ParseDevfile(devfileSrc)
 	if err != nil {
 		return err
 	}
@@ -86,6 +86,7 @@ func (r *ComponentReconciler) Finalize(ctx context.Context, component *appstudio
 	//Gitops functions return sanitized error messages
 	err = r.Generator.GitRemoveComponent(tempDir, gitOpsURL, component.Name, gitOpsBranch, gitOpsContext)
 	if err != nil {
+		ioutils.RemoveFolderAndLogError(r.Log, r.AppFS, tempDir)
 		return err
 	}
 
