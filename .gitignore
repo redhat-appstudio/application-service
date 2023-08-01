@@ -7,7 +7,7 @@ cover.out
 tmp
 
 .idea/
-.vscode/
+**/.vscode/
 .tmp/
 output.log
 syncer.yaml

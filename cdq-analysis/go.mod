@@ -1,6 +1,6 @@
 module github.com/redhat-appstudio/application-service/cdq-analysis
 
-go 1.18
+go 1.19
 
 require (
 	github.com/devfile/alizer v1.1.0
