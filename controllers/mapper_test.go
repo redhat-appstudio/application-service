@@ -250,6 +250,69 @@ func TestMapToBindingByBoundObject(t *testing.T) {
 	})
 }
 
+func TestMapApplicationToComponent(t *testing.T) {
+
+	const (
+		HASAppName     = "test-app"
+		HASCompName    = "test-comp"
+		Namespace      = "default"
+		DisplayName    = "an application"
+		ComponentName  = "backend"
+		SampleRepoLink = "https://github.com/devfile-samples/devfile-sample-java-springboot-basic"
+	)
+
+	applicationName := HASAppName + "1"
+	componentName := HASCompName + "1"
+	componentName2 := HASCompName + "2"
+
+	componentOne := appstudiov1alpha1.Component{
+		TypeMeta: metav1.TypeMeta{
+			Kind:       "Component",
+			APIVersion: "appstudio.redhat.com/v1alpha1",
+		},
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      componentName,
+			Namespace: Namespace,
+		},
+		Spec: appstudiov1alpha1.ComponentSpec{
+			ComponentName: componentName,
+			Application:   applicationName,
+		},
+	}
+	componentTwo := appstudiov1alpha1.Component{
+		TypeMeta: metav1.TypeMeta{
+			Kind:       "Component",
+			APIVersion: "appstudio.redhat.com/v1alpha1",
+		},
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      componentName2,
+			Namespace: Namespace,
+		},
+		Spec: appstudiov1alpha1.ComponentSpec{
+			ComponentName: componentName2,
+		},
+	}
+
+	//fakeClient := NewFakeClient(t, componentOne, applicationOne)
+
+	t.Run("should return component's parent application", func(t *testing.T) {
+		// when
+		requests := MapComponentToApplication()(&componentOne)
+
+		// then
+		require.Len(t, requests, 1) // binding4 is not returned because binding4 does not have a label matching the staging env
+		assert.Contains(t, requests, newRequest(applicationName))
+	})
+
+	t.Run("should return no Application requests when Component app name is nil", func(t *testing.T) {
+		// when
+		requests := MapComponentToApplication()(&componentTwo)
+
+		// then
+		require.Empty(t, requests)
+	})
+}
+
 func newRequest(name string) reconcile.Request {
 	return reconcile.Request{
 		NamespacedName: types.NamespacedName{

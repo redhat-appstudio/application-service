@@ -19,6 +19,7 @@ package controllers
 import (
 	"context"
 	"fmt"
+	"reflect"
 	"time"
 
 	"github.com/prometheus/client_golang/prometheus"
@@ -32,12 +33,15 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/util/workqueue"
 	ctrl "sigs.k8s.io/controller-runtime"
+	"sigs.k8s.io/controller-runtime/pkg/builder"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	"sigs.k8s.io/controller-runtime/pkg/event"
+	"sigs.k8s.io/controller-runtime/pkg/handler"
 	"sigs.k8s.io/controller-runtime/pkg/predicate"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
+	"sigs.k8s.io/controller-runtime/pkg/source"
 	"sigs.k8s.io/yaml"
 
 	appstudiov1alpha1 "github.com/redhat-appstudio/application-api/api/v1alpha1"
@@ -172,6 +176,15 @@ func (r *ApplicationReconciler) Reconcile(ctx context.Context, req ctrl.Request)
 			r.SetCreateConditionAndUpdateCR(ctx, req, &application, err)
 			return reconcile.Result{}, err
 		}
+
+		// Find all components owned by the application
+		err = r.getAndAddComponentApplicationsToModel(log, req, application.Name, devfileData.GetDevfileWorkspaceSpec())
+		if err != nil {
+			r.SetCreateConditionAndUpdateCR(ctx, req, &application, err)
+			log.Error(err, fmt.Sprintf("Unable to add components to application model for %v", req.NamespacedName))
+			return ctrl.Result{}, err
+		}
+
 		yamlData, err := yaml.Marshal(devfileData)
 		if err != nil {
 			log.Error(err, fmt.Sprintf("Unable to marshall Application devfile, exiting reconcile loop %v", req.NamespacedName))
@@ -197,11 +210,24 @@ func (r *ApplicationReconciler) Reconcile(ctx context.Context, req ctrl.Request)
 			return ctrl.Result{}, err
 		}
 
+		updateRequired := false
+		// nil out the attributes and projects for the application devfile
+		// The Attributes contain any image components for the application
+		// And the projects contains any git components for the application
+		devWorkspacesSpec := devfileData.GetDevfileWorkspaceSpec().DeepCopy()
+		devWorkspacesSpec.Attributes = nil
+		devWorkspacesSpec.Projects = nil
+
+		err = r.getAndAddComponentApplicationsToModel(log, req, application.Name, devWorkspacesSpec)
+		if err != nil {
+			r.SetUpdateConditionAndUpdateCR(ctx, req, &application, err)
+			log.Error(err, fmt.Sprintf("Unable to add components to application model for %v", req.NamespacedName))
+			return ctrl.Result{}, err
+		}
 		// Update any specific fields that changed
 		displayName := application.Spec.DisplayName
 		description := application.Spec.Description
 		devfileMeta := devfileData.GetMetadata()
-		updateRequired := false
 		if devfileMeta.Name != displayName {
 			devfileMeta.Name = displayName
 			updateRequired = true
@@ -210,10 +236,17 @@ func (r *ApplicationReconciler) Reconcile(ctx context.Context, req ctrl.Request)
 			devfileMeta.Description = description
 			updateRequired = true
 		}
+
+		oldDevSpec := devfileData.GetDevfileWorkspaceSpec()
+		if !reflect.DeepEqual(oldDevSpec.Attributes, devWorkspacesSpec.Attributes) || !reflect.DeepEqual(oldDevSpec.Projects, devWorkspacesSpec.Projects) {
+			devfileData.SetDevfileWorkspaceSpec(*devWorkspacesSpec)
+			updateRequired = true
+		}
+
 		if updateRequired {
 			devfileData.SetMetadata(devfileMeta)
 
-			// Update the hasApp CR with the new devfile
+			// Update the Application CR with the new devfile
 			yamlData, err := yaml.Marshal(devfileData)
 			if err != nil {
 				log.Error(err, fmt.Sprintf("Unable to marshall Application devfile, exiting reconcile loop %v", req.NamespacedName))
@@ -224,6 +257,7 @@ func (r *ApplicationReconciler) Reconcile(ctx context.Context, req ctrl.Request)
 			application.Status.Devfile = string(yamlData)
 			r.SetUpdateConditionAndUpdateCR(ctx, req, &application, nil)
 		}
+
 	}
 
 	log.Info(fmt.Sprintf("Finished reconcile loop for %v", req.NamespacedName))
@@ -257,5 +291,20 @@ func (r *ApplicationReconciler) SetupWithManager(ctx context.Context, mgr ctrl.M
 				return false
 			},
 		}).
+		// Watch Components (Create and Delete events only) as a secondary resource
+		Watches(&source.Kind{Type: &appstudiov1alpha1.Component{}}, handler.EnqueueRequestsFromMapFunc(MapComponentToApplication()), builder.WithPredicates(predicate.Funcs{
+			CreateFunc: func(e event.CreateEvent) bool {
+				return true
+			},
+			UpdateFunc: func(e event.UpdateEvent) bool {
+				return false
+			},
+			DeleteFunc: func(e event.DeleteEvent) bool {
+				return true
+			},
+			GenericFunc: func(e event.GenericEvent) bool {
+				return false
+			},
+		})).
 		Complete(r)
 }
