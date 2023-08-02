@@ -22,7 +22,7 @@ require (
 	github.com/redhat-appstudio/application-service/cdq-analysis v0.0.0
 	github.com/redhat-appstudio/service-provider-integration-scm-file-retriever v0.8.3
 	github.com/redhat-developer/gitops-generator v0.0.0-20230614175323-aff86c6bc55e
-	github.com/spf13/afero v1.8.0
+	github.com/spf13/afero v1.9.5
 	github.com/stretchr/testify v1.8.1
 	go.uber.org/zap v1.24.0
 	golang.org/x/exp v0.0.0-20230206171751-46f607a40771

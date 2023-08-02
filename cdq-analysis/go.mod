@@ -10,7 +10,7 @@ require (
 	github.com/devfile/registry-support/registry-library v0.0.0-20221018213054-47b3ffaeadba
 	github.com/go-logr/logr v1.2.4
 	github.com/hashicorp/go-multierror v1.1.1
-	github.com/spf13/afero v1.8.0
+	github.com/spf13/afero v1.9.5
 	github.com/stretchr/testify v1.8.1
 	go.uber.org/zap v1.24.0
 	k8s.io/api v0.27.2
