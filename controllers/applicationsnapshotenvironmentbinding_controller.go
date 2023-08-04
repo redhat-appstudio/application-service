@@ -61,8 +61,6 @@ type SnapshotEnvironmentBindingReconciler struct {
 	AllowLocalGitopsGen bool
 }
 
-const asebName = "SnapshotEnvironmentBinding"
-
 //+kubebuilder:rbac:groups=appstudio.redhat.com,resources=snapshotenvironmentbindings,verbs=get;list;watch;create;update;patch;delete
 //+kubebuilder:rbac:groups=appstudio.redhat.com,resources=snapshotenvironmentbindings/status,verbs=get;update;patch
 //+kubebuilder:rbac:groups=appstudio.redhat.com,resources=snapshotenvironmentbindings/finalizers,verbs=update
@@ -172,20 +170,6 @@ func (r *SnapshotEnvironmentBindingReconciler) Reconcile(ctx context.Context, re
 
 	log.Info(fmt.Sprintf("Finished reconcile loop for %v", req.NamespacedName))
 	return ctrl.Result{}, nil
-}
-
-// isKubernetesCluster checks if its either a Kubernetes or an OpenShift cluster
-// from the Environment custom resource
-func isKubernetesCluster(environment appstudiov1alpha1.Environment) bool {
-	unstableConfig := environment.Spec.UnstableConfigurationFields
-
-	if unstableConfig != nil {
-		if unstableConfig.ClusterType == appstudiov1alpha1.ConfigurationClusterType_Kubernetes {
-			return true
-		}
-	}
-
-	return false
 }
 
 // SetupWithManager sets up the controller with the Manager.

@@ -25,17 +25,11 @@ import (
 	"net/url"
 	"os"
 	"os/exec"
-	"reflect"
 	"regexp"
 	"strings"
 	"time"
 
 	appstudiov1alpha1 "github.com/redhat-appstudio/application-api/api/v1alpha1"
-	gitopsgenv1alpha1 "github.com/redhat-developer/gitops-generator/api/v1alpha1"
-	v1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/api/resource"
-
-	"github.com/devfile/library/v2/pkg/devfile/parser"
 )
 
 var RevisionHistoryLimit = int32(0)
@@ -259,61 +253,6 @@ func GetRandomString(n int, lower bool) string {
 		randomString = strings.ToLower(randomString)
 	}
 	return randomString
-}
-
-// GetMappedGitOpsComponent gets a mapped GeneratorOptions from the Component for GitOps resource generation
-func GetMappedGitOpsComponent(component appstudiov1alpha1.Component, kubernetesResources parser.KubernetesResources) gitopsgenv1alpha1.GeneratorOptions {
-	customK8sLabels := map[string]string{
-		"app.kubernetes.io/name":       component.Spec.ComponentName,
-		"app.kubernetes.io/instance":   component.Name,
-		"app.kubernetes.io/part-of":    component.Spec.Application,
-		"app.kubernetes.io/managed-by": "kustomize",
-		"app.kubernetes.io/created-by": "application-service",
-	}
-	gitopsMapComponent := gitopsgenv1alpha1.GeneratorOptions{
-		Name:                 component.ObjectMeta.Name,
-		Application:          component.Spec.Application,
-		Secret:               component.Spec.Secret,
-		Resources:            component.Spec.Resources,
-		Replicas:             GetIntValue(component.Spec.Replicas),
-		TargetPort:           component.Spec.TargetPort,
-		Route:                component.Spec.Route,
-		BaseEnvVar:           component.Spec.Env,
-		ContainerImage:       component.Spec.ContainerImage,
-		K8sLabels:            customK8sLabels,
-		RevisionHistoryLimit: &RevisionHistoryLimit,
-	}
-	if component.Spec.Source.ComponentSourceUnion.GitSource != nil {
-		gitopsMapComponent.GitSource = &gitopsgenv1alpha1.GitSource{
-			URL: component.Spec.Source.ComponentSourceUnion.GitSource.URL,
-		}
-	} else {
-		gitopsMapComponent.GitSource = &gitopsgenv1alpha1.GitSource{}
-	}
-
-	// If the resource requests or limits were unset, set default values
-	if gitopsMapComponent.Resources.Requests == nil {
-		gitopsMapComponent.Resources.Requests = v1.ResourceList{
-			v1.ResourceCPU:    resource.MustParse("10m"),
-			v1.ResourceMemory: resource.MustParse("50Mi"),
-		}
-	}
-	if gitopsMapComponent.Resources.Limits == nil {
-		gitopsMapComponent.Resources.Limits = v1.ResourceList{
-			v1.ResourceCPU:    resource.MustParse("1"),
-			v1.ResourceMemory: resource.MustParse("512Mi"),
-		}
-	}
-
-	if !reflect.DeepEqual(kubernetesResources, parser.KubernetesResources{}) {
-		gitopsMapComponent.KubernetesResources.Deployments = append(gitopsMapComponent.KubernetesResources.Deployments, kubernetesResources.Deployments...)
-		gitopsMapComponent.KubernetesResources.Services = append(gitopsMapComponent.KubernetesResources.Services, kubernetesResources.Services...)
-		gitopsMapComponent.KubernetesResources.Routes = append(gitopsMapComponent.KubernetesResources.Routes, kubernetesResources.Routes...)
-		gitopsMapComponent.KubernetesResources.Ingresses = append(gitopsMapComponent.KubernetesResources.Ingresses, kubernetesResources.Ingresses...)
-		gitopsMapComponent.KubernetesResources.Others = append(gitopsMapComponent.KubernetesResources.Others, kubernetesResources.Others...)
-	}
-
-	return gitopsMapComponent
 }
 
 // GenerateUniqueHashForWorkloadImageTag generates a unique hash from the namespace
