@@ -1000,8 +1000,8 @@ github.com/redhat-appstudio/service-provider-integration-scm-file-retriever v0.8
 github.com/redhat-appstudio/service-provider-integration-scm-file-retriever v0.8.3/go.mod h1:nGIC0XrYoMm63q1qHS7h/7ktUliMzgQcOOd2XLpNDbA=
 github.com/redhat-developer/alizer/go v0.0.0-20230516215932-135a2bb3fb90 h1:pFKn+Vqg3xXrueGboXYRkmKPJ6ObaVBNbKF1M7NG/mA=
 github.com/redhat-developer/alizer/go v0.0.0-20230516215932-135a2bb3fb90/go.mod h1:y7XToX/Yq1ASZY8hatAkmXJSzEXlHZV8lf59wliUfOw=
-github.com/redhat-developer/gitops-generator v0.0.0-20230614175323-aff86c6bc55e h1:YIADVYENP/Qy6XFcON9W4VMyxj1tiWYIPEtzW1DLF9A=
-github.com/redhat-developer/gitops-generator v0.0.0-20230614175323-aff86c6bc55e/go.mod h1:pKJez873Y9lZwQAgm99i/y1SmPI2dMd19ID74C+CxpU=
+github.com/redhat-developer/gitops-generator v0.0.0-20230801134438-01747a27dcbf h1:uRlhXqcVhbvp9YawKoggQoMLZwRP0/kpdLE3wkzqMuI=
+github.com/redhat-developer/gitops-generator v0.0.0-20230801134438-01747a27dcbf/go.mod h1:pKJez873Y9lZwQAgm99i/y1SmPI2dMd19ID74C+CxpU=
 github.com/rogpeppe/fastuuid v0.0.0-20150106093220-6724a57986af/go.mod h1:XWv6SoW27p1b0cqNHllgS5HIMJraePCO15w5zCzIWYg=
 github.com/rogpeppe/fastuuid v1.2.0/go.mod h1:jVj6XXZzXRy/MSR5jhDC/2q6DgLz+nrA6LYCDYWNEvQ=
 github.com/rogpeppe/go-internal v1.3.0/go.mod h1:M8bDsm7K2OlrFYOpmOWEs/qY81heoFRclV5y23lUDJ4=

@@ -20,11 +20,18 @@ spec:
         sed -i -e 's|\(https://github.com/redhat-appstudio/application-service/.*?ref=\)\(.*\)|\1{{ revision }}|' -e 's/\(newTag: \).*/\1{{ revision }}/' components/has/production/kustomization.yaml        
         sed -i -e 's|\(https://github.com/redhat-appstudio/application-service/config/prometheus/?ref=\)\(.*\)|\1{{ revision }}|' -e 's/\(newTag: \).*/\1{{ revision }}/' components/has/production/kustomization.yaml
         sed -i -e 's|\(https://github.com/redhat-appstudio/application-service/config/prometheus/?ref=\)\(.*\)|\1{{ revision }}|' -e 's/\(newTag: \).*/\1{{ revision }}/' components/has/staging/kustomization.yaml
-        sed -i -e 's|\(https://github.com/redhat-appstudio/application-service/config/monitoring/?ref=\)\(.*\)|\1{{ revision }}|' -e 's/\(newTag: \).*/\1{{ revision }}/' components/monitoring/grafana/base/has/kustomization.yaml
+        sed -i -e 's|\(https://github.com/redhat-appstudio/application-service/config/monitoring/?ref=\)\(.*\)|\1{{ revision }}|' -e 's/\(newTag: \).*/\1{{ revision }}/' components/monitoring/grafana/base/dashboards/has/kustomization.yaml
 
   pipelineRef:
-    name: docker-build
-    bundle: quay.io/redhat-appstudio-tekton-catalog/pipeline-core-services-docker-build:latest
+    params:
+      - name: bundle
+        value: >-
+          quay.io/redhat-appstudio-tekton-catalog/pipeline-core-services-docker-build:latest
+      - name: name
+        value: docker-build
+      - name: kind
+        value: Pipeline
+    resolver: bundles
   workspaces:
     - name: workspace
       volumeClaimTemplate:

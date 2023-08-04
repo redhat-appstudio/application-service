@@ -28,14 +28,17 @@ import (
 	appstudiov1alpha1 "github.com/redhat-appstudio/application-api/api/v1alpha1"
 	devfilePkg "github.com/redhat-appstudio/application-service/pkg/devfile"
 	"github.com/stretchr/testify/assert"
+	"go.uber.org/zap/zapcore"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/resource"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/types"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
+	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 	"sigs.k8s.io/yaml"
 )
 
@@ -47,7 +50,7 @@ func TestUpdateApplicationDevfileModel(t *testing.T) {
 		projects       []devfileAPIV1.Project
 		attributes     attributes.Attributes
 		containerImage string
-		component      appstudiov1alpha1.Component
+		components     []appstudiov1alpha1.Component
 		wantErr        bool
 	}{
 		{
@@ -57,8 +60,245 @@ func TestUpdateApplicationDevfileModel(t *testing.T) {
 					Name: "duplicate",
 				},
 			},
-			component: appstudiov1alpha1.Component{
+			components: []appstudiov1alpha1.Component{
+				{
+					Spec: appstudiov1alpha1.ComponentSpec{
+						ComponentName: "duplicate",
+						Source: appstudiov1alpha1.ComponentSource{
+							ComponentSourceUnion: appstudiov1alpha1.ComponentSourceUnion{
+								GitSource: &appstudiov1alpha1.GitSource{},
+							},
+						},
+					},
+				},
+			},
+			wantErr: true,
+		},
+		{
+			name: "Project added successfully",
+			projects: []devfileAPIV1.Project{
+				{
+					Name: "present",
+				},
+			},
+			components: []appstudiov1alpha1.Component{
+				{
+					Spec: appstudiov1alpha1.ComponentSpec{
+						ComponentName: "new",
+						Source: appstudiov1alpha1.ComponentSource{
+							ComponentSourceUnion: appstudiov1alpha1.ComponentSourceUnion{
+								GitSource: &appstudiov1alpha1.GitSource{
+									URL: "url",
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+		{
+			name: "Git source in Component is nil",
+			projects: []devfileAPIV1.Project{
+				{
+					Name: "present",
+				},
+			},
+			components: []appstudiov1alpha1.Component{
+				{
+					Spec: appstudiov1alpha1.ComponentSpec{
+						ComponentName: "new",
+						Source: appstudiov1alpha1.ComponentSource{
+							ComponentSourceUnion: appstudiov1alpha1.ComponentSourceUnion{
+								GitSource: nil,
+							},
+						},
+					},
+				},
+			},
+			wantErr: true,
+		},
+		{
+			name:     "Devfile Projects list is nil",
+			projects: nil,
+			components: []appstudiov1alpha1.Component{
+				{
+					Spec: appstudiov1alpha1.ComponentSpec{
+						ComponentName: "new",
+						Source: appstudiov1alpha1.ComponentSource{
+							ComponentSourceUnion: appstudiov1alpha1.ComponentSourceUnion{
+								GitSource: nil,
+							},
+						},
+					},
+				},
+			},
+			wantErr: true,
+		},
+		{
+			name:       "Container image added successfully",
+			attributes: attributes.Attributes{}.PutString("containerImage/otherComponent", "other-image"),
+			components: []appstudiov1alpha1.Component{
+				{
+					Spec: appstudiov1alpha1.ComponentSpec{
+						ComponentName:  "new",
+						ContainerImage: "an-image",
+					},
+				},
+			},
+		},
+		{
+			name:       "Container image already exists",
+			attributes: attributes.Attributes{}.PutString("containerImage/new", "an-image"),
+			components: []appstudiov1alpha1.Component{
+				{
+					Spec: appstudiov1alpha1.ComponentSpec{
+						ComponentName:  "new",
+						ContainerImage: "an-image",
+					},
+				},
+			},
+			wantErr: true,
+		},
+		{
+			name:       "Container image already exists, but invalid entry",
+			attributes: attributes.Attributes{}.Put("containerImage/new", make(chan error), nil),
+			components: []appstudiov1alpha1.Component{
+				{
+					Spec: appstudiov1alpha1.ComponentSpec{
+						ComponentName:  "new",
+						ContainerImage: "an-image",
+					},
+				},
+			},
+			wantErr: true,
+		},
+		{
+			name:     "Multiple Projects added successfully",
+			projects: nil,
+			components: []appstudiov1alpha1.Component{
+				{
+					Spec: appstudiov1alpha1.ComponentSpec{
+						ComponentName: "compname",
+						Source: appstudiov1alpha1.ComponentSource{
+							ComponentSourceUnion: appstudiov1alpha1.ComponentSourceUnion{
+								GitSource: &appstudiov1alpha1.GitSource{
+									URL: "url",
+								},
+							},
+						},
+					},
+				},
+				{
+					Spec: appstudiov1alpha1.ComponentSpec{
+						ComponentName: "compnametwo",
+						Source: appstudiov1alpha1.ComponentSource{
+							ComponentSourceUnion: appstudiov1alpha1.ComponentSourceUnion{
+								GitSource: &appstudiov1alpha1.GitSource{
+									URL: "urltwo",
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			devfileData := &v2.DevfileV2{
+				Devfile: devfileAPIV1.Devfile{
+					DevWorkspaceTemplateSpec: devfileAPIV1.DevWorkspaceTemplateSpec{
+						DevWorkspaceTemplateSpecContent: devfileAPIV1.DevWorkspaceTemplateSpecContent{
+							Attributes: tt.attributes,
+							Projects:   tt.projects,
+						},
+					},
+				},
+			}
+			r := ApplicationReconciler{}
+			err := r.addComponentsToApplicationDevfileModel(&devfileData.DevWorkspaceTemplateSpec, tt.components)
+			if tt.wantErr && (err == nil) {
+				t.Error("wanted error but got nil")
+			} else if !tt.wantErr && err != nil {
+				t.Errorf("got unexpected error %v", err)
+			} else if err == nil {
+				for _, component := range tt.components {
+					if component.Spec.Source.GitSource != nil {
+						projects, err := devfileData.GetProjects(common.DevfileOptions{})
+						if err != nil {
+							t.Errorf("got unexpected error: %v", err)
+						}
+						matched := false
+						for _, project := range projects {
+							projectGitSrc := project.ProjectSource.Git
+							if project.Name == component.Spec.ComponentName && projectGitSrc != nil && projectGitSrc.Remotes["origin"] == component.Spec.Source.GitSource.URL {
+								matched = true
+							}
+						}
+
+						if !matched {
+							t.Errorf("unable to find devfile with project: %s", component.Spec.ComponentName)
+						}
+
+					} else {
+						devfileAttr, err := devfileData.GetAttributes()
+						if err != nil {
+							t.Errorf("got unexpected error: %v", err)
+						}
+						if devfileAttr == nil {
+							t.Errorf("devfile attributes should not be nil")
+						}
+						containerImage := devfileAttr.GetString("containerImage/new", &err)
+						if err != nil {
+							t.Errorf("got unexpected error: %v", err)
+						}
+						if containerImage != component.Spec.ContainerImage {
+							t.Errorf("unable to find component with container iamge: %s", component.Spec.ContainerImage)
+						}
+					}
+				}
+
+			}
+		})
+	}
+}
+
+func TestGetAndAddComponentApplicationsToModel(t *testing.T) {
+	applicationName := "my-app"
+	namespace := "default"
+	component1 := "component-one"
+	component2 := "component-two"
+
+	tests := []struct {
+		name            string
+		projects        []devfileAPIV1.Project
+		containerImage  string
+		attributes      attributes.Attributes
+		applicationName string
+		componentOne    *appstudiov1alpha1.Component
+		componentTwo    *appstudiov1alpha1.Component
+		wantErr         bool
+	}{
+		{
+			name: "Project already present",
+			projects: []devfileAPIV1.Project{
+				{
+					Name: "duplicate",
+				},
+			},
+			applicationName: applicationName,
+			componentOne: &appstudiov1alpha1.Component{
+				TypeMeta: metav1.TypeMeta{
+					Kind:       "Component",
+					APIVersion: "appstudio.redhat.com",
+				},
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      component1,
+					Namespace: namespace,
+				},
 				Spec: appstudiov1alpha1.ComponentSpec{
+					Application:   applicationName,
 					ComponentName: "duplicate",
 					Source: appstudiov1alpha1.ComponentSource{
 						ComponentSourceUnion: appstudiov1alpha1.ComponentSourceUnion{
@@ -76,8 +316,18 @@ func TestUpdateApplicationDevfileModel(t *testing.T) {
 					Name: "present",
 				},
 			},
-			component: appstudiov1alpha1.Component{
+			applicationName: applicationName,
+			componentOne: &appstudiov1alpha1.Component{
+				TypeMeta: metav1.TypeMeta{
+					Kind:       "Component",
+					APIVersion: "appstudio.redhat.com",
+				},
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      component1,
+					Namespace: namespace,
+				},
 				Spec: appstudiov1alpha1.ComponentSpec{
+					Application:   applicationName,
 					ComponentName: "new",
 					Source: appstudiov1alpha1.ComponentSource{
 						ComponentSourceUnion: appstudiov1alpha1.ComponentSourceUnion{
@@ -96,8 +346,18 @@ func TestUpdateApplicationDevfileModel(t *testing.T) {
 					Name: "present",
 				},
 			},
-			component: appstudiov1alpha1.Component{
+			applicationName: applicationName,
+			componentOne: &appstudiov1alpha1.Component{
+				TypeMeta: metav1.TypeMeta{
+					Kind:       "Component",
+					APIVersion: "appstudio.redhat.com",
+				},
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      component1,
+					Namespace: namespace,
+				},
 				Spec: appstudiov1alpha1.ComponentSpec{
+					Application:   applicationName,
 					ComponentName: "new",
 					Source: appstudiov1alpha1.ComponentSource{
 						ComponentSourceUnion: appstudiov1alpha1.ComponentSourceUnion{
@@ -109,10 +369,20 @@ func TestUpdateApplicationDevfileModel(t *testing.T) {
 			wantErr: true,
 		},
 		{
-			name:     "Devfile Projects list is nil",
-			projects: nil,
-			component: appstudiov1alpha1.Component{
+			name:            "Devfile Projects list is nil",
+			projects:        nil,
+			applicationName: applicationName,
+			componentOne: &appstudiov1alpha1.Component{
+				TypeMeta: metav1.TypeMeta{
+					Kind:       "Component",
+					APIVersion: "appstudio.redhat.com",
+				},
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      component1,
+					Namespace: namespace,
+				},
 				Spec: appstudiov1alpha1.ComponentSpec{
+					Application:   applicationName,
 					ComponentName: "new",
 					Source: appstudiov1alpha1.ComponentSource{
 						ComponentSourceUnion: appstudiov1alpha1.ComponentSourceUnion{
@@ -124,20 +394,40 @@ func TestUpdateApplicationDevfileModel(t *testing.T) {
 			wantErr: true,
 		},
 		{
-			name:       "Container image added successfully",
-			attributes: attributes.Attributes{}.PutString("containerImage/otherComponent", "other-image"),
-			component: appstudiov1alpha1.Component{
+			name:            "Container image added successfully",
+			attributes:      attributes.Attributes{}.PutString("containerImage/otherComponent", "other-image"),
+			applicationName: applicationName,
+			componentOne: &appstudiov1alpha1.Component{
+				TypeMeta: metav1.TypeMeta{
+					Kind:       "Component",
+					APIVersion: "appstudio.redhat.com",
+				},
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      component1,
+					Namespace: namespace,
+				},
 				Spec: appstudiov1alpha1.ComponentSpec{
+					Application:    applicationName,
 					ComponentName:  "new",
 					ContainerImage: "an-image",
 				},
 			},
 		},
 		{
-			name:       "Container image already exists",
-			attributes: attributes.Attributes{}.PutString("containerImage/new", "an-image"),
-			component: appstudiov1alpha1.Component{
+			name:            "Container image already exists",
+			attributes:      attributes.Attributes{}.PutString("containerImage/new", "an-image"),
+			applicationName: applicationName,
+			componentOne: &appstudiov1alpha1.Component{
+				TypeMeta: metav1.TypeMeta{
+					Kind:       "Component",
+					APIVersion: "appstudio.redhat.com",
+				},
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      component1,
+					Namespace: namespace,
+				},
 				Spec: appstudiov1alpha1.ComponentSpec{
+					Application:    applicationName,
 					ComponentName:  "new",
 					ContainerImage: "an-image",
 				},
@@ -145,70 +435,143 @@ func TestUpdateApplicationDevfileModel(t *testing.T) {
 			wantErr: true,
 		},
 		{
-			name:       "Container image already exists, but invalid entry",
-			attributes: attributes.Attributes{}.Put("containerImage/new", make(chan error), nil),
-			component: appstudiov1alpha1.Component{
+			name:            "Container image already exists, but invalid entry",
+			attributes:      attributes.Attributes{}.Put("containerImage/new", make(chan error), nil),
+			applicationName: applicationName,
+			componentOne: &appstudiov1alpha1.Component{
+				TypeMeta: metav1.TypeMeta{
+					Kind:       "Component",
+					APIVersion: "appstudio.redhat.com",
+				},
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      component1,
+					Namespace: namespace,
+				},
 				Spec: appstudiov1alpha1.ComponentSpec{
+					Application:    applicationName,
 					ComponentName:  "new",
 					ContainerImage: "an-image",
 				},
 			},
 			wantErr: true,
+		},
+		{
+			name:            "Multiple Projects added successfully",
+			projects:        nil,
+			applicationName: applicationName,
+			componentOne: &appstudiov1alpha1.Component{
+				TypeMeta: metav1.TypeMeta{
+					Kind:       "Component",
+					APIVersion: "appstudio.redhat.com",
+				},
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      component1,
+					Namespace: namespace,
+				},
+				Spec: appstudiov1alpha1.ComponentSpec{
+					Application:   applicationName,
+					ComponentName: "compname",
+					Source: appstudiov1alpha1.ComponentSource{
+						ComponentSourceUnion: appstudiov1alpha1.ComponentSourceUnion{
+							GitSource: &appstudiov1alpha1.GitSource{
+								URL: "url",
+							},
+						},
+					},
+				},
+			},
+
+			componentTwo: &appstudiov1alpha1.Component{
+				TypeMeta: metav1.TypeMeta{
+					Kind:       "Component",
+					APIVersion: "appstudio.redhat.com",
+				},
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      component2,
+					Namespace: namespace,
+				},
+				Spec: appstudiov1alpha1.ComponentSpec{
+					Application:   applicationName,
+					ComponentName: "compnametwo",
+					Source: appstudiov1alpha1.ComponentSource{
+						ComponentSourceUnion: appstudiov1alpha1.ComponentSourceUnion{
+							GitSource: &appstudiov1alpha1.GitSource{
+								URL: "urltwo",
+							},
+						},
+					},
+				},
+			},
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			devfileData := &v2.DevfileV2{
-				Devfile: devfileAPIV1.Devfile{
-					DevWorkspaceTemplateSpec: devfileAPIV1.DevWorkspaceTemplateSpec{
-						DevWorkspaceTemplateSpecContent: devfileAPIV1.DevWorkspaceTemplateSpecContent{
-							Attributes: tt.attributes,
-							Projects:   tt.projects,
-						},
-					},
+			var fakeClient *FakeClient
+			if tt.componentOne != nil && tt.componentTwo != nil {
+				fakeClient = NewFakeClient(t, tt.componentOne, tt.componentTwo)
+			} else if tt.componentOne != nil {
+				fakeClient = NewFakeClient(t, tt.componentOne)
+			} else if tt.componentTwo != nil {
+				fakeClient = NewFakeClient(t, tt.componentTwo)
+			}
+
+			devSpec := devfileAPIV1.DevWorkspaceTemplateSpec{
+				DevWorkspaceTemplateSpecContent: devfileAPIV1.DevWorkspaceTemplateSpecContent{
+					Attributes: tt.attributes,
+					Projects:   tt.projects,
 				},
 			}
-			r := ComponentReconciler{}
-			err := r.updateApplicationDevfileModel(devfileData, tt.component)
-			if tt.wantErr && (err == nil) {
-				t.Error("wanted error but got nil")
-			} else if !tt.wantErr && err != nil {
-				t.Errorf("got unexpected error %v", err)
-			} else if err == nil {
-				if tt.component.Spec.Source.GitSource != nil {
-					projects, err := devfileData.GetProjects(common.DevfileOptions{})
-					if err != nil {
-						t.Errorf("got unexpected error: %v", err)
-					}
-					matched := false
-					for _, project := range projects {
-						projectGitSrc := project.ProjectSource.Git
-						if project.Name == tt.component.Spec.ComponentName && projectGitSrc != nil && projectGitSrc.Remotes["origin"] == tt.component.Spec.Source.GitSource.URL {
-							matched = true
+
+			log := zap.New(zap.UseFlagOptions(&zap.Options{
+				Development: true,
+				TimeEncoder: zapcore.ISO8601TimeEncoder,
+			}))
+			r := ApplicationReconciler{Client: fakeClient}
+			req := reconcile.Request{NamespacedName: types.NamespacedName{Namespace: "default", Name: tt.applicationName}}
+			err := r.getAndAddComponentApplicationsToModel(log, req, tt.applicationName, &devSpec)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("TestGetAndAddComponentApplicationsToModel() unexpected error: %v", err)
+			}
+
+			components := []appstudiov1alpha1.Component{}
+			if tt.componentOne != nil {
+				components = append(components, *tt.componentOne)
+			}
+			if tt.componentTwo != nil {
+				components = append(components, *tt.componentTwo)
+			}
+			if err == nil && !tt.wantErr {
+				for _, component := range components {
+					if component.Spec.Source.GitSource != nil {
+						projects := devSpec.Projects
+						matched := false
+						for _, project := range projects {
+							projectGitSrc := project.ProjectSource.Git
+							if project.Name == component.Spec.ComponentName && projectGitSrc != nil && projectGitSrc.Remotes["origin"] == component.Spec.Source.GitSource.URL {
+								matched = true
+							}
+						}
+
+						if !matched {
+							t.Errorf("unable to find devfile with project: %s", component.Spec.ComponentName)
+						}
+
+					} else {
+						devfileAttr := devSpec.Attributes
+						if devfileAttr == nil {
+							t.Errorf("devfile attributes should not be nil")
+						}
+						containerImage := devfileAttr.GetString("containerImage/new", &err)
+						if err != nil {
+							t.Errorf("got unexpected error: %v", err)
+						}
+						if containerImage != component.Spec.ContainerImage {
+							t.Errorf("unable to find component with container iamge: %s", component.Spec.ContainerImage)
 						}
 					}
-
-					if !matched {
-						t.Errorf("unable to find devfile with project: %s", tt.component.Spec.ComponentName)
-					}
-
-				} else {
-					devfileAttr, err := devfileData.GetAttributes()
-					if err != nil {
-						t.Errorf("got unexpected error: %v", err)
-					}
-					if devfileAttr == nil {
-						t.Errorf("devfile attributes should not be nil")
-					}
-					containerImage := devfileAttr.GetString("containerImage/new", &err)
-					if err != nil {
-						t.Errorf("got unexpected error: %v", err)
-					}
-					if containerImage != tt.component.Spec.ContainerImage {
-						t.Errorf("unable to find component with container iamge: %s", tt.component.Spec.ContainerImage)
-					}
 				}
+
 			}
 		})
 	}

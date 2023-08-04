@@ -21,7 +21,7 @@ require (
 	github.com/redhat-appstudio/application-api v0.0.0-20230704143842-035c661f115f
 	github.com/redhat-appstudio/application-service/cdq-analysis v0.0.0
 	github.com/redhat-appstudio/service-provider-integration-scm-file-retriever v0.8.3
-	github.com/redhat-developer/gitops-generator v0.0.0-20230614175323-aff86c6bc55e
+	github.com/redhat-developer/gitops-generator v0.0.0-20230801134438-01747a27dcbf
 	github.com/spf13/afero v1.8.0
 	github.com/stretchr/testify v1.8.1
 	go.uber.org/zap v1.24.0
