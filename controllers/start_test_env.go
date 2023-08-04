@@ -20,7 +20,7 @@ import (
 	"go/build"
 	"path/filepath"
 
-	"github.com/redhat-appstudio/application-service/gitops"
+	gitopsjoblib "github.com/redhat-appstudio/application-service/gitops-generator/pkg/generate"
 
 	ginkgo "github.com/onsi/ginkgo"
 	gomega "github.com/onsi/gomega"
@@ -98,13 +98,14 @@ func setupTestEnv() {
 	gomega.Expect(err).ToNot(gomega.HaveOccurred())
 
 	err = (&ComponentReconciler{
-		Client:            k8sManager.GetClient(),
-		Scheme:            k8sManager.GetScheme(),
-		Log:               ctrl.Log.WithName("controllers").WithName("Component"),
-		Generator:         gitops.NewMockGenerator(),
-		AppFS:             ioutils.NewMemoryFilesystem(),
-		SPIClient:         spi.MockSPIClient{},
-		GitHubTokenClient: mockGhTokenClient,
+		Client:              k8sManager.GetClient(),
+		Scheme:              k8sManager.GetScheme(),
+		Log:                 ctrl.Log.WithName("controllers").WithName("Component"),
+		Generator:           gitopsjoblib.NewMockGenerator(),
+		AppFS:               ioutils.NewMemoryFilesystem(),
+		SPIClient:           spi.MockSPIClient{},
+		GitHubTokenClient:   mockGhTokenClient,
+		AllowLocalGitopsGen: true,
 	}).SetupWithManager(ctx, k8sManager)
 	gomega.Expect(err).ToNot(gomega.HaveOccurred())
 
@@ -120,12 +121,13 @@ func setupTestEnv() {
 	gomega.Expect(err).ToNot(gomega.HaveOccurred())
 
 	err = (&SnapshotEnvironmentBindingReconciler{
-		Client:            k8sManager.GetClient(),
-		Scheme:            k8sManager.GetScheme(),
-		Log:               ctrl.Log.WithName("controllers").WithName("SnapshotEnvironmentBinding"),
-		Generator:         gitops.NewMockGenerator(),
-		AppFS:             ioutils.NewMemoryFilesystem(),
-		GitHubTokenClient: mockGhTokenClient,
+		Client:              k8sManager.GetClient(),
+		Scheme:              k8sManager.GetScheme(),
+		Log:                 ctrl.Log.WithName("controllers").WithName("SnapshotEnvironmentBinding"),
+		Generator:           gitopsjoblib.NewMockGenerator(),
+		AppFS:               ioutils.NewMemoryFilesystem(),
+		GitHubTokenClient:   mockGhTokenClient,
+		AllowLocalGitopsGen: true,
 	}).SetupWithManager(ctx, k8sManager)
 	gomega.Expect(err).ToNot(gomega.HaveOccurred())
 

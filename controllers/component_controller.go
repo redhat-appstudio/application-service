@@ -20,12 +20,13 @@ import (
 	"context"
 	"fmt"
 	"os"
-	"path/filepath"
 	"reflect"
 	"time"
 
 	"github.com/prometheus/client_golang/prometheus"
 	cdqanalysis "github.com/redhat-appstudio/application-service/cdq-analysis/pkg"
+	"github.com/redhat-appstudio/application-service/gitops-generator/pkg/generate"
+	gitopsjoblib "github.com/redhat-appstudio/application-service/gitops-generator/pkg/generate"
 	"github.com/redhat-appstudio/application-service/pkg/metrics"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -45,7 +46,6 @@ import (
 	"sigs.k8s.io/yaml"
 
 	"github.com/devfile/api/v2/pkg/attributes"
-	devfileParser "github.com/devfile/library/v2/pkg/devfile/parser"
 	data "github.com/devfile/library/v2/pkg/devfile/parser/data"
 	"github.com/go-logr/logr"
 
@@ -70,6 +70,12 @@ type ComponentReconciler struct {
 	AppFS             afero.Afero
 	SPIClient         spi.SPI
 	GitHubTokenClient github.GitHubToken
+
+	// DoLocalGitOpsGen determines whether or not to only spawn off gitops generation jobs, or to run them locally inside HAS. Defaults to false
+	DoGitOpsJob bool
+
+	// AllowLocalGitopsGen allows for certain resources to generate gitops resources locally, *if* an annotation is present on the resource. Defaults to false
+	AllowLocalGitopsGen bool
 }
 
 const (
@@ -185,18 +191,13 @@ func (r *ComponentReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 	for _, condition := range component.Status.Conditions {
 		if condition.Type == "GitOpsResourcesGenerated" && condition.Reason == "GenerateError" && condition.Status == metav1.ConditionFalse {
 			log.Info(fmt.Sprintf("Re-attempting GitOps generation for %s", component.Name))
-			// Parse the Component Devfile
-			devfileSrc := cdqanalysis.DevfileSrc{
-				Data: component.Status.Devfile,
-			}
-			compDevfileData, err := cdqanalysis.ParseDevfile(devfileSrc)
 			if err != nil {
 				errMsg := fmt.Sprintf("Unable to parse the devfile from Component status and re-attempt GitOps generation, exiting reconcile loop %v", req.NamespacedName)
 				log.Error(err, errMsg)
 				_ = r.SetGitOpsGeneratedConditionAndUpdateCR(ctx, req, &component, fmt.Errorf("%v: %v", errMsg, err))
 				return ctrl.Result{}, err
 			}
-			if err := r.generateGitops(ctx, ghClient, &component, compDevfileData); err != nil {
+			if err := r.generateGitops(ctx, ghClient, &component); err != nil {
 				errMsg := fmt.Sprintf("Unable to generate gitops resources for component %v", req.NamespacedName)
 				log.Error(err, errMsg)
 				_ = r.SetGitOpsGeneratedConditionAndUpdateCR(ctx, req, &component, fmt.Errorf("%v: %v", errMsg, err))
@@ -429,7 +430,7 @@ func (r *ComponentReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 
 			// Generate and push the gitops resources
 			if !component.Spec.SkipGitOpsResourceGeneration {
-				if err := r.generateGitops(ctx, ghClient, &component, compDevfileData); err != nil {
+				if err := r.generateGitops(ctx, ghClient, &component); err != nil {
 					errMsg := fmt.Sprintf("Unable to generate gitops resources for component %v", req.NamespacedName)
 					log.Error(err, errMsg)
 					_ = r.SetGitOpsGeneratedConditionAndUpdateCR(ctx, req, &component, fmt.Errorf("%v: %v", errMsg, err))
@@ -520,7 +521,7 @@ func (r *ComponentReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 
 			// Generate and push the gitops resources, if necessary.
 			if !component.Spec.SkipGitOpsResourceGeneration {
-				if err := r.generateGitops(ctx, ghClient, &component, hasCompDevfileData); err != nil {
+				if err := r.generateGitops(ctx, ghClient, &component); err != nil {
 					errMsg := fmt.Sprintf("Unable to generate gitops resources for component %v", req.NamespacedName)
 					log.Error(err, errMsg)
 					_ = r.SetGitOpsGeneratedConditionAndUpdateCR(ctx, req, &component, fmt.Errorf("%v: %v", errMsg, err))
@@ -549,7 +550,7 @@ func (r *ComponentReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 
 // generateGitops retrieves the necessary information about a Component's gitops repository (URL, branch, context)
 // and attempts to use the GitOps package to generate gitops resources based on that component
-func (r *ComponentReconciler) generateGitops(ctx context.Context, ghClient *github.GitHubClient, component *appstudiov1alpha1.Component, compDevfileData data.DevfileData) error {
+func (r *ComponentReconciler) generateGitops(ctx context.Context, ghClient *github.GitHubClient, component *appstudiov1alpha1.Component) error {
 	log := ctrl.LoggerFrom(ctx)
 
 	gitOpsURL, gitOpsBranch, gitOpsContext, err := util.ProcessGitOpsStatus(component.Status.GitOps, ghClient.Token)
@@ -557,64 +558,25 @@ func (r *ComponentReconciler) generateGitops(ctx context.Context, ghClient *gith
 		return err
 	}
 
-	// Create a temp folder to create the gitops resources in
-	tempDir, err := ioutils.CreateTempPath(component.Name, r.AppFS)
-	if err != nil {
-		log.Error(err, "unable to create temp directory for GitOps resources due to error")
-		ioutils.RemoveFolderAndLogError(log, r.AppFS, tempDir)
-		return fmt.Errorf("unable to create temp directory for GitOps resources due to error: %v", err)
+	// Determine if we're using a Kubernetes job for gitops generation, or generating locally
+	localGitopsGen := (!r.DoGitOpsJob) || (r.AllowLocalGitopsGen && component.Annotations["allowLocalGitopsGen"] == "true")
+
+	if localGitopsGen {
+		err = gitopsjoblib.GenerateGitopsBase(context.Background(), log, r.Client, *component, ioutils.NewFilesystem(), generate.GitOpsGenParams{
+			Generator: r.Generator,
+			Token:     ghClient.Token,
+			RemoteURL: gitOpsURL,
+			Branch:    gitOpsBranch,
+			Context:   gitOpsContext,
+		})
+		if err != nil {
+			return err
+		}
+	} else {
+		// ToDo: Implement GitOps generation in Kubernetes jobs
 	}
 
-	deployAssociatedComponents, err := devfileParser.GetDeployComponents(compDevfileData)
-	if err != nil {
-		log.Error(err, "unable to get deploy components")
-		ioutils.RemoveFolderAndLogError(log, r.AppFS, tempDir)
-		return err
-	}
-
-	kubernetesResources, err := devfile.GetResourceFromDevfile(log, compDevfileData, deployAssociatedComponents, component.Name, component.Spec.Application, component.Spec.ContainerImage, "")
-	if err != nil {
-		log.Error(err, "unable to get kubernetes resources from the devfile outerloop components")
-		ioutils.RemoveFolderAndLogError(log, r.AppFS, tempDir)
-		return err
-	}
-
-	// Generate and push the gitops resources
-	mappedGitOpsComponent := util.GetMappedGitOpsComponent(*component, kubernetesResources)
-
-	//add the token name to the metrics.  When we add more tokens and rotate, we can determine how evenly distributed the requests are
-	metrics.ControllerGitRequest.With(prometheus.Labels{"controller": componentName, "tokenName": ghClient.TokenName, "operation": "CloneGenerateAndPush"}).Inc()
-	err = r.Generator.CloneGenerateAndPush(tempDir, gitOpsURL, mappedGitOpsComponent, r.AppFS, gitOpsBranch, gitOpsContext, false)
-	if err != nil {
-		log.Error(err, "unable to generate gitops resources due to error")
-		ioutils.RemoveFolderAndLogError(log, r.AppFS, tempDir)
-		return err
-	}
-
-	//Gitops functions return sanitized error messages
-	metrics.ControllerGitRequest.With(prometheus.Labels{"controller": componentName, "tokenName": ghClient.TokenName, "operation": "CommitAndPush"}).Inc()
-	err = r.Generator.CommitAndPush(tempDir, "", gitOpsURL, mappedGitOpsComponent.Name, gitOpsBranch, "Generating GitOps resources")
-	if err != nil {
-		log.Error(err, "unable to commit and push gitops resources due to error")
-		ioutils.RemoveFolderAndLogError(log, r.AppFS, tempDir)
-		return err
-	}
-
-	// Get the commit ID for the gitops repository
-	var commitID string
-	repoPath := filepath.Join(tempDir, component.Name)
-	metricsLabel := prometheus.Labels{"controller": componentName, "tokenName": ghClient.TokenName, "operation": "GetCommitIDFromRepo"}
-	metrics.ControllerGitRequest.With(metricsLabel).Inc()
-	if commitID, err = r.Generator.GetCommitIDFromRepo(r.AppFS, repoPath); err != nil {
-		log.Error(err, "")
-		ioutils.RemoveFolderAndLogError(log, r.AppFS, tempDir)
-		return err
-	}
-
-	component.Status.GitOps.CommitID = commitID
-
-	// Remove the temp folder that was created
-	return r.AppFS.RemoveAll(tempDir)
+	return nil
 }
 
 // setGitopsStatus adds the necessary gitops info (url, branch, context) to the component CR status

@@ -23,7 +23,7 @@ import (
 	"testing"
 
 	"github.com/golang/mock/gomock"
-	"github.com/redhat-appstudio/application-service/gitops"
+	gitopsjoblib "github.com/redhat-appstudio/application-service/gitops-generator/pkg/generate"
 
 	"github.com/devfile/api/v2/pkg/apis/workspaces/v1alpha2"
 	"github.com/devfile/api/v2/pkg/attributes"
@@ -163,13 +163,13 @@ func TestGenerateGitops(t *testing.T) {
 	r := &ComponentReconciler{
 		Log:               ctrl.Log.WithName("controllers").WithName("Component"),
 		GitHubOrg:         github.AppStudioAppDataOrg,
-		Generator:         gitops.NewMockGenerator(),
+		Generator:         gitopsjoblib.NewMockGenerator(),
 		Client:            fakeClient,
 		GitHubTokenClient: github.MockGitHubTokenClient{},
 	}
 
 	// Create a second reconciler for testing error scenarios
-	errGen := gitops.NewMockGenerator()
+	errGen := gitopsjoblib.NewMockGenerator()
 	errGen.Errors.Push(errors.New("Fatal error"))
 	errReconciler := &ComponentReconciler{
 		Log:               ctrl.Log.WithName("controllers").WithName("Component"),
@@ -557,7 +557,9 @@ func TestGenerateGitops(t *testing.T) {
 				Client:    github.GetMockedClient(),
 				TokenName: "some-token",
 			}
-			err := tt.reconciler.generateGitops(ctx, mockedClient, tt.component, mockDevfileData)
+			devfileYaml, _ := yaml.Marshal(mockDevfileData)
+			tt.component.Status.Devfile = string(devfileYaml)
+			err := tt.reconciler.generateGitops(ctx, mockedClient, tt.component)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("TestGenerateGitops() unexpected error: %v", err)
 			}

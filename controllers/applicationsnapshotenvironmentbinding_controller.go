@@ -19,24 +19,17 @@ package controllers
 import (
 	"context"
 	"fmt"
-	"path/filepath"
-	"reflect"
 
-	"github.com/prometheus/client_golang/prometheus"
-	cdqanalysis "github.com/redhat-appstudio/application-service/cdq-analysis/pkg"
-	"github.com/redhat-appstudio/application-service/pkg/metrics"
-	gitopsgenv1alpha1 "github.com/redhat-developer/gitops-generator/api/v1alpha1"
+	gitopsjoblib "github.com/redhat-appstudio/application-service/gitops-generator/pkg/generate"
+
 	gitopsgen "github.com/redhat-developer/gitops-generator/pkg"
 	"golang.org/x/exp/maps"
-	corev1 "k8s.io/api/core/v1"
 
-	devfileParser "github.com/devfile/library/v2/pkg/devfile/parser"
 	"github.com/go-logr/logr"
 	appstudiov1alpha1 "github.com/redhat-appstudio/application-api/api/v1alpha1"
-	devfile "github.com/redhat-appstudio/application-service/pkg/devfile"
+	"github.com/redhat-appstudio/application-service/gitops-generator/pkg/generate"
 	github "github.com/redhat-appstudio/application-service/pkg/github"
 	logutil "github.com/redhat-appstudio/application-service/pkg/log"
-	"github.com/redhat-appstudio/application-service/pkg/util"
 	"github.com/redhat-appstudio/application-service/pkg/util/ioutils"
 	"github.com/spf13/afero"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -60,6 +53,12 @@ type SnapshotEnvironmentBindingReconciler struct {
 	AppFS             afero.Afero
 	Generator         gitopsgen.Generator
 	GitHubTokenClient github.GitHubToken
+
+	// DoLocalGitOpsGen determines whether or not to only spawn off gitops generation jobs, or to run them locally inside HAS. Defaults to false
+	DoGitOpsJob bool
+
+	// AllowLocalGitopsGen allows for certain resources to generate gitops resources locally, *if* an annotation is present on the resource. Defaults to false
+	AllowLocalGitopsGen bool
 }
 
 const asebName = "SnapshotEnvironmentBinding"
@@ -110,7 +109,6 @@ func (r *SnapshotEnvironmentBindingReconciler) Reconcile(ctx context.Context, re
 	applicationName := appSnapshotEnvBinding.Spec.Application
 	environmentName := appSnapshotEnvBinding.Spec.Environment
 	snapshotName := appSnapshotEnvBinding.Spec.Snapshot
-	components := appSnapshotEnvBinding.Spec.Components
 
 	// Check if the labels have been applied to the binding
 	requiredLabels := map[string]string{
@@ -155,274 +153,19 @@ func (r *SnapshotEnvironmentBindingReconciler) Reconcile(ctx context.Context, re
 		return ctrl.Result{}, err
 	}
 
-	componentGeneratedResources := make(map[string][]string)
-	var tempDir string
-	clone := true
+	localGitopsGen := (!r.DoGitOpsJob) || (r.AllowLocalGitopsGen && appSnapshotEnvBinding.Annotations["allowLocalGitopsGen"] == "true")
 
-	for _, component := range components {
-		componentName := component.Name
-
-		// Get the Component CR
-		hasComponent := appstudiov1alpha1.Component{}
-		err = r.Get(ctx, types.NamespacedName{Name: componentName, Namespace: appSnapshotEnvBinding.Namespace}, &hasComponent)
-		if err != nil {
-			log.Error(err, fmt.Sprintf("unable to get the Component %s %v", componentName, req.NamespacedName))
-			r.SetConditionAndUpdateCR(ctx, req, &appSnapshotEnvBinding, err)
-			ioutils.RemoveFolderAndLogError(log, r.AppFS, tempDir)
-			return ctrl.Result{}, err
-		}
-
-		if hasComponent.Spec.SkipGitOpsResourceGeneration {
-			continue
-		}
-
-		// Sanity check to make sure the binding component has referenced the correct application
-		if hasComponent.Spec.Application != applicationName {
-			err := fmt.Errorf("component %s does not belong to the application %s", componentName, applicationName)
-			log.Error(err, "")
-			ioutils.RemoveFolderAndLogError(log, r.AppFS, tempDir)
-			r.SetConditionAndUpdateCR(ctx, req, &appSnapshotEnvBinding, err)
-			return ctrl.Result{}, err
-		}
-
-		var clusterIngressDomain string
-		isKubernetesCluster := isKubernetesCluster(environment)
-		unsupportedConfig := environment.Spec.UnstableConfigurationFields
-		if unsupportedConfig != nil {
-			clusterIngressDomain = unsupportedConfig.IngressDomain
-		}
-
-		// Safeguard if Ingress Domain is empty on Kubernetes
-		if isKubernetesCluster && clusterIngressDomain == "" {
-			err = fmt.Errorf("ingress domain cannot be empty on a Kubernetes cluster")
-			log.Error(err, "unable to create an ingress resource on a Kubernetes cluster")
-			ioutils.RemoveFolderAndLogError(log, r.AppFS, tempDir)
-			r.SetConditionAndUpdateCR(ctx, req, &appSnapshotEnvBinding, err)
-			return ctrl.Result{}, err
-		}
-
-		devfileSrc := cdqanalysis.DevfileSrc{
-			Data: hasComponent.Status.Devfile,
-		}
-		compDevfileData, err := cdqanalysis.ParseDevfile(devfileSrc)
-		if err != nil {
-			errMsg := fmt.Sprintf("Unable to parse the devfile from Component status, exiting reconcile loop %v", req.NamespacedName)
-			log.Error(err, errMsg)
-			ioutils.RemoveFolderAndLogError(log, r.AppFS, tempDir)
-			r.SetConditionAndUpdateCR(ctx, req, &appSnapshotEnvBinding, fmt.Errorf("%v: %v", errMsg, err))
-			return ctrl.Result{}, err
-		}
-
-		deployAssociatedComponents, err := devfileParser.GetDeployComponents(compDevfileData)
-		if err != nil {
-			log.Error(err, "unable to get deploy components")
-			ioutils.RemoveFolderAndLogError(log, r.AppFS, tempDir)
-			r.SetConditionAndUpdateCR(ctx, req, &appSnapshotEnvBinding, err)
-			return ctrl.Result{}, err
-		}
-
-		var hostname string
-		if isKubernetesCluster {
-			hostname, err = devfile.GetIngressHostName(hasComponent.Name, appSnapshotEnvBinding.Namespace, clusterIngressDomain)
-			if err != nil {
-				log.Error(err, fmt.Sprintf("unable to get generate a host name from an ingress domain for %s %v", hasComponent.Name, req.NamespacedName))
-				ioutils.RemoveFolderAndLogError(log, r.AppFS, tempDir)
-				r.SetConditionAndUpdateCR(ctx, req, &appSnapshotEnvBinding, err)
-				return ctrl.Result{}, err
-			}
-		}
-
-		// Generate a route name for the component
-
-		kubernetesResources, err := devfile.GetResourceFromDevfile(log, compDevfileData, deployAssociatedComponents, hasComponent.Name, hasComponent.Spec.Application, hasComponent.Spec.ContainerImage, hostname)
-		if err != nil {
-			log.Error(err, "unable to get kubernetes resources from the devfile outerloop components")
-			ioutils.RemoveFolderAndLogError(log, r.AppFS, tempDir)
-			r.SetConditionAndUpdateCR(ctx, req, &appSnapshotEnvBinding, err)
-			return ctrl.Result{}, err
-		}
-
-		// Create a random, generated name for the route
-		// ToDo: Ideally we wouldn't need to loop here, but since the Component status is a list, we can't avoid it
-		var routeName string
-		for _, compStatus := range appSnapshotEnvBinding.Status.Components {
-			if compStatus.Name == componentName {
-				if compStatus.GeneratedRouteName != "" {
-					routeName = compStatus.GeneratedRouteName
-					log.Info(fmt.Sprintf("route name for component is %s", routeName))
-				}
-				break
-			}
-		}
-		if routeName == "" {
-			routeName = util.GenerateRandomRouteName(hasComponent.Name)
-			log.Info(fmt.Sprintf("generated route name %s", routeName))
-		}
-
-		// If a route is present, update the first instance's name
-		if len(kubernetesResources.Routes) > 0 {
-			kubernetesResources.Routes[0].ObjectMeta.Name = routeName
-		}
-
-		var imageName string
-
-		for _, snapshotComponent := range appSnapshot.Spec.Components {
-			if snapshotComponent.Name == componentName {
-				imageName = snapshotComponent.ContainerImage
-				break
-			}
-		}
-
-		if imageName == "" {
-			err := fmt.Errorf("application snapshot %s did not reference component %s", snapshotName, componentName)
-			log.Error(err, "")
-			ioutils.RemoveFolderAndLogError(log, r.AppFS, tempDir)
-			r.SetConditionAndUpdateCR(ctx, req, &appSnapshotEnvBinding, err)
-			return ctrl.Result{}, err
-		}
-
-		gitOpsRemoteURL, gitOpsBranch, gitOpsContext, err := util.ProcessGitOpsStatus(hasComponent.Status.GitOps, ghClient.Token)
+	if localGitopsGen {
+		err = gitopsjoblib.GenerateGitopsOverlays(context.Background(), log, r.Client, appSnapshotEnvBinding, ioutils.NewFilesystem(), generate.GitOpsGenParams{
+			Generator: r.Generator,
+			Token:     ghClient.Token,
+		})
 		if err != nil {
 			r.SetConditionAndUpdateCR(ctx, req, &appSnapshotEnvBinding, err)
-			ioutils.RemoveFolderAndLogError(log, r.AppFS, tempDir)
 			return ctrl.Result{}, err
 		}
-
-		if clone {
-			// Create a temp folder to create the gitops resources in
-			tempDir, err = ioutils.CreateTempPath(appSnapshotEnvBinding.Name, r.AppFS)
-			if err != nil {
-				log.Error(err, "unable to create temp directory for gitops resources due to error")
-				r.SetConditionAndUpdateCR(ctx, req, &appSnapshotEnvBinding, err)
-				return ctrl.Result{}, fmt.Errorf("unable to create temp directory for gitops resources due to error: %v", err)
-			}
-		}
-
-		envVars := make([]corev1.EnvVar, 0)
-		for _, env := range component.Configuration.Env {
-			envVars = append(envVars, corev1.EnvVar{
-				Name:  env.Name,
-				Value: env.Value,
-			})
-		}
-
-		environmentConfigEnvVars := make([]corev1.EnvVar, 0)
-		for _, env := range environment.Spec.Configuration.Env {
-			environmentConfigEnvVars = append(environmentConfigEnvVars, corev1.EnvVar{
-				Name:  env.Name,
-				Value: env.Value,
-			})
-		}
-		componentResources := corev1.ResourceRequirements{}
-		if component.Configuration.Resources != nil {
-			componentResources = *component.Configuration.Resources
-		}
-
-		kubeLabels := map[string]string{
-			"app.kubernetes.io/name":       componentName,
-			"app.kubernetes.io/instance":   component.Name,
-			"app.kubernetes.io/part-of":    applicationName,
-			"app.kubernetes.io/managed-by": "kustomize",
-			"app.kubernetes.io/created-by": "application-service",
-		}
-		genOptions := gitopsgenv1alpha1.GeneratorOptions{
-			Name:                component.Name,
-			RouteName:           routeName,
-			Resources:           componentResources,
-			BaseEnvVar:          envVars,
-			OverlayEnvVar:       environmentConfigEnvVars,
-			K8sLabels:           kubeLabels,
-			IsKubernetesCluster: isKubernetesCluster,
-			TargetPort:          hasComponent.Spec.TargetPort, // pass the target port to the gitops gen library as they may generate a route/ingress based on the target port if the devfile does not have an ingress/route or an endpoint
-		}
-
-		if component.Configuration.Replicas != nil {
-			genOptions.Replicas = *component.Configuration.Replicas
-		}
-
-		if !reflect.DeepEqual(kubernetesResources, devfileParser.KubernetesResources{}) {
-			genOptions.KubernetesResources.Routes = append(genOptions.KubernetesResources.Routes, kubernetesResources.Routes...)
-			genOptions.KubernetesResources.Ingresses = append(genOptions.KubernetesResources.Ingresses, kubernetesResources.Ingresses...)
-		}
-
-		if isKubernetesCluster && len(genOptions.KubernetesResources.Ingresses) == 0 {
-			// provide the hostname for the component if there are no ingresses
-			// Gitops Generator Library will create the Ingress with the hostname
-			genOptions.Route = hostname
-		}
-
-		//Gitops functions return sanitized error messages
-		metrics.ControllerGitRequest.With(prometheus.Labels{"controller": asebName, "tokenName": ghClient.TokenName, "operation": "GenerateOverlaysAndPush"}).Inc()
-		err = r.Generator.GenerateOverlaysAndPush(tempDir, clone, gitOpsRemoteURL, genOptions, applicationName, environmentName, imageName, "", r.AppFS, gitOpsBranch, gitOpsContext, true, componentGeneratedResources)
-		if err != nil {
-			log.Error(err, fmt.Sprintf("unable to get generate gitops resources for %s %v", componentName, req.NamespacedName))
-			ioutils.RemoveFolderAndLogError(log, r.AppFS, tempDir) // not worried with an err, its a best case attempt to delete the temp clone dir
-			r.SetConditionAndUpdateCR(ctx, req, &appSnapshotEnvBinding, err)
-			return ctrl.Result{}, err
-		}
-
-		// Retrieve the commit ID
-		var commitID string
-		repoPath := filepath.Join(tempDir, applicationName)
-		metricsLabel := prometheus.Labels{"controller": asebName, "tokenName": ghClient.TokenName, "operation": "GetCommitIDFromRepo"}
-		metrics.ControllerGitRequest.With(metricsLabel).Inc()
-		if commitID, err = r.Generator.GetCommitIDFromRepo(r.AppFS, repoPath); err != nil {
-			//gitops generator errors are sanitized
-			log.Error(err, "")
-			ioutils.RemoveFolderAndLogError(log, r.AppFS, tempDir)
-			r.SetConditionAndUpdateCR(ctx, req, &appSnapshotEnvBinding, err)
-			return ctrl.Result{}, err
-		}
-
-		// Set the BindingComponent status
-		componentStatus := appstudiov1alpha1.BindingComponentStatus{
-			Name: componentName,
-			GitOpsRepository: appstudiov1alpha1.BindingComponentGitOpsRepository{
-				URL:      hasComponent.Status.GitOps.RepositoryURL,
-				Branch:   gitOpsBranch,
-				Path:     filepath.Join(gitOpsContext, "components", componentName, "overlays", environmentName),
-				CommitID: commitID,
-			},
-		}
-
-		// On OpenShift, we generate a unique route name for each Component, so include that in the status
-		if !isKubernetesCluster {
-			componentStatus.GeneratedRouteName = routeName
-			log.Info(fmt.Sprintf("added RouteName %s for Component %s to status", routeName, componentName))
-		}
-
-		if _, ok := componentGeneratedResources[componentName]; ok {
-			componentStatus.GitOpsRepository.GeneratedResources = componentGeneratedResources[componentName]
-		}
-
-		isNewComponent := true
-		for i := range appSnapshotEnvBinding.Status.Components {
-			if appSnapshotEnvBinding.Status.Components[i].Name == componentStatus.Name {
-				appSnapshotEnvBinding.Status.Components[i] = componentStatus
-				isNewComponent = false
-				break
-			}
-		}
-		if isNewComponent {
-			appSnapshotEnvBinding.Status.Components = append(appSnapshotEnvBinding.Status.Components, componentStatus)
-		}
-
-		// Set the clone to false, since we dont want to clone the repo again for the other components
-		clone = false
-	}
-
-	// Remove the cloned path
-	err = r.AppFS.RemoveAll(tempDir)
-	if err != nil {
-		log.Error(err, "Unable to remove the clone dir")
-	}
-
-	// Update the binding status to reflect the GitOps data
-	err = r.Client.Status().Update(ctx, &appSnapshotEnvBinding)
-	if err != nil {
-		log.Error(err, "Unable to update App Snapshot Env Binding")
-		r.SetConditionAndUpdateCR(ctx, req, &appSnapshotEnvBinding, err)
-		return ctrl.Result{}, err
+	} else {
+		// ToDo: Add support for GitOps job
 	}
 
 	r.SetConditionAndUpdateCR(ctx, req, &appSnapshotEnvBinding, nil)

@@ -139,6 +139,9 @@ func main() {
 	ghTokenClient := github.GitHubTokenClient{}
 	setupLog.Info(fmt.Sprintf("There are %v token(s) available", len(github.Clients)))
 
+	doGitOpsJob := os.Getenv("DO_GITOPS_JOB") == "true"
+	allowLocalGitOpsGen := os.Getenv("ALLOW_LOCAL_GITOPS_GEN") == "true"
+
 	if err = (&controllers.ApplicationReconciler{
 		Client:            mgr.GetClient(),
 		Scheme:            mgr.GetScheme(),
@@ -150,13 +153,15 @@ func main() {
 		os.Exit(1)
 	}
 	if err = (&controllers.ComponentReconciler{
-		Client:            mgr.GetClient(),
-		Scheme:            mgr.GetScheme(),
-		Log:               ctrl.Log.WithName("controllers").WithName("Component"),
-		Generator:         gitopsgen.NewGitopsGen(),
-		AppFS:             ioutils.NewFilesystem(),
-		GitHubTokenClient: ghTokenClient,
-		SPIClient:         spi.SPIClient{},
+		Client:              mgr.GetClient(),
+		Scheme:              mgr.GetScheme(),
+		Log:                 ctrl.Log.WithName("controllers").WithName("Component"),
+		Generator:           gitopsgen.NewGitopsGen(),
+		AppFS:               ioutils.NewFilesystem(),
+		GitHubTokenClient:   ghTokenClient,
+		SPIClient:           spi.SPIClient{},
+		DoGitOpsJob:         doGitOpsJob,
+		AllowLocalGitopsGen: allowLocalGitOpsGen,
 	}).SetupWithManager(ctx, mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "Component")
 		os.Exit(1)
@@ -187,12 +192,14 @@ func main() {
 	}
 
 	if err = (&controllers.SnapshotEnvironmentBindingReconciler{
-		Client:            mgr.GetClient(),
-		Scheme:            mgr.GetScheme(),
-		Log:               ctrl.Log.WithName("controllers").WithName("SnapshotEnvironmentBinding"),
-		Generator:         gitopsgen.NewGitopsGen(),
-		AppFS:             ioutils.NewFilesystem(),
-		GitHubTokenClient: ghTokenClient,
+		Client:              mgr.GetClient(),
+		Scheme:              mgr.GetScheme(),
+		Log:                 ctrl.Log.WithName("controllers").WithName("SnapshotEnvironmentBinding"),
+		Generator:           gitopsgen.NewGitopsGen(),
+		AppFS:               ioutils.NewFilesystem(),
+		GitHubTokenClient:   ghTokenClient,
+		DoGitOpsJob:         doGitOpsJob,
+		AllowLocalGitopsGen: allowLocalGitOpsGen,
 	}).SetupWithManager(ctx, mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "SnapshotEnvironmentBinding")
 		os.Exit(1)
