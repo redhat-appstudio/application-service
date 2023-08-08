@@ -20,7 +20,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/redhat-developer/alizer/go/pkg/apis/model"
+	"github.com/devfile/alizer/pkg/apis/model"
 )
 
 type MockAlizerClient struct {

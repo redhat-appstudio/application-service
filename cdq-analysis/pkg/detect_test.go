@@ -20,7 +20,7 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/redhat-developer/alizer/go/pkg/apis/model"
+	"github.com/devfile/alizer/pkg/apis/model"
 )
 
 func TestAnalyzeAndDetectDevfile(t *testing.T) {
