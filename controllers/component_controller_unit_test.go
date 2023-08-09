@@ -22,27 +22,370 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/golang/mock/gomock"
 	gitopsjoblib "github.com/redhat-appstudio/application-service/gitops-generator/pkg/generate"
 
 	"github.com/devfile/api/v2/pkg/apis/workspaces/v1alpha2"
 	"github.com/devfile/api/v2/pkg/attributes"
 	data "github.com/devfile/library/v2/pkg/devfile/parser/data"
 	v2 "github.com/devfile/library/v2/pkg/devfile/parser/data/v2"
-	"github.com/devfile/library/v2/pkg/devfile/parser/data/v2/common"
 	appstudiov1alpha1 "github.com/redhat-appstudio/application-api/api/v1alpha1"
-	devfile "github.com/redhat-appstudio/application-service/pkg/devfile"
 	"github.com/redhat-appstudio/application-service/pkg/github"
 	"github.com/redhat-appstudio/application-service/pkg/util/ioutils"
 	"github.com/spf13/afero"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
-	"sigs.k8s.io/yaml"
 
 	devfileApi "github.com/devfile/api/v2/pkg/devfile"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	//+kubebuilder:scaffold:imports
 )
+
+var kubernetesInlinedDevfile = `
+commands:
+- apply:
+    component: image-build
+  id: build-image
+- apply:
+    component: kubernetes-deploy
+  id: deployk8s
+- composite:
+    commands:
+    - build-image
+    - deployk8s
+    group:
+      isDefault: true
+      kind: deploy
+    parallel: false
+  id: deploy
+components:
+- image:
+    autoBuild: false
+    dockerfile:
+      buildContext: .
+      rootRequired: false
+      uri: docker/Dockerfile
+    imageName: java-springboot-image:latest
+  name: image-build
+- attributes:
+    api.devfile.io/k8sLikeComponent-originalURI: deploy.yaml
+    deployment/container-port: 5566
+    deployment/containerENV:
+    - name: FOO
+      value: foo11
+    - name: BAR
+      value: bar11
+    deployment/cpuLimit: "2"
+    deployment/cpuRequest: 701m
+    deployment/memoryLimit: 500Mi
+    deployment/memoryRequest: 401Mi
+    deployment/replicas: 5
+    deployment/route: route111222
+    deployment/storageLimit: 400Mi
+    deployment/storageRequest: 201Mi
+  kubernetes:
+    deployByDefault: false
+    endpoints:
+    - name: http-8081
+      path: /
+      secure: false
+      targetPort: 8081
+    inlined: |-
+      apiVersion: apps/v1
+      kind: Deployment
+      metadata:
+        creationTimestamp: null
+        labels:
+          app.kubernetes.io/created-by: application-service
+          app.kubernetes.io/instance: component-sample
+          app.kubernetes.io/managed-by: kustomize
+          app.kubernetes.io/name: backend
+          app.kubernetes.io/part-of: application-sample
+          maysun: test
+        name: deploy-sample
+      spec:
+        replicas: 1
+        selector:
+          matchLabels:
+            app.kubernetes.io/instance: component-sample
+        strategy: {}
+        template:
+          metadata:
+            creationTimestamp: null
+            labels:
+              app.kubernetes.io/instance: component-sample
+          spec:
+            containers:
+            - env:
+              - name: FOO
+                value: foo1
+              - name: BARBAR
+                value: bar1
+              image: quay.io/redhat-appstudio/user-workload:application-service-system-component-sample
+              imagePullPolicy: Always
+              livenessProbe:
+                httpGet:
+                  path: /
+                  port: 1111
+                initialDelaySeconds: 10
+                periodSeconds: 10
+              name: container-image
+              ports:
+              - containerPort: 1111
+              readinessProbe:
+                initialDelaySeconds: 10
+                periodSeconds: 10
+                tcpSocket:
+                  port: 1111
+              resources:
+                limits:
+                  cpu: "2"
+                  memory: 500Mi
+                  storage: 400Mi
+                requests:
+                  cpu: 700m
+                  memory: 400Mi
+                  storage: 200Mi
+      status: {}
+      ---
+      apiVersion: apps/v1
+      kind: Deployment
+      metadata:
+        creationTimestamp: null
+        labels:
+          app.kubernetes.io/created-by: application-service
+          app.kubernetes.io/instance: component-sample
+          app.kubernetes.io/managed-by: kustomize
+          app.kubernetes.io/name: backend
+          app.kubernetes.io/part-of: application-sample
+          maysun: test
+        name: deploy-sample-2
+      spec:
+        replicas: 1
+        selector:
+          matchLabels:
+            app.kubernetes.io/instance: component-sample
+        strategy: {}
+        template:
+          metadata:
+            creationTimestamp: null
+            labels:
+              app.kubernetes.io/instance: component-sample
+          spec:
+            containers:
+            - env:
+              - name: FOO
+                value: foo1
+              - name: BAR
+                value: bar1
+              image: quay.io/redhat-appstudio/user-workload:application-service-system-component-sample
+              imagePullPolicy: Always
+              livenessProbe:
+                httpGet:
+                  path: /
+                  port: 1111
+                initialDelaySeconds: 10
+                periodSeconds: 10
+              name: container-image
+              ports:
+              - containerPort: 1111
+              readinessProbe:
+                initialDelaySeconds: 10
+                periodSeconds: 10
+                tcpSocket:
+                  port: 1111
+              resources:
+                limits:
+                  cpu: "2"
+                  memory: 500Mi
+                  storage: 400Mi
+                requests:
+                  cpu: 700m
+                  memory: 400Mi
+                  storage: 200Mi
+      status: {}
+      ---
+      apiVersion: v1
+      kind: Service
+      metadata:
+        creationTimestamp: null
+        labels:
+          app.kubernetes.io/created-by: application-service
+          app.kubernetes.io/instance: component-sample
+          app.kubernetes.io/managed-by: kustomize
+          app.kubernetes.io/name: backend
+          app.kubernetes.io/part-of: application-sample
+          maysun: test
+        name: service-sample
+      spec:
+        ports:
+        - port: 1111
+          targetPort: 1111
+        selector:
+          app.kubernetes.io/instance: component-sample
+      status:
+        loadBalancer: {}
+      ---
+      apiVersion: v1
+      kind: Service
+      metadata:
+        creationTimestamp: null
+        labels:
+          app.kubernetes.io/created-by: application-service
+          app.kubernetes.io/instance: component-sample
+          app.kubernetes.io/managed-by: kustomize
+          app.kubernetes.io/name: backend
+          app.kubernetes.io/part-of: application-sample
+          maysun: test
+        name: service-sample-2
+      spec:
+        ports:
+        - port: 1111
+          targetPort: 1111
+        selector:
+          app.kubernetes.io/instance: component-sample
+      status:
+        loadBalancer: {}
+      ---
+      apiVersion: route.openshift.io/v1
+      kind: Route
+      metadata:
+        creationTimestamp: null
+        labels:
+          app.kubernetes.io/created-by: application-service
+          app.kubernetes.io/instance: component-sample
+          app.kubernetes.io/managed-by: kustomize
+          app.kubernetes.io/name: backend
+          app.kubernetes.io/part-of: application-sample
+          maysun: test
+        name: route-sample
+      spec:
+        host: route111
+        port:
+          targetPort: 1111
+        tls:
+          insecureEdgeTerminationPolicy: Redirect
+          termination: edge
+        to:
+          kind: Service
+          name: component-sample
+          weight: 100
+      status: {}
+      ---
+      apiVersion: route.openshift.io/v1
+      kind: Route
+      metadata:
+        creationTimestamp: null
+        labels:
+          app.kubernetes.io/created-by: application-service
+          app.kubernetes.io/instance: component-sample
+          app.kubernetes.io/managed-by: kustomize
+          app.kubernetes.io/name: backend
+          app.kubernetes.io/part-of: application-sample
+          maysun: test
+        name: route-sample-2
+      spec:
+        host: route111
+        port:
+          targetPort: 1111
+        tls:
+          insecureEdgeTerminationPolicy: Redirect
+          termination: edge
+        to:
+          kind: Service
+          name: component-sample
+          weight: 100
+      status: {}
+      ---
+      apiVersion: networking.k8s.io/v1
+      kind: Ingress
+      metadata:
+        name: ingress-sample
+        annotations:
+          nginx.ingress.kubernetes.io/rewrite-target: /
+          maysun: test
+      spec:
+        ingressClassName: nginx-example
+        rules:
+        - http:
+            paths:
+            - path: /testpath
+              pathType: Prefix
+              backend:
+                service:
+                  name: test
+                  port:
+                    number: 80
+      ---
+      apiVersion: networking.k8s.io/v1
+      kind: Ingress
+      metadata:
+        name: ingress-sample-2
+        annotations:
+          nginx.ingress.kubernetes.io/rewrite-target: /
+          maysun: test
+      spec:
+        ingressClassName: nginx-example
+        rules:
+        - http:
+            paths:
+            - path: /testpath
+              pathType: Prefix
+              backend:
+                service:
+                  name: test
+                  port:
+                    number: 80
+      ---
+      apiVersion: v1
+      kind: PersistentVolumeClaim
+      metadata:
+        name: pvc-sample
+        labels:
+          maysun: test
+      spec:
+        accessModes:
+          - ReadWriteOnce
+        volumeMode: Filesystem
+        resources:
+          requests:
+            storage: 8Gi
+        storageClassName: slow
+        selector:
+          matchLabels:
+            release: "stable"
+          matchExpressions:
+            - {key: environment, operator: In, values: [dev]}
+      ---
+      apiVersion: v1
+      kind: PersistentVolumeClaim
+      metadata:
+        name: pvc-sample-2
+        labels:
+          maysun: test
+      spec:
+        accessModes:
+          - ReadWriteOnce
+        volumeMode: Filesystem
+        resources:
+          requests:
+            storage: 8Gi
+        storageClassName: slow
+        selector:
+          matchLabels:
+            release: "stable"
+          matchExpressions:
+            - {key: environment, operator: In, values: [dev]}
+  name: kubernetes-deploy
+metadata:
+  name: java-springboot
+schemaVersion: 2.2.0`
+
+var noDeployDevfile = `
+metadata:
+  name: java-springboot
+schemaVersion: 2.2.0`
+
+var invalidDevfile = `safdsfsdl32432423\n\t`
 
 func TestSetGitOpsStatus(t *testing.T) {
 	tests := []struct {
@@ -191,140 +534,12 @@ func TestGenerateGitops(t *testing.T) {
 		},
 	}
 
-	componentNames := []string{"testcomp0", "testcomp1", "testcomp2"}
-	isDefault := true
-	notDefault := false
-
-	applyCommands := []v1alpha2.Command{
-		{
-			Id: "apply0",
-			CommandUnion: v1alpha2.CommandUnion{
-				Apply: &v1alpha2.ApplyCommand{
-					Component: componentNames[0],
-					LabeledCommand: v1alpha2.LabeledCommand{
-						BaseCommand: v1alpha2.BaseCommand{
-							Group: &v1alpha2.CommandGroup{
-								Kind:      v1alpha2.DeployCommandGroupKind,
-								IsDefault: &isDefault,
-							},
-						},
-					},
-				},
-			},
-		},
-		{
-			Id: "apply1",
-			CommandUnion: v1alpha2.CommandUnion{
-				Apply: &v1alpha2.ApplyCommand{
-					Component: componentNames[1],
-				},
-			},
-		},
-		{
-			Id: "apply2",
-			CommandUnion: v1alpha2.CommandUnion{
-				Apply: &v1alpha2.ApplyCommand{
-					Component: componentNames[2],
-				},
-			},
-		},
-	}
-	deployCommands := []v1alpha2.Command{
-		{
-			Id: "applynotdefault",
-			CommandUnion: v1alpha2.CommandUnion{
-				Apply: &v1alpha2.ApplyCommand{
-					Component: componentNames[0],
-					LabeledCommand: v1alpha2.LabeledCommand{
-						BaseCommand: v1alpha2.BaseCommand{
-							Group: &v1alpha2.CommandGroup{
-								Kind:      v1alpha2.DeployCommandGroupKind,
-								IsDefault: &notDefault,
-							},
-						},
-					},
-				},
-			},
-		},
-		{
-			Id: "apply0",
-			CommandUnion: v1alpha2.CommandUnion{
-				Apply: &v1alpha2.ApplyCommand{
-					Component: componentNames[0],
-					LabeledCommand: v1alpha2.LabeledCommand{
-						BaseCommand: v1alpha2.BaseCommand{
-							Group: &v1alpha2.CommandGroup{
-								Kind: v1alpha2.DeployCommandGroupKind,
-							},
-						},
-					},
-				},
-			},
-		},
-		{
-			Id: "composite1",
-			CommandUnion: v1alpha2.CommandUnion{
-				Composite: &v1alpha2.CompositeCommand{
-					Commands: []string{"apply0", "apply2"},
-					LabeledCommand: v1alpha2.LabeledCommand{
-						BaseCommand: v1alpha2.BaseCommand{
-							Group: &v1alpha2.CommandGroup{
-								Kind:      v1alpha2.DeployCommandGroupKind,
-								IsDefault: &isDefault,
-							},
-						},
-					},
-				},
-			},
-		},
-		{
-			Id: "compositenotdefault",
-			CommandUnion: v1alpha2.CommandUnion{
-				Composite: &v1alpha2.CompositeCommand{
-					Commands: []string{"apply0", "apply2"},
-					LabeledCommand: v1alpha2.LabeledCommand{
-						BaseCommand: v1alpha2.BaseCommand{
-							Group: &v1alpha2.CommandGroup{
-								Kind:      v1alpha2.DeployCommandGroupKind,
-								IsDefault: &notDefault,
-							},
-						},
-					},
-				},
-			},
-		},
-	}
-
-	compName := "component"
-	applicationName := "application"
-	image := "image"
-
-	deploymentTemplate := devfile.GenerateDeploymentTemplate(compName, applicationName, image)
-	deploymentTemplateBytes, err := yaml.Marshal(deploymentTemplate)
-	if err != nil {
-		t.Errorf("TestConvertImageComponentToDevfile() unexpected error: %v", err)
-		return
-	}
-	kubernetesComponents := []v1alpha2.Component{
-		{
-			Name: "kubernetes-deploy",
-			ComponentUnion: v1alpha2.ComponentUnion{
-				Kubernetes: &v1alpha2.KubernetesComponent{
-					K8sLikeComponent: v1alpha2.K8sLikeComponent{
-						K8sLikeComponentLocation: v1alpha2.K8sLikeComponentLocation{
-							Inlined: string(deploymentTemplateBytes),
-						},
-					},
-				},
-			},
-		},
-	}
-
 	tests := []struct {
 		name       string
 		reconciler *ComponentReconciler
 		fs         afero.Afero
 		component  *appstudiov1alpha1.Component
+		devfile    string
 		wantErr    bool
 	}{
 		{
@@ -349,7 +564,58 @@ func TestGenerateGitops(t *testing.T) {
 					},
 				},
 			},
+			devfile: kubernetesInlinedDevfile,
 			wantErr: false,
+		},
+		{
+			name:       "Simple application component invalid devfile",
+			reconciler: r,
+			fs:         appFS,
+			component: &appstudiov1alpha1.Component{
+				TypeMeta: metav1.TypeMeta{
+					APIVersion: "appstudio.redhat.com/v1alpha1",
+					Kind:       "Component",
+				},
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "test-component",
+					Namespace: "test-namespace",
+				},
+				Spec: componentSpec,
+				Status: appstudiov1alpha1.ComponentStatus{
+					GitOps: appstudiov1alpha1.GitOpsStatus{
+						RepositoryURL: "https://github.com/test/repo",
+						Branch:        "main",
+						Context:       "/test",
+					},
+				},
+			},
+			devfile: invalidDevfile,
+			wantErr: true,
+		},
+		{
+			name:       "Simple application component no outerloop deploy",
+			reconciler: r,
+			fs:         appFS,
+			component: &appstudiov1alpha1.Component{
+				TypeMeta: metav1.TypeMeta{
+					APIVersion: "appstudio.redhat.com/v1alpha1",
+					Kind:       "Component",
+				},
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "test-component",
+					Namespace: "test-namespace",
+				},
+				Spec: componentSpec,
+				Status: appstudiov1alpha1.ComponentStatus{
+					GitOps: appstudiov1alpha1.GitOpsStatus{
+						RepositoryURL: "https://github.com/test/repo",
+						Branch:        "main",
+						Context:       "/test",
+					},
+				},
+			},
+			devfile: noDeployDevfile,
+			wantErr: true,
 		},
 		{
 			name:       "Invalid application component, no labels",
@@ -429,6 +695,7 @@ func TestGenerateGitops(t *testing.T) {
 					},
 				},
 			},
+			devfile: kubernetesInlinedDevfile,
 			wantErr: false,
 		},
 		{
@@ -525,40 +792,11 @@ func TestGenerateGitops(t *testing.T) {
 		tt.reconciler.AppFS = tt.fs
 		t.Run(tt.name, func(t *testing.T) {
 
-			goMockCtrl := gomock.NewController(t)
-			defer goMockCtrl.Finish()
-			mockDevfileData := data.NewMockDevfileData(goMockCtrl)
-
-			// set up the mock data
-			deployCommandFilter := common.DevfileOptions{
-				CommandOptions: common.CommandOptions{
-					CommandGroupKind: v1alpha2.DeployCommandGroupKind,
-				},
-			}
-			mockDeployCommands := mockDevfileData.EXPECT().GetCommands(deployCommandFilter)
-			mockDeployCommands.Return(deployCommands, nil).AnyTimes()
-
-			applyCommandFilter := common.DevfileOptions{
-				CommandOptions: common.CommandOptions{
-					CommandType: v1alpha2.ApplyCommandType,
-				},
-			}
-			mockApplyCommands := mockDevfileData.EXPECT().GetCommands(applyCommandFilter)
-			mockApplyCommands.Return(applyCommands, nil).AnyTimes()
-
-			kubernetesComponentFilter := common.DevfileOptions{
-				ComponentOptions: common.ComponentOptions{
-					ComponentType: v1alpha2.KubernetesComponentType,
-				},
-			}
-			mockKubernetesComponents := mockDevfileData.EXPECT().GetComponents(kubernetesComponentFilter)
-			mockKubernetesComponents.Return(kubernetesComponents, nil).AnyTimes()
+			tt.component.Status.Devfile = string(tt.devfile)
 			mockedClient := &github.GitHubClient{
 				Client:    github.GetMockedClient(),
 				TokenName: "some-token",
 			}
-			devfileYaml, _ := yaml.Marshal(mockDevfileData)
-			tt.component.Status.Devfile = string(devfileYaml)
 			err := tt.reconciler.generateGitops(ctx, mockedClient, tt.component)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("TestGenerateGitops() unexpected error: %v", err)
