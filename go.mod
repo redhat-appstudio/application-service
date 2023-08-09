@@ -20,7 +20,7 @@ require (
 	github.com/redhat-appstudio/application-service/cdq-analysis v0.0.0
 	github.com/redhat-appstudio/application-service/gitops-generator v0.0.0
 	github.com/redhat-appstudio/service-provider-integration-scm-file-retriever v0.8.3
-	github.com/redhat-developer/gitops-generator v0.0.0-20230614175323-aff86c6bc55e
+	github.com/redhat-developer/gitops-generator v0.0.0-20230801134438-01747a27dcbf
 	github.com/spf13/afero v1.8.0
 	github.com/stretchr/testify v1.8.1
 	go.uber.org/zap v1.24.0
@@ -161,7 +161,6 @@ require (
 	gopkg.in/warnings.v0 v0.1.2 // indirect
 	gopkg.in/yaml.v2 v2.4.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
-	gotest.tools/v3 v3.1.0 // indirect
 	k8s.io/apiextensions-apiserver v0.26.1 // indirect
 	k8s.io/component-base v0.26.1 // indirect
 	k8s.io/klog v1.0.0 // indirect
