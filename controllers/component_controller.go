@@ -25,7 +25,6 @@ import (
 
 	"github.com/prometheus/client_golang/prometheus"
 	cdqanalysis "github.com/redhat-appstudio/application-service/cdq-analysis/pkg"
-	"github.com/redhat-appstudio/application-service/gitops-generator/pkg/generate"
 	gitopsjoblib "github.com/redhat-appstudio/application-service/gitops-generator/pkg/generate"
 	"github.com/redhat-appstudio/application-service/pkg/metrics"
 	corev1 "k8s.io/api/core/v1"
@@ -562,7 +561,7 @@ func (r *ComponentReconciler) generateGitops(ctx context.Context, ghClient *gith
 	localGitopsGen := (!r.DoGitOpsJob) || (r.AllowLocalGitopsGen && component.Annotations["allowLocalGitopsGen"] == "true")
 
 	if localGitopsGen {
-		err = gitopsjoblib.GenerateGitopsBase(context.Background(), log, r.Client, *component, ioutils.NewFilesystem(), generate.GitOpsGenParams{
+		err = gitopsjoblib.GenerateGitopsBase(context.Background(), log, r.Client, *component, ioutils.NewFilesystem(), gitopsjoblib.GitOpsGenParams{
 			Generator: r.Generator,
 			Token:     ghClient.Token,
 			RemoteURL: gitOpsURL,
@@ -572,8 +571,6 @@ func (r *ComponentReconciler) generateGitops(ctx context.Context, ghClient *gith
 		if err != nil {
 			return err
 		}
-	} else {
-		// ToDo: Implement GitOps generation in Kubernetes jobs
 	}
 
 	return nil

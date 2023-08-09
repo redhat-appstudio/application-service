@@ -27,7 +27,6 @@ import (
 
 	"github.com/go-logr/logr"
 	appstudiov1alpha1 "github.com/redhat-appstudio/application-api/api/v1alpha1"
-	"github.com/redhat-appstudio/application-service/gitops-generator/pkg/generate"
 	github "github.com/redhat-appstudio/application-service/pkg/github"
 	logutil "github.com/redhat-appstudio/application-service/pkg/log"
 	"github.com/redhat-appstudio/application-service/pkg/util/ioutils"
@@ -154,7 +153,7 @@ func (r *SnapshotEnvironmentBindingReconciler) Reconcile(ctx context.Context, re
 	localGitopsGen := (!r.DoGitOpsJob) || (r.AllowLocalGitopsGen && appSnapshotEnvBinding.Annotations["allowLocalGitopsGen"] == "true")
 
 	if localGitopsGen {
-		err = gitopsjoblib.GenerateGitopsOverlays(context.Background(), log, r.Client, appSnapshotEnvBinding, ioutils.NewFilesystem(), generate.GitOpsGenParams{
+		err = gitopsjoblib.GenerateGitopsOverlays(context.Background(), log, r.Client, appSnapshotEnvBinding, ioutils.NewFilesystem(), gitopsjoblib.GitOpsGenParams{
 			Generator: r.Generator,
 			Token:     ghClient.Token,
 		})
@@ -162,8 +161,6 @@ func (r *SnapshotEnvironmentBindingReconciler) Reconcile(ctx context.Context, re
 			r.SetConditionAndUpdateCR(ctx, req, &appSnapshotEnvBinding, err)
 			return ctrl.Result{}, err
 		}
-	} else {
-		// ToDo: Add support for GitOps job
 	}
 
 	r.SetConditionAndUpdateCR(ctx, req, &appSnapshotEnvBinding, nil)
