@@ -19,7 +19,7 @@ import (
 	"crypto/sha256"
 	"encoding/base64"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"math/rand"
 	"net/http"
 	"net/url"
@@ -155,7 +155,7 @@ func CurlEndpoint(endpoint string) ([]byte, error) {
 	defer resp.Body.Close()
 
 	if resp.StatusCode == http.StatusOK {
-		respBytes, err = ioutil.ReadAll(resp.Body)
+		respBytes, err = io.ReadAll(resp.Body)
 		if err != nil {
 			return nil, err
 		}

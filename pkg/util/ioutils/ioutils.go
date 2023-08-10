@@ -62,7 +62,7 @@ func CreateTempPath(prefix string, appFs afero.Afero) (string, error) {
 // Used in cases where we're cleaning up after encountering an error, but want to return the original error instead.
 func RemoveFolderAndLogError(log logr.Logger, fs afero.Fs, path string) {
 	if path != "" {
-		err := fs.RemoveAll(path)
+		err := os.RemoveAll(path)
 		if err != nil {
 			log.Error(err, fmt.Sprintf("Unable to delete folder %s", path))
 		}
