@@ -64,7 +64,7 @@ const cdqName = "ComponentDetectionQuery"
 // CDQReconcileTimeout is the default timeout, 5 mins, for the context of cdq reconcile
 const CDQReconcileTimeout = 5 * time.Minute
 
-//+kubebuilder:rbac:groups=appstudio.redhat.com,resources=componentdetectionqueries,verbs=get;list;watch;create;update;patch;delete
+//+kubebuilder:rbac:groups=appstudio.redhat.com,resources=componentdetectionqueries,verbs=get;list;watch;create;update;patch;delete;deletecollection
 //+kubebuilder:rbac:groups=appstudio.redhat.com,resources=componentdetectionqueries/status,verbs=get;update;patch
 //+kubebuilder:rbac:groups=appstudio.redhat.com,resources=componentdetectionqueries/finalizers,verbs=update
 

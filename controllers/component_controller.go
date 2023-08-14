@@ -78,7 +78,7 @@ const (
 	componentName                    = "Component"
 )
 
-//+kubebuilder:rbac:groups=appstudio.redhat.com,resources=components,verbs=get;list;watch;create;update;patch;delete
+//+kubebuilder:rbac:groups=appstudio.redhat.com,resources=components,verbs=get;list;watch;create;update;patch;delete;deletecollection
 //+kubebuilder:rbac:groups=appstudio.redhat.com,resources=components/status,verbs=get;update;patch
 //+kubebuilder:rbac:groups=appstudio.redhat.com,resources=components/finalizers,verbs=update
 //+kubebuilder:rbac:groups=core,resources=configmaps,verbs=get;list;watch
