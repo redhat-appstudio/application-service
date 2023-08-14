@@ -924,6 +924,11 @@ components:
         - port: 1111
           name: "5566"
           targetPort: 1111
+        - port: 1112
+          targetPort: 1112
+        - port: 1113
+          name: "1112"
+          targetPort: 1113
         selector:
           app.kubernetes.io/instance: component-sample
       status:
@@ -2418,6 +2423,16 @@ schemaVersion: 2.2.0`
 							Name:       "5566",
 							Port:       int32(1111),
 							TargetPort: intstr.FromInt(1111),
+						},
+						{
+							Name:       "1112",
+							Port:       int32(1112),
+							TargetPort: intstr.FromInt(1112),
+						},
+						{
+							Name:       "1112",
+							Port:       int32(1113),
+							TargetPort: intstr.FromInt(1113),
 						},
 						{
 							Name:       "5566",
