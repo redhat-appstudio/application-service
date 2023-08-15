@@ -18,7 +18,7 @@ configMapGenerator:
   - devfile_registry.properties
   name: devfile-registry-config
 - envs:
-    - feature_flag.properties
+  - feature_flag.properties
   name: feature-flag-config
   
 apiVersion: kustomize.config.k8s.io/v1beta1
