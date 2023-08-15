@@ -16,7 +16,6 @@
 package pkg
 
 import (
-	"io/ioutil"
 	"net"
 	"net/http"
 	"net/http/httptest"
@@ -76,7 +75,7 @@ schemaVersion: 2.2.0`
 	if err != nil {
 		t.Errorf("TestParseDevfileModel() error: failed to create folder: %v, error: %v", localPath, err)
 	}
-	err = ioutil.WriteFile(localDevfilePath, []byte(simpleDevfile), 0644)
+	err = os.WriteFile(localDevfilePath, []byte(simpleDevfile), 0644)
 	if err != nil {
 		t.Errorf("TestParseDevfileModel() error: fail to write to file: %v", err)
 	}

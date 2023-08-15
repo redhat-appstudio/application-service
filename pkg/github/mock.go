@@ -16,7 +16,7 @@
 package github
 
 import (
-	"io/ioutil"
+	"io"
 	"net/http"
 	"strings"
 
@@ -44,7 +44,7 @@ func GetMockedClient() *github.Client {
 		mock.WithRequestMatchHandler(
 			mock.PostOrgsReposByOrg,
 			http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
-				b, _ := ioutil.ReadAll(req.Body)
+				b, _ := io.ReadAll(req.Body)
 				reqBody := string(b)
 				// ToDo: Figure out a better way to dynamically mock errors
 				if strings.Contains(reqBody, "test-error-response") || strings.Contains(reqBody, "test-server-error-response") || strings.Contains(reqBody, "test-server-error-response-2") {

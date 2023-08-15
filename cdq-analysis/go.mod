@@ -1,6 +1,6 @@
 module github.com/redhat-appstudio/application-service/cdq-analysis
 
-go 1.18
+go 1.19
 
 require (
 	github.com/devfile/api/v2 v2.2.1-alpha.0.20230413012049-a6c32fca0dbd

@@ -17,7 +17,7 @@ package pkg
 
 import (
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"net/url"
 	"os"
@@ -100,7 +100,7 @@ func CurlEndpoint(endpoint string) ([]byte, error) {
 	defer resp.Body.Close()
 
 	if resp.StatusCode == http.StatusOK {
-		respBytes, err = ioutil.ReadAll(resp.Body)
+		respBytes, err = io.ReadAll(resp.Body)
 		if err != nil {
 			return nil, err
 		}
