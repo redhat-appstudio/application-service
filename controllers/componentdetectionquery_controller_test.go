@@ -1443,7 +1443,7 @@ var _ = Describe("Component Detection Query controller", func() {
 					Expect(component.ComponentStub.Source.GitSource.Revision).Should(Equal("main"))
 				}
 
-				// Make sure the devfiles are detected
+				// Make sure the components are detected
 				Expect(len(createdHasCompDetectionQuery.Status.ComponentDetected)).Should(Equal(3)) // mocked, not accurate. check unit test for accurate detection that uses the alizer client instead of the mock client.
 				for _, componentDesc := range createdHasCompDetectionQuery.Status.ComponentDetected {
 					Expect(componentDesc.ComponentStub.Source.GitSource).ShouldNot(BeNil())

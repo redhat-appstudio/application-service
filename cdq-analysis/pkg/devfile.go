@@ -34,24 +34,29 @@ import (
 )
 
 const (
-	DevfileName       = "devfile.yaml"
-	HiddenDevfileName = ".devfile.yaml"
-	HiddenDevfileDir  = ".devfile"
-	DockerfileName    = "Dockerfile"
-	ContainerfileName = "Containerfile"
-	HiddenDockerDir   = ".docker"
-	DockerDir         = "docker"
-	BuildDir          = "build"
+	DevfileName             = "devfile.yaml"
+	HiddenDevfileName       = ".devfile.yaml"
+	HiddenDevfileDir        = ".devfile"
+	DockerfileName          = "Dockerfile"
+	AlternateDockerfileName = "dockerfile"
+	ContainerfileName       = "Containerfile"
+	HiddenDockerDir         = ".docker"
+	DockerDir               = "docker"
+	BuildDir                = "build"
 
 	Devfile                = DevfileName                                // devfile.yaml
 	HiddenDevfile          = HiddenDevfileName                          // .devfile.yaml
 	HiddenDirDevfile       = HiddenDevfileDir + "/" + DevfileName       // .devfile/devfile.yaml
 	HiddenDirHiddenDevfile = HiddenDevfileDir + "/" + HiddenDevfileName // .devfile/.devfile.yaml
 
-	Dockerfile          = DockerfileName                         // Dockerfile
-	HiddenDirDockerfile = HiddenDockerDir + "/" + DockerfileName // .docker/Dockerfile
-	DockerDirDockerfile = DockerDir + "/" + DockerfileName       // docker/Dockerfile
-	BuildDirDockerfile  = BuildDir + "/" + DockerfileName        // build/Dockerfile
+	Dockerfile                   = DockerfileName                                  // Dockerfile
+	HiddenDirDockerfile          = HiddenDockerDir + "/" + DockerfileName          // .docker/Dockerfile
+	DockerDirDockerfile          = DockerDir + "/" + DockerfileName                // docker/Dockerfile
+	BuildDirDockerfile           = BuildDir + "/" + DockerfileName                 // build/Dockerfile
+	AlternateDockerfile          = AlternateDockerfileName                         // dockerfile
+	HiddenDirAlternateDockerfile = HiddenDockerDir + "/" + AlternateDockerfileName // .docker/dockerfile
+	DockerDirAlternateDockerfile = DockerDir + "/" + AlternateDockerfileName       // docker/dockerfile
+	BuildDirAlternateDockerfile  = BuildDir + "/" + AlternateDockerfileName        // build/dockerfile
 
 	Containerfile          = ContainerfileName                         // Containerfile
 	HiddenDirContainerfile = HiddenDockerDir + "/" + ContainerfileName // .docker/Containerfile

@@ -122,14 +122,14 @@ func search(log logr.Logger, a Alizer, localpath string, devfileRegistryURL stri
 							}
 						}
 					}
-				} else if f.Name() == DockerfileName {
-					// Check for Dockerfile
+				} else if f.Name() == DockerfileName || f.Name() == AlternateDockerfileName {
+					// Check for Dockerfile or dockerfile
 					// NOTE: if a Dockerfile is named differently, for example, Dockerfile.jvm;
 					// thats ok. As we finish iterating through all the files in the localpath
 					// we will read the devfile to ensure a Dockerfile has been referenced.
 					// However, if a Dockerfile is named differently and not referenced in the devfile
 					// it will go undetected
-					dockerfileContextMapFromRepo[context] = DockerfileName
+					dockerfileContextMapFromRepo[context] = f.Name()
 					isDockerfilePresent = true
 				} else if f.Name() == ContainerfileName {
 					// Check for Containerfile
@@ -137,6 +137,7 @@ func search(log logr.Logger, a Alizer, localpath string, devfileRegistryURL stri
 					isDockerfilePresent = true
 				} else if f.IsDir() && (f.Name() == DockerDir || f.Name() == HiddenDockerDir || f.Name() == BuildDir) {
 					// Check for docker/Dockerfile, .docker/Dockerfile and build/Dockerfile
+					// OR docker/dockerfile, .docker/dockerfile and build/dockerfile
 					// OR docker/Containerfile, .docker/Containerfile and build/Containerfile
 					dirName := f.Name()
 					dirPath := path.Join(curPath, dirName)
@@ -145,7 +146,7 @@ func search(log logr.Logger, a Alizer, localpath string, devfileRegistryURL stri
 						return nil, nil, nil, nil, err
 					}
 					for _, f := range files {
-						if f.Name() == DockerfileName || f.Name() == ContainerfileName {
+						if f.Name() == DockerfileName || f.Name() == AlternateDockerfileName || f.Name() == ContainerfileName {
 							dockerfileContextMapFromRepo[context] = path.Join(dirName, f.Name())
 							isDockerfilePresent = true
 						}

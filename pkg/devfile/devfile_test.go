@@ -289,6 +289,11 @@ func TestFindAndDownloadDockerfile(t *testing.T) {
 			wantDockerfileContext: "build/Containerfile",
 		},
 		{
+			name:                  "Curl dockerfile",
+			url:                   "https://raw.githubusercontent.com/yangcao77/dockerfile-priority/main/case9",
+			wantDockerfileContext: "dockerfile",
+		},
+		{
 			name:    "Cannot curl for a Dockerfile or a Containerfile",
 			url:     "https://github.com/octocat/Hello-World",
 			wantErr: true,
