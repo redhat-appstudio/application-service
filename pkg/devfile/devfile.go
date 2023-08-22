@@ -744,6 +744,7 @@ func FindAndDownloadDockerfile(dir string) ([]byte, string, error) {
 	var err error
 	// Containerfile is an alternate name for Dockerfile
 	validDockerfileLocations := []string{cdqanalysis.Dockerfile, cdqanalysis.DockerDirDockerfile, cdqanalysis.HiddenDirDockerfile, cdqanalysis.BuildDirDockerfile,
+		cdqanalysis.AlternateDockerfile, cdqanalysis.DockerDirAlternateDockerfile, cdqanalysis.HiddenDirAlternateDockerfile, cdqanalysis.BuildDirAlternateDockerfile,
 		cdqanalysis.Containerfile, cdqanalysis.DockerDirContainerfile, cdqanalysis.HiddenDirContainerfile, cdqanalysis.BuildDirContainerfile}
 
 	for _, path := range validDockerfileLocations {
