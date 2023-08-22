@@ -68,7 +68,8 @@ func search(log logr.Logger, a Alizer, localpath string, devfileRegistryURL stri
 				return nil, nil, nil, nil, err
 			}
 			for _, f := range files {
-				if f.Name() == DevfileName || f.Name() == HiddenDevfileName {
+				lowerCaseFileName := strings.ToLower(f.Name())
+				if lowerCaseFileName == DevfileName || lowerCaseFileName == HiddenDevfileName {
 					// Check for devfile.yaml or .devfile.yaml
 					/* #nosec G304 -- false positive, filename is not based on user input*/
 					devfilePath := path.Join(curPath, f.Name())
@@ -98,7 +99,8 @@ func search(log logr.Logger, a Alizer, localpath string, devfileRegistryURL stri
 						return nil, nil, nil, nil, err
 					}
 					for _, f := range hiddenfiles {
-						if f.Name() == DevfileName || f.Name() == HiddenDevfileName {
+						lowerCaseFileName := strings.ToLower(f.Name())
+						if lowerCaseFileName == DevfileName || lowerCaseFileName == HiddenDevfileName {
 							// Check for devfile.yaml or .devfile.yaml
 							/* #nosec G304 -- false positive, filename is not based on user input*/
 							devfilePath := path.Join(hiddenDirPath, f.Name())
@@ -122,7 +124,7 @@ func search(log logr.Logger, a Alizer, localpath string, devfileRegistryURL stri
 							}
 						}
 					}
-				} else if f.Name() == DockerfileName || f.Name() == AlternateDockerfileName {
+				} else if lowerCaseFileName == strings.ToLower(DockerfileName) {
 					// Check for Dockerfile or dockerfile
 					// NOTE: if a Dockerfile is named differently, for example, Dockerfile.jvm;
 					// thats ok. As we finish iterating through all the files in the localpath
@@ -131,7 +133,7 @@ func search(log logr.Logger, a Alizer, localpath string, devfileRegistryURL stri
 					// it will go undetected
 					dockerfileContextMapFromRepo[context] = f.Name()
 					isDockerfilePresent = true
-				} else if f.Name() == ContainerfileName {
+				} else if lowerCaseFileName == strings.ToLower(ContainerfileName) {
 					// Check for Containerfile
 					dockerfileContextMapFromRepo[context] = ContainerfileName
 					isDockerfilePresent = true
@@ -146,7 +148,8 @@ func search(log logr.Logger, a Alizer, localpath string, devfileRegistryURL stri
 						return nil, nil, nil, nil, err
 					}
 					for _, f := range files {
-						if f.Name() == DockerfileName || f.Name() == AlternateDockerfileName || f.Name() == ContainerfileName {
+						lowerCaseFileName := strings.ToLower(f.Name())
+						if lowerCaseFileName == strings.ToLower(DockerfileName) || lowerCaseFileName == strings.ToLower(ContainerfileName) {
 							dockerfileContextMapFromRepo[context] = path.Join(dirName, f.Name())
 							isDockerfilePresent = true
 						}
