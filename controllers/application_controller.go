@@ -111,6 +111,7 @@ func (r *ApplicationReconciler) Reconcile(ctx context.Context, req ctrl.Request)
 		}
 	} else {
 		if containsString(application.GetFinalizers(), appFinalizerName) {
+			metrics.ApplicationDeletionTotalReqs.Inc()
 			// A finalizer is present for the Application CR, so make sure we do the necessary cleanup steps
 			if err := r.Finalize(ctx, &application, ghClient); err != nil {
 				finalizeCounter, err := getCounterAnnotation(finalizeCount, &application)
@@ -126,6 +127,9 @@ func (r *ApplicationReconciler) Reconcile(ctx context.Context, req ctrl.Request)
 					// if fail to delete the external dependency here, log the error, but don't return error
 					// Don't want to get stuck in a cycle of repeatedly trying to delete the repository and failing
 					log.Error(err, "Unable to delete GitOps repository for application %v in namespace %v", application.GetName(), application.GetNamespace())
+
+					// Increment the Application deletion failed metric as the application delete did not fully succeed
+					metrics.ApplicationDeletionFailed.Inc()
 				}
 
 			}
@@ -134,6 +138,8 @@ func (r *ApplicationReconciler) Reconcile(ctx context.Context, req ctrl.Request)
 			controllerutil.RemoveFinalizer(&application, appFinalizerName)
 			if err := r.Update(ctx, &application); err != nil {
 				return ctrl.Result{}, err
+			} else {
+				metrics.ApplicationDeletionSucceeded.Inc()
 			}
 		}
 	}

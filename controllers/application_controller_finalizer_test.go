@@ -22,8 +22,10 @@ import (
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
+	"github.com/prometheus/client_golang/prometheus"
 	appstudiov1alpha1 "github.com/redhat-appstudio/application-api/api/v1alpha1"
 	cdqanalysis "github.com/redhat-appstudio/application-service/cdq-analysis/pkg"
+	"github.com/redhat-appstudio/application-service/pkg/metrics"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/yaml"
@@ -50,6 +52,8 @@ var _ = Describe("Application controller finalizer counter tests", func() {
 		DisplayName  = "petclinic"
 		Description  = "Simple petclinic app"
 	)
+
+	prometheus.MustRegister(metrics.ApplicationDeletionTotalReqs, metrics.ApplicationDeletionFailed, metrics.ApplicationDeletionSucceeded)
 
 	Context("Delete Application CR fields with invalid devfile", func() {
 		It("Should delete successfully even when finalizer fails after 5 times", func() {
@@ -90,6 +94,10 @@ var _ = Describe("Application controller finalizer counter tests", func() {
 				f := &appstudiov1alpha1.Application{}
 				return k8sClient.Get(context.Background(), hasAppLookupKey, f)
 			}, timeout, interval).ShouldNot(Succeed())
+
+			Expect(metrics.ApplicationDeletionTotalReqs).To(Equal(1))
+			Expect(metrics.ApplicationDeletionSucceeded).To(Equal(1))
+			Expect(metrics.ApplicationDeletionFailed).To(Equal(0))
 		})
 	})
 
