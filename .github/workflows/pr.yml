@@ -101,7 +101,7 @@ jobs:
           then
             echo "gosec scanner failed to run "
             exit 1
-          fi   
+          fi
 
       - name: Upload SARIF file
         uses: github/codeql-action/upload-sarif@v2
@@ -136,13 +136,13 @@ jobs:
       - name: Change to the cdq-analysis directory
         run: cd cdq-analysis/
       - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v2 
+        uses: docker/setup-buildx-action@v2
       - name: Check if dockerimage build is working
         run: docker build -f ./Dockerfile .
   pact:
     name: Pact tests
     runs-on: ubuntu-latest
-    env: 
+    env:
       PR_NUMBER: ${{ github.event.pull_request.number }}
       COMMIT_SHA: ${{ github.event.pull_request.head.sha }}
       PR_CHECK: true
@@ -188,6 +188,21 @@ jobs:
         run: |
           wget -qO- https://github.com/pact-foundation/pact-ruby-standalone/releases/download/v1.92.0/pact-1.92.0-linux-x86_64.tar.gz | tar xz --one-top-level=./pactcli
           PATH=${PATH}:$(pwd)/pactcli/pact/bin
-          COMMIT_SHA=${COMMIT_SHA:0:7} 
+          COMMIT_SHA=${COMMIT_SHA:0:7}
           make pact
-
+  kube-linter:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: Create ./.kube-linter/ for deployment files
+        shell: bash
+        run: mkdir -p ./.kube-linter/ && touch .kube-linter/manifests.yaml
+      - name: Generate manifests for scan
+        shell: bash
+        run: kustomize build config/default > ./.kube-linter/manifests.yaml
+      - name: Scan yaml files with kube-linter
+        uses: stackrox/kube-linter-action@v1
+        id: kube-linter-action-scan
+        with:
+          # Adjust this directory to the location where your kubernetes resources and helm charts are located.
+          directory: ./.kube-linter/
