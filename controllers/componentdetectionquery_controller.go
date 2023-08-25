@@ -18,8 +18,10 @@ package controllers
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"path"
+	"reflect"
 	"strings"
 	"time"
 
@@ -33,13 +35,16 @@ import (
 	"github.com/redhat-appstudio/application-service/pkg/metrics"
 	"github.com/redhat-appstudio/application-service/pkg/spi"
 	"github.com/redhat-appstudio/application-service/pkg/util"
-	"github.com/redhat-appstudio/application-service/pkg/util/ioutils"
 	"github.com/spf13/afero"
 	"golang.org/x/exp/maps"
+	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/client-go/kubernetes"
+	"k8s.io/client-go/rest"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/builder"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -57,6 +62,8 @@ type ComponentDetectionQueryReconciler struct {
 	GitHubTokenClient  github.GitHubToken
 	DevfileRegistryURL string
 	AppFS              afero.Afero
+	RunKubernetesJob   bool
+	Config             *rest.Config
 }
 
 const cdqName = "ComponentDetectionQuery"
@@ -67,6 +74,8 @@ const CDQReconcileTimeout = 5 * time.Minute
 //+kubebuilder:rbac:groups=appstudio.redhat.com,resources=componentdetectionqueries,verbs=get;list;watch;create;update;patch;delete
 //+kubebuilder:rbac:groups=appstudio.redhat.com,resources=componentdetectionqueries/status,verbs=get;update;patch
 //+kubebuilder:rbac:groups=appstudio.redhat.com,resources=componentdetectionqueries/finalizers,verbs=update
+//+kubebuilder:rbac:groups=core,resources=configmaps,verbs=get;list;watch;create;update;delete
+//+kubebuilder:rbac:groups=batch,resources=jobs,verbs=get;list;watch;create;update;delete
 
 // Reconcile is part of the main kubernetes reconciliation loop which aims to
 // move the current state of the cluster closer to the desired state.
@@ -135,7 +144,7 @@ func (r *ComponentDetectionQueryReconciler) Reconcile(ctx context.Context, req c
 
 		source := componentDetectionQuery.Spec.GitSource
 		var devfileBytes, dockerfileBytes []byte
-		var clonePath, devfilePath, dockerfilePath string
+		var devfilePath, dockerfilePath string
 		devfilesMap := make(map[string][]byte)
 		devfilesURLMap := make(map[string]string)
 		dockerfileContextMap := make(map[string]string)
@@ -184,18 +193,99 @@ func (r *ComponentDetectionQueryReconciler) Reconcile(ctx context.Context, req c
 
 			isDevfilePresent = len(devfileBytes) != 0
 			isDockerfilePresent = len(dockerfileBytes) != 0
-			k8sInfoClient := cdqanalysis.K8sInfoClient{
-				Log:          log,
-				CreateK8sJob: false,
-			}
+			var devfilesMapReturned map[string][]byte
+			var devfilesURLMapReturned, dockerfileContextMapReturned map[string]string
+			var componentPortsMapReturned map[string][]int
+			var revision string
 
-			devfilesMapReturned, devfilesURLMapReturned, dockerfileContextMapReturned, componentPortsMapReturned, branch, err := cdqanalysis.CloneAndAnalyze(k8sInfoClient, gitToken, req.Namespace, req.Name, context, devfilePath, dockerfilePath, source.URL, source.Revision, r.DevfileRegistryURL, isDevfilePresent, isDockerfilePresent)
-			componentDetectionQuery.Spec.GitSource.Revision = branch
-			if err != nil {
-				log.Error(err, fmt.Sprintf("Error running cdq analysis... %v", req.NamespacedName))
-				r.SetCompleteConditionAndUpdateCR(ctx, req, &componentDetectionQuery, copiedCDQ, err)
-				return ctrl.Result{}, nil
+			if r.RunKubernetesJob {
+				// perfume cdq job that requires repo cloning and azlier analysis
+				clientset, err := kubernetes.NewForConfig(r.Config)
+				if err != nil {
+					log.Error(err, fmt.Sprintf("Error creating clientset with config... %v", req.NamespacedName))
+					r.SetCompleteConditionAndUpdateCR(ctx, req, &componentDetectionQuery, copiedCDQ, err)
+					return ctrl.Result{}, nil
+				}
+				jobName := req.Name + "-job"
+				var backOffLimit int32 = 0
+				jobSpec := &batchv1.Job{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      jobName,
+						Namespace: req.Namespace,
+					},
+					Spec: batchv1.JobSpec{
+						Template: corev1.PodTemplateSpec{
+							Spec: corev1.PodSpec{
+								ServiceAccountName: "application-service-controller-manager",
+								Containers: []corev1.Container{
+									{
+										Name:    jobName,
+										Image:   "quay.io/redhat-appstudio/cdq-analysis:latest",
+										Command: []string{"/app/main", gitToken, req.Namespace, req.Name, context, devfilePath, source.URL, source.Revision, r.DevfileRegistryURL, fmt.Sprintf("%v", isDevfilePresent), fmt.Sprintf("%v", isDockerfilePresent)},
+									},
+								},
+								RestartPolicy: corev1.RestartPolicyNever,
+							},
+						},
+						BackoffLimit: &backOffLimit,
+					},
+				}
+				err = r.Client.Create(ctx, jobSpec, &client.CreateOptions{})
+				if err != nil {
+					log.Error(err, fmt.Sprintf("Error creating cdq analysis job %s... %v", jobName, req.NamespacedName))
+					r.SetCompleteConditionAndUpdateCR(ctx, req, &componentDetectionQuery, copiedCDQ, err)
+					return ctrl.Result{}, nil
+				} else {
+					//print job details
+					log.Info(fmt.Sprintf("Successfully created cdq analysis job %v, waiting for config map to be created... %v", jobName, req.NamespacedName))
+				}
+
+				cm, err := waitForConfigMap(clientset, ctx, req.Name, req.Namespace)
+				if err != nil {
+					log.Error(err, fmt.Sprintf("Error waiting for configmap creation ...%v", req.NamespacedName))
+					r.SetCompleteConditionAndUpdateCR(ctx, req, &componentDetectionQuery, copiedCDQ, err)
+					cleanupK8sResources(log, clientset, ctx, fmt.Sprintf("%s-job", req.Name), req.Name, req.Namespace)
+					return ctrl.Result{}, nil
+				}
+				var errMapReturned map[string]string
+				json.Unmarshal(cm.BinaryData["devfilesMap"], &devfilesMapReturned)
+				json.Unmarshal(cm.BinaryData["dockerfileContextMap"], &dockerfileContextMapReturned)
+				json.Unmarshal(cm.BinaryData["devfilesURLMap"], &devfilesURLMapReturned)
+				json.Unmarshal(cm.BinaryData["componentPortsMap"], &componentPortsMapReturned)
+				json.Unmarshal(cm.BinaryData["revision"], &revision)
+				json.Unmarshal(cm.BinaryData["errorMap"], &errMapReturned)
+				cleanupK8sResources(log, clientset, ctx, fmt.Sprintf("%s-job", req.Name), req.Name, req.Namespace)
+				if errMapReturned != nil && !reflect.DeepEqual(errMapReturned, map[string]string{}) {
+					var retErr error
+					// only 1 index in the error map
+					for key, value := range errMapReturned {
+						if key == "NoDevfileFound" {
+							retErr = &cdqanalysis.NoDevfileFound{Err: fmt.Errorf(value)}
+						} else if key == "NoDockerfileFound" {
+							retErr = &cdqanalysis.NoDockerfileFound{Err: fmt.Errorf(value)}
+						} else {
+							retErr = &cdqanalysis.InternalError{Err: fmt.Errorf(value)}
+						}
+					}
+					log.Error(retErr, fmt.Sprintf("Unable to analyze the repo via kubernetes job... %v", req.NamespacedName))
+					r.SetCompleteConditionAndUpdateCR(ctx, req, &componentDetectionQuery, copiedCDQ, retErr)
+					return ctrl.Result{}, nil
+				}
+
+			} else {
+				k8sInfoClient := cdqanalysis.K8sInfoClient{
+					Log:          log,
+					CreateK8sJob: false,
+				}
+
+				devfilesMapReturned, devfilesURLMapReturned, dockerfileContextMapReturned, componentPortsMapReturned, revision, err = cdqanalysis.CloneAndAnalyze(k8sInfoClient, gitToken, req.Namespace, req.Name, context, devfilePath, dockerfilePath, source.URL, source.Revision, r.DevfileRegistryURL, isDevfilePresent, isDockerfilePresent)
+				if err != nil {
+					log.Error(err, fmt.Sprintf("Error running cdq analysis... %v", req.NamespacedName))
+					r.SetCompleteConditionAndUpdateCR(ctx, req, &componentDetectionQuery, copiedCDQ, err)
+					return ctrl.Result{}, nil
+				}
 			}
+			componentDetectionQuery.Spec.GitSource.Revision = revision
 			maps.Copy(devfilesMap, devfilesMapReturned)
 			maps.Copy(dockerfileContextMap, dockerfileContextMapReturned)
 			maps.Copy(devfilesURLMap, devfilesURLMapReturned)
@@ -236,7 +326,6 @@ func (r *ComponentDetectionQueryReconciler) Reconcile(ctx context.Context, req c
 				// if a direct devfileURL is provided and errors out, we dont do an alizer detection
 				log.Error(err, fmt.Sprintf("Unable to GET %s, exiting reconcile loop %v", source.DevfileURL, req.NamespacedName))
 				err := fmt.Errorf("unable to GET from %s", source.DevfileURL)
-				ioutils.RemoveFolderAndLogError(log, r.AppFS, clonePath)
 				r.SetCompleteConditionAndUpdateCR(ctx, req, &componentDetectionQuery, copiedCDQ, err)
 				return ctrl.Result{}, nil
 			}
@@ -244,21 +333,11 @@ func (r *ComponentDetectionQueryReconciler) Reconcile(ctx context.Context, req c
 				// if a direct devfileURL is provided and errors out, we dont do an alizer detection
 				log.Error(err, fmt.Sprintf("the provided devfileURL %s does not contain a valid outerloop definition, exiting reconcile loop %v", source.DevfileURL, req.NamespacedName))
 				err := fmt.Errorf("the provided devfileURL %s does not contain a valid outerloop definition", source.DevfileURL)
-				ioutils.RemoveFolderAndLogError(log, r.AppFS, clonePath)
 				r.SetCompleteConditionAndUpdateCR(ctx, req, &componentDetectionQuery, copiedCDQ, err)
 				return ctrl.Result{}, nil
 			}
 			devfilesMap[context] = devfileBytes
 			devfilesURLMap[context] = source.DevfileURL
-		}
-
-		// Remove the cloned path if present
-		if isExist, _ := ioutils.IsExisting(r.AppFS, clonePath); isExist {
-			if err := r.AppFS.RemoveAll(clonePath); err != nil {
-				log.Error(err, fmt.Sprintf("Unable to remove the clonepath %s %v", clonePath, req.NamespacedName))
-				r.SetCompleteConditionAndUpdateCR(ctx, req, &componentDetectionQuery, copiedCDQ, err)
-				return ctrl.Result{}, nil
-			}
 		}
 
 		for context := range devfilesMap {
@@ -320,4 +399,56 @@ func (r *ComponentDetectionQueryReconciler) SetupWithManager(ctx context.Context
 		},
 	}).
 		Complete(r)
+}
+
+func waitForConfigMap(clientset *kubernetes.Clientset, ctx context.Context, name, namespace string) (*corev1.ConfigMap, error) {
+	// 1 mins timeout
+	timeout := int64(60)
+	opts := metav1.ListOptions{
+		TypeMeta:       metav1.TypeMeta{},
+		FieldSelector:  fmt.Sprintf("metadata.name=%s", name),
+		TimeoutSeconds: &timeout,
+	}
+	watcher, err := clientset.CoreV1().ConfigMaps(namespace).Watch(ctx, opts)
+	if err != nil {
+		return nil, err
+	}
+	defer watcher.Stop()
+
+	for {
+		select {
+		case event := <-watcher.ResultChan():
+			configMap := event.Object.(*corev1.ConfigMap)
+			return configMap, nil
+
+		case <-ctx.Done():
+			return nil, nil
+		}
+	}
+}
+
+func cleanupK8sResources(log logr.Logger, clientset *kubernetes.Clientset, ctx context.Context, jobName, configMapName, namespace string) {
+	log.Info(fmt.Sprintf("Attempting to cleanup k8s resources for cdq analysis... %s", namespace))
+	log.Info(fmt.Sprintf("Deleting job %s... %s", jobName, namespace))
+
+	jobsClient := clientset.BatchV1().Jobs(namespace)
+
+	pp := metav1.DeletePropagationBackground
+
+	err := jobsClient.Delete(ctx, jobName, metav1.DeleteOptions{PropagationPolicy: &pp})
+
+	if err != nil {
+		log.Error(err, fmt.Sprintf("Failed to delete job %s... %s", jobName, namespace))
+	} else {
+		log.Info(fmt.Sprintf("Successfully deleted job %s... %s", jobName, namespace))
+	}
+
+	log.Info(fmt.Sprintf("Deleting config map %s... %s", configMapName, namespace))
+	configMapClient := clientset.CoreV1().ConfigMaps(namespace)
+	err = configMapClient.Delete(ctx, configMapName, metav1.DeleteOptions{PropagationPolicy: &pp})
+	if err != nil {
+		log.Error(err, fmt.Sprintf("Failed to delete config map %s... %s", configMapName, namespace))
+	} else {
+		log.Info(fmt.Sprintf("Successfully deleted config map %s... %s", configMapName, namespace))
+	}
 }

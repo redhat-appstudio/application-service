@@ -270,6 +270,7 @@ func TestSendBackDetectionResult(t *testing.T) {
 
 	compName := "testComponent"
 	namespaceName := "testNamespace"
+	revision := "main"
 
 	springDevfileContext := `
 schemaVersion: 2.2.0
@@ -353,7 +354,7 @@ metadata:
 	}
 	for _, tt := range tests {
 		t.Run(tt.testCase, func(t *testing.T) {
-			k8sClient.SendBackDetectionResult(tt.devfilesMap, tt.devfilesURLMap, tt.dockerfileContextMap, tt.componentPortsMap, compName, namespaceName, tt.err)
+			k8sClient.SendBackDetectionResult(tt.devfilesMap, tt.devfilesURLMap, tt.dockerfileContextMap, tt.componentPortsMap, revision, compName, namespaceName, tt.err)
 			configMap, err := clientset.CoreV1().ConfigMaps(namespaceName).Get(k8sClient.Ctx, compName, metav1.GetOptions{})
 			if err != nil {
 				t.Errorf("got unexpected error %v", err)
