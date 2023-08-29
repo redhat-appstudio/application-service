@@ -116,6 +116,7 @@ func setupTestEnv() {
 		GitHubTokenClient:  mockGhTokenClient,
 		DevfileRegistryURL: cdqanalysis.DevfileStageRegistryEndpoint, // Use the staging devfile registry for tests
 		AppFS:              ioutils.NewMemoryFilesystem(),
+		Config:             cfg,
 	}).SetupWithManager(ctx, k8sManager)
 	gomega.Expect(err).ToNot(gomega.HaveOccurred())
 

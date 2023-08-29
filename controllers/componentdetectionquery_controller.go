@@ -22,6 +22,7 @@ import (
 	"fmt"
 	"path"
 	"reflect"
+	"strconv"
 	"strings"
 	"time"
 
@@ -196,7 +197,7 @@ func (r *ComponentDetectionQueryReconciler) Reconcile(ctx context.Context, req c
 			var devfilesMapReturned map[string][]byte
 			var devfilesURLMapReturned, dockerfileContextMapReturned map[string]string
 			var componentPortsMapReturned map[string][]int
-			var revision string
+			revision := source.Revision
 
 			if r.RunKubernetesJob {
 				// perfume cdq job that requires repo cloning and azlier analysis
@@ -219,9 +220,59 @@ func (r *ComponentDetectionQueryReconciler) Reconcile(ctx context.Context, req c
 								ServiceAccountName: "application-service-controller-manager",
 								Containers: []corev1.Container{
 									{
-										Name:    jobName,
-										Image:   "quay.io/redhat-appstudio/cdq-analysis:latest",
-										Command: []string{"/app/main", gitToken, req.Namespace, req.Name, context, devfilePath, source.URL, source.Revision, r.DevfileRegistryURL, fmt.Sprintf("%v", isDevfilePresent), fmt.Sprintf("%v", isDockerfilePresent)},
+										Name:            jobName,
+										Image:           "quay.io/redhat-appstudio/cdq-analysis:latest",
+										ImagePullPolicy: corev1.PullAlways,
+										Env: []corev1.EnvVar{
+											{
+												Name:  "NAME",
+												Value: req.Name,
+											},
+											{
+												Name:  "NAMESPACE",
+												Value: req.Namespace,
+											},
+											{
+												Name:  "GITHUB_TOKEN",
+												Value: gitToken,
+											},
+											{
+												Name:  "CONTEXT_PATH",
+												Value: context,
+											},
+											{
+												Name:  "REVISION",
+												Value: revision,
+											},
+											{
+												Name:  "URL",
+												Value: source.URL,
+											},
+											{
+												Name:  "DEVFILE_REGISTRY_URL",
+												Value: r.DevfileRegistryURL,
+											},
+											{
+												Name:  "DEVFILE_PATH",
+												Value: devfilePath,
+											},
+											{
+												Name:  "DOCKERFILE_PATH",
+												Value: dockerfilePath,
+											},
+											{
+												Name:  "IS_DEVFILE_PRESENT ",
+												Value: strconv.FormatBool(isDevfilePresent),
+											},
+											{
+												Name:  "IS_DOCKERFILE_PRESENT",
+												Value: strconv.FormatBool(isDockerfilePresent),
+											},
+											{
+												Name:  "CREATE_K8S_Job",
+												Value: "true",
+											},
+										},
 									},
 								},
 								RestartPolicy: corev1.RestartPolicyNever,
