@@ -22,8 +22,11 @@ import (
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/testutil"
 	appstudiov1alpha1 "github.com/redhat-appstudio/application-api/api/v1alpha1"
 	cdqanalysis "github.com/redhat-appstudio/application-service/cdq-analysis/pkg"
+	"github.com/redhat-appstudio/application-service/pkg/metrics"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/yaml"
@@ -51,8 +54,13 @@ var _ = Describe("Application controller finalizer counter tests", func() {
 		Description  = "Simple petclinic app"
 	)
 
+	prometheus.MustRegister(metrics.ApplicationDeletionTotalReqs, metrics.ApplicationDeletionFailed, metrics.ApplicationDeletionSucceeded)
+
 	Context("Delete Application CR fields with invalid devfile", func() {
 		It("Should delete successfully even when finalizer fails after 5 times", func() {
+			beforeDeleteTotalReqs := testutil.ToFloat64(metrics.ApplicationDeletionTotalReqs)
+			beforeDeleteSucceedReqs := testutil.ToFloat64(metrics.ApplicationDeletionSucceeded)
+			beforeDeleteFailedReqs := testutil.ToFloat64(metrics.ApplicationDeletionFailed)
 			// Create a simple Application CR and get its devfile
 			fetchedApp := createAndFetchSimpleApp(AppName, AppNamespace, DisplayName, Description)
 			devfileSrc := cdqanalysis.DevfileSrc{
@@ -90,6 +98,10 @@ var _ = Describe("Application controller finalizer counter tests", func() {
 				f := &appstudiov1alpha1.Application{}
 				return k8sClient.Get(context.Background(), hasAppLookupKey, f)
 			}, timeout, interval).ShouldNot(Succeed())
+
+			Expect(testutil.ToFloat64(metrics.ApplicationDeletionTotalReqs) > beforeDeleteTotalReqs).To(BeTrue())
+			Expect(testutil.ToFloat64(metrics.ApplicationDeletionSucceeded) > beforeDeleteSucceedReqs).To(BeTrue())
+			Expect(testutil.ToFloat64(metrics.ApplicationDeletionFailed) > beforeDeleteFailedReqs).To(BeTrue())
 		})
 	})
 
