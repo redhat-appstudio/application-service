@@ -65,6 +65,7 @@ type ComponentDetectionQueryReconciler struct {
 	AppFS              afero.Afero
 	RunKubernetesJob   bool
 	Config             *rest.Config
+	CdqAnalysisImage   string
 }
 
 const cdqName = "ComponentDetectionQuery"
@@ -221,7 +222,7 @@ func (r *ComponentDetectionQueryReconciler) Reconcile(ctx context.Context, req c
 								Containers: []corev1.Container{
 									{
 										Name:            jobName,
-										Image:           "quay.io/redhat-appstudio/cdq-analysis:latest",
+										Image:           r.CdqAnalysisImage,
 										ImagePullPolicy: corev1.PullAlways,
 										Env: []corev1.EnvVar{
 											{
@@ -261,7 +262,7 @@ func (r *ComponentDetectionQueryReconciler) Reconcile(ctx context.Context, req c
 												Value: dockerfilePath,
 											},
 											{
-												Name:  "IS_DEVFILE_PRESENT ",
+												Name:  "IS_DEVFILE_PRESENT",
 												Value: strconv.FormatBool(isDevfilePresent),
 											},
 											{
