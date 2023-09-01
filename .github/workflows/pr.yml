@@ -86,6 +86,12 @@ jobs:
           fi
       - name: Run Go Tests
         run: |
+          # Temporarily adding a pact-go installation. 
+          # It should be gone once https://issues.redhat.com/browse/HAC-4879 is solved
+          go get github.com/pact-foundation/pact-go/v2@2.x.x
+          go install github.com/pact-foundation/pact-go/v2@2.x.x
+          sudo /home/runner/go/bin/pact-go -l DEBUG install 
+
           make test
       - name: Check if Manager Kustomize has the right image
         run: |
@@ -186,9 +192,10 @@ jobs:
         if: steps.cache-mod.outputs.cache-hit != 'true'
       - name: Test Pact contracts
         run: |
-          wget -qO- https://github.com/pact-foundation/pact-ruby-standalone/releases/download/v1.92.0/pact-1.92.0-linux-x86_64.tar.gz | tar xz --one-top-level=./pactcli
-          PATH=${PATH}:$(pwd)/pactcli/pact/bin
-          COMMIT_SHA=${COMMIT_SHA:0:7}
+          go get github.com/pact-foundation/pact-go/v2@2.x.x
+          go install github.com/pact-foundation/pact-go/v2@2.x.x
+          sudo /home/runner/go/bin/pact-go -l DEBUG install 
+          COMMIT_SHA=${COMMIT_SHA:0:7} 
           make pact
   kube-linter:
     runs-on: ubuntu-latest
