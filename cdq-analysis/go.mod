@@ -4,11 +4,12 @@ go 1.19
 
 require (
 	github.com/devfile/api/v2 v2.2.1-alpha.0.20230413012049-a6c32fca0dbd
-	github.com/devfile/library/v2 v2.2.1-0.20230418160146-e75481b7eebd
+	github.com/devfile/library/v2 v2.2.1-0.20230821212346-99a3776c0b1e
 	github.com/devfile/registry-support/index/generator v0.0.0-20221018203505-df96d34d4273
 	github.com/devfile/registry-support/registry-library v0.0.0-20221018213054-47b3ffaeadba
 	github.com/go-logr/logr v1.2.3
 	github.com/hashicorp/go-multierror v1.1.1
+	github.com/pkg/errors v0.9.1
 	github.com/redhat-developer/alizer/go v0.0.0-20230516215932-135a2bb3fb90
 	github.com/spf13/afero v1.8.0
 	github.com/stretchr/testify v1.8.1
@@ -33,6 +34,7 @@ require (
 	github.com/containerd/typeurl v1.0.2 // indirect
 	github.com/creack/pty v1.1.17 // indirect
 	github.com/davecgh/go-spew v1.1.2-0.20180830191138-d8f796af33cc // indirect
+	github.com/distribution/distribution/v3 v3.0.0-20211118083504-a29a3c99a684 // indirect
 	github.com/docker/cli v20.10.13+incompatible // indirect
 	github.com/docker/distribution v2.8.1+incompatible // indirect
 	github.com/docker/docker v20.10.11+incompatible // indirect
@@ -91,7 +93,6 @@ require (
 	github.com/openshift/api v0.0.0-20210503193030-25175d9d392d // indirect
 	github.com/peterbourgon/diskv v2.0.1+incompatible // indirect
 	github.com/pjbgf/sha1cd v0.2.3 // indirect
-	github.com/pkg/errors v0.9.1 // indirect
 	github.com/pmezard/go-difflib v1.0.1-0.20181226105442-5d4384ee4fb2 // indirect
 	github.com/prometheus/client_golang v1.14.0 // indirect
 	github.com/prometheus/client_model v0.3.0 // indirect

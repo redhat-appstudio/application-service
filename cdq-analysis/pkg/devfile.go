@@ -21,6 +21,8 @@ import (
 	"path"
 	"strings"
 
+	"github.com/pkg/errors"
+
 	"github.com/devfile/api/v2/pkg/apis/workspaces/v1alpha2"
 	devfileValidation "github.com/devfile/api/v2/pkg/validation"
 	devfilePkg "github.com/devfile/library/v2/pkg/devfile"
@@ -70,6 +72,12 @@ const (
 	DevfileStageRegistryEndpoint = "https://registry.stage.devfile.io"
 )
 
+var ValidDevfileLocations = []string{Devfile, HiddenDevfile, HiddenDirDevfile, HiddenDirHiddenDevfile}
+
+var ValidDockerfileLocations = []string{Dockerfile, DockerDirDockerfile, HiddenDirDockerfile, BuildDirDockerfile,
+	AlternateDockerfile, DockerDirAlternateDockerfile, HiddenDirAlternateDockerfile, BuildDirAlternateDockerfile,
+	Containerfile, DockerDirContainerfile, HiddenDirContainerfile, BuildDirContainerfile}
+
 // ScanRepo attempts to read and return devfiles and dockerfiles from the local path upto the specified depth
 // Iterate through each sub-folder under first level, and scan for component. (devfile, dockerfile, then Alizer)
 // If no devfile(s) or dockerfile(s) are found in sub-folders of the root directory, then the Alizer tool is used to detect and match a devfile/dockerfile from the devfile registry
@@ -78,8 +86,8 @@ const (
 // Map 2 returns a context to the matched devfileURL from the devfile registry if no devfile is present in the context.
 // Map 3 returns a context to the Dockerfile uri or a matched DockerfileURL from the devfile registry if no Dockerfile/Containerfile is present in the context
 // Map 4 returns a context to the list of ports that were detected by alizer in the source code, at that given context
-func ScanRepo(log logr.Logger, a Alizer, localpath string, devfileRegistryURL string, URL, revision, srcContext string) (map[string][]byte, map[string]string, map[string]string, map[string][]int, error) {
-	return search(log, a, localpath, devfileRegistryURL, URL, revision, srcContext)
+func ScanRepo(log logr.Logger, a Alizer, localpath string, srcContext string, cdqInfo CDQInfoClient) (map[string][]byte, map[string]string, map[string]string, map[string][]int, error) {
+	return search(log, a, localpath, srcContext, cdqInfo)
 }
 
 // ValidateDevfile parse and validate a devfile from it's URL, returns if the devfile should be ignored, the devfile raw content and an error if devfile is invalid
@@ -87,21 +95,18 @@ func ScanRepo(log logr.Logger, a Alizer, localpath string, devfileRegistryURL st
 // If no kubernetes components being defined in devfile, then it's not a valid outerloop devfile, the devfile should be ignored.
 // If more than one kubernetes components in the devfile, but no deploy commands being defined. return an error
 // If more than one image components in the devfile, but no apply commands being defined. return an error
-func ValidateDevfile(log logr.Logger, URL string) (shouldIgnoreDevfile bool, devfileBytes []byte, err error) {
+func ValidateDevfile(log logr.Logger, URL string, token string) (shouldIgnoreDevfile bool, devfileBytes []byte, err error) {
 	log.Info(fmt.Sprintf("Validating devfile from %s...", URL))
 	shouldIgnoreDevfile = false
-	var devfileSrc DevfileSrc
+	parserArgs := &parser.ParserArgs{Token: token}
 	if strings.HasPrefix(URL, "http://") || strings.HasPrefix(URL, "https://") {
-		devfileSrc = DevfileSrc{
-			URL: URL,
-		}
+		parserArgs.URL = URL
 	} else {
-		devfileSrc = DevfileSrc{
-			Path: URL,
-		}
+		parserArgs.Path = URL
 	}
 
-	devfileData, err := ParseDevfile(devfileSrc)
+	devfileData, err := ParseDevfileWithParserArgs(parserArgs)
+
 	if err != nil {
 		var newErr error
 		if merr, ok := err.(*multierror.Error); ok {
@@ -189,7 +194,7 @@ func ValidateDevfile(log logr.Logger, URL string) (shouldIgnoreDevfile bool, dev
 						// image uri
 						_, err = CurlEndpoint(dockerfileURI)
 					} else {
-						if devfileSrc.Path != "" {
+						if parserArgs.Path != "" {
 							// local devfile src with relative Dockerfile uri
 							dockerfileURI = path.Join(path.Dir(URL), dockerfileURI)
 							err = parserUtil.ValidateFile(dockerfileURI)
@@ -235,8 +240,26 @@ type DevfileSrc struct {
 	Path string
 }
 
+// ParseDevfileWithParserArgs is an alternative implementation of ParseDevfile which gives the client the flexibility to call the devfile parser with custom parser arguments.
+// The default httpTimeout is set to 10.  To override this value, specify the preferred value in parserArgs.HTTPTimeout
+func ParseDevfileWithParserArgs(parserArgs *parser.ParserArgs) (data.DevfileData, error) {
+
+	if parserArgs.HTTPTimeout == nil {
+		httpTimeout := 10
+		parserArgs.HTTPTimeout = &httpTimeout
+	}
+
+	if len(parserArgs.Data) == 0 && parserArgs.URL == "" && parserArgs.Path == "" {
+		return nil, fmt.Errorf("cannot parse devfile without a src")
+	}
+
+	devfileObj, _, err := devfilePkg.ParseDevfileAndValidate(*parserArgs)
+	return devfileObj.Data, err
+}
+
 // ParseDevfile calls the devfile library's parse and returns the devfile data.
 // Provide either a Data src or the URL src
+// Deprecated, use ParseDevfileWithParserArgs instead
 func ParseDevfile(src DevfileSrc) (data.DevfileData, error) {
 
 	httpTimeout := 10
@@ -257,4 +280,44 @@ func ParseDevfile(src DevfileSrc) (data.DevfileData, error) {
 	}
 	devfileObj, _, err := devfilePkg.ParseDevfileAndValidate(parserArgs)
 	return devfileObj.Data, err
+}
+
+// FindValidDevfiles will search through the list of valid devfile locations and update the DevfileInfo object if a valid devfilepath is found
+func FindValidDevfiles(cdqInfo *CDQInfoClient) ([]byte, error) {
+	var devfileBytes []byte
+	Fs := cdqInfo.ClonedRepo.Fs
+	if isExist, _ := IsExisting(cdqInfo.ClonedRepo.Fs, cdqInfo.ClonedRepo.ClonedPath); isExist {
+		for _, path := range ValidDevfileLocations {
+			devfilePath := cdqInfo.ClonedRepo.ComponentPath + "/" + path
+			if isExist, _ := IsExisting(Fs, devfilePath); isExist {
+				cdqInfo.DevfilePath = devfilePath
+				//read contents
+				devfileBytes, err := Fs.ReadFile(devfilePath)
+				if err != nil {
+					return nil, errors.Wrapf(err, "failed to read yaml from path %q", devfilePath)
+				}
+				return devfileBytes, nil
+			}
+		}
+	}
+	return devfileBytes, &NoDevfileFound{Location: cdqInfo.ClonedRepo.ClonedPath}
+}
+
+func FindValidDockerfile(cdqInfo *CDQInfoClient) ([]byte, error) {
+	var dockerfileBytes []byte
+	Fs := cdqInfo.ClonedRepo.Fs
+	for _, path := range ValidDockerfileLocations {
+		dockerfilePath := cdqInfo.ClonedRepo.ComponentPath + "/" + path
+		if isExist, _ := IsExisting(cdqInfo.ClonedRepo.Fs, dockerfilePath); isExist {
+			cdqInfo.DockerfilePath = dockerfilePath
+			//read contents
+			dockerfileBytes, err := Fs.ReadFile(dockerfilePath)
+			if err != nil {
+				return nil, errors.Wrapf(err, "failed to read yaml from path %q", dockerfilePath)
+			}
+			return dockerfileBytes, nil
+		}
+	}
+
+	return dockerfileBytes, &NoDockerfileFound{Location: cdqInfo.ClonedRepo.ClonedPath}
 }

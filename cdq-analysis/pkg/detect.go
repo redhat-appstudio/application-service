@@ -22,6 +22,8 @@ import (
 	"reflect"
 	"strings"
 
+	"github.com/devfile/library/v2/pkg/devfile/parser"
+
 	"github.com/devfile/api/v2/pkg/apis/workspaces/v1alpha2"
 	"github.com/devfile/library/v2/pkg/devfile/parser/data/v2/common"
 	"github.com/go-logr/logr"
@@ -45,12 +47,17 @@ type AlizerClient struct {
 // Map 2 returns a context to the matched devfileURL from the github repository. If no devfile was present, then a link to a matching devfile in the devfile registry will be used instead.
 // Map 3 returns a context to the Dockerfile uri or a matched DockerfileURL from the devfile registry if no Dockerfile is present in the context
 // Map 4 returns a context to the list of ports that were detected by alizer in the source code, at that given context
-func search(log logr.Logger, a Alizer, localpath string, devfileRegistryURL string, URL string, revision string, srcContext string) (map[string][]byte, map[string]string, map[string]string, map[string][]int, error) {
+func search(log logr.Logger, a Alizer, localpath string, srcContext string, cdqInfo CDQInfoClient) (map[string][]byte, map[string]string, map[string]string, map[string][]int, error) {
 
 	devfileMapFromRepo := make(map[string][]byte)
 	devfilesURLMapFromRepo := make(map[string]string)
 	dockerfileContextMapFromRepo := make(map[string]string)
 	componentPortsMapFromRepo := make(map[string][]int)
+
+	URL := cdqInfo.GitURL.RepoURL
+	revision := cdqInfo.GitURL.Revision
+	token := cdqInfo.GitURL.Token
+	devfileRegistryURL := cdqInfo.DevfileRegistryURL
 
 	files, err := os.ReadDir(localpath)
 	if err != nil {
@@ -78,7 +85,7 @@ func search(log logr.Logger, a Alizer, localpath string, devfileRegistryURL stri
 					if err != nil {
 						return nil, nil, nil, nil, err
 					}
-					shouldIgnoreDevfile, devfileBytes, err := ValidateDevfile(log, devfilePath)
+					shouldIgnoreDevfile, devfileBytes, err := ValidateDevfile(log, devfilePath, token)
 					if err != nil {
 						return nil, nil, nil, nil, err
 					}
@@ -109,7 +116,7 @@ func search(log logr.Logger, a Alizer, localpath string, devfileRegistryURL stri
 							if err != nil {
 								return nil, nil, nil, nil, err
 							}
-							shouldIgnoreDevfile, devfileBytes, err := ValidateDevfile(log, devfilePath)
+							shouldIgnoreDevfile, devfileBytes, err := ValidateDevfile(log, devfilePath, token)
 							if err != nil {
 								return nil, nil, nil, nil, err
 							}
@@ -165,7 +172,7 @@ func search(log logr.Logger, a Alizer, localpath string, devfileRegistryURL stri
 			}
 
 			if (!isDevfilePresent && !isDockerfilePresent) || (isDevfilePresent && !isDockerfilePresent) {
-				err := AnalyzePath(log, a, curPath, context, devfileRegistryURL, devfileMapFromRepo, devfilesURLMapFromRepo, dockerfileContextMapFromRepo, componentPortsMapFromRepo, isDevfilePresent, isDockerfilePresent)
+				err := AnalyzePath(log, a, curPath, context, devfileRegistryURL, devfileMapFromRepo, devfilesURLMapFromRepo, dockerfileContextMapFromRepo, componentPortsMapFromRepo, isDevfilePresent, isDockerfilePresent, token)
 				if err != nil {
 					return nil, nil, nil, nil, err
 				}
@@ -187,11 +194,11 @@ func search(log logr.Logger, a Alizer, localpath string, devfileRegistryURL stri
 // devfilesURLMapFromRepo: a context to the matched devfileURL from the github repository. If no devfile was present, then a link to a matching devfile in the devfile registry will be used instead.
 // dockerfileContextMapFromRepo: a context to the Dockerfile uri or a matched DockerfileURL from the devfile registry if no Dockerfile is present in the context
 // componentPortsMapFromRepo: a context to the list of ports that were detected by alizer in the source code, at that given context
-func AnalyzePath(log logr.Logger, a Alizer, localpath, context, devfileRegistryURL string, devfileMapFromRepo map[string][]byte, devfilesURLMapFromRepo, dockerfileContextMapFromRepo map[string]string, componentPortsMapFromRepo map[string][]int, isDevfilePresent, isDockerfilePresent bool) error {
+func AnalyzePath(log logr.Logger, a Alizer, localpath, context, devfileRegistryURL string, devfileMapFromRepo map[string][]byte, devfilesURLMapFromRepo, dockerfileContextMapFromRepo map[string]string, componentPortsMapFromRepo map[string][]int, isDevfilePresent, isDockerfilePresent bool, token string) error {
 	if isDevfilePresent {
 		// If devfile is present, check to see if we can determine a Dockerfile from it
 		devfileBytes := devfileMapFromRepo[context]
-		dockerfileImage, err := SearchForDockerfile(devfileBytes)
+		dockerfileImage, err := SearchForDockerfile(devfileBytes, token)
 		if err != nil {
 			return err
 		}
@@ -230,7 +237,7 @@ func AnalyzePath(log logr.Logger, a Alizer, localpath, context, devfileRegistryU
 				return err
 			}
 
-			dockerfileImage, err := SearchForDockerfile(detectedDevfile)
+			dockerfileImage, err := SearchForDockerfile(detectedDevfile, token)
 			if err != nil {
 				return err
 			}
@@ -269,14 +276,13 @@ func AnalyzePath(log logr.Logger, a Alizer, localpath, context, devfileRegistryU
 
 // SearchForDockerfile searches for a Dockerfile from a devfile image component.
 // If no Dockerfile is found, nil will be returned.
-func SearchForDockerfile(devfileBytes []byte) (*v1alpha2.DockerfileImage, error) {
+// token is required if the devfile has a parent reference to a private repo
+func SearchForDockerfile(devfileBytes []byte, token string) (*v1alpha2.DockerfileImage, error) {
 	if len(devfileBytes) == 0 {
 		return nil, nil
 	}
-	devfileSrc := DevfileSrc{
-		Data: string(devfileBytes),
-	}
-	devfileData, err := ParseDevfile(devfileSrc)
+	devfileData, err := ParseDevfileWithParserArgs(&parser.ParserArgs{Data: devfileBytes, Token: token})
+
 	if err != nil {
 		return nil, err
 	}
@@ -365,10 +371,9 @@ func AnalyzeAndDetectDevfile(a Alizer, path, devfileRegistryURL string) ([]byte,
 					return nil, "", "", nil, err
 				}
 
-				devfileSrc := DevfileSrc{
-					URL: detectedDevfileEndpoint,
-				}
-				compDevfileData, err := ParseDevfile(devfileSrc)
+				// This is the community registry we are parsing the sample from, so we don't need to pass in the git token
+				compDevfileData, err := ParseDevfileWithParserArgs(&parser.ParserArgs{URL: detectedDevfileEndpoint})
+
 				if err != nil {
 					return nil, "", "", nil, err
 				}

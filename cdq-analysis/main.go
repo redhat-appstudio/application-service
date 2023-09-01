@@ -80,7 +80,13 @@ func main() {
 		Log:          log,
 		CreateK8sJob: createK8sJob,
 	}
-	pkg.CloneAndAnalyze(k8sInfoClient, gitToken, namespace, name, contextPath, devfilePath, dockerfilePath, URL, Revision, DevfileRegistryURL, isDevfilePresent, isDockerfilePresent)
+
+	cdqInfo := &pkg.CDQInfoClient{
+		DevfileRegistryURL: DevfileRegistryURL,
+		GitURL:             pkg.GitURL{RepoURL: URL, Revision: Revision, Token: gitToken},
+	}
+
+	pkg.CloneAndAnalyze(k8sInfoClient, namespace, name, contextPath, cdqInfo)
 }
 
 // validateVariables ensures that all of the necessary variables passed in are set to valid values

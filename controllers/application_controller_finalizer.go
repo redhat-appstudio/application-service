@@ -21,6 +21,8 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/devfile/library/v2/pkg/devfile/parser"
+
 	"github.com/prometheus/client_golang/prometheus"
 	appstudiov1alpha1 "github.com/redhat-appstudio/application-api/api/v1alpha1"
 	cdqanalysis "github.com/redhat-appstudio/application-service/cdq-analysis/pkg"
@@ -50,10 +52,7 @@ func (r *ApplicationReconciler) AddFinalizer(ctx context.Context, application *a
 // Finalize deletes the corresponding GitOps repo for the given Application CR.
 func (r *ApplicationReconciler) Finalize(ctx context.Context, application *appstudiov1alpha1.Application, ghClient *github.GitHubClient) error {
 	// Get the GitOps repository URL
-	devfileSrc := cdqanalysis.DevfileSrc{
-		Data: application.Status.Devfile,
-	}
-	devfileObj, err := cdqanalysis.ParseDevfile(devfileSrc)
+	devfileObj, err := cdqanalysis.ParseDevfileWithParserArgs(&parser.ParserArgs{Data: []byte(application.Status.Devfile)})
 	if err != nil {
 		return err
 	}

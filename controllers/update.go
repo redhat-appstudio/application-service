@@ -23,6 +23,8 @@ import (
 	"strings"
 	"unicode"
 
+	"github.com/devfile/library/v2/pkg/devfile/parser"
+
 	"github.com/brianvoe/gofakeit/v6"
 	devfileAPIV1 "github.com/devfile/api/v2/pkg/apis/workspaces/v1alpha2"
 	"github.com/devfile/api/v2/pkg/attributes"
@@ -303,7 +305,7 @@ func (r *ApplicationReconciler) getAndAddComponentApplicationsToModel(log logr.L
 	return nil
 }
 
-func (r *ComponentDetectionQueryReconciler) updateComponentStub(req ctrl.Request, ctx context.Context, componentDetectionQuery *appstudiov1alpha1.ComponentDetectionQuery, devfilesMap map[string][]byte, devfilesURLMap map[string]string, dockerfileContextMap map[string]string, componentPortsMap map[string][]int) error {
+func (r *ComponentDetectionQueryReconciler) updateComponentStub(req ctrl.Request, ctx context.Context, componentDetectionQuery *appstudiov1alpha1.ComponentDetectionQuery, devfilesMap map[string][]byte, devfilesURLMap map[string]string, dockerfileContextMap map[string]string, componentPortsMap map[string][]int, token string) error {
 
 	if componentDetectionQuery == nil {
 		return fmt.Errorf("componentDetectionQuery is nil")
@@ -320,10 +322,7 @@ func (r *ComponentDetectionQueryReconciler) updateComponentStub(req ctrl.Request
 	for context, devfileBytes := range devfilesMap {
 		log.Info(fmt.Sprintf("Currently reading the devfile for context %v", context))
 		// Parse the Component Devfile
-		devfileSrc := cdqanalysis.DevfileSrc{
-			Data: string(devfileBytes),
-		}
-		compDevfileData, err := cdqanalysis.ParseDevfile(devfileSrc)
+		compDevfileData, err := cdqanalysis.ParseDevfileWithParserArgs(&parser.ParserArgs{Data: devfileBytes, Token: token})
 		if err != nil {
 			return err
 		}

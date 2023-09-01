@@ -166,7 +166,11 @@ func TestCloneRepo(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			err := CloneRepo(tt.clonePath, tt.repo, tt.revision, tt.token)
+			err := CloneRepo(tt.clonePath, GitURL{
+				RepoURL:  tt.repo,
+				Revision: tt.revision,
+				Token:    tt.token,
+			})
 			if tt.wantErr && (err == nil) {
 				t.Error("wanted error but got nil")
 			} else if !tt.wantErr && err != nil {
@@ -214,7 +218,11 @@ func TestGetBranchFromRepo(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			os.RemoveAll(tt.clonePath)
 			if tt.name != "Repo not exist" {
-				CloneRepo(tt.clonePath, tt.repo, tt.revision, tt.token)
+				CloneRepo(tt.clonePath, GitURL{
+					RepoURL:  tt.repo,
+					Revision: tt.revision,
+					Token:    tt.token,
+				})
 			}
 
 			branch, err := GetBranchFromRepo(tt.clonePath)

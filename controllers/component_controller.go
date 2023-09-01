@@ -24,10 +24,11 @@ import (
 	"reflect"
 	"time"
 
+	corev1 "k8s.io/api/core/v1"
+
 	"github.com/prometheus/client_golang/prometheus"
 	cdqanalysis "github.com/redhat-appstudio/application-service/cdq-analysis/pkg"
 	"github.com/redhat-appstudio/application-service/pkg/metrics"
-	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -83,6 +84,9 @@ const (
 //+kubebuilder:rbac:groups=appstudio.redhat.com,resources=components/finalizers,verbs=update
 //+kubebuilder:rbac:groups=core,resources=configmaps,verbs=get;list;watch
 //+kubebuilder:rbac:groups=core,resources=secrets,verbs=get;list;watch
+//+kubebuilder:rbac:groups=appstudio.redhat.com,resources=spifilecontentrequests,verbs=get;list;watch;create;update;patch;delete
+//+kubebuilder:rbac:groups=appstudio.redhat.com,resources=spifilecontentrequests/status,verbs=get;update;patch
+//+kubebuilder:rbac:groups=appstudio.redhat.com,resources=spifilecontentrequests/finalizers,verbs=update
 
 // Reconcile is part of the main kubernetes reconciliation loop which aims to
 // move the current state of the cluster closer to the desired state.
@@ -136,6 +140,25 @@ func (r *ComponentReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 	// Add the Go-GitHub client name to the context
 	ctx = context.WithValue(ctx, github.GHClientKey, ghClient.TokenName)
 
+	var gitToken string
+	//get the token to pass into the parser
+	if component.Spec.Secret != "" {
+		gitSecret := corev1.Secret{}
+		namespacedName := types.NamespacedName{
+			Name:      component.Spec.Secret,
+			Namespace: component.Namespace,
+		}
+
+		err = r.Client.Get(ctx, namespacedName, &gitSecret)
+		if err != nil {
+			log.Error(err, fmt.Sprintf("Unable to retrieve Git secret %v, exiting reconcile loop %v", component.Spec.Secret, req.NamespacedName))
+			_ = r.SetCreateConditionAndUpdateCR(ctx, req, &component, err)
+			return ctrl.Result{}, err
+		}
+
+		gitToken = string(gitSecret.Data["password"])
+	}
+
 	// Check if the Component CR is under deletion
 	// If so: Remove the project from the Application devfile, remove the component dir from the Gitops repo and remove the finalizer.
 	if component.ObjectMeta.DeletionTimestamp.IsZero() {
@@ -159,7 +182,7 @@ func (r *ComponentReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 		if hasApplication.Status.Devfile != "" && len(component.Status.Conditions) > 0 && component.Status.Conditions[len(component.Status.Conditions)-1].Status == metav1.ConditionTrue && containsString(component.GetFinalizers(), compFinalizerName) {
 			// only attempt to finalize and update the gitops repo if an Application is present & the previous Component status is good
 			// A finalizer is present for the Component CR, so make sure we do the necessary cleanup steps
-			if err := r.Finalize(ctx, &component, &hasApplication, ghClient); err != nil {
+			if err := r.Finalize(ctx, &component, &hasApplication, ghClient, gitToken); err != nil {
 				if errors.IsConflict(err) {
 					//conflict means we just retry, we are updating the shared application so conflicts are not unexpected
 					return ctrl.Result{}, err
@@ -190,10 +213,7 @@ func (r *ComponentReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 		if condition.Type == "GitOpsResourcesGenerated" && condition.Reason == "GenerateError" && condition.Status == metav1.ConditionFalse {
 			log.Info(fmt.Sprintf("Re-attempting GitOps generation for %s", component.Name))
 			// Parse the Component Devfile
-			devfileSrc := cdqanalysis.DevfileSrc{
-				Data: component.Status.Devfile,
-			}
-			compDevfileData, err := cdqanalysis.ParseDevfile(devfileSrc)
+			compDevfileData, err := cdqanalysis.ParseDevfileWithParserArgs(&devfileParser.ParserArgs{Data: []byte(component.Status.Devfile), Token: gitToken})
 			if err != nil {
 				errMsg := fmt.Sprintf("Unable to parse the devfile from Component status and re-attempt GitOps generation, exiting reconcile loop %v", req.NamespacedName)
 				log.Error(err, errMsg)
@@ -233,7 +253,6 @@ func (r *ComponentReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 	}
 
 	// If the devfile hasn't been populated, the CR was just created
-	var gitToken string
 	if component.Status.Devfile == "" {
 
 		source := component.Spec.Source
@@ -246,22 +265,6 @@ func (r *ComponentReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 			context := source.GitSource.Context
 			// If a Git secret was passed in, retrieve it for use in our Git operations
 			// The secret needs to be in the same namespace as the Component
-			if component.Spec.Secret != "" {
-				gitSecret := corev1.Secret{}
-				namespacedName := types.NamespacedName{
-					Name:      component.Spec.Secret,
-					Namespace: component.Namespace,
-				}
-
-				err = r.Client.Get(ctx, namespacedName, &gitSecret)
-				if err != nil {
-					log.Error(err, fmt.Sprintf("Unable to retrieve Git secret %v, exiting reconcile loop %v", component.Spec.Secret, req.NamespacedName))
-					_ = r.SetCreateConditionAndUpdateCR(ctx, req, &component, err)
-					return ctrl.Result{}, err
-				}
-
-				gitToken = string(gitSecret.Data["password"])
-			}
 
 			if source.GitSource.Revision == "" {
 				sourceURL := source.GitSource.URL
@@ -310,13 +313,23 @@ func (r *ComponentReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 
 					devfileLocation = gitURL + string(os.PathSeparator) + devfileLocation
 				} else {
+					//cannot use converted URLs in SPI because it's not supported.  Need to convert later for parsing
+					gitURL = source.GitSource.URL
 					// Use SPI to retrieve the devfile from the private repository
-					devfileBytes, err = spi.DownloadDevfileUsingSPI(r.SPIClient, ctx, component.Namespace, source.GitSource.URL, source.GitSource.Revision, context)
+					devfileBytes, devfileLocation, err = spi.DownloadDevfileUsingSPI(r.SPIClient, ctx, component, gitURL, source.GitSource.Revision, context)
 					if err != nil {
-						log.Error(err, fmt.Sprintf("Unable to download from any known devfile locations from %s %v", source.GitSource.URL, req.NamespacedName))
+						log.Error(err, fmt.Sprintf("Unable to download from any known devfile locations from %s %v", gitURL, req.NamespacedName))
 						_ = r.SetCreateConditionAndUpdateCR(ctx, req, &component, err)
 						return ctrl.Result{}, err
 					}
+
+					convertedGitURL, err := util.ConvertGitHubURL(source.GitSource.URL, source.GitSource.Revision, context)
+					if err != nil {
+						log.Error(err, fmt.Sprintf("Unable to convert Github URL to raw format, exiting reconcile loop %v", req.NamespacedName))
+						_ = r.SetCreateConditionAndUpdateCR(ctx, req, &component, err)
+						return ctrl.Result{}, err
+					}
+					devfileLocation = convertedGitURL + string(os.PathSeparator) + devfileLocation
 				}
 
 			} else if source.GitSource.DevfileURL != "" {
@@ -370,10 +383,8 @@ func (r *ComponentReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 
 		if devfileLocation != "" {
 			// Parse the Component Devfile
-			devfileSrc := cdqanalysis.DevfileSrc{
-				URL: devfileLocation,
-			}
-			compDevfileData, err = cdqanalysis.ParseDevfile(devfileSrc)
+			compDevfileData, err = cdqanalysis.ParseDevfileWithParserArgs(&devfileParser.ParserArgs{URL: devfileLocation, Token: gitToken})
+
 			if err != nil {
 				log.Error(err, fmt.Sprintf("Unable to parse the devfile from Component devfile location, exiting reconcile loop %v", req.NamespacedName))
 				_ = r.SetCreateConditionAndUpdateCR(ctx, req, &component, err)
@@ -381,10 +392,9 @@ func (r *ComponentReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 			}
 		} else {
 			// Parse the Component Devfile
-			devfileSrc := cdqanalysis.DevfileSrc{
-				Data: string(devfileBytes),
-			}
-			compDevfileData, err = cdqanalysis.ParseDevfile(devfileSrc)
+
+			compDevfileData, err = cdqanalysis.ParseDevfileWithParserArgs(&devfileParser.ParserArgs{Data: devfileBytes, Token: gitToken})
+
 			if err != nil {
 				log.Error(err, fmt.Sprintf("Unable to parse the devfile from Component, exiting reconcile loop %v", req.NamespacedName))
 				_ = r.SetCreateConditionAndUpdateCR(ctx, req, &component, err)
@@ -401,10 +411,8 @@ func (r *ComponentReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 
 		if hasApplication.Status.Devfile != "" {
 			// Get the devfile of the hasApp CR
-			devfileSrc := cdqanalysis.DevfileSrc{
-				Data: hasApplication.Status.Devfile,
-			}
-			hasAppDevfileData, err := cdqanalysis.ParseDevfile(devfileSrc)
+			hasAppDevfileData, err := cdqanalysis.ParseDevfileWithParserArgs(&devfileParser.ParserArgs{Data: []byte(hasApplication.Status.Devfile), Token: gitToken})
+
 			if err != nil {
 				log.Error(err, fmt.Sprintf("Unable to parse the devfile from Application, exiting reconcile loop %v", req.NamespacedName))
 				_ = r.SetCreateConditionAndUpdateCR(ctx, req, &component, err)
@@ -458,10 +466,8 @@ func (r *ComponentReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 		log.Info(fmt.Sprintf("Checking if the Component has been updated %v", req.NamespacedName))
 
 		// Parse the Component Devfile
-		devfileSrc := cdqanalysis.DevfileSrc{
-			Data: component.Status.Devfile,
-		}
-		hasCompDevfileData, err := cdqanalysis.ParseDevfile(devfileSrc)
+		hasCompDevfileData, err := cdqanalysis.ParseDevfileWithParserArgs(&devfileParser.ParserArgs{Data: []byte(component.Status.Devfile), Token: gitToken})
+
 		if err != nil {
 			log.Error(err, fmt.Sprintf("Unable to parse the devfile from Component status, exiting reconcile loop %v", req.NamespacedName))
 			_ = r.SetUpdateConditionAndUpdateCR(ctx, req, &component, err)
@@ -476,10 +482,8 @@ func (r *ComponentReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 		}
 
 		// Read the devfile again to compare it with any updates
-		devfileSrc = cdqanalysis.DevfileSrc{
-			Data: component.Status.Devfile,
-		}
-		oldCompDevfileData, err := cdqanalysis.ParseDevfile(devfileSrc)
+		oldCompDevfileData, err := cdqanalysis.ParseDevfileWithParserArgs(&devfileParser.ParserArgs{Data: []byte(component.Status.Devfile), Token: gitToken})
+
 		if err != nil {
 			log.Error(err, fmt.Sprintf("Unable to parse the devfile from Component status, exiting reconcile loop %v", req.NamespacedName))
 			_ = r.SetUpdateConditionAndUpdateCR(ctx, req, &component, err)

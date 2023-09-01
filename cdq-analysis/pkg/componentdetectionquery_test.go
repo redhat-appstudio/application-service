@@ -46,10 +46,10 @@ func TestCloneAndAnalyze(t *testing.T) {
 	compName := "testComponent"
 	namespaceName := "testNamespace"
 	springSampleURL := "https://github.com/devfile-samples/devfile-sample-java-springboot-basic"
-	springNoDevfileURL := "https://github.com/yangcao77/devfile-sample-java-springboot-basic-no-devfile"
 	privateRepoURL := "https://github.com/johnmcollier/private-repo-test"
 	multiComponentRepoURL := "https://github.com/maysunfaisal/multi-components-dockerfile"
-
+	springNoDevfileNoDockerfileURL := "https://github.com/kim-tsao/devfile-sample-java-springboot-basic-no-devfile-no-dockerfile"
+	multiComponentWithNoDevfileAndDockerfileURL := "https://github.com/redhat-appstudio/quality-dashboard"
 	failedToCloneRepoErr := "failed to clone the repo.*"
 
 	springDevfileContext := `
@@ -100,12 +100,10 @@ func TestCloneAndAnalyze(t *testing.T) {
 		wantBranch               string
 	}{
 		{
-			testCase:            "repo with devfile - should successfully detect spring component",
-			URL:                 springSampleURL,
-			DevfileRegistryURL:  DevfileRegistryEndpoint,
-			devfilePath:         "devfile.yaml",
-			isDevfilePresent:    true,
-			isDockerfilePresent: false,
+			testCase:           "repo with devfile - should successfully detect spring component",
+			URL:                springSampleURL,
+			DevfileRegistryURL: DevfileRegistryEndpoint,
+			devfilePath:        "devfile.yaml",
 			wantDevfilesMap: map[string][]byte{
 				"./": []byte(springDevfileContext),
 			},
@@ -117,11 +115,9 @@ func TestCloneAndAnalyze(t *testing.T) {
 			wantBranch:               "main",
 		},
 		{
-			testCase:            "repo without devfile and dockerfile - should successfully detect spring component",
-			URL:                 springNoDevfileURL,
-			DevfileRegistryURL:  DevfileRegistryEndpoint,
-			isDevfilePresent:    false,
-			isDockerfilePresent: false,
+			testCase:           "repo without devfile and dockerfile - should successfully detect spring component",
+			URL:                springNoDevfileNoDockerfileURL,
+			DevfileRegistryURL: DevfileRegistryEndpoint,
 			wantDevfilesMap: map[string][]byte{
 				"./": []byte(springDevfileContext),
 			},
@@ -131,17 +127,26 @@ func TestCloneAndAnalyze(t *testing.T) {
 			wantDockerfileContextMap: map[string]string{
 				"./": "https://raw.githubusercontent.com/devfile-samples/devfile-sample-java-springboot-basic/main/docker/Dockerfile",
 			},
-			wantComponentsPortMap: map[string][]int{
-				"./": {8081},
+			wantComponentsPortMap: map[string][]int{},
+			wantBranch:            "main",
+		},
+		{
+			testCase:           "multi-component repo without devfile and dockerfile - should successfully detect dockerfiles",
+			URL:                multiComponentWithNoDevfileAndDockerfileURL,
+			DevfileRegistryURL: DevfileRegistryEndpoint,
+			wantDevfilesMap:    map[string][]byte{},
+			wantDevfilesURLMap: map[string]string{},
+			wantDockerfileContextMap: map[string]string{
+				"backend":  "Dockerfile",
+				"frontend": "Dockerfile",
 			},
-			wantBranch: "main",
+			wantComponentsPortMap: map[string][]int{}, //empty because repo does not have a dockerfile with a specified port
+			wantBranch:            "main",
 		},
 		{
 			testCase:                 "private repo - should error out with no token provided",
 			URL:                      privateRepoURL,
 			DevfileRegistryURL:       DevfileRegistryEndpoint,
-			isDevfilePresent:         false,
-			isDockerfilePresent:      false,
 			wantDevfilesMap:          map[string][]byte{},
 			wantDevfilesURLMap:       map[string]string{},
 			wantDockerfileContextMap: map[string]string{},
@@ -152,8 +157,6 @@ func TestCloneAndAnalyze(t *testing.T) {
 			testCase:                 "private repo - should error out with invalid token provided",
 			URL:                      privateRepoURL,
 			DevfileRegistryURL:       DevfileRegistryEndpoint,
-			isDevfilePresent:         false,
-			isDockerfilePresent:      false,
 			gitToken:                 "fakeToken",
 			wantDevfilesMap:          map[string][]byte{},
 			wantDevfilesURLMap:       map[string]string{},
@@ -162,11 +165,9 @@ func TestCloneAndAnalyze(t *testing.T) {
 			wantErr:                  failedToCloneRepoErr,
 		},
 		{
-			testCase:            "should successfully detect multi-component with dockerfile present",
-			URL:                 multiComponentRepoURL,
-			DevfileRegistryURL:  DevfileRegistryEndpoint,
-			isDevfilePresent:    false,
-			isDockerfilePresent: false,
+			testCase:           "should successfully detect multi-component with dockerfile present",
+			URL:                multiComponentRepoURL,
+			DevfileRegistryURL: DevfileRegistryEndpoint,
 			wantDevfilesMap: map[string][]byte{
 				"devfile-sample-java-springboot-basic": []byte(springDevfileContext),
 				"devfile-sample-nodejs-basic":          []byte(nodeJSDevfileContext),
@@ -191,13 +192,11 @@ func TestCloneAndAnalyze(t *testing.T) {
 			wantBranch: "main",
 		},
 		{
-			testCase:            "should successfully detect single component when context is provided",
-			context:             "devfile-sample-nodejs-basic",
-			URL:                 multiComponentRepoURL,
-			DevfileRegistryURL:  DevfileRegistryEndpoint,
-			devfilePath:         "devfile.yaml",
-			isDevfilePresent:    true,
-			isDockerfilePresent: false,
+			testCase:           "should successfully detect single component when context is provided",
+			context:            "devfile-sample-nodejs-basic",
+			URL:                multiComponentRepoURL,
+			DevfileRegistryURL: DevfileRegistryEndpoint,
+			devfilePath:        "devfile.yaml",
 			wantDevfilesMap: map[string][]byte{
 				"devfile-sample-nodejs-basic": []byte(nodeJSDevfileContext),
 			},
@@ -216,7 +215,12 @@ func TestCloneAndAnalyze(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.testCase, func(t *testing.T) {
-			devfilesMap, devfilesURLMap, dockerfileContextMap, componentsPortMap, branch, err := CloneAndAnalyze(k8sClient, tt.gitToken, namespaceName, compName, tt.context, tt.devfilePath, "", tt.URL, tt.Revision, tt.DevfileRegistryURL, tt.isDevfilePresent, tt.isDockerfilePresent)
+			cdqInfo := &CDQInfoClient{
+				DevfileRegistryURL: tt.DevfileRegistryURL,
+				GitURL:             GitURL{RepoURL: tt.URL, Revision: tt.Revision, Token: tt.gitToken},
+				DevfilePath:        tt.devfilePath,
+			}
+			devfilesMap, devfilesURLMap, dockerfileContextMap, componentsPortMap, branch, err := CloneAndAnalyze(k8sClient, namespaceName, compName, tt.context, cdqInfo)
 			if (err != nil) != (tt.wantErr != "") {
 				t.Errorf("got unexpected error %v", err)
 			} else if err == nil {
@@ -225,7 +229,7 @@ func TestCloneAndAnalyze(t *testing.T) {
 				// also check if correct context has been detected
 				if devfilesMap != nil {
 					if len(devfilesMap) != len(tt.wantDevfilesMap) {
-						t.Errorf("Expected devfilesMap lenth: %+v, Got: %+v, devfileMap is %+v", len(tt.wantDevfilesMap), len(devfilesMap), devfilesMap)
+						t.Errorf("Expected devfilesMap length: %+v, Got: %+v, devfileMap is %+v", len(tt.wantDevfilesMap), len(devfilesMap), devfilesMap)
 					} else {
 						for key := range tt.wantDevfilesMap {
 							if _, ok := devfilesMap[key]; !ok {
