@@ -43,7 +43,7 @@ To understand the AppStudio controller logging convention, refer to the Appstudi
   - the log message. For example, `"msg":"Finished reconcile loop for user-tenant/devfile-sample-go-basic-development-binding-hr9nm"`. You may search for the string `Finished reconcile loop for` in the application-service repository to track down the code logic that is emitting the log. Remember to look out for resource name concatenation and/or error wrapping that may not turn up in your code search. It is advised to exclude such strings from the code search for debugging purposes
 
 ## Common Problems
-- When deploying HAS locally or on a local cluster, a Github Personal Access Token is required as the application-service controller requires the token for pushing the resources to the GitOps repository. Please refer to the [instructions](../README.md#creating-a-github-secret-for-has) in the README for more information
+- When deploying HAS locally or on a local cluster, a Github Personal Access Token is required as the application-service controller requires the token for pushing the resources to the GitOps repository. Please refer to the [instructions](../docs/deploy.md#creating-a-github-secret-for-application-service) in the deploy section for more information
 - When creating a `Component` from the `ComponentDetectionQuery`, remember to replace the generic application name `insert-application-name`, if the information is being used from a `ComponentDetectionQuery` status
 
 ## FAQs
