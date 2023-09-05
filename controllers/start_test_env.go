@@ -117,6 +117,8 @@ func setupTestEnv() {
 		DevfileRegistryURL: cdqanalysis.DevfileStageRegistryEndpoint, // Use the staging devfile registry for tests
 		AppFS:              ioutils.NewMemoryFilesystem(),
 		Config:             cfg,
+		RunKubernetesJob:   true,
+		CdqAnalysisImage:   "quay.io/redhat-appstudio/cdq-analysis:next",
 	}).SetupWithManager(ctx, k8sManager)
 	gomega.Expect(err).ToNot(gomega.HaveOccurred())
 

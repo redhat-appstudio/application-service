@@ -200,7 +200,7 @@ func (r *ComponentDetectionQueryReconciler) Reconcile(ctx context.Context, req c
 			var componentPortsMapReturned map[string][]int
 			revision := source.Revision
 
-			if r.RunKubernetesJob {
+			if r.RunKubernetesJob && !(componentDetectionQuery.Annotations["runCDQAnalysisLocal"] == "true") {
 				// perfume cdq job that requires repo cloning and azlier analysis
 				clientset, err := kubernetes.NewForConfig(r.Config)
 				if err != nil {
