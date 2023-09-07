@@ -454,8 +454,8 @@ func (r *ComponentDetectionQueryReconciler) SetupWithManager(ctx context.Context
 }
 
 func waitForConfigMap(clientset *kubernetes.Clientset, ctx context.Context, name, namespace string) (*corev1.ConfigMap, error) {
-	// 1 mins timeout
-	timeout := int64(60)
+	// 5 mins timeout
+	timeout := int64(300)
 	opts := metav1.ListOptions{
 		TypeMeta:       metav1.TypeMeta{},
 		FieldSelector:  fmt.Sprintf("metadata.name=%s", name),
