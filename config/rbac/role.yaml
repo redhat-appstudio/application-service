@@ -131,12 +131,8 @@ rules:
   - spifilecontentrequests
   verbs:
   - create
-  - delete
   - get
   - list
-  - patch
-  - update
-  - watch
 - apiGroups:
   - appstudio.redhat.com
   resources:
@@ -149,8 +145,6 @@ rules:
   - spifilecontentrequests/status
   verbs:
   - get
-  - patch
-  - update
 - apiGroups:
   - ""
   resources:
