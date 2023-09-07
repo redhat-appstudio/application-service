@@ -288,13 +288,13 @@ func FindValidDevfiles(cdqInfo *CDQInfoClient) ([]byte, error) {
 	Fs := cdqInfo.ClonedRepo.Fs
 	if isExist, _ := IsExisting(cdqInfo.ClonedRepo.Fs, cdqInfo.ClonedRepo.ClonedPath); isExist {
 		for _, path := range ValidDevfileLocations {
-			devfilePath := cdqInfo.ClonedRepo.ComponentPath + "/" + path
-			if isExist, _ := IsExisting(Fs, devfilePath); isExist {
-				cdqInfo.DevfilePath = devfilePath
+			devfileTempPath := cdqInfo.ClonedRepo.ComponentPath + "/" + path
+			if isExist, _ := IsExisting(Fs, devfileTempPath); isExist {
+				cdqInfo.devfilePath = path
 				//read contents
-				devfileBytes, err := Fs.ReadFile(devfilePath)
+				devfileBytes, err := Fs.ReadFile(devfileTempPath)
 				if err != nil {
-					return nil, errors.Wrapf(err, "failed to read yaml from path %q", devfilePath)
+					return nil, errors.Wrapf(err, "failed to read yaml from path %q", devfileTempPath)
 				}
 				return devfileBytes, nil
 			}
@@ -307,13 +307,13 @@ func FindValidDockerfile(cdqInfo *CDQInfoClient) ([]byte, error) {
 	var dockerfileBytes []byte
 	Fs := cdqInfo.ClonedRepo.Fs
 	for _, path := range ValidDockerfileLocations {
-		dockerfilePath := cdqInfo.ClonedRepo.ComponentPath + "/" + path
-		if isExist, _ := IsExisting(cdqInfo.ClonedRepo.Fs, dockerfilePath); isExist {
-			cdqInfo.DockerfilePath = dockerfilePath
+		dockerfileTempPath := cdqInfo.ClonedRepo.ComponentPath + "/" + path
+		if isExist, _ := IsExisting(cdqInfo.ClonedRepo.Fs, dockerfileTempPath); isExist {
+			cdqInfo.dockerfilePath = path
 			//read contents
-			dockerfileBytes, err := Fs.ReadFile(dockerfilePath)
+			dockerfileBytes, err := Fs.ReadFile(dockerfileTempPath)
 			if err != nil {
-				return nil, errors.Wrapf(err, "failed to read yaml from path %q", dockerfilePath)
+				return nil, errors.Wrapf(err, "failed to read yaml from path %q", dockerfileTempPath)
 			}
 			return dockerfileBytes, nil
 		}

@@ -49,6 +49,7 @@ func TestCloneAndAnalyze(t *testing.T) {
 	privateRepoURL := "https://github.com/johnmcollier/private-repo-test"
 	multiComponentRepoURL := "https://github.com/maysunfaisal/multi-components-dockerfile"
 	springNoDevfileNoDockerfileURL := "https://github.com/kim-tsao/devfile-sample-java-springboot-basic-no-devfile-no-dockerfile"
+	springNoDevfileURL := "https://github.com/yangcao77/devfile-sample-java-springboot-basic-no-devfile"
 	multiComponentWithNoDevfileAndDockerfileURL := "https://github.com/redhat-appstudio/quality-dashboard"
 	failedToCloneRepoErr := "failed to clone the repo.*"
 
@@ -85,7 +86,6 @@ func TestCloneAndAnalyze(t *testing.T) {
 	tests := []struct {
 		testCase                 string
 		context                  string
-		devfilePath              string
 		URL                      string
 		Revision                 string
 		DevfileRegistryURL       string
@@ -103,7 +103,6 @@ func TestCloneAndAnalyze(t *testing.T) {
 			testCase:           "repo with devfile - should successfully detect spring component",
 			URL:                springSampleURL,
 			DevfileRegistryURL: DevfileRegistryEndpoint,
-			devfilePath:        "devfile.yaml",
 			wantDevfilesMap: map[string][]byte{
 				"./": []byte(springDevfileContext),
 			},
@@ -196,7 +195,6 @@ func TestCloneAndAnalyze(t *testing.T) {
 			context:            "devfile-sample-nodejs-basic",
 			URL:                multiComponentRepoURL,
 			DevfileRegistryURL: DevfileRegistryEndpoint,
-			devfilePath:        "devfile.yaml",
 			wantDevfilesMap: map[string][]byte{
 				"devfile-sample-nodejs-basic": []byte(nodeJSDevfileContext),
 			},
@@ -211,6 +209,20 @@ func TestCloneAndAnalyze(t *testing.T) {
 			},
 			wantBranch: "main",
 		},
+		{
+			testCase:           "repo without devfile, with dockerfile - should successfully detect dockerfile",
+			URL:                springNoDevfileURL,
+			DevfileRegistryURL: DevfileRegistryEndpoint,
+			wantDevfilesMap:    map[string][]byte{},
+			wantDevfilesURLMap: map[string]string{},
+			wantDockerfileContextMap: map[string]string{
+				"./": "docker/Dockerfile",
+			},
+			wantComponentsPortMap: map[string][]int{
+				"./": {8081},
+			},
+			wantBranch: "main",
+		},
 	}
 
 	for _, tt := range tests {
@@ -218,7 +230,6 @@ func TestCloneAndAnalyze(t *testing.T) {
 			cdqInfo := &CDQInfoClient{
 				DevfileRegistryURL: tt.DevfileRegistryURL,
 				GitURL:             GitURL{RepoURL: tt.URL, Revision: tt.Revision, Token: tt.gitToken},
-				DevfilePath:        tt.devfilePath,
 			}
 			devfilesMap, devfilesURLMap, dockerfileContextMap, componentsPortMap, branch, err := CloneAndAnalyze(k8sClient, namespaceName, compName, tt.context, cdqInfo)
 			if (err != nil) != (tt.wantErr != "") {
@@ -368,4 +379,36 @@ metadata:
 			clientset.CoreV1().ConfigMaps(namespaceName).Delete(k8sClient.Ctx, compName, metav1.DeleteOptions{})
 		})
 	}
+}
+
+func TestGetDevfileAndDockerFilePaths(t *testing.T) {
+	tests := []struct {
+		testCase           string
+		cdqInfo            CDQInfoClient
+		wantDevfilePath    string
+		wantDockerfilePath string
+	}{
+		{
+			testCase:           "Unset dockerfilepath and devfilepath",
+			cdqInfo:            CDQInfoClient{},
+			wantDevfilePath:    "",
+			wantDockerfilePath: "",
+		},
+		{
+			testCase:           "Set dockerfilepath and devfilepath",
+			cdqInfo:            CDQInfoClient{dockerfilePath: "/dockerfile", devfilePath: "devfile.yml"},
+			wantDevfilePath:    "devfile.yml",
+			wantDockerfilePath: "/dockerfile",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.testCase, func(t *testing.T) {
+			devfilePath, dockerfilePath := GetDevfileAndDockerFilePaths(tt.cdqInfo)
+			if devfilePath != tt.wantDevfilePath || dockerfilePath != tt.wantDockerfilePath {
+				t.Errorf("devfilepath %s or dockerfile %s path does not match expected values wantDevfilePath %s, wantDockerfilePath %s", devfilePath, dockerfilePath, tt.wantDevfilePath, tt.wantDockerfilePath)
+			}
+		})
+	}
+
 }

@@ -39,7 +39,6 @@ type GitURL struct {
 }
 
 // CloneRepo clones the repoURL to specfied clonePath
-// func CloneRepo(clonePath, repoURL, revision string, token string) error {
 func CloneRepo(clonePath string, gitURL GitURL) error {
 	exist, err := IsExist(clonePath)
 	if !exist || err != nil {

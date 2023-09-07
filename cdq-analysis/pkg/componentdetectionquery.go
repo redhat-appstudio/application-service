@@ -51,8 +51,12 @@ type CDQInfoClient struct {
 	DevfileRegistryURL string
 	GitURL             GitURL
 	ClonedRepo         ClonedInfo
-	DevfilePath        string // A resolved devfile; one of DevfileName, HiddenDevfileName, HiddenDevfileDir or HiddenDirHiddenDevfile
-	DockerfilePath     string // A resolved dockerfile
+	devfilePath        string // A resolved devfile; one of DevfileName, HiddenDevfileName, HiddenDevfileDir or HiddenDirHiddenDevfile
+	dockerfilePath     string // A resolved dockerfile
+}
+
+func GetDevfileAndDockerFilePaths(client CDQInfoClient) (string, string) {
+	return client.devfilePath, client.dockerfilePath
 }
 
 func (cdqInfo *CDQInfoClient) clone(k K8sInfoClient, namespace, name, context string) error {
@@ -122,8 +126,6 @@ func CloneAndAnalyze(k K8sInfoClient, namespace, name, context string, cdqInfo *
 	repoURL := cdqInfo.GitURL.RepoURL
 	gitToken := cdqInfo.GitURL.Token
 	registryURL := cdqInfo.DevfileRegistryURL
-	devfilePath := cdqInfo.DevfilePath
-	dockerfilePath := cdqInfo.DockerfilePath
 
 	err = cdqInfo.clone(k, namespace, name, context)
 	if err != nil {
@@ -150,8 +152,8 @@ func CloneAndAnalyze(k K8sInfoClient, namespace, name, context string, cdqInfo *
 	componentPath = cdqInfo.ClonedRepo.ComponentPath
 	clonePath = cdqInfo.ClonedRepo.ClonedPath
 	revision := cdqInfo.GitURL.Revision
-	devfilePath = cdqInfo.DevfilePath
-	dockerfilePath = cdqInfo.DockerfilePath
+	devfilePath := cdqInfo.devfilePath
+	dockerfilePath := cdqInfo.dockerfilePath
 
 	if context == "" {
 		context = "./"
@@ -161,12 +163,8 @@ func CloneAndAnalyze(k K8sInfoClient, namespace, name, context string, cdqInfo *
 
 	isMultiComponent := false
 	if isDevfilePresent {
-		// devfilePath is the local path to the temp cloned dir.  We need to construct the git link with the devfile location only
-		devfileLoc := devfilePath[len(cdqInfo.ClonedRepo.ClonedPath)+1:] //account for the forward slash
-		log.Info(fmt.Sprintf("devfile Location %s", devfileLoc))
-
-		//updatedLink, err := UpdateGitLink(repoURL, revision, path.Join(context, devfileLoc))
-		updatedLink, err := UpdateGitLink(repoURL, revision, devfileLoc)
+		// devfilePath is the resolved, valid devfile location set in FindValidDevfiles
+		updatedLink, err := UpdateGitLink(repoURL, revision, path.Join(context, devfilePath))
 		log.Info(fmt.Sprintf("updatedLink %s ", updatedLink))
 		if err != nil {
 			log.Error(err, fmt.Sprintf("Unable to update the devfile link for CDQ %v... %v", name, namespace))
@@ -175,7 +173,6 @@ func CloneAndAnalyze(k K8sInfoClient, namespace, name, context string, cdqInfo *
 		}
 
 		shouldIgnoreDevfile, devfileBytes, err := ValidateDevfile(log, updatedLink, gitToken)
-		//shouldIgnoreDevfile, devfileBytes, err := ValidateDevfile(log, devfilePath, gitToken)
 		if err != nil {
 			k.SendBackDetectionResult(devfilesMap, devfilesURLMap, dockerfileContextMap, componentPortsMap, name, namespace, err)
 			return nil, nil, nil, nil, "", err
@@ -191,9 +188,7 @@ func CloneAndAnalyze(k K8sInfoClient, namespace, name, context string, cdqInfo *
 	// recheck if devfile presents, since the devfile may need to be ignored after validation
 	if !isDevfilePresent && isDockerfilePresent {
 		log.Info(fmt.Sprintf("Determined that this is a Dockerfile only component for cdq %v... %v", name, namespace))
-		dockerfileLoc := dockerfilePath[len(cdqInfo.ClonedRepo.ClonedPath)+1:]
-		log.Info(fmt.Sprintf("dockerfileLoc Location %s", dockerfileLoc))
-		dockerfileContextMap[context] = dockerfileLoc
+		dockerfileContextMap[context] = dockerfilePath
 	}
 
 	if !isDockerfilePresent {

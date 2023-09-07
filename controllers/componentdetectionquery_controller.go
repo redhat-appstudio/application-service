@@ -177,7 +177,7 @@ func (r *ComponentDetectionQueryReconciler) Reconcile(ctx context.Context, req c
 			}
 
 			clonePath = cdqInfo.ClonedRepo.ClonedPath
-			devfilePath = cdqInfo.DevfilePath
+			devfilePath, _ = cdqanalysis.GetDevfileAndDockerFilePaths(*cdqInfo)
 
 			maps.Copy(devfilesMap, devfilesMapReturned)
 			maps.Copy(dockerfileContextMap, dockerfileContextMapReturned)
