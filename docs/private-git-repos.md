@@ -23,18 +23,13 @@ In order to use HAS resources (e.g. `Applications`, `Components`, `ComponentDete
 
 ## Creating a Token
 
-1) In github, generate a new classic token with User and Repo scope
-
-
-To create a token to use with HAS:
-
-1) Create an `SPIAccessTokenBinding` resource with the following contents:
+1) In Github, generate a new classic token with User and Repo scope
+2)  To create a token to use with HAS, create an `SPIAccessTokenBinding` resource with the following contents:
    ```yaml
     apiVersion: appstudio.redhat.com/v1beta1
     kind: SPIAccessTokenBinding
     metadata:
       name: test-access-token-binding
-      namespace: default
     spec:
       permissions:
         required:
@@ -46,7 +41,7 @@ To create a token to use with HAS:
         type: kubernetes.io/basic-auth
    ```
    
-2) Create the resource in the namespace you will be creating HAS resources in.  Upon successful creation, the CR will be in `AwaitingTokenData` phase status and a corresponding SPIAccessToken CR will be created in the same namespace.
+3) Create the resource in the namespace you will be creating HAS resources in.  Upon successful creation, the CR will be in `AwaitingTokenData` phase status and a corresponding SPIAccessToken CR will be created in the same namespace.
 
 3) Upload the token: 
    1) Set the TARGET_NAMESPACE to where your CRs instances are.  Run `UPLOAD_URL=$(kubectl get spiaccesstokenbinding/test-access-token-binding -n $TARGET_NAMESPACE -o  json | jq -r .status.uploadUrl)`
