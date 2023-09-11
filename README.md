@@ -26,6 +26,9 @@ This repository is closely associated with the [application-api](https://github.
 * [Pact tests](./docs/pact-tests.md) - contract testing using a Pact framework is part of the unit tests
 * [OpenShift CI job artifacts](https://docs.ci.openshift.org/docs/how-tos/artifacts/) - Prow job executed by the CI system generates an artifacts directory, this doc describes the contents of this directory and how they can be used to investigate the job steps
 
+## Release
+
+For more information on the application-service release policy, please read the release [guideline](./docs/release.md).
 
 ## Contributions
 
