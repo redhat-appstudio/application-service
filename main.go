@@ -23,6 +23,8 @@ import (
 	"net/http"
 	"os"
 
+	spiapi "github.com/redhat-appstudio/service-provider-integration-operator/api/v1beta1"
+
 	gitopsgen "github.com/redhat-developer/gitops-generator/pkg"
 
 	// Import all Kubernetes client auth plugins (e.g. Azure, GCP, OIDC, etc.)
@@ -61,6 +63,8 @@ func init() {
 	utilruntime.Must(clientgoscheme.AddToScheme(scheme))
 
 	utilruntime.Must(appstudiov1alpha1.AddToScheme(scheme))
+
+	utilruntime.Must(spiapi.AddToScheme(scheme))
 
 	//+kubebuilder:scaffold:scheme
 }
@@ -156,7 +160,9 @@ func main() {
 		Generator:         gitopsgen.NewGitopsGen(),
 		AppFS:             ioutils.NewFilesystem(),
 		GitHubTokenClient: ghTokenClient,
-		SPIClient:         spi.SPIClient{},
+		SPIClient: spi.SPIClient{
+			K8sClient: mgr.GetClient(),
+		},
 	}).SetupWithManager(ctx, mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "Component")
 		os.Exit(1)
@@ -165,7 +171,6 @@ func main() {
 		Client:             mgr.GetClient(),
 		Scheme:             mgr.GetScheme(),
 		Log:                ctrl.Log.WithName("controllers").WithName("ComponentDetectionQuery"),
-		SPIClient:          spi.SPIClient{},
 		GitHubTokenClient:  ghTokenClient,
 		DevfileRegistryURL: devfileRegistryURL,
 		AppFS:              ioutils.NewFilesystem(),

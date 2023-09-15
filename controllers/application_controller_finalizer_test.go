@@ -20,6 +20,8 @@ import (
 	"context"
 	"testing"
 
+	"github.com/devfile/library/v2/pkg/devfile/parser"
+
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"github.com/prometheus/client_golang/prometheus"
@@ -63,10 +65,7 @@ var _ = Describe("Application controller finalizer counter tests", func() {
 			beforeDeleteFailedReqs := testutil.ToFloat64(metrics.ApplicationDeletionFailed)
 			// Create a simple Application CR and get its devfile
 			fetchedApp := createAndFetchSimpleApp(AppName, AppNamespace, DisplayName, Description)
-			devfileSrc := cdqanalysis.DevfileSrc{
-				Data: fetchedApp.Status.Devfile,
-			}
-			curDevfile, err := cdqanalysis.ParseDevfile(devfileSrc)
+			curDevfile, err := cdqanalysis.ParseDevfileWithParserArgs(&parser.ParserArgs{Data: []byte(fetchedApp.Status.Devfile)})
 
 			// Make sure the devfile model was properly set
 			Expect(fetchedApp.Status.Devfile).Should(Not(Equal("")))
@@ -110,10 +109,8 @@ var _ = Describe("Application controller finalizer counter tests", func() {
 			// Create an Application resource and get its devfile
 			fetchedHasApp := createAndFetchSimpleApp(AppName, AppNamespace, DisplayName, Description)
 			Expect(fetchedHasApp.Status.Devfile).Should(Not(Equal("")))
-			devfileSrc := cdqanalysis.DevfileSrc{
-				Data: fetchedHasApp.Status.Devfile,
-			}
-			curDevfile, err := cdqanalysis.ParseDevfile(devfileSrc)
+			curDevfile, err := cdqanalysis.ParseDevfileWithParserArgs(&parser.ParserArgs{Data: []byte(fetchedHasApp.Status.Devfile)})
+
 			Expect(err).ToNot(HaveOccurred())
 
 			// Set an invalid gitops URL and update the status of the resource

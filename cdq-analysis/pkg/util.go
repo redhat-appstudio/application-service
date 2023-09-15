@@ -32,19 +32,25 @@ import (
 	"github.com/redhat-developer/alizer/go/pkg/apis/model"
 )
 
-// CloneRepo clones the repoURL to clonePath
-func CloneRepo(clonePath, repoURL string, revision string, token string) error {
+type GitURL struct {
+	RepoURL  string // the repo URL where the devfile is located
+	Revision string
+	Token    string
+}
+
+// CloneRepo clones the repoURL to specfied clonePath
+func CloneRepo(clonePath string, gitURL GitURL) error {
 	exist, err := IsExist(clonePath)
 	if !exist || err != nil {
 		os.MkdirAll(clonePath, 0750)
 	}
-	cloneURL := repoURL
+	cloneURL := gitURL.RepoURL
 	// Execute does an exec.Command on the specified command
-	if token != "" {
-		tempStr := strings.Split(repoURL, "https://")
+	if gitURL.Token != "" {
+		tempStr := strings.Split(gitURL.RepoURL, "https://")
 
 		// e.g. https://token:<token>@github.com/owner/repoName.git
-		cloneURL = fmt.Sprintf("https://token:%s@%s", token, tempStr[1])
+		cloneURL = fmt.Sprintf("https://token:%s@%s", gitURL.Token, tempStr[1])
 	}
 	c := exec.Command("git", "clone", cloneURL, clonePath)
 	c.Dir = clonePath
@@ -58,13 +64,13 @@ func CloneRepo(clonePath, repoURL string, revision string, token string) error {
 		return fmt.Errorf("failed to clone the repo: %v", err)
 	}
 
-	if revision != "" {
-		c = exec.Command("git", "checkout", revision)
+	if gitURL.Revision != "" {
+		c = exec.Command("git", "checkout", gitURL.Revision)
 		c.Dir = clonePath
 
 		_, err = c.CombinedOutput()
 		if err != nil {
-			return fmt.Errorf("failed to checkout the revision %q: %v", revision, err)
+			return fmt.Errorf("failed to checkout the revision %q: %v", gitURL.Revision, err)
 		}
 	}
 

@@ -36,13 +36,11 @@ func main() {
 	gitToken := os.Getenv("GITHUB_TOKEN")
 
 	// Parse all of the possible command-line flags for the tool
-	var contextPath, URL, name, devfilePath, dockerfilePath, Revision, namespace, DevfileRegistryURL string
+	var contextPath, URL, name, Revision, namespace, DevfileRegistryURL string
 	var isDevfilePresent, isDockerfilePresent, createK8sJob bool
 	flag.StringVar(&name, "name", "", "The ComponentDetectionQuery name")
 	flag.StringVar(&contextPath, "contextPath", "./", "The context path for the cdq analysis")
 	flag.StringVar(&URL, "URL", "", "The URL for the git repository")
-	flag.StringVar(&devfilePath, "devfilePath", "", "The devfile path if the devfile present")
-	flag.StringVar(&dockerfilePath, "dockerfilePath", "", "The dockerfile path if the dockerfile present")
 	flag.StringVar(&Revision, "revision", "", "The revision of the git repo to run cdq analysis against with")
 	flag.StringVar(&DevfileRegistryURL, "devfileRegistryURL", pkg.DevfileRegistryEndpoint, "The devfile registry URL")
 	flag.StringVar(&namespace, "namespace", "", "The namespace from which to fetch resources")
@@ -80,7 +78,15 @@ func main() {
 		Log:          log,
 		CreateK8sJob: createK8sJob,
 	}
-	pkg.CloneAndAnalyze(k8sInfoClient, gitToken, namespace, name, contextPath, devfilePath, dockerfilePath, URL, Revision, DevfileRegistryURL, isDevfilePresent, isDockerfilePresent)
+
+	cdqInfo := &pkg.CDQInfoClient{
+		DevfileRegistryURL: DevfileRegistryURL,
+		GitURL:             pkg.GitURL{RepoURL: URL, Revision: Revision, Token: gitToken},
+	}
+
+	/* #nosec G104 -- the main.go is triggerred by docker image, and the result as well as the error will be send by the k8s job*/
+	pkg.CloneAndAnalyze(k8sInfoClient, namespace, name, contextPath, cdqInfo)
+
 }
 
 // validateVariables ensures that all of the necessary variables passed in are set to valid values

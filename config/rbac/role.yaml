@@ -126,6 +126,26 @@ rules:
   - list
   - watch
 - apiGroups:
+  - appstudio.redhat.com
+  resources:
+  - spifilecontentrequests
+  verbs:
+  - create
+  - get
+  - list
+- apiGroups:
+  - appstudio.redhat.com
+  resources:
+  - spifilecontentrequests/finalizers
+  verbs:
+  - update
+- apiGroups:
+  - appstudio.redhat.com
+  resources:
+  - spifilecontentrequests/status
+  verbs:
+  - get
+- apiGroups:
   - ""
   resources:
   - configmaps
