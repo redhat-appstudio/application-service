@@ -1,0 +1,28 @@
+name: Mark stale PRs and close rotten PRs
+
+on:
+  schedule:
+  - cron: "0 0 * * *"
+
+permissions:
+  contents: read
+
+jobs:
+  stale:
+
+    permissions:
+      pull-requests: write  # for actions/stale to close stale PRs
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/stale@v8
+      with:
+        repo-token: ${{ secrets.GITHUB_TOKEN }}
+        stale-pr-message: "A friendly reminder that this PR had no activity for 90 days. Stale PRs will be closed after an additional 30 days of inactivity."
+        close-pr-message: "This PR was closed because it has been inactive for 60 days since being marked as stale."
+        days-before-stale: 90
+        days-before-close: 60
+        stale-pr-label: 'lifecycle/stale'
+        exempt-pr-labels: 'lifecycle/frozen'
+        close-pr-label: 'lifecycle/rotten'
+        start-date: '2023-03-16T00:00:00Z'
