@@ -32,6 +32,7 @@ import (
 	"go.uber.org/zap/zapcore"
 	_ "k8s.io/client-go/plugin/pkg/client/auth"
 
+	"github.com/redhat-appstudio/operator-toolkit/webhook"
 	"k8s.io/apimachinery/pkg/runtime"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
@@ -44,6 +45,7 @@ import (
 	appstudiov1alpha1 "github.com/redhat-appstudio/application-api/api/v1alpha1"
 	cdqanalysis "github.com/redhat-appstudio/application-service/cdq-analysis/pkg"
 	"github.com/redhat-appstudio/application-service/controllers"
+	"github.com/redhat-appstudio/application-service/controllers/webhooks"
 	"github.com/redhat-appstudio/application-service/pkg/github"
 	"github.com/redhat-appstudio/application-service/pkg/spi"
 	"github.com/redhat-appstudio/application-service/pkg/util/ioutils"
@@ -181,14 +183,7 @@ func main() {
 
 	if os.Getenv("ENABLE_WEBHOOKS") != "false" {
 		setupLog.Info("setting up webhooks")
-		if err = (&appstudiov1alpha1.Component{}).SetupWebhookWithManager(mgr); err != nil {
-			setupLog.Error(err, "unable to create webhook", "webhook", "Component")
-			os.Exit(1)
-		}
-		if err = (&appstudiov1alpha1.Application{}).SetupWebhookWithManager(mgr); err != nil {
-			setupLog.Error(err, "unable to create webhook", "webhook", "Application")
-			os.Exit(1)
-		}
+		setUpWebhooks(mgr)
 	}
 
 	if err = (&controllers.SnapshotEnvironmentBindingReconciler{
@@ -216,6 +211,19 @@ func main() {
 	setupLog.Info("starting manager")
 	if err := mgr.Start(ctx); err != nil {
 		setupLog.Error(err, "problem running manager")
+		os.Exit(1)
+	}
+}
+
+// setUpWebhooks sets up webhooks.
+func setUpWebhooks(mgr ctrl.Manager) {
+	if os.Getenv("ENABLE_WEBHOOKS") == "false" {
+		return
+	}
+
+	err := webhook.SetupWebhooks(mgr, webhooks.EnabledWebhooks...)
+	if err != nil {
+		setupLog.Error(err, "unable to setup webhooks")
 		os.Exit(1)
 	}
 }
