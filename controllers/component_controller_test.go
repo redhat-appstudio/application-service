@@ -22,6 +22,8 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/devfile/library/v2/pkg/devfile/parser"
+
 	"github.com/devfile/api/v2/pkg/apis/workspaces/v1alpha2"
 	"github.com/devfile/api/v2/pkg/attributes"
 	data "github.com/devfile/library/v2/pkg/devfile/parser/data"
@@ -52,6 +54,7 @@ var _ = Describe("Component controller", func() {
 		Description     = "Simple petclinic app"
 		ComponentName   = "backend"
 		SampleRepoLink  = "https://github.com/devfile-samples/devfile-sample-java-springboot-basic"
+		gitToken        = "" //empty for public repo test
 	)
 
 	Context("Create Component with basic field set", func() {
@@ -115,17 +118,12 @@ var _ = Describe("Component controller", func() {
 			Expect(createdHasApp.Status.Devfile).Should(Not(Equal("")))
 
 			// Check the Component devfile
-			devfileSrc := cdqanalysis.DevfileSrc{
-				Data: createdHasComp.Status.Devfile,
-			}
-			_, err := cdqanalysis.ParseDevfile(devfileSrc)
+			_, err := cdqanalysis.ParseDevfileWithParserArgs(&parser.ParserArgs{Data: []byte(createdHasComp.Status.Devfile)})
 			Expect(err).Should(Not(HaveOccurred()))
 
 			// Check the HAS Application devfile
-			devfileSrc = cdqanalysis.DevfileSrc{
-				Data: createdHasApp.Status.Devfile,
-			}
-			hasAppDevfile, err := cdqanalysis.ParseDevfile(devfileSrc)
+			hasAppDevfile, err := cdqanalysis.ParseDevfileWithParserArgs(&parser.ParserArgs{Data: []byte(createdHasApp.Status.Devfile)})
+
 			Expect(err).Should(Not(HaveOccurred()))
 
 			// gitOpsRepo and appModelRepo should both be set
@@ -221,20 +219,16 @@ var _ = Describe("Component controller", func() {
 			Expect(createdHasApp.Status.Devfile).Should(Not(Equal("")))
 
 			// Check the Component devfile
-			devfileSrc := cdqanalysis.DevfileSrc{
-				Data: createdHasComp.Status.Devfile,
-			}
-			hasCompDevfile, err := cdqanalysis.ParseDevfile(devfileSrc)
+			hasCompDevfile, err := cdqanalysis.ParseDevfileWithParserArgs(&parser.ParserArgs{Data: []byte(createdHasComp.Status.Devfile)})
+
 			Expect(err).Should(Not(HaveOccurred()))
 
 			// Check if its Liberty
 			Expect(string(hasCompDevfile.GetMetadata().DisplayName)).Should(ContainSubstring("Liberty"))
 
 			// Check the HAS Application devfile
-			devfileSrc = cdqanalysis.DevfileSrc{
-				Data: createdHasApp.Status.Devfile,
-			}
-			hasAppDevfile, err := cdqanalysis.ParseDevfile(devfileSrc)
+			hasAppDevfile, err := cdqanalysis.ParseDevfileWithParserArgs(&parser.ParserArgs{Data: []byte(createdHasApp.Status.Devfile)})
+
 			Expect(err).Should(Not(HaveOccurred()))
 
 			// gitOpsRepo and appModelRepo should both be set
@@ -519,10 +513,7 @@ var _ = Describe("Component controller", func() {
 			Expect(createdHasApp.Status.Devfile).Should(Not(Equal("")))
 
 			// Check the Component devfile
-			devfileSrc := cdqanalysis.DevfileSrc{
-				Data: createdHasComp.Status.Devfile,
-			}
-			hasCompDevfile, err := cdqanalysis.ParseDevfile(devfileSrc)
+			hasCompDevfile, err := cdqanalysis.ParseDevfileWithParserArgs(&parser.ParserArgs{Data: []byte(createdHasComp.Status.Devfile)})
 			Expect(err).Should(Not(HaveOccurred()))
 
 			checklist := updateChecklist{
@@ -536,10 +527,7 @@ var _ = Describe("Component controller", func() {
 			verifyHASComponentUpdates(hasCompDevfile, checklist, nil)
 
 			// Check the HAS Application devfile
-			devfileSrc = cdqanalysis.DevfileSrc{
-				Data: createdHasApp.Status.Devfile,
-			}
-			hasAppDevfile, err := cdqanalysis.ParseDevfile(devfileSrc)
+			hasAppDevfile, err := cdqanalysis.ParseDevfileWithParserArgs(&parser.ParserArgs{Data: []byte(createdHasApp.Status.Devfile)})
 			Expect(err).Should(Not(HaveOccurred()))
 
 			// gitOpsRepo and appModelRepo should both be set
@@ -587,10 +575,8 @@ var _ = Describe("Component controller", func() {
 			Expect(updatedHasComp.Status.Devfile).Should(Not(Equal("")))
 
 			// Check the Component updated devfile
-			devfileSrc = cdqanalysis.DevfileSrc{
-				Data: updatedHasComp.Status.Devfile,
-			}
-			hasCompUpdatedDevfile, err := cdqanalysis.ParseDevfile(devfileSrc)
+			hasCompUpdatedDevfile, err := cdqanalysis.ParseDevfileWithParserArgs(&parser.ParserArgs{Data: []byte(updatedHasComp.Status.Devfile)})
+
 			Expect(err).Should(Not(HaveOccurred()))
 
 			checklist = updateChecklist{
@@ -667,10 +653,8 @@ var _ = Describe("Component controller", func() {
 			Expect(createdHasApp.Status.Devfile).Should(Not(Equal("")))
 
 			// Check the Component devfile
-			devfileSrc := cdqanalysis.DevfileSrc{
-				Data: createdHasComp.Status.Devfile,
-			}
-			_, err := cdqanalysis.ParseDevfile(devfileSrc)
+			_, err := cdqanalysis.ParseDevfileWithParserArgs(&parser.ParserArgs{Data: []byte(createdHasComp.Status.Devfile)})
+
 			Expect(err).Should(Not(HaveOccurred()))
 
 			// Make sure the component's built image is included in the status
@@ -921,10 +905,9 @@ var _ = Describe("Component controller", func() {
 			componentName := HASCompName + "10"
 
 			hasApp := createAndFetchSimpleApp(applicationName, HASAppNamespace, DisplayName, Description)
-			devfileSrc := cdqanalysis.DevfileSrc{
-				Data: hasApp.Status.Devfile,
-			}
-			curDevfile, err := cdqanalysis.ParseDevfile(devfileSrc)
+			curDevfile, err := cdqanalysis.ParseDevfileWithParserArgs(&parser.ParserArgs{
+				Data: []byte(hasApp.Status.Devfile),
+			})
 			Expect(err).ToNot(HaveOccurred())
 
 			// Remove the gitops URL and update the status of the resource
@@ -1161,8 +1144,9 @@ var _ = Describe("Component controller", func() {
 		})
 	})
 
-	Context("Create Component with git secret field set to valid secret", func() {
-		It("Should create successfully", func() {
+	Context("Create Component with git secret field set to an invalid secret", func() {
+		It("Should error out due parse error", func() {
+			// the secret exists but it's not a real one that we can use to access a live repo
 			ctx := context.Background()
 
 			applicationName := HASAppName + "14"
@@ -1216,13 +1200,14 @@ var _ = Describe("Component controller", func() {
 			createdHasComp := &appstudiov1alpha1.Component{}
 			Eventually(func() bool {
 				k8sClient.Get(context.Background(), hasCompLookupKey, createdHasComp)
-				return len(createdHasComp.Status.Conditions) > 1
+				return len(createdHasComp.Status.Conditions) == 1
 			}, timeout, interval).Should(BeTrue())
 
-			// Make sure no err was set
-			Expect(createdHasComp.Status.Devfile).Should(Not(Equal("")))
-			Expect(createdHasComp.Status.Conditions[len(createdHasComp.Status.Conditions)-1].Status).Should(Equal(metav1.ConditionTrue))
-
+			// Make sure the err was set
+			Expect(createdHasComp.Status.Devfile).Should(Equal(""))
+			Expect(createdHasComp.Status.Conditions[len(createdHasComp.Status.Conditions)-1].Status).Should(Equal(metav1.ConditionFalse))
+			// This test case uses an invalid token with a public URL.  The Devfile library expects an unset token and will error out trying to retrieve the devfile since it assumes it's from a private repo
+			Expect(strings.ToLower(createdHasComp.Status.Conditions[len(createdHasComp.Status.Conditions)-1].Message)).Should(ContainSubstring("component create failed: failed to populateandparsedevfile: error getting devfile info from url: failed to retrieve"))
 			hasAppLookupKey := types.NamespacedName{Name: applicationName, Namespace: HASAppNamespace}
 
 			// Delete the specified HASComp resource
@@ -1511,10 +1496,8 @@ var _ = Describe("Component controller", func() {
 			Expect(createdHasApp.Status.Devfile).Should(Not(Equal("")))
 
 			// Check the Component devfile
-			devfileSrc := cdqanalysis.DevfileSrc{
-				Data: createdHasComp.Status.Devfile,
-			}
-			hasCompDevfile, err := cdqanalysis.ParseDevfile(devfileSrc)
+			hasCompDevfile, err := cdqanalysis.ParseDevfileWithParserArgs(&parser.ParserArgs{Data: []byte(createdHasComp.Status.Devfile)})
+
 			Expect(err).Should(Not(HaveOccurred()))
 
 			dockerfileComponents, err := hasCompDevfile.GetComponents(common.DevfileOptions{})
@@ -1532,10 +1515,7 @@ var _ = Describe("Component controller", func() {
 			}
 
 			// Check the HAS Application devfile
-			devfileSrc = cdqanalysis.DevfileSrc{
-				Data: createdHasApp.Status.Devfile,
-			}
-			hasAppDevfile, err := cdqanalysis.ParseDevfile(devfileSrc)
+			hasAppDevfile, err := cdqanalysis.ParseDevfileWithParserArgs(&parser.ParserArgs{Data: []byte(createdHasApp.Status.Devfile)})
 			Expect(err).Should(Not(HaveOccurred()))
 
 			// gitOpsRepo and appModelRepo should both be set
@@ -1701,10 +1681,7 @@ var _ = Describe("Component controller", func() {
 			Expect(createdHasApp.Status.Devfile).Should(Not(Equal("")))
 
 			// Check the Component devfile
-			src := cdqanalysis.DevfileSrc{
-				Data: createdHasComp.Status.Devfile,
-			}
-			hasCompDevfile, err := cdqanalysis.ParseDevfile(src)
+			hasCompDevfile, err := cdqanalysis.ParseDevfileWithParserArgs(&parser.ParserArgs{Data: []byte(createdHasComp.Status.Devfile)})
 			Expect(err).Should(Not(HaveOccurred()))
 
 			devfileComponents, err := hasCompDevfile.GetComponents(common.DevfileOptions{})
@@ -1719,10 +1696,8 @@ var _ = Describe("Component controller", func() {
 			}
 
 			// Check the HAS Application devfile
-			src = cdqanalysis.DevfileSrc{
-				Data: createdHasApp.Status.Devfile,
-			}
-			hasAppDevfile, err := cdqanalysis.ParseDevfile(src)
+			hasAppDevfile, err := cdqanalysis.ParseDevfileWithParserArgs(&parser.ParserArgs{Data: []byte(createdHasApp.Status.Devfile)})
+
 			Expect(err).Should(Not(HaveOccurred()))
 
 			// gitOpsRepo and appModelRepo should both be set
@@ -1776,9 +1751,7 @@ var _ = Describe("Component controller", func() {
 				return fetchedHasApp.Status.Devfile != ""
 			}, timeout, interval).Should(BeTrue())
 
-			hasAppDevfile, err := cdqanalysis.ParseDevfile(cdqanalysis.DevfileSrc{
-				Data: fetchedHasApp.Status.Devfile,
-			})
+			hasAppDevfile, err := cdqanalysis.ParseDevfileWithParserArgs(&parser.ParserArgs{Data: []byte(fetchedHasApp.Status.Devfile)})
 			Expect(err).Should(Not(HaveOccurred()))
 
 			// Update the GitOps Repo to a URI that mocked API returns a dummy err
@@ -1792,9 +1765,7 @@ var _ = Describe("Component controller", func() {
 			fetchedHasApp = &appstudiov1alpha1.Application{}
 			Eventually(func() bool {
 				k8sClient.Get(context.Background(), hasAppLookupKey, fetchedHasApp)
-				hasAppDevfile, err := cdqanalysis.ParseDevfile(cdqanalysis.DevfileSrc{
-					Data: fetchedHasApp.Status.Devfile,
-				})
+				hasAppDevfile, err := cdqanalysis.ParseDevfileWithParserArgs(&parser.ParserArgs{Data: []byte(fetchedHasApp.Status.Devfile)})
 				Expect(err).Should(Not(HaveOccurred()))
 				gitOpsRepoURL := hasAppDevfile.GetMetadata().Attributes.GetString("gitOpsRepository.url", &err)
 				Expect(err).Should(Not(HaveOccurred()))
@@ -1891,8 +1862,8 @@ var _ = Describe("Component controller", func() {
 				return fetchedHasApp.Status.Devfile != ""
 			}, timeout, interval).Should(BeTrue())
 
-			hasAppDevfile, err := cdqanalysis.ParseDevfile(cdqanalysis.DevfileSrc{
-				Data: fetchedHasApp.Status.Devfile,
+			hasAppDevfile, err := cdqanalysis.ParseDevfileWithParserArgs(&parser.ParserArgs{
+				Data: []byte(fetchedHasApp.Status.Devfile),
 			})
 			Expect(err).Should(Not(HaveOccurred()))
 
@@ -1907,8 +1878,8 @@ var _ = Describe("Component controller", func() {
 			fetchedHasApp = &appstudiov1alpha1.Application{}
 			Eventually(func() bool {
 				k8sClient.Get(context.Background(), hasAppLookupKey, fetchedHasApp)
-				hasAppDevfile, err := cdqanalysis.ParseDevfile(cdqanalysis.DevfileSrc{
-					Data: fetchedHasApp.Status.Devfile,
+				hasAppDevfile, err := cdqanalysis.ParseDevfileWithParserArgs(&parser.ParserArgs{
+					Data: []byte(fetchedHasApp.Status.Devfile),
 				})
 				Expect(err).Should(Not(HaveOccurred()))
 				gitOpsRepoURL := hasAppDevfile.GetMetadata().Attributes.GetString("gitOpsRepository.url", &err)

@@ -20,6 +20,8 @@ import (
 	"context"
 	"time"
 
+	"github.com/devfile/library/v2/pkg/devfile/parser"
+
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	appstudiov1alpha1 "github.com/redhat-appstudio/application-api/api/v1alpha1"
@@ -82,10 +84,7 @@ var _ = Describe("Application controller", func() {
 			// Make sure the devfile model was properly set
 			Expect(createdHasApp.Status.Devfile).Should(Not(Equal("")))
 
-			devfileSrc := cdqanalysis.DevfileSrc{
-				Data: createdHasApp.Status.Devfile,
-			}
-			devfile, err := cdqanalysis.ParseDevfile(devfileSrc)
+			devfile, err := cdqanalysis.ParseDevfileWithParserArgs(&parser.ParserArgs{Data: []byte(createdHasApp.Status.Devfile)})
 			Expect(err).Should(Not(HaveOccurred()))
 
 			// gitOpsRepo and appModelRepo should both be set
@@ -130,10 +129,8 @@ var _ = Describe("Application controller", func() {
 			// Make sure the devfile model was properly set
 			Expect(createdHasApp.Status.Devfile).Should(Not(Equal("")))
 
-			devfileSrc := cdqanalysis.DevfileSrc{
-				Data: createdHasApp.Status.Devfile,
-			}
-			devfile, err := cdqanalysis.ParseDevfile(devfileSrc)
+			devfile, err := cdqanalysis.ParseDevfileWithParserArgs(&parser.ParserArgs{Data: []byte(createdHasApp.Status.Devfile)})
+
 			Expect(err).Should(Not(HaveOccurred()))
 
 			// gitOpsRepo and appModelRepo should both be set
@@ -183,10 +180,8 @@ var _ = Describe("Application controller", func() {
 			// Make sure the devfile model was properly set
 			Expect(createdHasApp.Status.Devfile).Should(Not(Equal("")))
 
-			devfileSrc := cdqanalysis.DevfileSrc{
-				Data: createdHasApp.Status.Devfile,
-			}
-			devfile, err := cdqanalysis.ParseDevfile(devfileSrc)
+			devfile, err := cdqanalysis.ParseDevfileWithParserArgs(&parser.ParserArgs{Data: []byte(createdHasApp.Status.Devfile)})
+
 			Expect(err).Should(Not(HaveOccurred()))
 
 			// gitOpsRepo and appModelRepo should both be set
@@ -238,10 +233,8 @@ var _ = Describe("Application controller", func() {
 			// Make sure the devfile model was properly set
 			Expect(createdHasApp.Status.Devfile).Should(Not(Equal("")))
 
-			devfileSrc := cdqanalysis.DevfileSrc{
-				Data: createdHasApp.Status.Devfile,
-			}
-			devfile, err := cdqanalysis.ParseDevfile(devfileSrc)
+			devfile, err := cdqanalysis.ParseDevfileWithParserArgs(&parser.ParserArgs{Data: []byte(createdHasApp.Status.Devfile)})
+
 			Expect(err).Should(Not(HaveOccurred()))
 
 			// gitOpsRepo and appModelRepo should both be set
@@ -304,10 +297,8 @@ var _ = Describe("Application controller", func() {
 				return fetchedHasApp.Status.Conditions[len(fetchedHasApp.Status.Conditions)-1].Type == "Updated"
 			}, timeout, interval).Should(BeTrue())
 
-			devfileSrc := cdqanalysis.DevfileSrc{
-				Data: fetchedHasApp.Status.Devfile,
-			}
-			devfile, err := cdqanalysis.ParseDevfile(devfileSrc)
+			devfile, err := cdqanalysis.ParseDevfileWithParserArgs(&parser.ParserArgs{Data: []byte(fetchedHasApp.Status.Devfile)})
+
 			Expect(err).Should(Not(HaveOccurred()))
 			Expect(string(devfile.GetMetadata().Name)).Should(Equal("newname"))
 			Expect(string(devfile.GetMetadata().Description)).Should(Equal("New Description"))

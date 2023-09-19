@@ -20,6 +20,16 @@ spec:
         - containerPort: 8443
           protocol: TCP
           name: https
+        securityContext:
+          allowPrivilegeEscalation: false
+          readOnlyRootFilesystem: true
+        resources:
+          limits:
+            cpu: 500m
+            memory: 400Mi
+          requests:
+            cpu: 100m
+            memory: 20Mi
       - name: manager
         args:
         - "--health-probe-bind-address=:8081"

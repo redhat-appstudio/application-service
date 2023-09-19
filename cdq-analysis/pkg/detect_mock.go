@@ -179,7 +179,7 @@ func (a MockAlizerClient) DetectComponents(path string) ([]model.Component, erro
 							"Mux",
 						},
 						Tools: []string{
-							"1.18",
+							"1.19",
 						},
 						Weight:         100,
 						CanBeComponent: true,

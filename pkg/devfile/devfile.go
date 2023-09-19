@@ -341,20 +341,40 @@ func GetResourceFromDevfile(log logr.Logger, devfileData data.DevfileData, deplo
 
 					if currentPort > 0 {
 						servicePort := corev1.ServicePort{
+							Name:       strconv.Itoa(currentPort),
 							Port:       int32(currentPort),
 							TargetPort: intstr.FromInt(currentPort),
 						}
 
 						isPresent := false
+						portNameMap := make(map[string]bool)
 						for _, port := range resources.Services[0].Spec.Ports {
+							portNameMap[port.Name] = true
 							if port.Port == servicePort.Port {
 								isPresent = true
-								break
 							}
 						}
 
 						if !isPresent {
+							if portNameMap[servicePort.Name] {
+								generatedName := fmt.Sprintf("%s-%s", servicePort.Name, util.GetRandomString(4, true))
+								portNameMap[generatedName] = true
+								servicePort.Name = generatedName
+							}
 							resources.Services[0].Spec.Ports = append(resources.Services[0].Spec.Ports, servicePort)
+
+							for i, port := range resources.Services[0].Spec.Ports {
+								if port.Name == "" {
+									// if port name is empty for other service ports, assign a name
+									// because name is required if there is more than one port
+									portName := strconv.Itoa(int(port.Port))
+									if portNameMap[portName] {
+										portName = fmt.Sprintf("%s-%s", portName, util.GetRandomString(4, true))
+										portNameMap[portName] = true
+									}
+									resources.Services[0].Spec.Ports[i].Name = portName
+								}
+							}
 						}
 					}
 				}
@@ -724,9 +744,8 @@ func getMatchLabel(name string) map[string]string {
 func FindAndDownloadDevfile(dir string) ([]byte, string, error) {
 	var devfileBytes []byte
 	var err error
-	validDevfileLocations := []string{cdqanalysis.Devfile, cdqanalysis.HiddenDevfile, cdqanalysis.HiddenDirDevfile, cdqanalysis.HiddenDirHiddenDevfile}
 
-	for _, path := range validDevfileLocations {
+	for _, path := range cdqanalysis.ValidDevfileLocations {
 		devfilePath := dir + "/" + path
 		devfileBytes, err = DownloadFile(devfilePath)
 		if err == nil {
@@ -743,10 +762,8 @@ func FindAndDownloadDockerfile(dir string) ([]byte, string, error) {
 	var dockerfileBytes []byte
 	var err error
 	// Containerfile is an alternate name for Dockerfile
-	validDockerfileLocations := []string{cdqanalysis.Dockerfile, cdqanalysis.DockerDirDockerfile, cdqanalysis.HiddenDirDockerfile, cdqanalysis.BuildDirDockerfile,
-		cdqanalysis.Containerfile, cdqanalysis.DockerDirContainerfile, cdqanalysis.HiddenDirContainerfile, cdqanalysis.BuildDirContainerfile}
 
-	for _, path := range validDockerfileLocations {
+	for _, path := range cdqanalysis.ValidDockerfileLocations {
 		dockerfilePath := dir + "/" + path
 		dockerfileBytes, err = DownloadFile(dockerfilePath)
 		if err == nil {

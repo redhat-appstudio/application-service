@@ -2510,7 +2510,7 @@ schemaVersion: 2.2.0`
 			Eventually(func() bool {
 				k8sClient.Get(context.Background(), hasCompLookupKey, updatedHasComp)
 				return updatedHasComp.Status.Devfile == kubernetesInlinedDevfileDeploy
-			}, timeout, interval).Should(BeTrue())
+			}, timeout20s, interval).Should(BeTrue())
 
 			appSnapshot := &appstudiov1alpha1.Snapshot{
 				TypeMeta: metav1.TypeMeta{

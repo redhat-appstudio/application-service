@@ -104,7 +104,11 @@ func TestAnalyzeAndDetectDevfile(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			err := CloneRepo(tt.clonePath, tt.repo, tt.revision, tt.token)
+			err := CloneRepo(tt.clonePath, GitURL{
+				RepoURL:  tt.repo,
+				Revision: tt.revision,
+				Token:    tt.token,
+			})
 			if err != nil {
 				t.Errorf("got unexpected error %v", err)
 			} else {
@@ -183,7 +187,11 @@ func TestSelectDevfileFromTypes(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			os.RemoveAll(tt.clonePath)
-			err := CloneRepo(tt.clonePath, tt.repo, "main", "")
+			err := CloneRepo(tt.clonePath, GitURL{
+				RepoURL:  tt.repo,
+				Revision: "main",
+				Token:    "",
+			})
 			if err != nil {
 				t.Errorf("got unexpected error %v", err)
 			}
@@ -245,7 +253,7 @@ components:
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			devfileBytes := []byte(tt.devfileString)
-			dockerfileImage, err := SearchForDockerfile(devfileBytes)
+			dockerfileImage, err := SearchForDockerfile(devfileBytes, "")
 			if !tt.wantErr && err != nil {
 				t.Errorf("Unexpected err: %+v", err)
 			} else if tt.wantErr && err == nil {

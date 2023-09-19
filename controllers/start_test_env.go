@@ -20,6 +20,8 @@ import (
 	"go/build"
 	"path/filepath"
 
+	spiapi "github.com/redhat-appstudio/service-provider-integration-operator/api/v1beta1"
+
 	"github.com/redhat-appstudio/application-service/gitops"
 
 	ginkgo "github.com/onsi/ginkgo"
@@ -54,12 +56,14 @@ func setupTestEnv() {
 
 	ctx, cancel = context.WithCancel(context.TODO())
 	applicationAPIDepVersion := "v0.0.0-20230616144210-9dad8e40e3ed"
+	spiAPIDepVersion := "v0.2023.22-0.20230713080056-eae17aa8c172"
 
 	ginkgo.By("bootstrapping test environment")
 	testEnv = &envtest.Environment{
 		CRDDirectoryPaths: []string{
 			filepath.Join("..", "hack", "routecrd"),
 			filepath.Join(build.Default.GOPATH, "pkg", "mod", "github.com", "redhat-appstudio", "application-api@"+applicationAPIDepVersion, "manifests"),
+			filepath.Join(build.Default.GOPATH, "pkg", "mod", "github.com", "redhat-appstudio", "service-provider-integration-operator@"+spiAPIDepVersion, "config", "crd", "bases"),
 		},
 		ErrorIfCRDPathMissing: true,
 	}
@@ -72,6 +76,9 @@ func setupTestEnv() {
 	gomega.Expect(err).NotTo(gomega.HaveOccurred())
 
 	err = routev1.AddToScheme(scheme.Scheme)
+	gomega.Expect(err).NotTo(gomega.HaveOccurred())
+
+	err = spiapi.AddToScheme(scheme.Scheme)
 	gomega.Expect(err).NotTo(gomega.HaveOccurred())
 
 	//+kubebuilder:scaffold:scheme
@@ -112,7 +119,6 @@ func setupTestEnv() {
 		Client:             k8sManager.GetClient(),
 		Scheme:             k8sManager.GetScheme(),
 		Log:                ctrl.Log.WithName("controllers").WithName("ComponentDetectionQuery"),
-		SPIClient:          spi.MockSPIClient{},
 		GitHubTokenClient:  mockGhTokenClient,
 		DevfileRegistryURL: cdqanalysis.DevfileStageRegistryEndpoint, // Use the staging devfile registry for tests
 		AppFS:              ioutils.NewMemoryFilesystem(),

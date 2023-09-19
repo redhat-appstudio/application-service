@@ -33,8 +33,8 @@ import (
 	devfileParser "github.com/devfile/library/v2/pkg/devfile/parser"
 	"github.com/go-logr/logr"
 	appstudiov1alpha1 "github.com/redhat-appstudio/application-api/api/v1alpha1"
-	devfile "github.com/redhat-appstudio/application-service/pkg/devfile"
-	github "github.com/redhat-appstudio/application-service/pkg/github"
+	"github.com/redhat-appstudio/application-service/pkg/devfile"
+	"github.com/redhat-appstudio/application-service/pkg/github"
 	logutil "github.com/redhat-appstudio/application-service/pkg/log"
 	"github.com/redhat-appstudio/application-service/pkg/util"
 	"github.com/redhat-appstudio/application-service/pkg/util/ioutils"
@@ -201,10 +201,28 @@ func (r *SnapshotEnvironmentBindingReconciler) Reconcile(ctx context.Context, re
 			return ctrl.Result{}, err
 		}
 
-		devfileSrc := cdqanalysis.DevfileSrc{
-			Data: hasComponent.Status.Devfile,
+		parserArgs := &devfileParser.ParserArgs{Data: []byte(hasComponent.Status.Devfile)}
+		var gitToken string
+		//get the token to pass into the parser
+		if hasComponent.Spec.Secret != "" {
+			gitSecret := corev1.Secret{}
+			namespacedName := types.NamespacedName{
+				Name:      hasComponent.Spec.Secret,
+				Namespace: hasComponent.Namespace,
+			}
+
+			err = r.Client.Get(ctx, namespacedName, &gitSecret)
+			if err != nil {
+				log.Error(err, fmt.Sprintf("Unable to retrieve Git secret %v, exiting reconcile loop %v", hasComponent.Spec.Secret, req.NamespacedName))
+				r.SetConditionAndUpdateCR(ctx, req, &appSnapshotEnvBinding, err)
+				return ctrl.Result{}, err
+			}
+
+			gitToken = string(gitSecret.Data["password"])
 		}
-		compDevfileData, err := cdqanalysis.ParseDevfile(devfileSrc)
+
+		parserArgs.Token = gitToken
+		compDevfileData, err := cdqanalysis.ParseDevfileWithParserArgs(parserArgs)
 		if err != nil {
 			errMsg := fmt.Sprintf("Unable to parse the devfile from Component status, exiting reconcile loop %v", req.NamespacedName)
 			log.Error(err, errMsg)

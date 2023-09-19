@@ -76,11 +76,31 @@ var (
 		//tokenName - the name of the token being rate limited
 		[]string{"rateLimited", "tokenName"},
 	)
+
+	ApplicationDeletionTotalReqs = prometheus.NewCounter(
+		prometheus.CounterOpts{
+			Name: "has_application_deletion_total",
+			Help: "Number of application deletion requests processed",
+		},
+	)
+	ApplicationDeletionFailed = prometheus.NewCounter(
+		prometheus.CounterOpts{
+			Name: "has_application_failed_deletion_total",
+			Help: "Number of failed application deletion requests",
+		},
+	)
+
+	ApplicationDeletionSucceeded = prometheus.NewCounter(
+		prometheus.CounterOpts{
+			Name: "has_application_successful_deletion_total",
+			Help: "Number of successful application deletion requests",
+		},
+	)
 )
 
 func init() {
 	// Register custom metrics with the global prometheus registry
-	metrics.Registry.MustRegister(GitOpsRepoCreationTotalReqs, GitOpsRepoCreationFailed, GitOpsRepoCreationSucceeded, ControllerGitRequest, SecondaryRateLimitCounter, PrimaryRateLimitCounter, TokenPoolGauge)
+	metrics.Registry.MustRegister(GitOpsRepoCreationTotalReqs, GitOpsRepoCreationFailed, GitOpsRepoCreationSucceeded, ControllerGitRequest, SecondaryRateLimitCounter, PrimaryRateLimitCounter, TokenPoolGauge, ApplicationDeletionTotalReqs, ApplicationDeletionSucceeded, ApplicationDeletionFailed)
 }
 
 // HandleRateLimitMetrics checks the error type to verify a primary or secondary rate limit has been encountered

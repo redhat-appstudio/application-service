@@ -16,7 +16,6 @@
 package pkg
 
 import (
-	"io/ioutil"
 	"net"
 	"net/http"
 	"net/http/httptest"
@@ -76,7 +75,7 @@ schemaVersion: 2.2.0`
 	if err != nil {
 		t.Errorf("TestParseDevfileModel() error: failed to create folder: %v, error: %v", localPath, err)
 	}
-	err = ioutil.WriteFile(localDevfilePath, []byte(simpleDevfile), 0644)
+	err = os.WriteFile(localDevfilePath, []byte(simpleDevfile), 0644)
 	if err != nil {
 		t.Errorf("TestParseDevfileModel() error: fail to write to file: %v", err)
 	}
@@ -127,21 +126,15 @@ schemaVersion: 2.2.0`
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			var devfileSrc DevfileSrc
+			parserArgs := &parser.ParserArgs{}
 			if tt.devfileString != "" {
-				devfileSrc = DevfileSrc{
-					Data: tt.devfileString,
-				}
+				parserArgs.Data = []byte(tt.devfileString)
 			} else if tt.devfileURL != "" {
-				devfileSrc = DevfileSrc{
-					URL: tt.devfileURL,
-				}
+				parserArgs.URL = tt.devfileURL
 			} else if tt.devfilePath != "" {
-				devfileSrc = DevfileSrc{
-					Path: tt.devfilePath,
-				}
+				parserArgs.Path = tt.devfilePath
 			}
-			devfile, err := ParseDevfile(devfileSrc)
+			devfile, err := ParseDevfileWithParserArgs(parserArgs)
 			if err != nil {
 				t.Errorf("TestParseDevfileModel() unexpected error: %v", err)
 			} else {
@@ -281,12 +274,20 @@ func TestScanRepo(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			logger = ctrl.Log.WithName("TestScanRepo")
-			err := CloneRepo(tt.clonePath, tt.repo, tt.revision, tt.token)
+			err := CloneRepo(tt.clonePath, GitURL{
+				RepoURL:  tt.repo,
+				Revision: tt.revision,
+				Token:    tt.token,
+			})
 			URL := tt.repo
 			if err != nil {
 				t.Errorf("got unexpected error %v", err)
 			} else {
-				devfileMap, devfileURLMap, dockerfileMap, portsMap, err := ScanRepo(logger, alizerClient, tt.clonePath, DevfileStageRegistryEndpoint, URL, "", "")
+				devfileInfo := CDQInfoClient{
+					DevfileRegistryURL: DevfileStageRegistryEndpoint,
+					GitURL:             GitURL{RepoURL: URL},
+				}
+				devfileMap, devfileURLMap, dockerfileMap, portsMap, err := ScanRepo(logger, alizerClient, tt.clonePath, "", devfileInfo)
 				if tt.wantErr && (err == nil) {
 					t.Error("wanted error but got nil")
 				} else if !tt.wantErr && err != nil {
@@ -339,6 +340,8 @@ func TestValidateDevfile(t *testing.T) {
 		HTTPTimeout:                   &httpTimeout,
 		ConvertKubernetesContentInUri: &convert,
 	}
+
+	parserArgs.DevfileUtilsClient = parser.NewMockDevfileUtilsClient()
 
 	springDevfileParser := parserArgs
 	springDevfileParser.URL = "https://raw.githubusercontent.com/devfile-samples/devfile-sample-java-springboot-basic/main/devfile.yaml"
@@ -424,7 +427,7 @@ func TestValidateDevfile(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			shouldIgnoreDevfile, devfileBytes, err := ValidateDevfile(logger, tt.url)
+			shouldIgnoreDevfile, devfileBytes, err := ValidateDevfile(logger, tt.url, "")
 			if (err != nil) != tt.wantErr {
 				t.Errorf("TestValidateDevfile() unexpected error: %v", err)
 			}

@@ -20,6 +20,11 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/devfile/library/v2/pkg/devfile/parser"
+
+	"k8s.io/apimachinery/pkg/api/errors"
+	ctrl "sigs.k8s.io/controller-runtime"
+
 	appstudiov1alpha1 "github.com/redhat-appstudio/application-api/api/v1alpha1"
 	cdqanalysis "github.com/redhat-appstudio/application-service/cdq-analysis/pkg"
 	github "github.com/redhat-appstudio/application-service/pkg/github"
@@ -39,12 +44,10 @@ func (r *ComponentReconciler) AddFinalizer(ctx context.Context, component *appst
 
 // Finalize deletes the corresponding devfile project or the devfile attribute entry from the Application CR and also deletes the corresponding GitOps repo's Component dir
 // & updates the parent kustomize for the given Component CR.
-func (r *ComponentReconciler) Finalize(ctx context.Context, component *appstudiov1alpha1.Component, application *appstudiov1alpha1.Application, ghClient *github.GitHubClient) error {
+func (r *ComponentReconciler) Finalize(ctx context.Context, component *appstudiov1alpha1.Component, application *appstudiov1alpha1.Application, ghClient *github.GitHubClient, token string) error {
 	// Get the Application CR devfile
-	devfileSrc := cdqanalysis.DevfileSrc{
-		Data: application.Status.Devfile,
-	}
-	devfileObj, err := cdqanalysis.ParseDevfile(devfileSrc)
+	devfileObj, err := cdqanalysis.ParseDevfileWithParserArgs(&parser.ParserArgs{Data: []byte(application.Status.Devfile), Token: token})
+
 	if err != nil {
 		return err
 	}
@@ -72,6 +75,15 @@ func (r *ComponentReconciler) Finalize(ctx context.Context, component *appstudio
 
 	application.Status.Devfile = string(yamldevfileObj)
 
+	err = r.Status().Update(ctx, application)
+	if err != nil {
+		if errors.IsConflict(err) {
+			return err
+		}
+		log := ctrl.LoggerFrom(ctx)
+		log.Error(err, "Failed to update application in finalizer, will not retry to prevent finalizer loop")
+	}
+
 	gitOpsURL, gitOpsBranch, gitOpsContext, err := util.ProcessGitOpsStatus(component.Status.GitOps, ghClient.Token)
 	if err != nil {
 		return err
@@ -90,10 +102,5 @@ func (r *ComponentReconciler) Finalize(ctx context.Context, component *appstudio
 		return err
 	}
 
-	err = r.AppFS.RemoveAll(tempDir)
-	if err != nil {
-		return err
-	}
-
-	return r.Status().Update(ctx, application)
+	return r.AppFS.RemoveAll(tempDir)
 }
