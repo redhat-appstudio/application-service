@@ -34,7 +34,9 @@ func TestAPIs(t *testing.T) {
 		"Controller Suite")
 }
 
-var _ = BeforeSuite(setupTestEnv, 60)
+var _ = BeforeSuite(func() {
+	SetupTestEnv()
+}, 60)
 
 var _ = AfterSuite(func() {
 	cancel()
