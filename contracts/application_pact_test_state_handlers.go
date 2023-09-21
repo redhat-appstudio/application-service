@@ -76,46 +76,36 @@ func createAppAndComponents(HASAppNamespace string) models.StateHandler {
 		gomega.Expect(k8sClient.Create(ctx, hasApp)).Should(gomega.Succeed())
 		hasAppLookupKey := types.NamespacedName{Name: appName, Namespace: HASAppNamespace}
 		createdHasApp := &appstudiov1alpha1.Application{}
-		for i := 0; i < 12; i++ {
-			gomega.Expect(k8sClient.Get(context.Background(), hasAppLookupKey, createdHasApp)).Should(gomega.Succeed())
+		gomega.Eventually(func() bool {
+			k8sClient.Get(context.Background(), hasAppLookupKey, createdHasApp)
 			if len(createdHasApp.Status.Conditions) > 0 {
-				if createdHasApp.Status.Conditions[0].Type == "Created" {
-					break
-				}
+				return createdHasApp.Status.Conditions[0].Type == "Created"
 			}
-			time.Sleep(10 * time.Second)
-		}
+			return false
+		}, timeout, interval).Should(gomega.BeTrue())
 
 		//create gh component
 		gomega.Expect(k8sClient.Create(ctx, ghComp)).Should(gomega.Succeed())
 		hasCompLookupKey := types.NamespacedName{Name: ghCompName, Namespace: HASAppNamespace}
 		createdHasComp := &appstudiov1alpha1.Component{}
-		for i := 0; i < 12; i++ {
+		gomega.Eventually(func() bool {
 			gomega.Expect(k8sClient.Get(context.Background(), hasCompLookupKey, createdHasComp)).Should(gomega.Succeed())
-			if len(createdHasComp.Status.Conditions) > 1 {
-				break
-			}
-			time.Sleep(10 * time.Second)
-		}
+			return len(createdHasComp.Status.Conditions) > 1
+		}, timeout, interval).Should(gomega.BeTrue())
+
 		//create quay component
 		gomega.Expect(k8sClient.Create(ctx, quayComp)).Should(gomega.Succeed())
 		hasCompLookupKey2 := types.NamespacedName{Name: quayCompName, Namespace: HASAppNamespace}
 		createdHasComp2 := &appstudiov1alpha1.Component{}
-		for i := 0; i < 12; i++ {
+		gomega.Eventually(func() bool {
 			gomega.Expect(k8sClient.Get(context.Background(), hasCompLookupKey2, createdHasComp2)).Should(gomega.Succeed())
-			if len(createdHasComp2.Status.Conditions) > 1 {
-				break
-			}
-			time.Sleep(10 * time.Second)
-		}
+			return len(createdHasComp2.Status.Conditions) > 1
+		}, timeout, interval).Should(gomega.BeTrue())
 
-		for i := 0; i < 12; i++ {
+		gomega.Eventually(func() bool {
 			gomega.Expect(k8sClient.Get(context.Background(), hasAppLookupKey, createdHasApp)).Should(gomega.Succeed())
-			if len(createdHasApp.Status.Conditions) > 0 && strings.Contains(createdHasApp.Status.Devfile, ghCompName) {
-				break
-			}
-			time.Sleep(10 * time.Second)
-		}
+			return len(createdHasApp.Status.Conditions) > 0 && strings.Contains(createdHasApp.Status.Devfile, ghCompName)
+		}, timeout, interval).Should(gomega.BeTrue())
 		return nil, nil
 	}
 	return stateHandler
