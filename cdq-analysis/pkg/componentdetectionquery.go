@@ -22,10 +22,9 @@ import (
 	"fmt"
 	"path"
 
-	"github.com/spf13/afero"
-
+	"github.com/devfile/alizer/pkg/apis/model"
 	"github.com/go-logr/logr"
-	"github.com/redhat-developer/alizer/go/pkg/apis/model"
+	"github.com/spf13/afero"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
