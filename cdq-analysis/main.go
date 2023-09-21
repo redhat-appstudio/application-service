@@ -34,18 +34,14 @@ func main() {
 	gitToken := os.Getenv("GITHUB_TOKEN")
 
 	// Parse all of the possible command-line flags for the tool
-	var contextPath, URL, name, devfilePath, dockerfilePath, Revision, namespace, DevfileRegistryURL, isDevfilePresentStr, isDockerfilePresentStr, createK8sJobStr string
-	var isDevfilePresent, isDockerfilePresent, createK8sJob bool
+	var contextPath, URL, name, Revision, namespace, DevfileRegistryURL, createK8sJobStr string
+	var createK8sJob bool
 	flag.StringVar(&name, "name", "", "The ComponentDetectionQuery name")
 	flag.StringVar(&contextPath, "contextPath", "./", "The context path for the cdq analysis")
 	flag.StringVar(&URL, "URL", "", "The URL for the git repository")
-	flag.StringVar(&devfilePath, "devfilePath", "", "The devfile path if the devfile present")
-	flag.StringVar(&dockerfilePath, "dockerfilePath", "", "The dockerfile path if the dockerfile present")
 	flag.StringVar(&Revision, "revision", "", "The revision of the git repo to run cdq analysis against with")
 	flag.StringVar(&DevfileRegistryURL, "devfileRegistryURL", pkg.DevfileRegistryEndpoint, "The devfile registry URL")
 	flag.StringVar(&namespace, "namespace", "", "The namespace from which to fetch resources")
-	flag.StringVar(&isDevfilePresentStr, "isDevfilePresent", "false", "If the devfile present in the root of the repository")
-	flag.StringVar(&isDockerfilePresentStr, "isDockerfilePresent", "false", "If the dockerfile present in the root of the repository")
 	flag.StringVar(&createK8sJobStr, "createK8sJob", "false", "If a kubernetes job need to be created to send back the result")
 	flag.Parse()
 
@@ -53,16 +49,6 @@ func main() {
 	if err != nil {
 		log.Fatal(fmt.Errorf("Error parse createK8sJob: %v", err))
 		createK8sJob = false
-	}
-	isDevfilePresent, err = strconv.ParseBool(isDevfilePresentStr)
-	if err != nil {
-		log.Fatal(fmt.Errorf("Error parse isDevfilePresent: %v", err))
-		isDevfilePresent = false
-	}
-	isDockerfilePresent, err = strconv.ParseBool(isDockerfilePresentStr)
-	if err != nil {
-		log.Fatal(fmt.Errorf("Error parse isDockerfilePresent: %v", err))
-		isDockerfilePresent = false
 	}
 
 	if err := validateVariables(name, URL, namespace); err != nil {
@@ -94,7 +80,15 @@ func main() {
 		Log:          log,
 		CreateK8sJob: createK8sJob,
 	}
-	pkg.CloneAndAnalyze(k8sInfoClient, gitToken, namespace, name, contextPath, devfilePath, dockerfilePath, URL, Revision, DevfileRegistryURL, isDevfilePresent, isDockerfilePresent)
+
+	cdqInfo := &pkg.CDQInfoClient{
+		DevfileRegistryURL: DevfileRegistryURL,
+		GitURL:             pkg.GitURL{RepoURL: URL, Revision: Revision, Token: gitToken},
+	}
+
+	/* #nosec G104 -- the main.go is triggerred by docker image, and the result as well as the error will be send by the k8s job*/
+	pkg.CloneAndAnalyze(k8sInfoClient, namespace, name, contextPath, cdqInfo)
+
 }
 
 // validateVariables ensures that all of the necessary variables passed in are set to valid values

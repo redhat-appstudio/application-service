@@ -19,6 +19,8 @@ import (
 	"context"
 	"strings"
 
+	"github.com/devfile/library/v2/pkg/devfile/parser"
+
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"sigs.k8s.io/yaml"
@@ -182,10 +184,8 @@ var _ = Describe("Application controller finalizer counter tests", func() {
 			Expect(createdHasApp.Status.Devfile).Should(Not(Equal("")))
 
 			// delete the project so that the component delete finalizer fails
-			devfileSrc := cdqanalysis.DevfileSrc{
-				Data: createdHasApp.Status.Devfile,
-			}
-			appDevfile, err := cdqanalysis.ParseDevfile(devfileSrc)
+			appDevfile, err := cdqanalysis.ParseDevfileWithParserArgs(&parser.ParserArgs{Data: []byte(createdHasApp.Status.Devfile)})
+
 			Expect(err).ToNot(HaveOccurred())
 
 			err = appDevfile.DeleteProject(ComponentName)

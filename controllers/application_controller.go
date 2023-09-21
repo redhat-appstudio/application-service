@@ -22,6 +22,8 @@ import (
 	"reflect"
 	"time"
 
+	"github.com/devfile/library/v2/pkg/devfile/parser"
+
 	"github.com/prometheus/client_golang/prometheus"
 	cdqanalysis "github.com/redhat-appstudio/application-service/cdq-analysis/pkg"
 	"github.com/redhat-appstudio/application-service/pkg/metrics"
@@ -206,10 +208,9 @@ func (r *ApplicationReconciler) Reconcile(ctx context.Context, req ctrl.Request)
 	} else {
 		// If the model already exists, see if either the displayname or description need updating
 		// Get the devfile of the hasApp CR
-		devfileSrc := cdqanalysis.DevfileSrc{
-			Data: application.Status.Devfile,
-		}
-		devfileData, err := cdqanalysis.ParseDevfile(devfileSrc)
+
+		// Token can be empty since we are passing in generated devfile data, so we won't be dealing with private repos
+		devfileData, err := cdqanalysis.ParseDevfileWithParserArgs(&parser.ParserArgs{Data: []byte(application.Status.Devfile)})
 		if err != nil {
 			r.SetUpdateConditionAndUpdateCR(ctx, req, &application, err)
 			log.Error(err, fmt.Sprintf("Unable to parse devfile model, exiting reconcile loop %v", req.NamespacedName))

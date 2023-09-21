@@ -240,7 +240,7 @@ var _ = Describe("Component Detection Query controller", func() {
 			Eventually(func() bool {
 				k8sClient.Get(context.Background(), hasCompDetQueryLookupKey, createdHasCompDetectionQuery)
 				return len(createdHasCompDetectionQuery.Status.Conditions) > 1
-			}, timeout, interval).Should(BeTrue())
+			}, timeout20s, interval).Should(BeTrue())
 
 			// Make sure the a devfile is detected
 			Expect(len(createdHasCompDetectionQuery.Status.ComponentDetected)).Should(Equal(2))
@@ -395,7 +395,7 @@ var _ = Describe("Component Detection Query controller", func() {
 			Eventually(func() bool {
 				k8sClient.Get(context.Background(), hasCompDetQueryLookupKey, createdHasCompDetectionQuery)
 				return len(createdHasCompDetectionQuery.Status.Conditions) > 1
-			}, timeout, interval).Should(BeTrue())
+			}, timeout20s, interval).Should(BeTrue())
 
 			// Make sure the right err is set
 			Expect(createdHasCompDetectionQuery.Status.Conditions[1].Message).Should(ContainSubstring("ComponentDetectionQuery has successfully finished"))
@@ -722,7 +722,7 @@ var _ = Describe("Component Detection Query controller", func() {
 				Spec: appstudiov1alpha1.ComponentDetectionQuerySpec{
 					Secret: queryName,
 					GitSource: appstudiov1alpha1.GitSource{
-						URL:      "https://github.com/test-repo/test-error-response",
+						URL:      "https://github.com/test-repo/valid-repo-invalid-token",
 						Revision: "main",
 					},
 				},
@@ -737,10 +737,11 @@ var _ = Describe("Component Detection Query controller", func() {
 			Eventually(func() bool {
 				k8sClient.Get(context.Background(), hasCompDetQueryLookupKey, createdHasCompDetectionQuery)
 				return len(createdHasCompDetectionQuery.Status.Conditions) > 1
-			}, timeout, interval).Should(BeTrue())
+			}, timeout40s, interval).Should(BeTrue())
 
 			// index is 1 because of CDQ status condition Processing
 			Expect(createdHasCompDetectionQuery.Status.Conditions[1].Status).Should(Equal(metav1.ConditionFalse))
+			// we passed in a bad token so git clone should fail
 			Expect(createdHasCompDetectionQuery.Status.Conditions[1].Message).Should(ContainSubstring("failed to clone the repo"))
 
 			// Delete the specified Detection Query resource
@@ -784,7 +785,6 @@ var _ = Describe("Component Detection Query controller", func() {
 				k8sClient.Get(context.Background(), hasCompDetQueryLookupKey, createdHasCompDetectionQuery)
 				return len(createdHasCompDetectionQuery.Status.Conditions) > 1
 			}, timeout, interval).Should(BeTrue())
-
 			// Make sure the a devfile is detected
 			Expect(createdHasCompDetectionQuery.Status.Conditions[1].Status).Should(Equal(metav1.ConditionFalse))
 			Expect(createdHasCompDetectionQuery.Status.Conditions[1].Message).Should(ContainSubstring(fmt.Sprintf("ComponentDetectionQuery failed: Secret %q not found", queryName)))
@@ -1324,7 +1324,7 @@ var _ = Describe("Component Detection Query controller", func() {
 				Eventually(func() bool {
 					k8sClient.Get(context.Background(), hasCompDetQueryLookupKey, createdHasCompDetectionQuery)
 					return len(createdHasCompDetectionQuery.Status.Conditions) > 1
-				}, timeout, interval).Should(BeTrue())
+				}, timeout20s, interval).Should(BeTrue())
 
 				// Make sure the a devfile is detected
 				Expect(len(createdHasCompDetectionQuery.Status.ComponentDetected)).Should(Equal(1))
@@ -1587,14 +1587,14 @@ var _ = Describe("Component Detection Query controller", func() {
 				Eventually(func() bool {
 					k8sClient.Get(context.Background(), hasCompDetQueryLookupKey, createdHasCompDetectionQuery)
 					return len(createdHasCompDetectionQuery.Status.Conditions) > 1
-				}, timeout, interval).Should(BeTrue())
+				}, timeout20s, interval).Should(BeTrue())
 
 				// Make sure the a devfile is detected
 				Expect(len(createdHasCompDetectionQuery.Status.ComponentDetected)).Should(Equal(2))
 
-				for devfileName, devfileDesc := range createdHasCompDetectionQuery.Status.ComponentDetected {
-					Expect(devfileName).Should(Or(ContainSubstring("backend-quality-dashboard"), ContainSubstring("frontend-quality-dashboard")))
-					Expect(devfileDesc.ComponentStub.Source.GitSource.DockerfileURL).Should(Equal("Dockerfile"))
+				for dockerFileName, dockerFileDesc := range createdHasCompDetectionQuery.Status.ComponentDetected {
+					Expect(dockerFileName).Should(Or(ContainSubstring("backend-quality-dashboard"), ContainSubstring("frontend-quality-dashboard")))
+					Expect(dockerFileDesc.ComponentStub.Source.GitSource.DockerfileURL).Should(Equal("Dockerfile"))
 				}
 
 				// Delete the specified Detection Query resource
@@ -1637,7 +1637,7 @@ var _ = Describe("Component Detection Query controller", func() {
 				Eventually(func() bool {
 					k8sClient.Get(context.Background(), hasCompDetQueryLookupKey, createdHasCompDetectionQuery)
 					return len(createdHasCompDetectionQuery.Status.Conditions) > 1
-				}, timeout, interval).Should(BeTrue())
+				}, timeout20s, interval).Should(BeTrue())
 
 				// Make sure the a devfile is detected
 				Expect(len(createdHasCompDetectionQuery.Status.ComponentDetected)).Should(Equal(2))

@@ -20,7 +20,7 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/redhat-developer/alizer/go/pkg/apis/model"
+	"github.com/devfile/alizer/pkg/apis/model"
 )
 
 func TestAnalyzeAndDetectDevfile(t *testing.T) {
@@ -104,7 +104,11 @@ func TestAnalyzeAndDetectDevfile(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			err := CloneRepo(tt.clonePath, tt.repo, tt.revision, tt.token)
+			err := CloneRepo(tt.clonePath, GitURL{
+				RepoURL:  tt.repo,
+				Revision: tt.revision,
+				Token:    tt.token,
+			})
 			if err != nil {
 				t.Errorf("got unexpected error %v", err)
 			} else {
@@ -134,15 +138,15 @@ func TestSelectDevfileFromTypes(t *testing.T) {
 		name            string
 		clonePath       string
 		repo            string
-		devfileTypes    []model.DevFileType
+		devfileTypes    []model.DevfileType
 		wantErr         bool
-		wantDevfileType model.DevFileType
+		wantDevfileType model.DevfileType
 	}{
 		{
 			name:      "Successfully detect a devfile from the registry",
 			clonePath: "/tmp/test-selected-devfile",
 			repo:      "https://github.com/maysunfaisal/devfile-sample-java-springboot-basic-1",
-			devfileTypes: []model.DevFileType{
+			devfileTypes: []model.DevfileType{
 				{
 					Name: "nodejs-basic", Language: "JavaScript", ProjectType: "Node.js", Tags: []string{"Node.js", "Express"},
 				},
@@ -163,7 +167,7 @@ func TestSelectDevfileFromTypes(t *testing.T) {
 				},
 			},
 			wantErr: false,
-			wantDevfileType: model.DevFileType{
+			wantDevfileType: model.DevfileType{
 				Name: "java-springboot-basic", Language: "Java", ProjectType: "springboot", Tags: []string{"Java", "Spring"},
 			},
 		},
@@ -171,7 +175,7 @@ func TestSelectDevfileFromTypes(t *testing.T) {
 			name:      "Unable to detect a devfile from the registry",
 			clonePath: "/tmp/test-no-devfiles-selected",
 			repo:      "https://github.com/maysunfaisal/devfile-sample-java-springboot-basic-1",
-			devfileTypes: []model.DevFileType{
+			devfileTypes: []model.DevfileType{
 				{
 					Name: "python-basic", Language: "Python", ProjectType: "Python", Tags: []string{"Python", "Pip", "Flask"},
 				},
@@ -183,7 +187,11 @@ func TestSelectDevfileFromTypes(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			os.RemoveAll(tt.clonePath)
-			err := CloneRepo(tt.clonePath, tt.repo, "main", "")
+			err := CloneRepo(tt.clonePath, GitURL{
+				RepoURL:  tt.repo,
+				Revision: "main",
+				Token:    "",
+			})
 			if err != nil {
 				t.Errorf("got unexpected error %v", err)
 			}
@@ -245,7 +253,7 @@ components:
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			devfileBytes := []byte(tt.devfileString)
-			dockerfileImage, err := SearchForDockerfile(devfileBytes)
+			dockerfileImage, err := SearchForDockerfile(devfileBytes, "")
 			if !tt.wantErr && err != nil {
 				t.Errorf("Unexpected err: %+v", err)
 			} else if tt.wantErr && err == nil {

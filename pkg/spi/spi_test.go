@@ -18,7 +18,12 @@ package spi
 import (
 	"context"
 	"testing"
+
+	"github.com/redhat-appstudio/application-api/api/v1alpha1"
+	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
+
+const testNamespace = "test-namespace"
 
 // TestDownloadDevfileFromSPI uses the Mock SPI client to test the DownloadDevfileFromSPI function
 // Since SPI does not support running outside of Kube, we cannot unit test the non-mock SPI client at this moment
@@ -26,6 +31,7 @@ func TestDownloadDevfileFromSPI(t *testing.T) {
 	var mock MockSPIClient
 
 	tests := []struct {
+		comp    v1alpha1.Component
 		name    string
 		repoUrl string
 		path    string
@@ -33,23 +39,23 @@ func TestDownloadDevfileFromSPI(t *testing.T) {
 		wantErr bool
 	}{
 		{
-			name:    "Successfully retrieve devfile, no context/path set",
+			comp:    v1alpha1.Component{ObjectMeta: v1.ObjectMeta{Name: "Successfully retrieve devfile, no context/path set", Namespace: testNamespace}},
 			repoUrl: "https://github.com/testrepo/test-private-repo",
 			want:    mockDevfile,
 		},
 		{
-			name:    "Successfully retrieve devfile, context/path set",
+			comp:    v1alpha1.Component{ObjectMeta: v1.ObjectMeta{Name: "Successfully retrieve devfile, context/path set", Namespace: testNamespace}},
 			repoUrl: "https://github.com/testrepo/test-private-repo",
 			path:    "/test",
 			want:    mockDevfile,
 		},
 		{
-			name:    "Unable to retrieve devfile",
+			comp:    v1alpha1.Component{ObjectMeta: v1.ObjectMeta{Name: "Unable to retrieve devfile", Namespace: testNamespace}},
 			repoUrl: "https://github.com/testrepo/test-error-response",
 			wantErr: true,
 		},
 		{
-			name:    "Error reading devfile",
+			comp:    v1alpha1.Component{ObjectMeta: v1.ObjectMeta{Name: "Error reading devfile", Namespace: testNamespace}},
 			repoUrl: "https://github.com/testrepo/test-parse-error",
 			wantErr: true,
 		},
@@ -58,7 +64,7 @@ func TestDownloadDevfileFromSPI(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			// Convert the hasApp resource to a devfile
-			devfileBytes, err := DownloadDevfileUsingSPI(mock, context.Background(), "test-namespace", tt.repoUrl, "main", tt.path)
+			devfileBytes, _, err := DownloadDevfileUsingSPI(mock, context.Background(), tt.comp, tt.repoUrl, "main", tt.path)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("unexpected error return value: %v", err)
 			}
@@ -75,6 +81,7 @@ func TestDownloadDevfileandDockerfileUsingSPI(t *testing.T) {
 	var mock MockSPIClient
 
 	tests := []struct {
+		comp           v1alpha1.Component
 		name           string
 		repoUrl        string
 		path           string
@@ -83,25 +90,25 @@ func TestDownloadDevfileandDockerfileUsingSPI(t *testing.T) {
 		wantErr        bool
 	}{
 		{
-			name:           "Successfully retrieve devfile, no context/path set",
+			comp:           v1alpha1.Component{ObjectMeta: v1.ObjectMeta{Name: "Successfully retrieve devfile, no context/path set", Namespace: testNamespace}},
 			repoUrl:        "https://github.com/testrepo/test-private-repo",
 			wantDevfile:    mockDevfile,
 			wantDockerfile: mockDockerfile,
 		},
 		{
-			name:           "Successfully retrieve devfile, context/path set",
+			comp:           v1alpha1.Component{ObjectMeta: v1.ObjectMeta{Name: "Successfully retrieve devfile, context/path set", Namespace: testNamespace}},
 			repoUrl:        "https://github.com/testrepo/test-private-repo",
 			path:           "/test",
 			wantDevfile:    mockDevfile,
 			wantDockerfile: mockDockerfile,
 		},
 		{
-			name:    "Error reading devfile",
+			comp:    v1alpha1.Component{ObjectMeta: v1.ObjectMeta{Name: "Error reading devfile", Namespace: testNamespace}},
 			repoUrl: "https://github.com/testrepo/test-parse-error",
 			wantErr: true,
 		},
 		{
-			name:    "Error reading Dockerfile",
+			comp:    v1alpha1.Component{ObjectMeta: v1.ObjectMeta{Name: "Error reading devfile", Namespace: testNamespace}},
 			repoUrl: "https://github.com/testrepo/test-error-dockerfile-response",
 			wantErr: true,
 		},
@@ -109,7 +116,7 @@ func TestDownloadDevfileandDockerfileUsingSPI(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			devfileBytes, dockerfileBytes, err := DownloadDevfileandDockerfileUsingSPI(mock, context.Background(), "test-namespace", tt.repoUrl, "main", tt.path)
+			devfileBytes, dockerfileBytes, _, err := DownloadDevfileandDockerfileUsingSPI(mock, context.Background(), tt.name, tt.comp, tt.repoUrl, "main", tt.path)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("unexpected error return value: %v", err)
 				return

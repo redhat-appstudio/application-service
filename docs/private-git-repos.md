@@ -2,55 +2,34 @@
 
 ## Configuring SPI
 
-In order to use HAS resources (e.g. `Applications`, `Components`, `ComponentDetectionQuery`) with private git repositories, SPI must be installed on the same cluster as HAS:
+In order to use HAS resources (e.g. `Applications`, `Components`, `ComponentDetectionQuery`) with private git repositories, SPI must be installed on the same cluster as HAS (TODO review HAS install instructions):
 
-1) Set up `infra-deployments`. Minimally:
+1) Clone the [SPI operator repo](https://github.com/redhat-appstudio/service-provider-integration-operator) and run the [make command ](https://github.com/redhat-appstudio/service-provider-integration-operator/blob/main/docs/DEVELOP.md#running-in-cluster) corresponding to your target cluster type e.g. `make deploy_openshift`
 
-   a) Install RBAC for App Studio: `kustomize build openshift-gitops/cluster-rbac | oc apply -f -`
-
-   b) Install Build component`oc apply -n openshift-gitops -f argo-cd-apps/base/build.yaml`
-
-   c) Install SPI component`oc apply -n openshift-gitops -f argo-cd-apps/base/spi.yaml`
 
 2) Set up SPI
 
-    a) Get SPI oauth route URL from `spi-system` namespace
+    a) Get SPI oauth route URL from `spi-system` namespace `oc get routes -n spi-system`
 
     b) Create oauth app in GitHub (`Settings` -> `Developer Settings` -> `OAuth Apps`)
 
       - Use the SPI oauth url as the Application Callback URL.
       - Homepage URL does not matter
       - Record the Client ID and Client Secret values 
-  
-   c) Open `components/spi/config.yaml` from `infra-deployments` in an editor and change the following values:
-     - `sharedSecret` -> Can be a random string, doesn't matter what you put
-     - `clientId` -> Client ID value from previous step
-     - `clientSecret` -> Client secret value from previous step
-     - `baseUrl` -> SPI oauth URL
 
-        **For example**:
-        ```yaml
-        sharedSecret: fsdfsdfsdfdsf
-        serviceProviders:
-        - type: GitHub
-          clientId: fake-client-id
-          clientSecret: fake-client-secret
-        baseUrl: https://spi-oauth-route-spi-system.apps.mycluster.com
-        ```
-    
-    d) Create the secret in the `spi-system` namespace: `kubectl create secret generic oauth-config --from-file=components/spi/config.yaml -n spi-system` 
+    c) To set up a Github Oauth app with SPI, modify the overlay in your cloned SPI repo that corresponds with the cluster type e.g. in config/overlays/openshift_vault/config.yaml, replace the `clientId` and `clientSecret` with the values from the oauth app you created in step 2.  Run ` kustomize build config/overlays/openshift_vault | kubectl apply -f -` to update the `shared-configuration-file` secret
+
+
 
 ## Creating a Token
 
-To create a token to use with HAS:
-
-1) Create an `SPIAccessTokenBinding` resource with the following contents:
+1) In Github, generate a new classic token with User and Repo scope
+2)  To create a token to use with HAS, create an `SPIAccessTokenBinding` resource with the following contents:
    ```yaml
     apiVersion: appstudio.redhat.com/v1beta1
     kind: SPIAccessTokenBinding
     metadata:
       name: test-access-token-binding
-      namespace: default
     spec:
       permissions:
         required:
@@ -61,17 +40,18 @@ To create a token to use with HAS:
         name: token-secret
         type: kubernetes.io/basic-auth
    ```
+   
+3) Create the resource in the namespace you will be creating HAS resources in.  Upon successful creation, the CR will be in `AwaitingTokenData` phase status and a corresponding SPIAccessToken CR will be created in the same namespace.
 
-2) Create the resource in the namespace you will be creating HAS resources in
-
-3) Run `oc get spiaccesstokenbinding test-access-token-binding -o jsonpath="oAuthUrl: {.status.oAuthUrl}"` to get the oauth url
-  
-    - Alternatively, you can just get the oauth url by running `oc get spiaccesstokenbinding -o yaml` and viewing the status directly.
-
-4) Access the oauth url in your browser. Log in if needed.
-
-5) Run `oc get secrets` in the namespace you created the `SPIAccessTokenBinding` in to verify that the secret was created successfully.
-
+3) Upload the token: 
+   1) Set the TARGET_NAMESPACE to where your CRs instances are.  Run `UPLOAD_URL=$(kubectl get spiaccesstokenbinding/test-access-token-binding -n $TARGET_NAMESPACE -o  json | jq -r .status.uploadUrl)`
+   2) Inject the token where TOKEN is the console admin secret and GITHUB_TOKEN is the token created in step 1)
+   
+      `curl -v -H 'Content-Type: application/json' -H "Authorization: bearer "$TOKEN -d "{ \"access_token\": \"$GITHUB_TOKEN\" }" $UPLOAD_URL`
+   3)  The state of the SPIAccessTokenBinding should change to `Injected` and the state of the SPIAccessToken should be `Ready`
+   4)  This will also create a K8s secret corresponding to the name of the secret that was specified in the SPIAccessTokenBinding created in step 2.
+ 
+   
 ## Using Private Git Repositories
 
 Now, with the token secret created for the git repository, when creating HAS resources (`Components`, `ComponentDetectionQueries`) that need to access that Git repository, just pass in the token secret to the resource:
@@ -90,7 +70,7 @@ spec:
   source:
     git:
       url: https://github.com/johnmcollier/devfile-private.git
-      secret: token-multi-secret
+  secret: token-multi-secret
 ```
 
 **ComponentDetectionQuery**
@@ -104,5 +84,5 @@ spec:
   isMultiComponent: true
   git:
     url: https://github.com/johnmcollier/multi-component-private.git
-    secret: token-multi-secret
+  secret: token-multi-secret
 ```

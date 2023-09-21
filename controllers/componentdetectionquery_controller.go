@@ -22,7 +22,6 @@ import (
 	"fmt"
 	"path"
 	"reflect"
-	"strconv"
 	"strings"
 	"time"
 
@@ -30,11 +29,9 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 	appstudiov1alpha1 "github.com/redhat-appstudio/application-api/api/v1alpha1"
 	cdqanalysis "github.com/redhat-appstudio/application-service/cdq-analysis/pkg"
-	devfile "github.com/redhat-appstudio/application-service/pkg/devfile"
 	"github.com/redhat-appstudio/application-service/pkg/github"
 	logutil "github.com/redhat-appstudio/application-service/pkg/log"
 	"github.com/redhat-appstudio/application-service/pkg/metrics"
-	"github.com/redhat-appstudio/application-service/pkg/spi"
 	"github.com/redhat-appstudio/application-service/pkg/util"
 	"github.com/spf13/afero"
 	"golang.org/x/exp/maps"
@@ -58,7 +55,6 @@ import (
 type ComponentDetectionQueryReconciler struct {
 	client.Client
 	Scheme             *runtime.Scheme
-	SPIClient          spi.SPI
 	Log                logr.Logger
 	GitHubTokenClient  github.GitHubToken
 	DevfileRegistryURL string
@@ -145,8 +141,7 @@ func (r *ComponentDetectionQueryReconciler) Reconcile(ctx context.Context, req c
 		ctx = context.WithValue(ctx, github.GHClientKey, ghClient.TokenName)
 
 		source := componentDetectionQuery.Spec.GitSource
-		var devfileBytes, dockerfileBytes []byte
-		var devfilePath, dockerfilePath string
+		var devfilePath string
 		devfilesMap := make(map[string][]byte)
 		devfilesURLMap := make(map[string]string)
 		dockerfileContextMap := make(map[string]string)
@@ -171,30 +166,7 @@ func (r *ComponentDetectionQueryReconciler) Reconcile(ctx context.Context, req c
 		}
 
 		if source.DevfileURL == "" {
-			isDockerfilePresent := false
-			isDevfilePresent := false
 			log.Info(fmt.Sprintf("Attempting to read a devfile from the URL %s... %v", source.URL, req.NamespacedName))
-			// check if the project is multi-component or single-component
-			if gitToken == "" {
-				gitURL, err := util.ConvertGitHubURL(source.URL, source.Revision, context)
-				if err != nil {
-					log.Error(err, fmt.Sprintf("Unable to convert Github URL to raw format, exiting reconcile loop %v", req.NamespacedName))
-					r.SetCompleteConditionAndUpdateCR(ctx, req, &componentDetectionQuery, copiedCDQ, err)
-					return ctrl.Result{}, nil
-				}
-				log.Info(fmt.Sprintf("Look for devfile, Dockerfile or Containerfile at the URL %s... %v", gitURL, req.NamespacedName))
-				devfileBytes, devfilePath, dockerfileBytes, dockerfilePath = devfile.DownloadDevfileAndDockerfile(gitURL)
-			} else {
-				// Use SPI to retrieve the devfile from the private repository
-				// TODO - maysunfaisal also search for Dockerfile
-				devfileBytes, err = spi.DownloadDevfileUsingSPI(r.SPIClient, ctx, componentDetectionQuery.Namespace, source.URL, source.Revision, context)
-				if err != nil {
-					log.Error(err, fmt.Sprintf("Unable to curl for any known devfile locations from %s %v", source.URL, req.NamespacedName))
-				}
-			}
-
-			isDevfilePresent = len(devfileBytes) != 0
-			isDockerfilePresent = len(dockerfileBytes) != 0
 			var devfilesMapReturned map[string][]byte
 			var devfilesURLMapReturned, dockerfileContextMapReturned map[string]string
 			var componentPortsMapReturned map[string][]int
@@ -252,22 +224,6 @@ func (r *ComponentDetectionQueryReconciler) Reconcile(ctx context.Context, req c
 											{
 												Name:  "DEVFILE_REGISTRY_URL",
 												Value: r.DevfileRegistryURL,
-											},
-											{
-												Name:  "DEVFILE_PATH",
-												Value: devfilePath,
-											},
-											{
-												Name:  "DOCKERFILE_PATH",
-												Value: dockerfilePath,
-											},
-											{
-												Name:  "IS_DEVFILE_PRESENT",
-												Value: strconv.FormatBool(isDevfilePresent),
-											},
-											{
-												Name:  "IS_DOCKERFILE_PRESENT",
-												Value: strconv.FormatBool(isDockerfilePresent),
 											},
 											{
 												Name:  "CREATE_K8S_Job",
@@ -330,18 +286,25 @@ func (r *ComponentDetectionQueryReconciler) Reconcile(ctx context.Context, req c
 					CreateK8sJob: false,
 				}
 
-				devfilesMapReturned, devfilesURLMapReturned, dockerfileContextMapReturned, componentPortsMapReturned, revision, err = cdqanalysis.CloneAndAnalyze(k8sInfoClient, gitToken, req.Namespace, req.Name, context, devfilePath, dockerfilePath, source.URL, source.Revision, r.DevfileRegistryURL, isDevfilePresent, isDockerfilePresent)
+				cdqInfo := &cdqanalysis.CDQInfoClient{
+					DevfileRegistryURL: r.DevfileRegistryURL,
+					GitURL:             cdqanalysis.GitURL{RepoURL: source.URL, Revision: source.Revision, Token: gitToken},
+				}
+
+				devfilesMapReturned, devfilesURLMapReturned, dockerfileContextMapReturned, componentPortsMapReturned, revision, err = cdqanalysis.CloneAndAnalyze(k8sInfoClient, req.Namespace, req.Name, context, cdqInfo)
 				if err != nil {
 					log.Error(err, fmt.Sprintf("Error running cdq analysis... %v", req.NamespacedName))
 					r.SetCompleteConditionAndUpdateCR(ctx, req, &componentDetectionQuery, copiedCDQ, err)
 					return ctrl.Result{}, nil
 				}
+				maps.Copy(devfilesMap, devfilesMapReturned)
+				maps.Copy(dockerfileContextMap, dockerfileContextMapReturned)
+				maps.Copy(devfilesURLMap, devfilesURLMapReturned)
+				maps.Copy(componentPortsMap, componentPortsMapReturned)
+
+				devfilePath, _ = cdqanalysis.GetDevfileAndDockerFilePaths(*cdqInfo)
 			}
 			componentDetectionQuery.Spec.GitSource.Revision = revision
-			maps.Copy(devfilesMap, devfilesMapReturned)
-			maps.Copy(dockerfileContextMap, dockerfileContextMapReturned)
-			maps.Copy(devfilesURLMap, devfilesURLMapReturned)
-			maps.Copy(componentPortsMap, componentPortsMapReturned)
 
 		} else {
 			log.Info(fmt.Sprintf("devfile was explicitly specified at %s %v", source.DevfileURL, req.NamespacedName))
@@ -373,7 +336,7 @@ func (r *ComponentDetectionQueryReconciler) Reconcile(ctx context.Context, req c
 			// set in the CDQ spec
 			componentDetectionQuery.Spec.GitSource.Revision = source.Revision
 
-			shouldIgnoreDevfile, devfileBytes, err := cdqanalysis.ValidateDevfile(log, source.DevfileURL)
+			shouldIgnoreDevfile, devfileBytes, err := cdqanalysis.ValidateDevfile(log, source.DevfileURL, gitToken)
 			if err != nil {
 				// if a direct devfileURL is provided and errors out, we dont do an alizer detection
 				log.Error(err, fmt.Sprintf("Unable to GET %s, exiting reconcile loop %v", source.DevfileURL, req.NamespacedName))
@@ -396,7 +359,8 @@ func (r *ComponentDetectionQueryReconciler) Reconcile(ctx context.Context, req c
 			if _, ok := devfilesURLMap[context]; !ok {
 				updatedLink, err := cdqanalysis.UpdateGitLink(source.URL, source.Revision, path.Join(context, devfilePath))
 				if err != nil {
-					log.Error(err, fmt.Sprintf("Unable to update the devfile link %v", req.NamespacedName))
+					log.Error(err, fmt.Sprintf(
+						"Unable to update the devfile link %v", req.NamespacedName))
 					r.SetCompleteConditionAndUpdateCR(ctx, req, &componentDetectionQuery, copiedCDQ, err)
 					return ctrl.Result{}, nil
 				}
@@ -405,7 +369,7 @@ func (r *ComponentDetectionQueryReconciler) Reconcile(ctx context.Context, req c
 		}
 		// only update the componentStub when a component has been detected
 		if len(devfilesMap) != 0 || len(devfilesURLMap) != 0 || len(dockerfileContextMap) != 0 {
-			err = r.updateComponentStub(req, ctx, &componentDetectionQuery, devfilesMap, devfilesURLMap, dockerfileContextMap, componentPortsMap)
+			err = r.updateComponentStub(req, ctx, &componentDetectionQuery, devfilesMap, devfilesURLMap, dockerfileContextMap, componentPortsMap, gitToken)
 			if err != nil {
 				log.Error(err, fmt.Sprintf("Unable to update the component stub %v", req.NamespacedName))
 				r.SetCompleteConditionAndUpdateCR(ctx, req, &componentDetectionQuery, copiedCDQ, err)

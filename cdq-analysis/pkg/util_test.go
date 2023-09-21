@@ -24,8 +24,8 @@ import (
 	"reflect"
 	"testing"
 
+	"github.com/devfile/alizer/pkg/apis/model"
 	indexSchema "github.com/devfile/registry-support/index/generator/schema"
-	"github.com/redhat-developer/alizer/go/pkg/apis/model"
 )
 
 func TestISExist(t *testing.T) {
@@ -166,7 +166,11 @@ func TestCloneRepo(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			err := CloneRepo(tt.clonePath, tt.repo, tt.revision, tt.token)
+			err := CloneRepo(tt.clonePath, GitURL{
+				RepoURL:  tt.repo,
+				Revision: tt.revision,
+				Token:    tt.token,
+			})
 			if tt.wantErr && (err == nil) {
 				t.Error("wanted error but got nil")
 			} else if !tt.wantErr && err != nil {
@@ -214,7 +218,11 @@ func TestGetBranchFromRepo(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			os.RemoveAll(tt.clonePath)
 			if tt.name != "Repo not exist" {
-				CloneRepo(tt.clonePath, tt.repo, tt.revision, tt.token)
+				CloneRepo(tt.clonePath, GitURL{
+					RepoURL:  tt.repo,
+					Revision: tt.revision,
+					Token:    tt.token,
+				})
 			}
 
 			branch, err := GetBranchFromRepo(tt.clonePath)
@@ -444,13 +452,13 @@ func TestGetAlizerDevfileTypes(t *testing.T) {
 	tests := []struct {
 		name      string
 		url       string
-		wantTypes []model.DevFileType
+		wantTypes []model.DevfileType
 		wantErr   bool
 	}{
 		{
 			name: "Get the Sample Devfile Types",
 			url:  "http://" + serverIP,
-			wantTypes: []model.DevFileType{
+			wantTypes: []model.DevfileType{
 				{
 					Name:        "sampleindex1",
 					ProjectType: "project1",

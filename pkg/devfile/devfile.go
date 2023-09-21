@@ -744,9 +744,8 @@ func getMatchLabel(name string) map[string]string {
 func FindAndDownloadDevfile(dir string) ([]byte, string, error) {
 	var devfileBytes []byte
 	var err error
-	validDevfileLocations := []string{cdqanalysis.Devfile, cdqanalysis.HiddenDevfile, cdqanalysis.HiddenDirDevfile, cdqanalysis.HiddenDirHiddenDevfile}
 
-	for _, path := range validDevfileLocations {
+	for _, path := range cdqanalysis.ValidDevfileLocations {
 		devfilePath := dir + "/" + path
 		devfileBytes, err = DownloadFile(devfilePath)
 		if err == nil {
@@ -763,11 +762,8 @@ func FindAndDownloadDockerfile(dir string) ([]byte, string, error) {
 	var dockerfileBytes []byte
 	var err error
 	// Containerfile is an alternate name for Dockerfile
-	validDockerfileLocations := []string{cdqanalysis.Dockerfile, cdqanalysis.DockerDirDockerfile, cdqanalysis.HiddenDirDockerfile, cdqanalysis.BuildDirDockerfile,
-		cdqanalysis.AlternateDockerfile, cdqanalysis.DockerDirAlternateDockerfile, cdqanalysis.HiddenDirAlternateDockerfile, cdqanalysis.BuildDirAlternateDockerfile,
-		cdqanalysis.Containerfile, cdqanalysis.DockerDirContainerfile, cdqanalysis.HiddenDirContainerfile, cdqanalysis.BuildDirContainerfile}
 
-	for _, path := range validDockerfileLocations {
+	for _, path := range cdqanalysis.ValidDockerfileLocations {
 		dockerfilePath := dir + "/" + path
 		dockerfileBytes, err = DownloadFile(dockerfilePath)
 		if err == nil {
