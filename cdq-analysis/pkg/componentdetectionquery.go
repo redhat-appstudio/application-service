@@ -299,7 +299,6 @@ func (k K8sInfoClient) SendBackDetectionResult(devfilesMap map[string][]byte, de
 	}
 	_, err := k.Clientset.CoreV1().ConfigMaps(namespace).Create(k.Ctx, &configMap, metav1.CreateOptions{})
 	if err != nil {
-		log.Error(err, fmt.Sprintf("Error creating configmap"))
+		log.Error(err, "Error creating configmap")
 	}
-	return
 }
