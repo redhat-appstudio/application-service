@@ -173,8 +173,8 @@ func IsExist(path string) (bool, error) {
 }
 
 // getAlizerDevfileTypes gets the Alizer devfile types for a specified registry
-func getAlizerDevfileTypes(registryURL string) ([]model.DevFileType, error) {
-	types := []model.DevFileType{}
+func getAlizerDevfileTypes(registryURL string) ([]model.DevfileType, error) {
+	types := []model.DevfileType{}
 	registryIndex, err := registryLibrary.GetRegistryIndex(registryURL, registryLibrary.RegistryOptions{
 		Telemetry: registryLibrary.TelemetryData{},
 	}, schema.SampleDevfileType)
@@ -183,7 +183,7 @@ func getAlizerDevfileTypes(registryURL string) ([]model.DevFileType, error) {
 	}
 
 	for _, index := range registryIndex {
-		types = append(types, model.DevFileType{
+		types = append(types, model.DevfileType{
 			Name:        index.Name,
 			Language:    index.Language,
 			ProjectType: index.ProjectType,

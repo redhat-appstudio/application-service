@@ -301,8 +301,8 @@ github.com/davecgh/go-spew v1.1.1/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSs
 github.com/davecgh/go-spew v1.1.2-0.20180830191138-d8f796af33cc h1:U9qPSI2PIWSS1VwoXQT9A3Wy9MM3WgvqSxFWenqJduM=
 github.com/davecgh/go-spew v1.1.2-0.20180830191138-d8f796af33cc/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
 github.com/denverdino/aliyungo v0.0.0-20190125010748-a747050bb1ba/go.mod h1:dV8lFg6daOBZbT6/BDGIz6Y3WFGn8juu6G+CQ6LHtl0=
-github.com/devfile/alizer v1.1.1-1.18b h1:2mBYBBT+JHziuzB/SJ8A0uomnaJPe55D+6xE69TZPY8=
-github.com/devfile/alizer v1.1.1-1.18b/go.mod h1:TgiLIIbOjrchs2DYD/L9369g4BLz3e0Offm2gIr154c=
+github.com/devfile/alizer v1.1.6-0.20230921110335-93b0fab2bfe0 h1:mBKJiQGeqw0BL8f1E1HNM18xX4KPSYwQ4DbFD+5NWZ0=
+github.com/devfile/alizer v1.1.6-0.20230921110335-93b0fab2bfe0/go.mod h1:bbmpezGJe/lSqoYcTZSHTJMQaBYapOF/OsVWsqsEcBA=
 github.com/devfile/api/v2 v2.0.0-20211021164004-dabee4e633ed/go.mod h1:d99eTN6QxgzihOOFyOZA+VpUyD4Q1pYRYHZ/ci9J96Q=
 github.com/devfile/api/v2 v2.0.0-20220117162434-6e6e6a8bc14c/go.mod h1:d99eTN6QxgzihOOFyOZA+VpUyD4Q1pYRYHZ/ci9J96Q=
 github.com/devfile/api/v2 v2.2.0/go.mod h1:dN7xFrOVG+iPqn4UKGibXLd5oVsdE8XyK9OEb5JL3aI=

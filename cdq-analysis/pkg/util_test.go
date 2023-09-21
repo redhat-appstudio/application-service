@@ -452,13 +452,13 @@ func TestGetAlizerDevfileTypes(t *testing.T) {
 	tests := []struct {
 		name      string
 		url       string
-		wantTypes []model.DevFileType
+		wantTypes []model.DevfileType
 		wantErr   bool
 	}{
 		{
 			name: "Get the Sample Devfile Types",
 			url:  "http://" + serverIP,
-			wantTypes: []model.DevFileType{
+			wantTypes: []model.DevfileType{
 				{
 					Name:        "sampleindex1",
 					ProjectType: "project1",

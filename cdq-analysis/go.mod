@@ -3,7 +3,7 @@ module github.com/redhat-appstudio/application-service/cdq-analysis
 go 1.19
 
 require (
-	github.com/devfile/alizer v1.1.1-1.18b
+	github.com/devfile/alizer v1.1.6-0.20230921110335-93b0fab2bfe0
 	github.com/devfile/api/v2 v2.2.1-alpha.0.20230413012049-a6c32fca0dbd
 	github.com/devfile/library/v2 v2.2.1-0.20230821212346-99a3776c0b1e
 	github.com/devfile/registry-support/index/generator v0.0.0-20221018203505-df96d34d4273

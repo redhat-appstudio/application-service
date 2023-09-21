@@ -232,27 +232,27 @@ func (a MockAlizerClient) DetectComponents(path string) ([]model.Component, erro
 }
 
 // SelectDevFileFromTypes is a wrapper call to Alizer's SelectDevFileFromTypes()
-func (a MockAlizerClient) SelectDevFileFromTypes(path string, devFileTypes []model.DevFileType) (model.DevFileType, error) {
+func (a MockAlizerClient) SelectDevFileFromTypes(path string, devFileTypes []model.DevfileType) (model.DevfileType, error) {
 	if strings.Contains(path, "/errorSelectDevFileFromTypes") {
-		return model.DevFileType{}, fmt.Errorf("dummy SelectDevFileFromTypes err")
+		return model.DevfileType{}, fmt.Errorf("dummy SelectDevFileFromTypes err")
 	} else if strings.Contains(path, "/error/devfileendpoint") {
-		return model.DevFileType{
+		return model.DevfileType{
 			Name: "fake",
 		}, nil
 	} else if strings.Contains(path, "java-springboot-basic") || strings.Contains(path, "springboot") || strings.Contains(path, "spring-boot-root-component") {
-		return model.DevFileType{
+		return model.DevfileType{
 			Name: "java-springboot-basic",
 		}, nil
 	} else if strings.Contains(path, "devfile-sample-nodejs-basic") {
-		return model.DevFileType{
+		return model.DevfileType{
 			Name: "nodejs-basic",
 		}, nil
 	} else if strings.Contains(path, "python-basic") || strings.Contains(path, "python-src-none") || strings.Contains(path, "python-src-docker") {
-		return model.DevFileType{
+		return model.DevfileType{
 			Name: "python-basic",
 		}, nil
 	} else if strings.Contains(path, "nodejs-no-dockerfile") || strings.Contains(path, "dockerfile-node-sample") {
-		return model.DevFileType{
+		return model.DevfileType{
 			Name:        "nodejs-basic",
 			Language:    "JavaScript",
 			ProjectType: "Node.js",
@@ -264,5 +264,5 @@ func (a MockAlizerClient) SelectDevFileFromTypes(path string, devFileTypes []mod
 		}, nil
 	}
 
-	return model.DevFileType{}, nil
+	return model.DevfileType{}, nil
 }

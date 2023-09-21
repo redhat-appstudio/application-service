@@ -55,7 +55,7 @@ require (
 	github.com/containerd/containerd v1.6.20 // indirect
 	github.com/containerd/typeurl v1.0.2 // indirect
 	github.com/davecgh/go-spew v1.1.2-0.20180830191138-d8f796af33cc // indirect
-	github.com/devfile/alizer v1.1.1-1.18b // indirect
+	github.com/devfile/alizer v1.1.6-0.20230921110335-93b0fab2bfe0 // indirect
 	github.com/devfile/registry-support/index/generator v0.0.0-20221018203505-df96d34d4273 // indirect
 	github.com/devfile/registry-support/registry-library v0.0.0-20221018213054-47b3ffaeadba // indirect
 	github.com/distribution/distribution/v3 v3.0.0-20211118083504-a29a3c99a684 // indirect
