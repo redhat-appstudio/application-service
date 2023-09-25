@@ -13,7 +13,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package controllers
+package contracts
 
 import (
 	appstudiov1alpha1 "github.com/redhat-appstudio/application-api/api/v1alpha1"
