@@ -278,7 +278,7 @@ func (r *ComponentReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 				if string(sourceURL[len(sourceURL)-1]) == "/" {
 					sourceURL = sourceURL[0 : len(sourceURL)-1]
 				}
-				log.Info(fmt.Sprintf("Look for default branch of repo %s... %v", source.GitSource.URL, req.NamespacedName))
+				log.Info(fmt.Sprintf("Looking for default branch of repo %s... %v", source.GitSource.URL, req.NamespacedName))
 				metricsLabel := prometheus.Labels{"controller": cdqName, "tokenName": ghClient.TokenName, "operation": "GetDefaultBranchFromURL"}
 				metrics.ControllerGitRequest.With(metricsLabel).Inc()
 				source.GitSource.Revision, err = ghClient.GetDefaultBranchFromURL(sourceURL, ctx)
@@ -342,24 +342,17 @@ func (r *ComponentReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 					}
 					metrics.ImportGitRepoSucceeded.Inc()
 
-					convertedGitURL, err := cdqanalysis.ConvertGitHubURL(source.GitSource.URL, source.GitSource.Revision, context)
+					gitURL, err := cdqanalysis.ConvertGitHubURL(source.GitSource.URL, source.GitSource.Revision, context)
 					if err != nil {
 						log.Error(err, fmt.Sprintf("Unable to convert Github URL to raw format, exiting reconcile loop %v", req.NamespacedName))
 						_ = r.SetCreateConditionAndUpdateCR(ctx, req, &component, err)
 						return ctrl.Result{}, err
 					}
-					devfileLocation = convertedGitURL + string(os.PathSeparator) + devfileLocation
+					devfileLocation = gitURL + string(os.PathSeparator) + devfileLocation
 				}
 
 			} else if source.GitSource.DevfileURL != "" {
 				devfileLocation = source.GitSource.DevfileURL
-				devfileBytes, err = cdqanalysis.CurlEndpoint(source.GitSource.DevfileURL)
-				if err != nil {
-					log.Error(err, fmt.Sprintf("Unable to GET %s, exiting reconcile loop %v", source.GitSource.DevfileURL, req.NamespacedName))
-					err := fmt.Errorf("unable to GET from %s", source.GitSource.DevfileURL)
-					_ = r.SetCreateConditionAndUpdateCR(ctx, req, &component, err)
-					return ctrl.Result{}, err
-				}
 			} else if source.GitSource.DockerfileURL != "" {
 				devfileData, err := devfile.CreateDevfileForDockerfileBuild(source.GitSource.DockerfileURL, "./", component.Name, component.Spec.Application)
 				if err != nil {
@@ -402,6 +395,7 @@ func (r *ComponentReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 
 		if devfileLocation != "" {
 			// Parse the Component Devfile
+			log.Info(fmt.Sprintf("Parsing Devfile from the Devfile location %s... %v", devfileLocation, req.NamespacedName))
 			compDevfileData, err = cdqanalysis.ParseDevfileWithParserArgs(&devfileParser.ParserArgs{URL: devfileLocation, Token: gitToken})
 
 			if err != nil {
@@ -411,7 +405,7 @@ func (r *ComponentReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 			}
 		} else {
 			// Parse the Component Devfile
-
+			log.Info(fmt.Sprintf("Parsing Devfile from the Devfile bytes %v... %v", len(devfileBytes), req.NamespacedName))
 			compDevfileData, err = cdqanalysis.ParseDevfileWithParserArgs(&devfileParser.ParserArgs{Data: devfileBytes, Token: gitToken})
 
 			if err != nil {
