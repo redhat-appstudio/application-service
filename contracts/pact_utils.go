@@ -67,32 +67,3 @@ func getGhComponentSpec(name string, namespace string, appname string, repo stri
 		},
 	}
 }
-
-func getQuayComponentSpec(name string, namespace string, appname string, repo string) *appstudiov1alpha1.Component {
-	SampleRepoLink := "https://github.com/devfile-samples/devfile-sample-java-springboot-basic"
-	return &appstudiov1alpha1.Component{
-		TypeMeta: metav1.TypeMeta{
-			APIVersion: "appstudio.redhat.com/v1alpha1",
-			Kind:       "Component",
-		},
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      name,
-			Namespace: namespace,
-		},
-		Spec: appstudiov1alpha1.ComponentSpec{
-			ComponentName:  name,
-			Application:    appname,
-			ContainerImage: repo,
-			Source: appstudiov1alpha1.ComponentSource{
-				ComponentSourceUnion: appstudiov1alpha1.ComponentSourceUnion{
-					GitSource: &appstudiov1alpha1.GitSource{
-						URL: SampleRepoLink,
-					},
-				},
-			},
-			Replicas:   &replicas,
-			TargetPort: 1111,
-			Route:      "route-endpoint-url",
-		},
-	}
-}
