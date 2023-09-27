@@ -166,6 +166,11 @@ func (r *ComponentDetectionQueryReconciler) Reconcile(ctx context.Context, req c
 			return ctrl.Result{}, nil
 		}
 
+		cdqInfo := &cdqanalysis.CDQInfoClient{
+			DevfileRegistryURL: r.DevfileRegistryURL,
+			GitURL:             cdqanalysis.GitURL{RepoURL: source.URL, Revision: source.Revision, Token: gitToken},
+		}
+
 		if source.DevfileURL == "" {
 			log.Info(fmt.Sprintf("Attempting to read a devfile from the URL %s... %v", source.URL, req.NamespacedName))
 			var devfilesMapReturned map[string][]byte
@@ -287,11 +292,7 @@ func (r *ComponentDetectionQueryReconciler) Reconcile(ctx context.Context, req c
 				cleanupK8sResources(log, clientset, ctx, fmt.Sprintf("%s-job", req.Name), req.Name, req.Namespace)
 
 				if unmarshalErr != nil {
-					// if a direct devfileURL is provided and errors out, we dont do an alizer detection
 					log.Error(unmarshalErr, fmt.Sprintf("Failed to unmarshal the returned result from CDQ configmap... %v", req.NamespacedName))
-					err := fmt.Errorf("Failed to unmarshal the returned result from CDQ configmap... ")
-					r.SetCompleteConditionAndUpdateCR(ctx, req, &componentDetectionQuery, copiedCDQ, err)
-					return ctrl.Result{}, nil
 				}
 
 				if errMapReturned != nil && !reflect.DeepEqual(errMapReturned, map[string]string{}) {
@@ -317,24 +318,18 @@ func (r *ComponentDetectionQueryReconciler) Reconcile(ctx context.Context, req c
 					CreateK8sJob: false,
 				}
 
-				cdqInfo := &cdqanalysis.CDQInfoClient{
-					DevfileRegistryURL: r.DevfileRegistryURL,
-					GitURL:             cdqanalysis.GitURL{RepoURL: source.URL, Revision: source.Revision, Token: gitToken},
-				}
-
 				devfilesMapReturned, devfilesURLMapReturned, dockerfileContextMapReturned, componentPortsMapReturned, revision, err = cdqanalysis.CloneAndAnalyze(k8sInfoClient, req.Namespace, req.Name, context, cdqInfo)
 				if err != nil {
 					log.Error(err, fmt.Sprintf("Error running cdq analysis... %v", req.NamespacedName))
 					r.SetCompleteConditionAndUpdateCR(ctx, req, &componentDetectionQuery, copiedCDQ, err)
 					return ctrl.Result{}, nil
 				}
-				maps.Copy(devfilesMap, devfilesMapReturned)
-				maps.Copy(dockerfileContextMap, dockerfileContextMapReturned)
-				maps.Copy(devfilesURLMap, devfilesURLMapReturned)
-				maps.Copy(componentPortsMap, componentPortsMapReturned)
-
-				devfilePath, _ = cdqanalysis.GetDevfileAndDockerFilePaths(*cdqInfo)
 			}
+			maps.Copy(devfilesMap, devfilesMapReturned)
+			maps.Copy(dockerfileContextMap, dockerfileContextMapReturned)
+			maps.Copy(devfilesURLMap, devfilesURLMapReturned)
+			maps.Copy(componentPortsMap, componentPortsMapReturned)
+			devfilePath, _ = cdqanalysis.GetDevfileAndDockerFilePaths(*cdqInfo)
 			componentDetectionQuery.Spec.GitSource.Revision = revision
 
 		} else {
