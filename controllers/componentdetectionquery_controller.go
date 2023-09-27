@@ -26,6 +26,7 @@ import (
 	"time"
 
 	"github.com/go-logr/logr"
+	"github.com/hashicorp/go-multierror"
 	"github.com/prometheus/client_golang/prometheus"
 	appstudiov1alpha1 "github.com/redhat-appstudio/application-api/api/v1alpha1"
 	cdqanalysis "github.com/redhat-appstudio/application-service/cdq-analysis/pkg"
@@ -172,6 +173,8 @@ func (r *ComponentDetectionQueryReconciler) Reconcile(ctx context.Context, req c
 			var componentPortsMapReturned map[string][]int
 			revision := source.Revision
 
+			// with annotation runCDQAnalysisLocal = true, would allow the CDQ controller to run the cdq-analysis go modoule
+			// it is being used for CDQ controller tests to test both k8s job and go module
 			if r.RunKubernetesJob && !(componentDetectionQuery.Annotations["runCDQAnalysisLocal"] == "true") {
 				// perfume cdq job that requires repo cloning and azlier analysis
 				clientset, err := kubernetes.NewForConfig(r.Config)
@@ -256,13 +259,41 @@ func (r *ComponentDetectionQueryReconciler) Reconcile(ctx context.Context, req c
 					return ctrl.Result{}, nil
 				}
 				var errMapReturned map[string]string
-				json.Unmarshal(cm.BinaryData["devfilesMap"], &devfilesMapReturned)
-				json.Unmarshal(cm.BinaryData["dockerfileContextMap"], &dockerfileContextMapReturned)
-				json.Unmarshal(cm.BinaryData["devfilesURLMap"], &devfilesURLMapReturned)
-				json.Unmarshal(cm.BinaryData["componentPortsMap"], &componentPortsMapReturned)
-				json.Unmarshal(cm.BinaryData["revision"], &revision)
-				json.Unmarshal(cm.BinaryData["errorMap"], &errMapReturned)
+				var unmarshalErr error
+				err = json.Unmarshal(cm.BinaryData["devfilesMap"], &devfilesMapReturned)
+				if err != nil {
+					unmarshalErr = multierror.Append(unmarshalErr, fmt.Errorf("unmarshal devfilesMap: %v", err))
+				}
+				err = json.Unmarshal(cm.BinaryData["dockerfileContextMap"], &dockerfileContextMapReturned)
+				if err != nil {
+					unmarshalErr = multierror.Append(unmarshalErr, fmt.Errorf("unmarshal dockerfileContextMap: %v", err))
+				}
+				err = json.Unmarshal(cm.BinaryData["devfilesURLMap"], &devfilesURLMapReturned)
+				if err != nil {
+					unmarshalErr = multierror.Append(unmarshalErr, fmt.Errorf("unmarshal devfilesURLMap: %v", err))
+				}
+				err = json.Unmarshal(cm.BinaryData["componentPortsMap"], &componentPortsMapReturned)
+				if err != nil {
+					unmarshalErr = multierror.Append(unmarshalErr, fmt.Errorf("unmarshal componentPortsMap: %v", err))
+				}
+				err = json.Unmarshal(cm.BinaryData["revision"], &revision)
+				if err != nil {
+					unmarshalErr = multierror.Append(unmarshalErr, fmt.Errorf("unmarshal revision: %v", err))
+				}
+				err = json.Unmarshal(cm.BinaryData["errorMap"], &errMapReturned)
+				if err != nil {
+					unmarshalErr = multierror.Append(unmarshalErr, fmt.Errorf("unmarshal errorMap: %v", err))
+				}
 				cleanupK8sResources(log, clientset, ctx, fmt.Sprintf("%s-job", req.Name), req.Name, req.Namespace)
+
+				if unmarshalErr != nil {
+					// if a direct devfileURL is provided and errors out, we dont do an alizer detection
+					log.Error(unmarshalErr, fmt.Sprintf("Failed to unmarshal the returned result from CDQ configmap... %v", req.NamespacedName))
+					err := fmt.Errorf("Failed to unmarshal the returned result from CDQ configmap... ")
+					r.SetCompleteConditionAndUpdateCR(ctx, req, &componentDetectionQuery, copiedCDQ, err)
+					return ctrl.Result{}, nil
+				}
+
 				if errMapReturned != nil && !reflect.DeepEqual(errMapReturned, map[string]string{}) {
 					var retErr error
 					// only 1 index in the error map

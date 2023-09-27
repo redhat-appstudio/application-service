@@ -18,6 +18,7 @@ package controllers
 import (
 	"context"
 	"go/build"
+	"os"
 	"path/filepath"
 
 	spiapi "github.com/redhat-appstudio/service-provider-integration-operator/api/v1beta1"
@@ -94,6 +95,12 @@ func SetupTestEnv() (client.Client, *envtest.Environment, context.Context, conte
 
 	mockGhTokenClient := github.MockGitHubTokenClient{}
 
+	// Retrieve the option to specify a cdq-analysis image
+	cdqAnalysisImage := os.Getenv("CDQ_ANALYSIS_IMAGE")
+	if cdqAnalysisImage == "" {
+		cdqAnalysisImage = "quay.io/redhat-appstudio/cdq-analysis:next"
+	}
+
 	// To Do: Set up reconcilers for the other controllers
 	err = (&ApplicationReconciler{
 		Client:            k8sManager.GetClient(),
@@ -124,7 +131,7 @@ func SetupTestEnv() (client.Client, *envtest.Environment, context.Context, conte
 		AppFS:              ioutils.NewMemoryFilesystem(),
 		Config:             cfg,
 		RunKubernetesJob:   true,
-		CdqAnalysisImage:   "quay.io/redhat-appstudio/cdq-analysis:next",
+		CdqAnalysisImage:   cdqAnalysisImage,
 	}).SetupWithManager(ctx, k8sManager)
 	gomega.Expect(err).ToNot(gomega.HaveOccurred())
 
