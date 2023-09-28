@@ -22,18 +22,17 @@ import (
 	"reflect"
 	"strings"
 
-	"github.com/devfile/library/v2/pkg/devfile/parser"
-
+	"github.com/devfile/alizer/pkg/apis/model"
+	"github.com/devfile/alizer/pkg/apis/recognizer"
 	"github.com/devfile/api/v2/pkg/apis/workspaces/v1alpha2"
+	"github.com/devfile/library/v2/pkg/devfile/parser"
 	"github.com/devfile/library/v2/pkg/devfile/parser/data/v2/common"
 	"github.com/go-logr/logr"
-	"github.com/redhat-developer/alizer/go/pkg/apis/model"
-	"github.com/redhat-developer/alizer/go/pkg/apis/recognizer"
 	"sigs.k8s.io/yaml"
 )
 
 type Alizer interface {
-	SelectDevFileFromTypes(path string, devFileTypes []model.DevFileType) (model.DevFileType, error)
+	SelectDevFileFromTypes(path string, devFileTypes []model.DevfileType) (model.DevfileType, error)
 	DetectComponents(path string) ([]model.Component, error)
 }
 
@@ -311,10 +310,10 @@ func (a AlizerClient) Analyze(path string) ([]model.Language, error) {
 }
 
 // SelectDevFileFromTypes is a wrapper call to Alizer's SelectDevFileFromTypes()
-func (a AlizerClient) SelectDevFileFromTypes(path string, devFileTypes []model.DevFileType) (model.DevFileType, error) {
+func (a AlizerClient) SelectDevFileFromTypes(path string, devFileTypes []model.DevfileType) (model.DevfileType, error) {
 	index, err := recognizer.SelectDevFileFromTypes(path, devFileTypes)
 	if err != nil {
-		return model.DevFileType{}, err
+		return model.DevfileType{}, err
 	}
 	return devFileTypes[index], err
 }
@@ -358,7 +357,7 @@ func AnalyzeAndDetectDevfile(a Alizer, path, devfileRegistryURL string) ([]byte,
 				// No need to check for err, if a path does not have a detected devfile, ignore err
 				// if a dir can be a component but we get an unrelated err, err out
 				return nil, "", "", nil, err
-			} else if !reflect.DeepEqual(detectedType, model.DevFileType{}) {
+			} else if !reflect.DeepEqual(detectedType, model.DevfileType{}) {
 				// Note: Do not use the Devfile registry endpoint devfileRegistry/devfiles/detectedType.Name
 				// until the Devfile registry support uploads the Devfile Kubernetes component relative uri file
 				// as an artifact and made accessible via devfile/library or devfile/registry-support

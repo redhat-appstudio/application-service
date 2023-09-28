@@ -51,7 +51,7 @@ var (
 	cancel    context.CancelFunc
 )
 
-func setupTestEnv() {
+func SetupTestEnv() (client.Client, *envtest.Environment, context.Context, context.CancelFunc) {
 	logf.SetLogger(zap.New(zap.WriteTo(ginkgo.GinkgoWriter), zap.UseDevMode(true)))
 
 	ctx, cancel = context.WithCancel(context.TODO())
@@ -140,4 +140,5 @@ func setupTestEnv() {
 		err = k8sManager.Start(ctx)
 		gomega.Expect(err).ToNot(gomega.HaveOccurred(), "failed to run manager")
 	}()
+	return k8sClient, testEnv, ctx, cancel
 }

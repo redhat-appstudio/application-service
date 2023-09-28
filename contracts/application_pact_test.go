@@ -13,7 +13,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package controllers
+package contracts
 
 import (
 	"context"
@@ -29,6 +29,7 @@ import (
 	models "github.com/pact-foundation/pact-go/v2/models"
 	provider "github.com/pact-foundation/pact-go/v2/provider"
 	appstudiov1alpha1 "github.com/redhat-appstudio/application-api/api/v1alpha1"
+	"github.com/redhat-appstudio/application-service/controllers"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
@@ -47,7 +48,7 @@ func TestContracts(t *testing.T) {
 		BrokerURL:                  "https://pact-broker-hac-pact-broker.apps.hac-devsandbox.5unc.p1.openshiftapps.com",
 		PublishVerificationResults: false,
 		BrokerUsername:             "pactCommonUser",
-		BrokerPassword:             "pactCommonPassword123",
+		BrokerPassword:             "pactCommonPassword123", // notsecret
 	}
 
 	if os.Getenv("SKIP_PACT_TESTS") == "true" {
@@ -84,7 +85,7 @@ func TestContracts(t *testing.T) {
 
 	// Register fail handler and setup test environment (same as during unit tests)
 	RegisterFailHandler(Fail)
-	setupTestEnv()
+	k8sClient, testEnv, ctx, cancel = controllers.SetupTestEnv()
 
 	verifyRequest.ProviderBaseURL = testEnv.Config.Host
 
@@ -105,7 +106,10 @@ func TestContracts(t *testing.T) {
 	// setup state handlers
 	verifyRequest.StateHandlers = models.StateHandlers{
 		"No app with the name app-to-create in the default namespace exists.": func(setup bool, s models.ProviderState) (models.ProviderStateResponse, error) { return nil, nil },
-		"App myapp exists and has component gh-component and quay-component":  createAppAndComponents(HASAppNamespace),
+		// deprecated
+		"App myapp exists and has component gh-component and quay-component": createAppAndComponents(HASAppNamespace),
+		"Application exists":         createApp(),
+		"Application has components": createComponents(),
 	}
 	verifyRequest.AfterEach = func() error {
 		// Remove all applications and components after each tests
