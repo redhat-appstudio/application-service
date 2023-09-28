@@ -217,10 +217,6 @@ func main() {
 
 // setUpWebhooks sets up webhooks.
 func setUpWebhooks(mgr ctrl.Manager) {
-	if os.Getenv("ENABLE_WEBHOOKS") == "false" {
-		return
-	}
-
 	err := webhook.SetupWebhooks(mgr, webhooks.EnabledWebhooks...)
 	if err != nil {
 		setupLog.Error(err, "unable to setup webhooks")

@@ -16,9 +16,12 @@
 package webhooks
 
 import (
+	"context"
 	"testing"
 
 	appstudiov1alpha1 "github.com/redhat-appstudio/application-api/api/v1alpha1"
+	"go.uber.org/zap/zapcore"
+	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 
 	"github.com/stretchr/testify/assert"
 )
@@ -86,30 +89,19 @@ func TestApplicationValidatingWebhook(t *testing.T) {
 				},
 			},
 		},
-		{
-			name: "not application",
-			err:  "runtime object is not of type Application",
-			updateApp: appstudiov1alpha1.Application{
-				Spec: appstudiov1alpha1.ApplicationSpec{
-					DisplayName: "My App",
-				},
-			},
-		},
 	}
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
 			var err error
-			if test.name == "not application" {
-				originalComponent := appstudiov1alpha1.Component{
-					Spec: appstudiov1alpha1.ComponentSpec{
-						ComponentName: "component",
-						Application:   "application",
-					},
-				}
-				err = test.updateApp.ValidateUpdate(&originalComponent)
-			} else {
-				err = test.updateApp.ValidateUpdate(&originalApplication)
+
+			appWebhook := ApplicationWebhook{
+				log: zap.New(zap.UseFlagOptions(&zap.Options{
+					Development: true,
+					TimeEncoder: zapcore.ISO8601TimeEncoder,
+				})),
 			}
+
+			err = appWebhook.ValidateUpdate(context.Background(), &originalApplication, &test.updateApp)
 
 			if test.err == "" {
 				assert.Nil(t, err)
@@ -135,7 +127,15 @@ func TestApplicationDeleteValidatingWebhook(t *testing.T) {
 	}
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			err := test.app.ValidateDelete()
+
+			appWebhook := ApplicationWebhook{
+				log: zap.New(zap.UseFlagOptions(&zap.Options{
+					Development: true,
+					TimeEncoder: zapcore.ISO8601TimeEncoder,
+				})),
+			}
+
+			err := appWebhook.ValidateDelete(context.Background(), &test.app)
 
 			if test.err == "" {
 				assert.Nil(t, err)
