@@ -19,6 +19,10 @@ import (
 	"context"
 	"strings"
 
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/testutil"
+	"github.com/redhat-appstudio/application-service/pkg/metrics"
+
 	"github.com/devfile/library/v2/pkg/devfile/parser"
 
 	. "github.com/onsi/ginkgo"
@@ -43,10 +47,16 @@ var _ = Describe("Application controller finalizer counter tests", func() {
 		SampleRepoLink = "https://github.com/devfile-samples/devfile-sample-java-springboot-basic"
 	)
 
+	prometheus.MustRegister(metrics.ComponentDeletionTotalReqs, metrics.ComponentDeletionFailed, metrics.ComponentDeletionSucceeded)
+
 	Context("Delete Component CR with an invalid Application devfile", func() {
 		It("Should delete successfully even when finalizer fails", func() {
 			applicationName := AppName + "1"
 			componentName := CompName + "1"
+
+			beforeDeleteTotalReqs := testutil.ToFloat64(metrics.ComponentDeletionTotalReqs)
+			beforeDeleteSucceedReqs := testutil.ToFloat64(metrics.ComponentDeletionSucceeded)
+			beforeDeleteFailedReqs := testutil.ToFloat64(metrics.ComponentDeletionFailed)
 
 			// Create a simple Application CR and get its devfile
 			createAndFetchSimpleApp(applicationName, AppNamespace, DisplayName, Description)
@@ -127,6 +137,10 @@ var _ = Describe("Application controller finalizer counter tests", func() {
 				f := &appstudiov1alpha1.Application{}
 				return k8sClient.Get(context.Background(), hasAppLookupKey, f)
 			}, timeout, interval).ShouldNot(Succeed())
+
+			Expect(testutil.ToFloat64(metrics.ComponentDeletionTotalReqs) > beforeDeleteTotalReqs).To(BeTrue())
+			Expect(testutil.ToFloat64(metrics.ComponentDeletionSucceeded) > beforeDeleteSucceedReqs).To(BeTrue())
+			Expect(testutil.ToFloat64(metrics.ComponentDeletionFailed) > beforeDeleteFailedReqs).To(BeTrue())
 		})
 	})
 

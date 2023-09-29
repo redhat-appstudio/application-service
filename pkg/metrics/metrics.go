@@ -96,11 +96,33 @@ var (
 			Help: "Number of successful application deletion requests",
 		},
 	)
+
+	ComponentDeletionTotalReqs = prometheus.NewCounter(
+		prometheus.CounterOpts{
+			Name: "has_component_deletion_total",
+			Help: "Number of component deletion requests processed",
+		},
+	)
+	ComponentDeletionFailed = prometheus.NewCounter(
+		prometheus.CounterOpts{
+			Name: "has_component_failed_deletion_total",
+			Help: "Number of failed component deletion requests",
+		},
+	)
+
+	ComponentDeletionSucceeded = prometheus.NewCounter(
+		prometheus.CounterOpts{
+			Name: "has_component_successful_deletion_total",
+			Help: "Number of successful component deletion requests",
+		},
+	)
 )
 
 func init() {
 	// Register custom metrics with the global prometheus registry
-	metrics.Registry.MustRegister(GitOpsRepoCreationTotalReqs, GitOpsRepoCreationFailed, GitOpsRepoCreationSucceeded, ControllerGitRequest, SecondaryRateLimitCounter, PrimaryRateLimitCounter, TokenPoolGauge, ApplicationDeletionTotalReqs, ApplicationDeletionSucceeded, ApplicationDeletionFailed)
+	metrics.Registry.MustRegister(GitOpsRepoCreationTotalReqs, GitOpsRepoCreationFailed, GitOpsRepoCreationSucceeded, ControllerGitRequest, SecondaryRateLimitCounter,
+		PrimaryRateLimitCounter, TokenPoolGauge, ApplicationDeletionTotalReqs, ApplicationDeletionSucceeded, ApplicationDeletionFailed,
+		ComponentDeletionTotalReqs, ComponentDeletionSucceeded, ComponentDeletionFailed)
 }
 
 // HandleRateLimitMetrics checks the error type to verify a primary or secondary rate limit has been encountered
