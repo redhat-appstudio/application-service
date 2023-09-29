@@ -285,6 +285,7 @@ func TestSendBackDetectionResult(t *testing.T) {
 
 	compName := "testComponent"
 	namespaceName := "testNamespace"
+	revision := "main"
 
 	springDevfileContext := `
 schemaVersion: 2.2.0
@@ -299,7 +300,7 @@ metadata:
 		"./": []byte(springDevfileContext),
 	}
 	devfilesURLMap := map[string]string{
-		"./": "https://registry.devfile.io/devfiles/java-springboot-basic",
+		"./": "https://raw.githubusercontent.com/devfile-samples/devfile-sample-java-springboot-basic/main/devfile.yaml",
 	}
 	dockerfileContextMap := map[string]string{
 		"./": "https://raw.githubusercontent.com/devfile-samples/devfile-sample-java-springboot-basic/main/docker/Dockerfile",
@@ -313,12 +314,15 @@ metadata:
 	dockerfileContextMapbytes, _ := json.Marshal(dockerfileContextMap)
 	configMapBinaryData["dockerfileContextMap"] = dockerfileContextMapbytes
 
+	configMapBinaryData["revision"] = []byte(revision)
+
 	internalErrBinaryData := make(map[string][]byte)
 	internalErr := fmt.Errorf("dummy internal error")
 	internalErrMap := make(map[string]string)
 	internalErrMap["InternalError"] = fmt.Sprintf("%v", internalErr)
 	errorMapbytes, _ := json.Marshal(internalErrMap)
 	internalErrBinaryData["errorMap"] = errorMapbytes
+	internalErrBinaryData["revision"] = []byte(revision)
 
 	devfileNotFoundBinaryData := make(map[string][]byte)
 	devfileNotFoundErr := NoDevfileFound{"dummy location", fmt.Errorf("dummy NoDevfileFound error")}
@@ -326,6 +330,7 @@ metadata:
 	devfileNotFoundErrMap["NoDevfileFound"] = fmt.Sprintf("%v", &devfileNotFoundErr)
 	devfileNotFoundErrorMapbytes, _ := json.Marshal(devfileNotFoundErrMap)
 	devfileNotFoundBinaryData["errorMap"] = devfileNotFoundErrorMapbytes
+	devfileNotFoundBinaryData["revision"] = []byte(revision)
 
 	dockerfileNotFoundBinaryData := make(map[string][]byte)
 	dockerfileNotFoundErr := NoDockerfileFound{"dummy location", fmt.Errorf("dummy NoDockerfileFound error")}
@@ -333,6 +338,7 @@ metadata:
 	dockerfileNotFoundErrMap["NoDockerfileFound"] = fmt.Sprintf("%v", &dockerfileNotFoundErr)
 	dockerfileNotFoundErrorMapbytes, _ := json.Marshal(dockerfileNotFoundErrMap)
 	dockerfileNotFoundBinaryData["errorMap"] = dockerfileNotFoundErrorMapbytes
+	dockerfileNotFoundBinaryData["revision"] = []byte(revision)
 
 	tests := []struct {
 		testCase             string
@@ -368,7 +374,7 @@ metadata:
 	}
 	for _, tt := range tests {
 		t.Run(tt.testCase, func(t *testing.T) {
-			k8sClient.SendBackDetectionResult(tt.devfilesMap, tt.devfilesURLMap, tt.dockerfileContextMap, tt.componentPortsMap, compName, namespaceName, tt.err)
+			k8sClient.SendBackDetectionResult(tt.devfilesMap, tt.devfilesURLMap, tt.dockerfileContextMap, tt.componentPortsMap, revision, compName, namespaceName, tt.err)
 			configMap, err := clientset.CoreV1().ConfigMaps(namespaceName).Get(k8sClient.Ctx, compName, metav1.GetOptions{})
 			if err != nil {
 				t.Errorf("got unexpected error %v", err)

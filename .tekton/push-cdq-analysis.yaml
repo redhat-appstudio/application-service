@@ -16,9 +16,6 @@ spec:
       value: "quay.io/redhat-appstudio/cdq-analysis:{{revision}}"
     - name: path-context
       value: "cdq-analysis"
-    - name: infra-deployment-update-script
-      value: |
-        sed -i -e 's|\(https://github.com/redhat-appstudio/application-service/.*?ref=\)\(.*\)|\1{{ revision }}|' -e 's/\(newTag: \).*/\1{{ revision }}/' components/has/cdq-analysis/kustomization.yaml  
   pipelineRef:
     name: docker-build
     bundle: quay.io/redhat-appstudio-tekton-catalog/pipeline-core-services-docker-build:latest

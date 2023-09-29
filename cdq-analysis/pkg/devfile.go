@@ -70,6 +70,9 @@ const (
 
 	// DevfileStageRegistryEndpoint is the endpoint of the staging devfile registry
 	DevfileStageRegistryEndpoint = "https://registry.stage.devfile.io"
+
+	// CDQAnalysisImage is the image of the go module, to spwan the k8s job
+	CDQAnalysisImage = "quay.io/redhat-appstudio/cdq-analysis:latest"
 )
 
 var ValidDevfileLocations = []string{Devfile, HiddenDevfile, HiddenDirDevfile, HiddenDirHiddenDevfile}

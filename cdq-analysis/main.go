@@ -19,6 +19,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"strconv"
 
 	"go.uber.org/zap/zapcore"
 	ctrl "sigs.k8s.io/controller-runtime"
@@ -30,26 +31,27 @@ import (
 )
 
 func main() {
-	if os.Getenv("GITHUB_TOKEN") == "" {
-		log.Fatal("GITHUB_TOKEN must be set as an environment variable")
-	}
 	gitToken := os.Getenv("GITHUB_TOKEN")
 
 	// Parse all of the possible command-line flags for the tool
-	var contextPath, URL, name, Revision, namespace, DevfileRegistryURL string
-	var isDevfilePresent, isDockerfilePresent, createK8sJob bool
+	var contextPath, URL, name, Revision, namespace, DevfileRegistryURL, createK8sJobStr string
+	var createK8sJob bool
 	flag.StringVar(&name, "name", "", "The ComponentDetectionQuery name")
 	flag.StringVar(&contextPath, "contextPath", "./", "The context path for the cdq analysis")
 	flag.StringVar(&URL, "URL", "", "The URL for the git repository")
 	flag.StringVar(&Revision, "revision", "", "The revision of the git repo to run cdq analysis against with")
 	flag.StringVar(&DevfileRegistryURL, "devfileRegistryURL", pkg.DevfileRegistryEndpoint, "The devfile registry URL")
 	flag.StringVar(&namespace, "namespace", "", "The namespace from which to fetch resources")
-	flag.BoolVar(&isDevfilePresent, "isDevfilePresent", false, "If the devfile present in the root of the repository")
-	flag.BoolVar(&isDockerfilePresent, "isDockerfilePresent", false, "If the dockerfile present in the root of the repository")
-	flag.BoolVar(&createK8sJob, "createK8sJob", false, "If a kubernetes job need to be created to send back the result")
+	flag.StringVar(&createK8sJobStr, "createK8sJob", "false", "If a kubernetes job need to be created to send back the result")
 	flag.Parse()
 
-	if err := validateVariables(name, URL, namespace, Revision); err != nil {
+	createK8sJob, err := strconv.ParseBool(createK8sJobStr)
+	if err != nil {
+		log.Fatal(fmt.Errorf("Error parse createK8sJob: %v", err))
+		createK8sJob = false
+	}
+
+	if err := validateVariables(name, URL, namespace); err != nil {
 		log.Fatal(err)
 	}
 
@@ -90,7 +92,7 @@ func main() {
 }
 
 // validateVariables ensures that all of the necessary variables passed in are set to valid values
-func validateVariables(name, URL, namespace, revision string) error {
+func validateVariables(name, URL, namespace string) error {
 
 	// The namespace flag must be passed in
 	if namespace == "" {
@@ -105,11 +107,6 @@ func validateVariables(name, URL, namespace, revision string) error {
 	// The name flag must be passed in
 	if name == "" {
 		return fmt.Errorf("usage: --name <cdq-name> must be passed in as a flag")
-	}
-
-	// The revision flag must be passed in
-	if revision == "" {
-		return fmt.Errorf("usage: --revision <revision> must be passed in as a flag")
 	}
 
 	return nil

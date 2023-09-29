@@ -22,6 +22,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"strconv"
 
 	spiapi "github.com/redhat-appstudio/service-provider-integration-operator/api/v1beta1"
 
@@ -31,6 +32,7 @@ import (
 	// to ensure that exec-entrypoint and run can make use of them.
 	"go.uber.org/zap/zapcore"
 	_ "k8s.io/client-go/plugin/pkg/client/auth"
+	"k8s.io/client-go/rest"
 
 	"k8s.io/apimachinery/pkg/runtime"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
@@ -134,6 +136,25 @@ func main() {
 		devfileRegistryURL = cdqanalysis.DevfileRegistryEndpoint
 	}
 
+	// Retrieve the option to specify a cdq-analysis image
+	cdqAnalysisImage := os.Getenv("CDQ_ANALYSIS_IMAGE")
+	if cdqAnalysisImage == "" {
+		cdqAnalysisImage = cdqanalysis.CDQAnalysisImage
+	}
+
+	// Retrieve the option to run cdq analysis with a k8s job
+	var RunKubernetesJob bool
+	runK8SJobCDQStr := os.Getenv("RUN_K8S_JOB_CDQ")
+	if runK8SJobCDQStr == "" {
+		RunKubernetesJob = false
+	} else {
+		RunKubernetesJob, err = strconv.ParseBool(runK8SJobCDQStr)
+		if err != nil {
+			setupLog.Info(fmt.Sprintf("unable to parse bool value from ENV $RUN_K8S_JOB_CDQ: %v, run go module instead ", err))
+			RunKubernetesJob = false
+		}
+	}
+
 	// Parse any passed in tokens and set up a client for handling the github tokens
 	err = github.ParseGitHubTokens()
 	if err != nil {
@@ -167,6 +188,11 @@ func main() {
 		setupLog.Error(err, "unable to create controller", "controller", "Component")
 		os.Exit(1)
 	}
+	config, err := rest.InClusterConfig()
+	if err != nil {
+		setupLog.Error(err, ("Error creating InClusterConfig... "))
+		os.Exit(1)
+	}
 	if err = (&controllers.ComponentDetectionQueryReconciler{
 		Client:             mgr.GetClient(),
 		Scheme:             mgr.GetScheme(),
@@ -174,6 +200,9 @@ func main() {
 		GitHubTokenClient:  ghTokenClient,
 		DevfileRegistryURL: devfileRegistryURL,
 		AppFS:              ioutils.NewFilesystem(),
+		CdqAnalysisImage:   cdqAnalysisImage,
+		RunKubernetesJob:   RunKubernetesJob,
+		Config:             config,
 	}).SetupWithManager(ctx, mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "ComponentDetectionQuery")
 		os.Exit(1)
