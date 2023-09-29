@@ -11,6 +11,26 @@ webhooks:
     service:
       name: webhook-service
       namespace: system
+      path: /mutate-appstudio-redhat-com-v1alpha1-application
+  failurePolicy: Fail
+  name: mapplication.kb.io
+  rules:
+  - apiGroups:
+    - appstudio.redhat.com
+    apiVersions:
+    - v1alpha1
+    operations:
+    - CREATE
+    - UPDATE
+    resources:
+    - applications
+  sideEffects: None
+- admissionReviewVersions:
+  - v1
+  clientConfig:
+    service:
+      name: webhook-service
+      namespace: system
       path: /mutate-appstudio-redhat-com-v1alpha1-component
   failurePolicy: Fail
   name: mcomponent.kb.io
@@ -38,26 +58,6 @@ webhooks:
     service:
       name: webhook-service
       namespace: system
-      path: /validate-appstudio-redhat-com-v1alpha1-release
-  failurePolicy: Fail
-  name: vrelease.kb.io
-  rules:
-  - apiGroups:
-    - appstudio.redhat.com
-    apiVersions:
-    - v1alpha1
-    operations:
-    - CREATE
-    - UPDATE
-    resources:
-    - releases
-  sideEffects: None
-- admissionReviewVersions:
-  - v1
-  clientConfig:
-    service:
-      name: webhook-service
-      namespace: system
       path: /validate-appstudio-redhat-com-v1alpha1-application
   failurePolicy: Fail
   name: vapplication.kb.io
@@ -71,26 +71,6 @@ webhooks:
     - UPDATE
     resources:
     - applications
-  sideEffects: None
-- admissionReviewVersions:
-  - v1
-  clientConfig:
-    service:
-      name: webhook-service
-      namespace: system
-      path: /validate-appstudio-redhat-com-v1alpha1-release
-  failurePolicy: Fail
-  name: vrelease.kb.io
-  rules:
-  - apiGroups:
-    - appstudio.redhat.com
-    apiVersions:
-    - v1alpha1
-    operations:
-    - CREATE
-    - UPDATE
-    resources:
-    - releases
   sideEffects: None
 - admissionReviewVersions:
   - v1

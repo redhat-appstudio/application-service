@@ -35,7 +35,7 @@ type ApplicationWebhook struct {
 	log    logr.Logger
 }
 
-//+kubebuilder:webhook:path=/validate-appstudio-redhat-com-v1alpha1-release,mutating=false,failurePolicy=fail,sideEffects=None,groups=appstudio.redhat.com,resources=releases,verbs=create;update,versions=v1alpha1,name=vrelease.kb.io,admissionReviewVersions=v1
+//+kubebuilder:webhook:path=/mutate-appstudio-redhat-com-v1alpha1-application,mutating=true,failurePolicy=fail,sideEffects=None,groups=appstudio.redhat.com,resources=applications,verbs=create;update,versions=v1alpha1,name=mapplication.kb.io,admissionReviewVersions=v1
 
 func (w *ApplicationWebhook) Register(mgr ctrl.Manager, log *logr.Logger) error {
 	w.client = mgr.GetClient()
@@ -46,7 +46,7 @@ func (w *ApplicationWebhook) Register(mgr ctrl.Manager, log *logr.Logger) error 
 		Complete()
 }
 
-//+kubebuilder:webhook:path=/validate-appstudio-redhat-com-v1alpha1-application,mutating=false,failurePolicy=fail,sideEffects=None,groups=appstudio.redhat.com,resources=applications,verbs=create;update,versions=v1alpha1,name=vapplication.kb.io,admissionReviewVersions=v1
+// +kubebuilder:webhook:path=/validate-appstudio-redhat-com-v1alpha1-application,mutating=false,failurePolicy=fail,sideEffects=None,groups=appstudio.redhat.com,resources=applications,verbs=create;update,versions=v1alpha1,name=vapplication.kb.io,admissionReviewVersions=v1
 
 // ValidateCreate implements webhook.Validator so a webhook will be registered for the type
 func (r *ApplicationWebhook) ValidateCreate(ctx context.Context, obj runtime.Object) error {
