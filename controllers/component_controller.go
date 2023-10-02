@@ -314,8 +314,10 @@ func (r *ComponentReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 
 					devfileBytes, devfileLocation, err = devfile.FindAndDownloadDevfile(gitURL)
 					if err != nil {
-						// Increment the import git repo failed metric
-						metrics.ImportGitRepoFailed.Inc()
+						// Increment the import git repo failed metric on non-user errors
+						if _, ok := err.(*devfile.NoFileFound); !ok {
+							metrics.ImportGitRepoFailed.Inc()
+						}
 						log.Error(err, fmt.Sprintf("Unable to read the devfile from dir %s %v", gitURL, req.NamespacedName))
 						_ = r.SetCreateConditionAndUpdateCR(ctx, req, &component, err)
 						return ctrl.Result{}, err
@@ -329,8 +331,10 @@ func (r *ComponentReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 					// Use SPI to retrieve the devfile from the private repository
 					devfileBytes, devfileLocation, err = spi.DownloadDevfileUsingSPI(r.SPIClient, ctx, component, gitURL, source.GitSource.Revision, context)
 					if err != nil {
-						// Increment the import git repo failed metric
-						metrics.ImportGitRepoFailed.Inc()
+						// Increment the import git repo failed metric on non-user errors
+						if _, ok := err.(*devfile.NoFileFound); !ok {
+							metrics.ImportGitRepoFailed.Inc()
+						}
 						log.Error(err, fmt.Sprintf("Unable to download from any known devfile locations from %s %v", gitURL, req.NamespacedName))
 						_ = r.SetCreateConditionAndUpdateCR(ctx, req, &component, err)
 						return ctrl.Result{}, err
