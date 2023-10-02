@@ -22,6 +22,10 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/testutil"
+	"github.com/redhat-appstudio/application-service/pkg/metrics"
+
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	appstudiov1alpha1 "github.com/redhat-appstudio/application-api/api/v1alpha1"
@@ -47,10 +51,15 @@ var _ = Describe("Component Detection Query controller", func() {
 		SampleRepoLink  = "https://github.com/devfile-samples/devfile-sample-java-springboot-basic"
 	)
 
+	prometheus.MustRegister(metrics.ImportGitRepoTotalReqs, metrics.ImportGitRepoFailed, metrics.ImportGitRepoSucceeded)
+
 	// test CDQ module
 	Context("Create Component Detection Query with URL set", func() {
 		It("Should successfully detect a devfile", func() {
 			ctx := context.Background()
+			beforeImportGitRepoTotalReqs := testutil.ToFloat64(metrics.ImportGitRepoTotalReqs)
+			beforeImportGitRepoFailed := testutil.ToFloat64(metrics.ImportGitRepoFailed)
+			beforeImportGitRepoSucceeded := testutil.ToFloat64(metrics.ImportGitRepoSucceeded)
 
 			queryName := HASCompDetQuery + "1"
 
@@ -95,6 +104,9 @@ var _ = Describe("Component Detection Query controller", func() {
 				Expect(devfileDesc.ComponentStub.Source.GitSource.DevfileURL).Should(Equal("https://raw.githubusercontent.com/devfile-samples/devfile-sample-java-springboot-basic/main/devfile.yaml"))
 				Expect(devfileDesc.DevfileFound).Should(BeTrue())
 			}
+			Expect(testutil.ToFloat64(metrics.ImportGitRepoTotalReqs) > beforeImportGitRepoTotalReqs).To(BeTrue())
+			Expect(testutil.ToFloat64(metrics.ImportGitRepoSucceeded) > beforeImportGitRepoSucceeded).To(BeTrue())
+			Expect(testutil.ToFloat64(metrics.ImportGitRepoFailed) == beforeImportGitRepoFailed).To(BeTrue())
 
 			// Delete the specified Detection Query resource
 			deleteCompDetQueryCR(hasCompDetQueryLookupKey)
@@ -265,7 +277,9 @@ var _ = Describe("Component Detection Query controller", func() {
 	Context("Create Component Detection Query with a non component devfile repo", func() {
 		It("Should complete with no error if no devfile or Dockerfile detected", func() {
 			ctx := context.Background()
-
+			beforeImportGitRepoTotalReqs := testutil.ToFloat64(metrics.ImportGitRepoTotalReqs)
+			beforeImportGitRepoSucceeded := testutil.ToFloat64(metrics.ImportGitRepoSucceeded)
+			beforeImportGitRepoFailed := testutil.ToFloat64(metrics.ImportGitRepoFailed)
 			queryName := HASCompDetQuery + "5"
 
 			hasCompDetectionQuery := &appstudiov1alpha1.ComponentDetectionQuery{
@@ -301,6 +315,10 @@ var _ = Describe("Component Detection Query controller", func() {
 
 			// Make sure the cdq complete with success status
 			Expect(createdHasCompDetectionQuery.Status.Conditions[1].Message).Should(ContainSubstring("ComponentDetectionQuery has successfully finished"))
+
+			Expect(testutil.ToFloat64(metrics.ImportGitRepoTotalReqs) > beforeImportGitRepoTotalReqs).To(BeTrue())
+			Expect(testutil.ToFloat64(metrics.ImportGitRepoSucceeded) > beforeImportGitRepoSucceeded).To(BeTrue())
+			Expect(testutil.ToFloat64(metrics.ImportGitRepoFailed) == beforeImportGitRepoFailed).To(BeTrue())
 
 			// Delete the specified Detection Query resource
 			deleteCompDetQueryCR(hasCompDetQueryLookupKey)
@@ -508,7 +526,9 @@ var _ = Describe("Component Detection Query controller", func() {
 	Context("Create Component Detection Query with private multicomponent Github repo", func() {
 		It("Should err out due to authentication required error", func() {
 			ctx := context.Background()
-
+			beforeImportGitRepoTotalReqs := testutil.ToFloat64(metrics.ImportGitRepoTotalReqs)
+			beforeImportGitRepoFailed := testutil.ToFloat64(metrics.ImportGitRepoFailed)
+			beforeImportGitRepoSucceeded := testutil.ToFloat64(metrics.ImportGitRepoSucceeded)
 			queryName := HASCompDetQuery + "10"
 
 			hasCompDetectionQuery := &appstudiov1alpha1.ComponentDetectionQuery{
@@ -543,6 +563,10 @@ var _ = Describe("Component Detection Query controller", func() {
 
 			// Make sure the right err is set
 			Expect(createdHasCompDetectionQuery.Status.Conditions[1].Message).Should(ContainSubstring("failed to clone the repo"))
+
+			Expect(testutil.ToFloat64(metrics.ImportGitRepoTotalReqs) > beforeImportGitRepoTotalReqs).To(BeTrue())
+			Expect(testutil.ToFloat64(metrics.ImportGitRepoSucceeded) == beforeImportGitRepoSucceeded).To(BeTrue())
+			Expect(testutil.ToFloat64(metrics.ImportGitRepoFailed) > beforeImportGitRepoFailed).To(BeTrue())
 
 			// Delete the specified Detection Query resource
 			deleteCompDetQueryCR(hasCompDetQueryLookupKey)
@@ -1789,6 +1813,9 @@ metadata:
 		Context("Run CDQ Job - Create Component Detection Query with URL set", func() {
 			It("Should successfully detect a devfile", func() {
 				ctx := context.Background()
+				beforeImportGitRepoTotalReqs := testutil.ToFloat64(metrics.ImportGitRepoTotalReqs)
+				beforeImportGitRepoSucceeded := testutil.ToFloat64(metrics.ImportGitRepoSucceeded)
+				beforeImportGitRepoFailed := testutil.ToFloat64(metrics.ImportGitRepoFailed)
 
 				queryName := HASCompDetQuery + "-job1"
 
@@ -1874,6 +1901,9 @@ metadata:
 					Expect(devfileDesc.DevfileFound).Should(BeTrue())
 				}
 
+				Expect(testutil.ToFloat64(metrics.ImportGitRepoTotalReqs) > beforeImportGitRepoTotalReqs).To(BeTrue())
+				Expect(testutil.ToFloat64(metrics.ImportGitRepoSucceeded) > beforeImportGitRepoSucceeded).To(BeTrue())
+				Expect(testutil.ToFloat64(metrics.ImportGitRepoFailed) == beforeImportGitRepoFailed).To(BeTrue())
 				// Delete the specified Detection Query resource
 				deleteCompDetQueryCR(hasCompDetQueryLookupKey)
 			})
@@ -2256,6 +2286,10 @@ metadata:
 			It("Should err out due to authentication required error", func() {
 				ctx := context.Background()
 
+				beforeImportGitRepoTotalReqs := testutil.ToFloat64(metrics.ImportGitRepoTotalReqs)
+				beforeImportGitRepoSucceeded := testutil.ToFloat64(metrics.ImportGitRepoSucceeded)
+				beforeImportGitRepoFailed := testutil.ToFloat64(metrics.ImportGitRepoFailed)
+
 				queryName := HASCompDetQuery + "-job6"
 
 				hasCompDetectionQuery := &appstudiov1alpha1.ComponentDetectionQuery{
@@ -2321,6 +2355,10 @@ metadata:
 
 				// Make sure the right err is set
 				Expect(createdHasCompDetectionQuery.Status.Conditions[1].Message).Should(ContainSubstring("internal error: failed to clone the repo"))
+
+				Expect(testutil.ToFloat64(metrics.ImportGitRepoTotalReqs) > beforeImportGitRepoTotalReqs).To(BeTrue())
+				Expect(testutil.ToFloat64(metrics.ImportGitRepoSucceeded) == beforeImportGitRepoSucceeded).To(BeTrue())
+				Expect(testutil.ToFloat64(metrics.ImportGitRepoFailed) > beforeImportGitRepoFailed).To(BeTrue())
 
 				// Delete the specified Detection Query resource
 				deleteCompDetQueryCR(hasCompDetQueryLookupKey)

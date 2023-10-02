@@ -173,6 +173,8 @@ func (r *ComponentDetectionQueryReconciler) Reconcile(ctx context.Context, req c
 
 		if source.DevfileURL == "" {
 			log.Info(fmt.Sprintf("Attempting to read a devfile from the URL %s... %v", source.URL, req.NamespacedName))
+			metrics.ImportGitRepoTotalReqs.Inc()
+
 			var devfilesMapReturned map[string][]byte
 			var devfilesURLMapReturned, dockerfileContextMapReturned map[string]string
 			var componentPortsMapReturned map[string][]int
@@ -304,6 +306,8 @@ func (r *ComponentDetectionQueryReconciler) Reconcile(ctx context.Context, req c
 						} else if key == "NoDockerfileFound" {
 							retErr = &cdqanalysis.NoDockerfileFound{Err: fmt.Errorf(value)}
 						} else {
+							// Increment the git import failure metric
+							metrics.ImportGitRepoFailed.Inc()
 							retErr = &cdqanalysis.InternalError{Err: fmt.Errorf(value)}
 						}
 					}
@@ -320,11 +324,22 @@ func (r *ComponentDetectionQueryReconciler) Reconcile(ctx context.Context, req c
 
 				devfilesMapReturned, devfilesURLMapReturned, dockerfileContextMapReturned, componentPortsMapReturned, revision, err = cdqanalysis.CloneAndAnalyze(k8sInfoClient, req.Namespace, req.Name, context, cdqInfo)
 				if err != nil {
-					log.Error(err, fmt.Sprintf("Error running cdq analysis... %v", req.NamespacedName))
+					switch err.(type) {
+					case *cdqanalysis.NoDevfileFound:
+						log.Error(err, fmt.Sprintf("NoDevfileFound error running cdq analysis... %v", req.NamespacedName))
+					case *cdqanalysis.NoDockerfileFound:
+						log.Error(err, fmt.Sprintf("NoDockerfileFound error running cdq analysis... %v", req.NamespacedName))
+					default:
+						// Increment the git import failure metric only on non user failure
+						metrics.ImportGitRepoFailed.Inc()
+						log.Error(err, fmt.Sprintf("Internal error running cdq analysis... %v", req.NamespacedName))
+					}
+
 					r.SetCompleteConditionAndUpdateCR(ctx, req, &componentDetectionQuery, copiedCDQ, err)
 					return ctrl.Result{}, nil
 				}
 			}
+			metrics.ImportGitRepoSucceeded.Inc()
 			maps.Copy(devfilesMap, devfilesMapReturned)
 			maps.Copy(dockerfileContextMap, dockerfileContextMapReturned)
 			maps.Copy(devfilesURLMap, devfilesURLMapReturned)
