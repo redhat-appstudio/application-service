@@ -172,8 +172,9 @@ func CloneAndAnalyze(k K8sInfoClient, namespace, name, context string, cdqInfo *
 
 		shouldIgnoreDevfile, devfileBytes, err := ValidateDevfile(log, updatedLink, gitToken)
 		if err != nil {
-			k.SendBackDetectionResult(devfilesMap, devfilesURLMap, dockerfileContextMap, componentPortsMap, revision, name, namespace, err)
-			return nil, nil, nil, nil, "", err
+			retErr := &InvalidDevfile{Err: err}
+			k.SendBackDetectionResult(devfilesMap, devfilesURLMap, dockerfileContextMap, componentPortsMap, revision, name, namespace, retErr)
+			return nil, nil, nil, nil, "", retErr
 		}
 		if shouldIgnoreDevfile {
 			isDevfilePresent = false
@@ -279,6 +280,12 @@ func (k K8sInfoClient) SendBackDetectionResult(devfilesMap map[string][]byte, de
 			errorMap["NoDevfileFound"] = fmt.Sprintf("%v", completeError)
 		case *NoDockerfileFound:
 			errorMap["NoDockerfileFound"] = fmt.Sprintf("%v", completeError)
+		case *RepoNotFound:
+			errorMap["RepoNotFound"] = fmt.Sprintf("%v", completeError)
+		case *InvalidDevfile:
+			errorMap["InvalidDevfile"] = fmt.Sprintf("%v", completeError)
+		case *InvalidURL:
+			errorMap["InvalidURL"] = fmt.Sprintf("%v", completeError)
 		default:
 			errorMap["InternalError"] = fmt.Sprintf("%v", completeError)
 		}

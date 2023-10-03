@@ -562,11 +562,11 @@ var _ = Describe("Component Detection Query controller", func() {
 			}, timeout, interval).Should(BeTrue())
 
 			// Make sure the right err is set
-			Expect(createdHasCompDetectionQuery.Status.Conditions[1].Message).Should(ContainSubstring("failed to clone the repo"))
+			Expect(createdHasCompDetectionQuery.Status.Conditions[1].Message).Should(ContainSubstring("authentication failed"))
 
 			Expect(testutil.ToFloat64(metrics.ImportGitRepoTotalReqs) > beforeImportGitRepoTotalReqs).To(BeTrue())
-			Expect(testutil.ToFloat64(metrics.ImportGitRepoSucceeded) == beforeImportGitRepoSucceeded).To(BeTrue())
-			Expect(testutil.ToFloat64(metrics.ImportGitRepoFailed) > beforeImportGitRepoFailed).To(BeTrue())
+			Expect(testutil.ToFloat64(metrics.ImportGitRepoSucceeded) > beforeImportGitRepoSucceeded).To(BeTrue())
+			Expect(testutil.ToFloat64(metrics.ImportGitRepoFailed) == beforeImportGitRepoFailed).To(BeTrue())
 
 			// Delete the specified Detection Query resource
 			deleteCompDetQueryCR(hasCompDetQueryLookupKey)
@@ -632,7 +632,7 @@ var _ = Describe("Component Detection Query controller", func() {
 
 			// index is 1 because of CDQ status condition Processing
 			Expect(createdHasCompDetectionQuery.Status.Conditions[1].Status).Should(Equal(metav1.ConditionFalse))
-			Expect(createdHasCompDetectionQuery.Status.Conditions[1].Message).Should(ContainSubstring("failed to clone the repo: exit status 128"))
+			Expect(createdHasCompDetectionQuery.Status.Conditions[1].Message).Should(ContainSubstring("authentication failed"))
 
 			// Delete the specified Detection Query resource
 			deleteCompDetQueryCR(hasCompDetQueryLookupKey)
@@ -697,7 +697,7 @@ var _ = Describe("Component Detection Query controller", func() {
 
 			// index is 1 because of CDQ status condition Processing
 			Expect(createdHasCompDetectionQuery.Status.Conditions[1].Status).Should(Equal(metav1.ConditionFalse))
-			Expect(createdHasCompDetectionQuery.Status.Conditions[1].Message).Should(ContainSubstring("failed to clone the repo: exit status 128"))
+			Expect(createdHasCompDetectionQuery.Status.Conditions[1].Message).Should(ContainSubstring("authentication failed"))
 
 			// Delete the specified Detection Query resource
 			deleteCompDetQueryCR(hasCompDetQueryLookupKey)
@@ -766,7 +766,7 @@ var _ = Describe("Component Detection Query controller", func() {
 			// index is 1 because of CDQ status condition Processing
 			Expect(createdHasCompDetectionQuery.Status.Conditions[1].Status).Should(Equal(metav1.ConditionFalse))
 			// we passed in a bad token so git clone should fail
-			Expect(createdHasCompDetectionQuery.Status.Conditions[1].Message).Should(ContainSubstring("failed to clone the repo"))
+			Expect(createdHasCompDetectionQuery.Status.Conditions[1].Message).Should(ContainSubstring("authentication failed"))
 
 			// Delete the specified Detection Query resource
 			deleteCompDetQueryCR(hasCompDetQueryLookupKey)
@@ -953,7 +953,7 @@ var _ = Describe("Component Detection Query controller", func() {
 			Expect(len(createdHasCompDetectionQuery.Status.ComponentDetected)).Should(Equal(0))
 
 			// Make sure the right err is set
-			Expect(createdHasCompDetectionQuery.Status.Conditions[1].Message).Should(ContainSubstring("ComponentDetectionQuery failed: failed to clone the repo"))
+			Expect(createdHasCompDetectionQuery.Status.Conditions[1].Message).Should(ContainSubstring("ComponentDetectionQuery failed: authentication failed"))
 
 			// Delete the specified Detection Query resource
 			deleteCompDetQueryCR(hasCompDetQueryLookupKey)
@@ -1000,7 +1000,7 @@ var _ = Describe("Component Detection Query controller", func() {
 			Expect(len(createdHasCompDetectionQuery.Status.ComponentDetected)).Should(Equal(0))
 
 			// Make sure the right err is set
-			Expect(createdHasCompDetectionQuery.Status.Conditions[1].Message).Should(ContainSubstring("ComponentDetectionQuery failed: failed to clone the repo"))
+			Expect(createdHasCompDetectionQuery.Status.Conditions[1].Message).Should(ContainSubstring("ComponentDetectionQuery failed: authentication failed"))
 
 			// Trigger a requeue by updating the resource
 			createdHasCompDetectionQuery.Spec.GitSource.URL = SampleRepoLink
@@ -2312,7 +2312,7 @@ metadata:
 
 				configMapBinaryData := make(map[string][]byte)
 				errorMap := make(map[string]string)
-				errorMap["InternalError"] = "failed to clone the repo"
+				errorMap["InternalError"] = "some internal system error"
 
 				errorMapbytes, _ := json.Marshal(errorMap)
 				configMapBinaryData["errorMap"] = errorMapbytes
@@ -2354,7 +2354,7 @@ metadata:
 				}, timeout, interval).Should(BeTrue())
 
 				// Make sure the right err is set
-				Expect(createdHasCompDetectionQuery.Status.Conditions[1].Message).Should(ContainSubstring("internal error: failed to clone the repo"))
+				Expect(createdHasCompDetectionQuery.Status.Conditions[1].Message).Should(ContainSubstring("internal error: some internal system error"))
 
 				Expect(testutil.ToFloat64(metrics.ImportGitRepoTotalReqs) > beforeImportGitRepoTotalReqs).To(BeTrue())
 				Expect(testutil.ToFloat64(metrics.ImportGitRepoSucceeded) == beforeImportGitRepoSucceeded).To(BeTrue())
@@ -2503,7 +2503,7 @@ metadata:
 
 				configMapBinaryData := make(map[string][]byte)
 				errorMap := make(map[string]string)
-				errorMap["InternalError"] = "failed to clone the repo"
+				errorMap["AuthenticationFailed"] = "authentication failed"
 
 				errorMapbytes, _ := json.Marshal(errorMap)
 				configMapBinaryData["errorMap"] = errorMapbytes
@@ -2547,7 +2547,7 @@ metadata:
 
 				// index is 1 because of CDQ status condition Processing
 				Expect(createdHasCompDetectionQuery.Status.Conditions[1].Status).Should(Equal(metav1.ConditionFalse))
-				Expect(createdHasCompDetectionQuery.Status.Conditions[1].Message).Should(ContainSubstring("ComponentDetectionQuery failed: internal error: failed to clone the repo"))
+				Expect(createdHasCompDetectionQuery.Status.Conditions[1].Message).Should(ContainSubstring("authentication failed"))
 
 				// Delete the specified Detection Query resource
 				deleteCompDetQueryCR(hasCompDetQueryLookupKey)
@@ -2830,7 +2830,7 @@ metadata:
 
 				configMapBinaryData := make(map[string][]byte)
 				errorMap := make(map[string]string)
-				errorMap["InternalError"] = "failed to clone the repo"
+				errorMap["AuthenticationFailed"] = "authentication failed"
 
 				errorMapbytes, _ := json.Marshal(errorMap)
 				configMapBinaryData["errorMap"] = errorMapbytes
@@ -2876,7 +2876,7 @@ metadata:
 				Expect(len(createdHasCompDetectionQuery.Status.ComponentDetected)).Should(Equal(0))
 
 				// Make sure the right err is set
-				Expect(createdHasCompDetectionQuery.Status.Conditions[1].Message).Should(ContainSubstring("ComponentDetectionQuery failed: internal error: failed to clone the repo"))
+				Expect(createdHasCompDetectionQuery.Status.Conditions[1].Message).Should(ContainSubstring("authentication failed"))
 
 				// Trigger a requeue by updating the resource
 				createdHasCompDetectionQuery.Spec.GitSource.URL = SampleRepoLink

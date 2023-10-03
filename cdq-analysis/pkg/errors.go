@@ -45,6 +45,63 @@ func (e *NoDockerfileFound) Error() string {
 	return errMsg
 }
 
+// RepoNotFound returns an error if no git repo was found
+type RepoNotFound struct {
+	URL      string
+	Revision string
+	Err      error
+}
+
+func (e *RepoNotFound) Error() string {
+	errMsg := fmt.Sprintf("unable to find git repository %s %s", e.URL, e.Revision)
+	if e.Err != nil {
+		errMsg = fmt.Sprintf("%s due to %v", errMsg, e.Err)
+	}
+	return errMsg
+}
+
+// InvalidDevfile returns an error if no devfile is invalid
+type InvalidDevfile struct {
+	Err error
+}
+
+func (e *InvalidDevfile) Error() string {
+	var errMsg string
+	if e.Err != nil {
+		errMsg = fmt.Sprintf("invalid devfile due to %v", e.Err)
+	}
+	return errMsg
+}
+
+// InvalidURL returns an error if URL is invalid to be parsed
+type InvalidURL struct {
+	URL string
+	Err error
+}
+
+func (e *InvalidURL) Error() string {
+	var errMsg string
+	if e.Err != nil {
+		errMsg = fmt.Sprintf("invalid URL %v due to %v", e.URL, e.Err)
+	}
+	return errMsg
+}
+
+// AuthenticationFailed returns an error if authenticated failed when cloning the repository
+// indicates the token is not valid
+type AuthenticationFailed struct {
+	URL string
+	Err error
+}
+
+func (e *AuthenticationFailed) Error() string {
+	var errMsg string
+	if e.Err != nil {
+		errMsg = fmt.Sprintf("authentication failed to URL %v: %v", e.URL, e.Err)
+	}
+	return errMsg
+}
+
 // InternalError returns cdq errors other than user error
 type InternalError struct {
 	Err error

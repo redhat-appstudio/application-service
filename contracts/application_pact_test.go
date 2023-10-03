@@ -48,7 +48,7 @@ func TestContracts(t *testing.T) {
 		BrokerURL:                  "https://pact-broker-hac-pact-broker.apps.hac-devsandbox.5unc.p1.openshiftapps.com",
 		PublishVerificationResults: false,
 		BrokerUsername:             "pactCommonUser",
-		BrokerPassword:             "pactCommonPassword123",
+		BrokerPassword:             "pactCommonPassword123", // notsecret
 	}
 
 	if os.Getenv("SKIP_PACT_TESTS") == "true" {

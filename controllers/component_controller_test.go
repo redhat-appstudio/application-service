@@ -59,7 +59,6 @@ var _ = Describe("Component controller", func() {
 		SampleRepoLink  = "https://github.com/devfile-samples/devfile-sample-java-springboot-basic"
 		gitToken        = "" //empty for public repo test
 	)
-	// prometheus.MustRegister(metrics.ImportGitRepoTotalReqs, metrics.ImportGitRepoFailed, metrics.ImportGitRepoSucceeded)
 
 	Context("Create Component with basic field set", func() {
 		It("Should create successfully and update the Application", func() {
@@ -1048,8 +1047,8 @@ var _ = Describe("Component controller", func() {
 			beforeImportGitRepoSucceeded := testutil.ToFloat64(metrics.ImportGitRepoSucceeded)
 			beforeImportGitRepoFailed := testutil.ToFloat64(metrics.ImportGitRepoFailed)
 
-			applicationName := HASAppName + "-testImportFailureMetrics"
-			componentName := HASCompName + "-testImportFailureMetrics"
+			applicationName := HASAppName + "-test-import-user-error"
+			componentName := HASCompName + "-test-import-user-error"
 
 			createAndFetchSimpleApp(applicationName, HASAppNamespace, DisplayName, Description)
 
@@ -1068,7 +1067,7 @@ var _ = Describe("Component controller", func() {
 					Source: appstudiov1alpha1.ComponentSource{
 						ComponentSourceUnion: appstudiov1alpha1.ComponentSourceUnion{
 							GitSource: &appstudiov1alpha1.GitSource{
-								URL:      "http://non-exist-git-repo",
+								URL:      "http://github.com/non-exist-git-repo",
 								Revision: "main",
 							},
 						},
@@ -1093,8 +1092,8 @@ var _ = Describe("Component controller", func() {
 			hasAppLookupKey := types.NamespacedName{Name: applicationName, Namespace: HASAppNamespace}
 
 			Expect(testutil.ToFloat64(metrics.ImportGitRepoTotalReqs) > beforeImportGitRepoTotalReqs).To(BeTrue())
-			Expect(testutil.ToFloat64(metrics.ImportGitRepoSucceeded) == beforeImportGitRepoSucceeded).To(BeTrue())
-			Expect(testutil.ToFloat64(metrics.ImportGitRepoFailed) > beforeImportGitRepoFailed).To(BeTrue())
+			Expect(testutil.ToFloat64(metrics.ImportGitRepoSucceeded) > beforeImportGitRepoSucceeded).To(BeTrue())
+			Expect(testutil.ToFloat64(metrics.ImportGitRepoFailed) == beforeImportGitRepoFailed).To(BeTrue())
 
 			// Delete the specified HASComp resource
 			deleteHASCompCR(hasCompLookupKey)

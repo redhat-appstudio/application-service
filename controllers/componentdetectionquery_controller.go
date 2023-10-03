@@ -302,9 +302,23 @@ func (r *ComponentDetectionQueryReconciler) Reconcile(ctx context.Context, req c
 					// only 1 index in the error map
 					for key, value := range errMapReturned {
 						if key == "NoDevfileFound" {
+							metrics.ImportGitRepoSucceeded.Inc()
 							retErr = &cdqanalysis.NoDevfileFound{Err: fmt.Errorf(value)}
 						} else if key == "NoDockerfileFound" {
+							metrics.ImportGitRepoSucceeded.Inc()
 							retErr = &cdqanalysis.NoDockerfileFound{Err: fmt.Errorf(value)}
+						} else if key == "RepoNotFound" {
+							metrics.ImportGitRepoSucceeded.Inc()
+							retErr = &cdqanalysis.RepoNotFound{Err: fmt.Errorf(value)}
+						} else if key == "InvalidDevfile" {
+							metrics.ImportGitRepoSucceeded.Inc()
+							retErr = &cdqanalysis.InvalidDevfile{Err: fmt.Errorf(value)}
+						} else if key == "InvalidURL" {
+							metrics.ImportGitRepoSucceeded.Inc()
+							retErr = &cdqanalysis.InvalidURL{Err: fmt.Errorf(value)}
+						} else if key == "AuthenticationFailed" {
+							metrics.ImportGitRepoSucceeded.Inc()
+							retErr = &cdqanalysis.AuthenticationFailed{Err: fmt.Errorf(value)}
 						} else {
 							// Increment the git import failure metric
 							metrics.ImportGitRepoFailed.Inc()
@@ -326,9 +340,23 @@ func (r *ComponentDetectionQueryReconciler) Reconcile(ctx context.Context, req c
 				if err != nil {
 					switch err.(type) {
 					case *cdqanalysis.NoDevfileFound:
+						metrics.ImportGitRepoSucceeded.Inc()
 						log.Error(err, fmt.Sprintf("NoDevfileFound error running cdq analysis... %v", req.NamespacedName))
 					case *cdqanalysis.NoDockerfileFound:
+						metrics.ImportGitRepoSucceeded.Inc()
 						log.Error(err, fmt.Sprintf("NoDockerfileFound error running cdq analysis... %v", req.NamespacedName))
+					case *cdqanalysis.RepoNotFound:
+						metrics.ImportGitRepoSucceeded.Inc()
+						log.Error(err, fmt.Sprintf("RepoNotFound error running cdq analysis... %v", req.NamespacedName))
+					case *cdqanalysis.InvalidDevfile:
+						metrics.ImportGitRepoSucceeded.Inc()
+						log.Error(err, fmt.Sprintf("InvalidDevfile error running cdq analysis... %v", req.NamespacedName))
+					case *cdqanalysis.InvalidURL:
+						metrics.ImportGitRepoSucceeded.Inc()
+						log.Error(err, fmt.Sprintf("InvalidURL error running cdq analysis... %v", req.NamespacedName))
+					case *cdqanalysis.AuthenticationFailed:
+						metrics.ImportGitRepoSucceeded.Inc()
+						log.Error(err, fmt.Sprintf("AuthenticationFailed error running cdq analysis... %v", req.NamespacedName))
 					default:
 						// Increment the git import failure metric only on non user failure
 						metrics.ImportGitRepoFailed.Inc()

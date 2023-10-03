@@ -38,6 +38,12 @@ type GitURL struct {
 	Token    string
 }
 
+const (
+	RepoNotFoundMsg         = "repository .* not found"
+	RevisionNotFoundMsg     = "pathspec .* did not match any file(s) known to git"
+	AuthenticationFailedMsg = "Authentication failed .*"
+)
+
 // CloneRepo clones the repoURL to specfied clonePath
 func CloneRepo(clonePath string, gitURL GitURL) error {
 	exist, err := IsExist(clonePath)
@@ -59,18 +65,30 @@ func CloneRepo(clonePath string, gitURL GitURL) error {
 	c.Env = os.Environ()
 	c.Env = append(c.Env, "GIT_TERMINAL_PROMPT=0", "GIT_ASKPASS=/bin/echo")
 
-	_, err = c.CombinedOutput()
+	output, err := c.CombinedOutput()
 	if err != nil {
+
+		if matched, _ := regexp.MatchString(RepoNotFoundMsg, string(output)); matched {
+			return &RepoNotFound{URL: cloneURL, Err: err}
+		} else if matched, _ := regexp.MatchString(AuthenticationFailedMsg, string(output)); matched {
+			return &AuthenticationFailed{URL: cloneURL, Err: err}
+		}
+
 		return fmt.Errorf("failed to clone the repo: %v", err)
 	}
 
 	if gitURL.Revision != "" {
-		c = exec.Command("git", "checkout", gitURL.Revision)
+		revision := gitURL.Revision
+		c = exec.Command("git", "checkout", revision)
 		c.Dir = clonePath
 
 		_, err = c.CombinedOutput()
 		if err != nil {
-			return fmt.Errorf("failed to checkout the revision %q: %v", gitURL.Revision, err)
+			if matched, _ := regexp.MatchString(RevisionNotFoundMsg, string(output)); matched {
+				return &RepoNotFound{URL: cloneURL, Revision: revision, Err: err}
+			}
+
+			return fmt.Errorf("failed to checkout the revision %q: %v", revision, err)
 		}
 	}
 
@@ -129,7 +147,7 @@ func ConvertGitHubURL(URL string, revision string, context string) (string, erro
 
 	url, err := url.Parse(URL)
 	if err != nil {
-		return "", err
+		return "", &InvalidURL{URL: URL, Err: err}
 	}
 
 	if strings.Contains(url.Host, "github") && !strings.Contains(url.Host, "raw") {
