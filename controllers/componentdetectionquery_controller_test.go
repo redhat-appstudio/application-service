@@ -545,7 +545,7 @@ var _ = Describe("Component Detection Query controller", func() {
 				},
 				Spec: appstudiov1alpha1.ComponentDetectionQuerySpec{
 					GitSource: appstudiov1alpha1.GitSource{
-						URL: "https://github.com/johnmcollier/private-repo-test",
+						URL: "https://github.com/yangcao77/multi-components-private",
 					},
 				},
 			}
@@ -614,7 +614,7 @@ var _ = Describe("Component Detection Query controller", func() {
 				Spec: appstudiov1alpha1.ComponentDetectionQuerySpec{
 					Secret: queryName,
 					GitSource: appstudiov1alpha1.GitSource{
-						URL: "https://github.com/johnmcollier/private-repo-test",
+						URL: "https://github.com/yangcao77/multi-components-private",
 					},
 				},
 			}
@@ -746,7 +746,7 @@ var _ = Describe("Component Detection Query controller", func() {
 				Spec: appstudiov1alpha1.ComponentDetectionQuerySpec{
 					Secret: queryName,
 					GitSource: appstudiov1alpha1.GitSource{
-						URL:      "https://github.com/test-repo/valid-repo-invalid-token",
+						URL:      "https://github.com/yangcao77/multi-components-private",
 						Revision: "main",
 					},
 				},
@@ -953,7 +953,7 @@ var _ = Describe("Component Detection Query controller", func() {
 			Expect(len(createdHasCompDetectionQuery.Status.ComponentDetected)).Should(Equal(0))
 
 			// Make sure the right err is set
-			Expect(createdHasCompDetectionQuery.Status.Conditions[1].Message).Should(ContainSubstring("ComponentDetectionQuery failed: authentication failed"))
+			Expect(createdHasCompDetectionQuery.Status.Conditions[1].Message).Should(ContainSubstring("ComponentDetectionQuery failed: unable to find git repository"))
 
 			// Delete the specified Detection Query resource
 			deleteCompDetQueryCR(hasCompDetQueryLookupKey)
@@ -1000,7 +1000,7 @@ var _ = Describe("Component Detection Query controller", func() {
 			Expect(len(createdHasCompDetectionQuery.Status.ComponentDetected)).Should(Equal(0))
 
 			// Make sure the right err is set
-			Expect(createdHasCompDetectionQuery.Status.Conditions[1].Message).Should(ContainSubstring("ComponentDetectionQuery failed: authentication failed"))
+			Expect(createdHasCompDetectionQuery.Status.Conditions[1].Message).Should(ContainSubstring("ComponentDetectionQuery failed: unable to find git repository"))
 
 			// Trigger a requeue by updating the resource
 			createdHasCompDetectionQuery.Spec.GitSource.URL = SampleRepoLink
@@ -1597,7 +1597,7 @@ var _ = Describe("Component Detection Query controller", func() {
 					},
 					Spec: appstudiov1alpha1.ComponentDetectionQuerySpec{
 						GitSource: appstudiov1alpha1.GitSource{
-							URL: "https://github.com/redhat-appstudio/quality-dashboard",
+							URL: "https://github.com/yangcao77/quality-dashboard",
 						},
 					},
 				}
@@ -1614,7 +1614,7 @@ var _ = Describe("Component Detection Query controller", func() {
 				}, timeout20s, interval).Should(BeTrue())
 
 				// Make sure the a devfile is detected
-				Expect(len(createdHasCompDetectionQuery.Status.ComponentDetected)).Should(Equal(2))
+				Expect(len(createdHasCompDetectionQuery.Status.ComponentDetected)).Should(Equal(3))
 
 				for dockerFileName, dockerFileDesc := range createdHasCompDetectionQuery.Status.ComponentDetected {
 					Expect(dockerFileName).Should(Or(ContainSubstring("backend-quality-dashboard"), ContainSubstring("frontend-quality-dashboard")))
