@@ -21,6 +21,7 @@ require (
 	github.com/prometheus/client_golang v1.16.0
 	github.com/redhat-appstudio/application-api v0.0.0-20230704143842-035c661f115f
 	github.com/redhat-appstudio/application-service/cdq-analysis v0.0.0
+	github.com/redhat-appstudio/operator-toolkit v0.0.0-20230913085326-6c5e9d368a6a
 	github.com/redhat-appstudio/service-provider-integration-operator v0.2023.22-0.20230713080056-eae17aa8c172
 	github.com/redhat-developer/gitops-generator v0.0.0-20230801134438-01747a27dcbf
 	github.com/spf13/afero v1.9.5
@@ -33,7 +34,6 @@ require (
 	k8s.io/client-go v0.26.1
 	sigs.k8s.io/controller-runtime v0.14.6
 	sigs.k8s.io/yaml v1.3.0
-
 )
 
 require (
@@ -42,7 +42,7 @@ require (
 	cloud.google.com/go/compute/metadata v0.2.3 // indirect
 	cloud.google.com/go/iam v1.1.1 // indirect
 	cloud.google.com/go/storage v1.31.0 // indirect
-	code.gitea.io/sdk/gitea v0.15.1 // indirect
+	code.gitea.io/sdk/gitea v0.14.0 // indirect
 	github.com/Azure/go-ansiterm v0.0.0-20210617225240-d185dfc1b5a1 // indirect
 	github.com/Microsoft/go-winio v0.6.1 // indirect
 	github.com/ProtonMail/go-crypto v0.0.0-20230626094100-7e9e0395ebec // indirect
@@ -50,7 +50,7 @@ require (
 	github.com/aws/aws-sdk-go v1.44.298 // indirect
 	github.com/beorn7/perks v1.0.1 // indirect
 	github.com/bgentry/go-netrc v0.0.0-20140422174119-9fd32a8b3d3d // indirect
-	github.com/bluekeyes/go-gitdiff v0.7.0 // indirect
+	github.com/bluekeyes/go-gitdiff v0.4.0 // indirect
 	github.com/cespare/xxhash/v2 v2.2.0 // indirect
 	github.com/cloudflare/circl v1.3.3 // indirect
 	github.com/containerd/containerd v1.6.20 // indirect
@@ -105,7 +105,7 @@ require (
 	github.com/imdario/mergo v0.3.16 // indirect
 	github.com/inconshreveable/mousetrap v1.1.0 // indirect
 	github.com/jbenet/go-context v0.0.0-20150711004518-d14ea06fba99 // indirect
-	github.com/jenkins-x/go-scm v1.11.35 // indirect
+	github.com/jenkins-x/go-scm v1.10.10 // indirect
 	github.com/jmespath/go-jmespath v0.4.0 // indirect
 	github.com/josharian/intern v1.0.0 // indirect
 	github.com/json-iterator/go v1.1.12 // indirect
