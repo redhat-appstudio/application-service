@@ -21,6 +21,8 @@ import (
 	"io"
 	"strings"
 
+	"github.com/redhat-appstudio/application-api/api/v1alpha1"
+
 	"github.com/stretchr/testify/mock"
 )
 
@@ -144,7 +146,7 @@ CMD [ "waitress-serve", "--port=8081", "app:app"]
 // GetFileContents mocks the GetFileContents function from SPI
 // If "repoURL" parameter contains "test-error-response", then an error value will be returned,
 // otherwise we return a mock devfile that can be read.
-func (s MockSPIClient) GetFileContents(ctx context.Context, namespace string, repoURL string, filepath string, ref string, callback func(ctx context.Context, url string)) (io.ReadCloser, error) {
+func (s MockSPIClient) GetFileContents(ctx context.Context, name string, component v1alpha1.Component, repoURL string, filepath string, ref string) (io.ReadCloser, error) {
 	if strings.Contains(repoURL, "test-error-response") {
 		return nil, fmt.Errorf("file not found")
 	} else if strings.Contains(repoURL, "test-parse-error") || (strings.Contains(repoURL, "test-error-dockerfile-response") && strings.Contains(filepath, "Dockerfile")) {
@@ -156,6 +158,8 @@ func (s MockSPIClient) GetFileContents(ctx context.Context, namespace string, re
 		stringReader := strings.NewReader(mockDockerfile)
 		stringReadCloser := io.NopCloser(stringReader)
 		return stringReadCloser, nil
+	} else if strings.Contains(filepath, "valid-repo-invalid-token") {
+		return nil, fmt.Errorf("unable to fetch the SPIAccessToken")
 	} else {
 		stringReader := strings.NewReader(mockDevfile)
 		stringReadCloser := io.NopCloser(stringReader)

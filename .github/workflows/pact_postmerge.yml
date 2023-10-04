@@ -53,8 +53,9 @@ jobs:
           PACT_BROKER_USERNAME: ${{ secrets.PACT_BROKER_USERNAME }}
           PROVIDER_BRANCH: "main"
         run: |
-          wget -qO- https://github.com/pact-foundation/pact-ruby-standalone/releases/download/v1.92.0/pact-1.92.0-linux-x86_64.tar.gz | tar xz --one-top-level=./pactcli
-          PATH=${PATH}:$(pwd)/pactcli/pact/bin
+          go get github.com/pact-foundation/pact-go/v2@2.x.x
+          go install github.com/pact-foundation/pact-go/v2@2.x.x
+          sudo /home/runner/go/bin/pact-go -l DEBUG install 
           echo "Running Pact tests from the \"$(git branch --show-current)\" brach."
           # Run Pact tests and publish results. Required variables to be set:
           # COMMIT_SHA            sets the version

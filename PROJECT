@@ -12,11 +12,19 @@ resources:
   group: appstudio
   kind: Application
   version: v1alpha1
+  webhooks:
+    defaulting: true
+    validation: true
+    webhookVersion: v1
 - controller: true
   domain: redhat.com
   group: appstudio
   kind: Component
   version: v1alpha1
+  webhooks:
+    defaulting: true
+    validation: true
+    webhookVersion: v1
 - controller: true
   domain: redhat.com
   group: appstudio

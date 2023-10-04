@@ -44,3 +44,13 @@ func (e *NoDockerfileFound) Error() string {
 	}
 	return errMsg
 }
+
+// InternalError returns cdq errors other than user error
+type InternalError struct {
+	Err error
+}
+
+func (e *InternalError) Error() string {
+	errMsg := fmt.Sprintf("internal error: %v", e.Err)
+	return errMsg
+}
