@@ -302,15 +302,21 @@ func (r *ComponentReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 
 			var gitURL string
 			if source.GitSource.DevfileURL == "" && source.GitSource.DockerfileURL == "" {
+				metrics.ImportGitRepoTotalReqs.Inc()
+
 				if gitToken == "" {
-					gitURL, err = util.ConvertGitHubURL(source.GitSource.URL, source.GitSource.Revision, context)
+					gitURL, err = cdqanalysis.ConvertGitHubURL(source.GitSource.URL, source.GitSource.Revision, context)
 					if err != nil {
+						// ConvertGitHubURL only returns user error
+						metrics.ImportGitRepoSucceeded.Inc()
 						log.Error(err, fmt.Sprintf("Unable to convert Github URL to raw format, exiting reconcile loop %v", req.NamespacedName))
 						_ = r.SetCreateConditionAndUpdateCR(ctx, req, &component, err)
 						return ctrl.Result{}, err
 					}
 
 					devfileBytes, devfileLocation, err = devfile.FindAndDownloadDevfile(gitURL)
+					// FindAndDownloadDevfile only returns user error
+					metrics.ImportGitRepoSucceeded.Inc()
 					if err != nil {
 						log.Error(err, fmt.Sprintf("Unable to read the devfile from dir %s %v", gitURL, req.NamespacedName))
 						_ = r.SetCreateConditionAndUpdateCR(ctx, req, &component, err)
@@ -324,12 +330,19 @@ func (r *ComponentReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 					// Use SPI to retrieve the devfile from the private repository
 					devfileBytes, devfileLocation, err = spi.DownloadDevfileUsingSPI(r.SPIClient, ctx, component, gitURL, source.GitSource.Revision, context)
 					if err != nil {
+						// Increment the import git repo failed metric on non-user errors
+						if _, ok := err.(*devfile.NoFileFound); !ok {
+							metrics.ImportGitRepoFailed.Inc()
+						} else {
+							metrics.ImportGitRepoSucceeded.Inc()
+						}
 						log.Error(err, fmt.Sprintf("Unable to download from any known devfile locations from %s %v", gitURL, req.NamespacedName))
 						_ = r.SetCreateConditionAndUpdateCR(ctx, req, &component, err)
 						return ctrl.Result{}, err
 					}
+					metrics.ImportGitRepoSucceeded.Inc()
 
-					convertedGitURL, err := util.ConvertGitHubURL(source.GitSource.URL, source.GitSource.Revision, context)
+					convertedGitURL, err := cdqanalysis.ConvertGitHubURL(source.GitSource.URL, source.GitSource.Revision, context)
 					if err != nil {
 						log.Error(err, fmt.Sprintf("Unable to convert Github URL to raw format, exiting reconcile loop %v", req.NamespacedName))
 						_ = r.SetCreateConditionAndUpdateCR(ctx, req, &component, err)
@@ -340,7 +353,7 @@ func (r *ComponentReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 
 			} else if source.GitSource.DevfileURL != "" {
 				devfileLocation = source.GitSource.DevfileURL
-				devfileBytes, err = util.CurlEndpoint(source.GitSource.DevfileURL)
+				devfileBytes, err = cdqanalysis.CurlEndpoint(source.GitSource.DevfileURL)
 				if err != nil {
 					log.Error(err, fmt.Sprintf("Unable to GET %s, exiting reconcile loop %v", source.GitSource.DevfileURL, req.NamespacedName))
 					err := fmt.Errorf("unable to GET from %s", source.GitSource.DevfileURL)

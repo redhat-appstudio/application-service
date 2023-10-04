@@ -86,7 +86,8 @@ func search(log logr.Logger, a Alizer, localpath string, srcContext string, cdqI
 					}
 					shouldIgnoreDevfile, devfileBytes, err := ValidateDevfile(log, devfilePath, token)
 					if err != nil {
-						return nil, nil, nil, nil, err
+						retErr := &InvalidDevfile{Err: err}
+						return nil, nil, nil, nil, retErr
 					}
 					if shouldIgnoreDevfile {
 						isDevfilePresent = false
@@ -117,7 +118,8 @@ func search(log logr.Logger, a Alizer, localpath string, srcContext string, cdqI
 							}
 							shouldIgnoreDevfile, devfileBytes, err := ValidateDevfile(log, devfilePath, token)
 							if err != nil {
-								return nil, nil, nil, nil, err
+								retErr := &InvalidDevfile{Err: err}
+								return nil, nil, nil, nil, retErr
 							}
 
 							if shouldIgnoreDevfile {
@@ -283,7 +285,8 @@ func SearchForDockerfile(devfileBytes []byte, token string) (*v1alpha2.Dockerfil
 	devfileData, err := ParseDevfileWithParserArgs(&parser.ParserArgs{Data: devfileBytes, Token: token})
 
 	if err != nil {
-		return nil, err
+		retErr := &InvalidDevfile{Err: err}
+		return nil, retErr
 	}
 	devfileImageComponents, err := devfileData.GetComponents(common.DevfileOptions{
 		ComponentOptions: common.ComponentOptions{

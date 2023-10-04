@@ -19,12 +19,9 @@ import (
 	"crypto/sha256"
 	"encoding/base64"
 	"fmt"
-	"io"
 	"math/rand"
 	"net/http"
 	"net/url"
-	"os"
-	"os/exec"
 	"reflect"
 	"regexp"
 	"strings"
@@ -47,18 +44,6 @@ func SanitizeName(name string) string {
 	}
 
 	return sanitizedName
-}
-
-// IsExist returns whether the given file or directory exists
-func IsExist(path string) (bool, error) {
-	_, err := os.Stat(path)
-	if err == nil {
-		return true, nil
-	}
-	if os.IsNotExist(err) {
-		return false, nil
-	}
-	return false, err
 }
 
 // GetIntValue returns the value of an int pointer, with the default of 0 if nil
@@ -100,71 +85,6 @@ func ProcessGitOpsStatus(gitopsStatus appstudiov1alpha1.GitOpsStatus, gitToken s
 	return remoteURL, gitOpsBranch, gitOpsContext, nil
 }
 
-// ConvertGitHubURL converts a git url to its raw format
-// adapted from https://github.com/redhat-developer/odo/blob/e63773cc156ade6174a533535cbaa0c79506ffdb/pkg/catalog/catalog.go#L72
-func ConvertGitHubURL(URL string, revision string, context string) (string, error) {
-	// If the URL ends with .git, remove it
-	// The regex will only instances of '.git' if it is at the end of the given string
-	reg := regexp.MustCompile(".git$")
-	URL = reg.ReplaceAllString(URL, "")
-
-	// If the URL has a trailing / suffix, trim it
-	URL = strings.TrimSuffix(URL, "/")
-
-	url, err := url.Parse(URL)
-	if err != nil {
-		return "", err
-	}
-
-	if strings.Contains(url.Host, "github") && !strings.Contains(url.Host, "raw") {
-		// Convert path part of the URL
-		URLSlice := strings.Split(URL, "/")
-		if len(URLSlice) > 2 && URLSlice[len(URLSlice)-2] == "tree" {
-			// GitHub raw URL doesn't have "tree" structure in the URL, need to remove it
-			URL = strings.Replace(URL, "/tree", "", 1)
-		} else if revision != "" {
-			// Add revision for GitHub raw URL
-			URL = URL + "/" + revision
-		} else {
-			// Add "main" branch for GitHub raw URL by default if revision is not specified
-			URL = URL + "/main"
-		}
-		if context != "" && context != "./" && context != "." {
-			// trim the prefix / in context
-			context = strings.TrimPrefix(context, "/")
-			URL = URL + "/" + context
-		}
-
-		// Convert host part of the URL
-		if url.Host == "github.com" {
-			URL = strings.Replace(URL, "github.com", "raw.githubusercontent.com", 1)
-		}
-	}
-
-	return URL, nil
-}
-
-// CurlEndpoint curls the endpoint and returns the response or an error if the response is a non-200 status
-func CurlEndpoint(endpoint string) ([]byte, error) {
-	var respBytes []byte
-	/* #nosec G107 --  The URL is validated by the CDQ if the request is coming from the UI.  If we do happen to download invalid bytes, the devfile parser will catch this and fail. */
-	resp, err := http.Get(endpoint)
-	if err != nil {
-		return nil, err
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode == http.StatusOK {
-		respBytes, err = io.ReadAll(resp.Body)
-		if err != nil {
-			return nil, err
-		}
-		return respBytes, nil
-	}
-
-	return nil, fmt.Errorf("received a non-200 status when curling %s", endpoint)
-}
-
 func ValidateEndpoint(endpoint string) error {
 	var (
 		retries int = 3
@@ -188,49 +108,6 @@ func ValidateEndpoint(endpoint string) error {
 		}
 	}
 	return fmt.Errorf("failed to get the url: %v, might due to a network issue or the url is invalid", endpoint)
-}
-
-// CloneRepo clones the repoURL to clonePath
-func CloneRepo(clonePath, repoURL string, revision string, token string) error {
-	exist, err := IsExist(clonePath)
-	if !exist || err != nil {
-		err = os.MkdirAll(clonePath, 0750)
-		if err != nil {
-			return err
-		}
-	}
-	cloneURL := repoURL
-	// Execute does an exec.Command on the specified command
-	if token != "" {
-		tempStr := strings.Split(repoURL, "https://")
-
-		// e.g. https://token:<token>@github.com/owner/repoName.git
-		cloneURL = fmt.Sprintf("https://token:%s@%s", token, tempStr[1])
-	}
-	/* #nosec G204 -- user input is processed into an expected format for the git clone command */
-	c := exec.Command("git", "clone", cloneURL, clonePath)
-	c.Dir = clonePath
-
-	// set env to skip authentication prompt and directly error out
-	c.Env = os.Environ()
-	c.Env = append(c.Env, "GIT_TERMINAL_PROMPT=0", "GIT_ASKPASS=/bin/echo")
-
-	_, err = c.CombinedOutput()
-	if err != nil {
-		return fmt.Errorf("failed to clone the repo: %v", err)
-	}
-
-	if revision != "" {
-		c = exec.Command("git", "checkout", revision)
-		c.Dir = clonePath
-
-		_, err = c.CombinedOutput()
-		if err != nil {
-			return fmt.Errorf("failed to checkout the revision %q: %v", revision, err)
-		}
-	}
-
-	return nil
 }
 
 // CheckWithRegex checks if a name matches the pattern.

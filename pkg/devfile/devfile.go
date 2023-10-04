@@ -777,7 +777,7 @@ func FindAndDownloadDockerfile(dir string) ([]byte, string, error) {
 
 // DownloadFile downloads the specified file
 func DownloadFile(file string) ([]byte, error) {
-	return util.CurlEndpoint(file)
+	return cdqanalysis.CurlEndpoint(file)
 }
 
 // DownloadDevfileAndDockerfile attempts to download and return the devfile, devfile context, Dockerfile and Dockerfile context from the root of the specified url
