@@ -50,7 +50,7 @@ func TestCloneAndAnalyze(t *testing.T) {
 	multiComponentRepoURL := "https://github.com/maysunfaisal/multi-components-dockerfile"
 	springNoDevfileNoDockerfileURL := "https://github.com/kim-tsao/devfile-sample-java-springboot-basic-no-devfile-no-dockerfile"
 	springNoDevfileURL := "https://github.com/yangcao77/devfile-sample-java-springboot-basic-no-devfile"
-	multiComponentWithNoDevfileAndDockerfileURL := "https://github.com/redhat-appstudio/quality-dashboard"
+	multiComponentWithNoDevfileAndDockerfileURL := "https://github.com/yangcao77/quality-dashboard"
 	failedToCloneRepoErr := "failed to clone the repo.*"
 
 	springDevfileContext := `
