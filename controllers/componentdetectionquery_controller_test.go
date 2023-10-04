@@ -1573,7 +1573,7 @@ var _ = Describe("Component Detection Query controller", func() {
 					},
 					Spec: appstudiov1alpha1.ComponentDetectionQuerySpec{
 						GitSource: appstudiov1alpha1.GitSource{
-							URL: "https://github.com/redhat-appstudio/quality-dashboard",
+							URL: "https://github.com/yangcao77/quality-dashboard",
 						},
 					},
 				}
