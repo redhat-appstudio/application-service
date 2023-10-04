@@ -51,7 +51,7 @@ func TestCloneAndAnalyze(t *testing.T) {
 	springNoDevfileNoDockerfileURL := "https://github.com/kim-tsao/devfile-sample-java-springboot-basic-no-devfile-no-dockerfile"
 	springNoDevfileURL := "https://github.com/yangcao77/devfile-sample-java-springboot-basic-no-devfile"
 	multiComponentWithNoDevfileAndDockerfileURL := "https://github.com/yangcao77/quality-dashboard"
-	failedToCloneRepoErr := "failed to clone the repo.*"
+	authenticationFailedErr := "authentication failed .*"
 
 	springDevfileContext := `
 	schemaVersion: 2.2.0
@@ -150,7 +150,7 @@ func TestCloneAndAnalyze(t *testing.T) {
 			wantDevfilesURLMap:       map[string]string{},
 			wantDockerfileContextMap: map[string]string{},
 			wantComponentsPortMap:    map[string][]int{},
-			wantErr:                  failedToCloneRepoErr,
+			wantErr:                  authenticationFailedErr,
 		},
 		{
 			testCase:                 "private repo - should error out with invalid token provided",
@@ -161,7 +161,7 @@ func TestCloneAndAnalyze(t *testing.T) {
 			wantDevfilesURLMap:       map[string]string{},
 			wantDockerfileContextMap: map[string]string{},
 			wantComponentsPortMap:    map[string][]int{},
-			wantErr:                  failedToCloneRepoErr,
+			wantErr:                  authenticationFailedErr,
 		},
 		{
 			testCase:           "should successfully detect multi-component with dockerfile present",
