@@ -56,7 +56,7 @@ func CloneRepo(clonePath string, gitURL GitURL) error {
 		tempStr := strings.Split(gitURL.RepoURL, "https://")
 
 		// e.g. https://token:<token>@github.com/owner/repoName.git
-		cloneURL = fmt.Sprintf("https://oauth2:%s@%s", gitURL.Token, tempStr[1])
+		cloneURL = fmt.Sprintf("https://token:%s@%s", gitURL.Token, tempStr[1])
 	}
 	c := exec.Command("git", "clone", cloneURL, clonePath)
 	c.Dir = clonePath
@@ -71,7 +71,8 @@ func CloneRepo(clonePath string, gitURL GitURL) error {
 		if matched, _ := regexp.MatchString(RepoNotFoundMsg, string(output)); matched {
 			return &RepoNotFound{URL: cloneURL, Err: err}
 		} else if matched, _ := regexp.MatchString(AuthenticationFailedMsg, string(output)); matched {
-			return &AuthenticationFailed{URL: cloneURL, Err: err}
+			retErr := fmt.Errorf("token is: %v, error is %v", gitURL.Token, err.Error())
+			return &AuthenticationFailed{URL: cloneURL, Err: retErr}
 		}
 
 		return fmt.Errorf("failed to clone the repo: %v", err)
