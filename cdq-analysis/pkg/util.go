@@ -71,8 +71,7 @@ func CloneRepo(clonePath string, gitURL GitURL) error {
 		if matched, _ := regexp.MatchString(RepoNotFoundMsg, string(output)); matched {
 			return &RepoNotFound{URL: cloneURL, Err: err}
 		} else if matched, _ := regexp.MatchString(AuthenticationFailedMsg, string(output)); matched {
-			retErr := fmt.Errorf("token is: %v, error is %v", gitURL.Token, err.Error())
-			return &AuthenticationFailed{URL: cloneURL, Err: retErr}
+			return &AuthenticationFailed{URL: cloneURL, Err: err}
 		}
 
 		return fmt.Errorf("failed to clone the repo: %v", err)
