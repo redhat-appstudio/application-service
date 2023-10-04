@@ -286,6 +286,8 @@ func (k K8sInfoClient) SendBackDetectionResult(devfilesMap map[string][]byte, de
 			errorMap["InvalidDevfile"] = fmt.Sprintf("%v", completeError)
 		case *InvalidURL:
 			errorMap["InvalidURL"] = fmt.Sprintf("%v", completeError)
+		case *AuthenticationFailed:
+			errorMap["AuthenticationFailed"] = fmt.Sprintf("%v", completeError)
 		default:
 			errorMap["InternalError"] = fmt.Sprintf("%v", completeError)
 		}
