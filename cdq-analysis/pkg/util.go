@@ -78,17 +78,16 @@ func CloneRepo(clonePath string, gitURL GitURL) error {
 	}
 
 	if gitURL.Revision != "" {
-		revision := gitURL.Revision
-		c = exec.Command("git", "checkout", revision)
+		c = exec.Command("git", "checkout", gitURL.Revision)
 		c.Dir = clonePath
 
 		_, err = c.CombinedOutput()
 		if err != nil {
 			if matched, _ := regexp.MatchString(RevisionNotFoundMsg, string(output)); matched {
-				return &RepoNotFound{URL: cloneURL, Revision: revision, Err: err}
+				return &RepoNotFound{URL: cloneURL, Revision: gitURL.Revision, Err: err}
 			}
 
-			return fmt.Errorf("failed to checkout the revision %q: %v", revision, err)
+			return fmt.Errorf("failed to checkout the revision %q: %v", gitURL.Revision, err)
 		}
 	}
 
