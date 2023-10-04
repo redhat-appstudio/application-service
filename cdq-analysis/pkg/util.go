@@ -56,7 +56,7 @@ func CloneRepo(clonePath string, gitURL GitURL) error {
 		tempStr := strings.Split(gitURL.RepoURL, "https://")
 
 		// e.g. https://token:<token>@github.com/owner/repoName.git
-		cloneURL = fmt.Sprintf("https://token:%s@%s", gitURL.Token, tempStr[1])
+		cloneURL = fmt.Sprintf("https://oauth2:%s@%s", gitURL.Token, tempStr[1])
 	}
 	c := exec.Command("git", "clone", cloneURL, clonePath)
 	c.Dir = clonePath

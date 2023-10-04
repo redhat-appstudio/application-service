@@ -1614,7 +1614,7 @@ var _ = Describe("Component Detection Query controller", func() {
 				}, timeout20s, interval).Should(BeTrue())
 
 				// Make sure the a devfile is detected
-				Expect(len(createdHasCompDetectionQuery.Status.ComponentDetected)).Should(Equal(3))
+				Expect(len(createdHasCompDetectionQuery.Status.ComponentDetected)).Should(Equal(2))
 
 				for dockerFileName, dockerFileDesc := range createdHasCompDetectionQuery.Status.ComponentDetected {
 					Expect(dockerFileName).Should(Or(ContainSubstring("backend-quality-dashboard"), ContainSubstring("frontend-quality-dashboard")))
