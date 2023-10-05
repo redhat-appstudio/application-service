@@ -19,6 +19,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"path/filepath"
 	"strconv"
 
 	"go.uber.org/zap/zapcore"
@@ -28,6 +29,7 @@ import (
 	"github.com/redhat-appstudio/application-service/cdq-analysis/pkg"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
+	"k8s.io/client-go/tools/clientcmd"
 )
 
 func main() {
@@ -66,7 +68,18 @@ func main() {
 		ctx = context.Background()
 		config, err := rest.InClusterConfig()
 		if err != nil {
-			fmt.Printf("Error creating InClusterConfig: %v", err)
+			// Couldn't find an InClusterConfig, may be running outside of Kube, so try to find a local kube config file
+			var kubeconfig string
+			if os.Getenv("KUBECONFIG") != "" {
+				kubeconfig = os.Getenv("KUBECONFIG")
+			} else {
+				kubeconfig = filepath.Join(os.Getenv("HOME"), ".kube", "config")
+			}
+			config, err = clientcmd.BuildConfigFromFlags("", kubeconfig)
+			if err != nil {
+				fmt.Printf("Error creating clientset with config %v: %v", config, err)
+				os.Exit(1)
+			}
 		}
 
 		clientset, err = kubernetes.NewForConfig(config)

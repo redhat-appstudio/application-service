@@ -22,6 +22,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"path/filepath"
 	"strconv"
 
 	spiapi "github.com/redhat-appstudio/service-provider-integration-operator/api/v1beta1"
@@ -33,6 +34,7 @@ import (
 	"go.uber.org/zap/zapcore"
 	_ "k8s.io/client-go/plugin/pkg/client/auth"
 	"k8s.io/client-go/rest"
+	"k8s.io/client-go/tools/clientcmd"
 
 	"github.com/redhat-appstudio/operator-toolkit/webhook"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -192,8 +194,18 @@ func main() {
 	}
 	config, err := rest.InClusterConfig()
 	if err != nil {
-		setupLog.Error(err, ("Error creating InClusterConfig... "))
-		os.Exit(1)
+		// Couldn't find an InClusterConfig, may be running outside of Kube, so try to find a local kube config file
+		var kubeconfig string
+		if os.Getenv("KUBECONFIG") != "" {
+			kubeconfig = os.Getenv("KUBECONFIG")
+		} else {
+			kubeconfig = filepath.Join(os.Getenv("HOME"), ".kube", "config")
+		}
+		config, err = clientcmd.BuildConfigFromFlags("", kubeconfig)
+		if err != nil {
+			setupLog.Error(err, "Unable to retrieve Kubernetes InClusterConfig")
+			os.Exit(1)
+		}
 	}
 	if err = (&controllers.ComponentDetectionQueryReconciler{
 		Client:             mgr.GetClient(),
