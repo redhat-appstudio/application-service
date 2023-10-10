@@ -159,7 +159,7 @@ func (r *ComponentDetectionQueryReconciler) Reconcile(ctx context.Context, req c
 		if string(sourceURL[len(sourceURL)-1]) == "/" {
 			sourceURL = sourceURL[0 : len(sourceURL)-1]
 		}
-		err = util.ValidateEndpoint(sourceURL)
+		err = util.ValidateEndpoint(sourceURL) // does this work without token?
 		if err != nil {
 			log.Error(err, fmt.Sprintf("Failed to validate the source URL %v... %v", source.URL, req.NamespacedName))
 			r.SetCompleteConditionAndUpdateCR(ctx, req, &componentDetectionQuery, copiedCDQ, err)

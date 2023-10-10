@@ -133,13 +133,13 @@ func CloneAndAnalyze(k K8sInfoClient, namespace, name, context string, cdqInfo *
 	// search the cloned repo for valid devfile locations
 	devfileBytes, err := FindValidDevfiles(cdqInfo)
 	if err != nil {
-		log.Error(err, fmt.Sprintf("Unable to find from any known devfile locations from %s ", cdqInfo.GitURL))
+		log.Info(fmt.Sprintf("Unable to find from any known devfile locations from %s ", cdqInfo.GitURL.RepoURL))
 	}
 
 	// search the cloned repo for valid dockerfile locations
 	dockerfileBytes, err := FindValidDockerfile(cdqInfo)
 	if err != nil {
-		log.Error(err, fmt.Sprintf("Unable to find from any known devfile locations from %s ", cdqInfo.GitURL))
+		log.Info(fmt.Sprintf("Unable to find from any known Dockerfile locations from %s ", cdqInfo.GitURL.RepoURL))
 	}
 
 	isDevfilePresent := len(devfileBytes) != 0
@@ -163,14 +163,14 @@ func CloneAndAnalyze(k K8sInfoClient, namespace, name, context string, cdqInfo *
 	if isDevfilePresent {
 		// devfilePath is the resolved, valid devfile location set in FindValidDevfiles
 		updatedLink, err := UpdateGitLink(repoURL, revision, path.Join(context, devfilePath))
-		log.Info(fmt.Sprintf("updatedLink %s ", updatedLink))
+		log.Info(fmt.Sprintf("Updating the git link to access devfile: %s ", updatedLink))
 		if err != nil {
-			log.Error(err, fmt.Sprintf("Unable to update the devfile link for CDQ %v... %v", name, namespace))
+			log.Error(err, fmt.Sprintf("Unable to update the devfile git link for CDQ %v... %v", name, namespace))
 			k.SendBackDetectionResult(devfilesMap, devfilesURLMap, dockerfileContextMap, componentPortsMap, revision, name, namespace, err)
 			return nil, nil, nil, nil, "", err
 		}
 
-		shouldIgnoreDevfile, devfileBytes, err := ValidateDevfile(log, updatedLink, gitToken)
+		shouldIgnoreDevfile, devfileBytes, err := ValidateDevfile(log, updatedLink, gitToken) // check for internal private paths
 		if err != nil {
 			retErr := &InvalidDevfile{Err: err}
 			k.SendBackDetectionResult(devfilesMap, devfilesURLMap, dockerfileContextMap, componentPortsMap, revision, name, namespace, retErr)

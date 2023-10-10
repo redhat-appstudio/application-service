@@ -741,13 +741,13 @@ func getMatchLabel(name string) map[string]string {
 }
 
 // FindAndDownloadDevfile downloads devfile from the various possible devfile locations in dir and returns the contents and its context
-func FindAndDownloadDevfile(dir string) ([]byte, string, error) {
+func FindAndDownloadDevfile(dir, token string) ([]byte, string, error) {
 	var devfileBytes []byte
 	var err error
 
 	for _, path := range cdqanalysis.ValidDevfileLocations {
 		devfilePath := dir + "/" + path
-		devfileBytes, err = DownloadFile(devfilePath)
+		devfileBytes, err = DownloadFile(devfilePath, token)
 		if err == nil {
 			// if we get a 200, return
 			return devfileBytes, path, err
@@ -758,14 +758,14 @@ func FindAndDownloadDevfile(dir string) ([]byte, string, error) {
 }
 
 // FindAndDownloadDockerfile downloads Dockerfile from the various possible Dockerfile, or Containerfile locations in dir and returns the contents and its context
-func FindAndDownloadDockerfile(dir string) ([]byte, string, error) {
+func FindAndDownloadDockerfile(dir, token string) ([]byte, string, error) {
 	var dockerfileBytes []byte
 	var err error
 	// Containerfile is an alternate name for Dockerfile
 
 	for _, path := range cdqanalysis.ValidDockerfileLocations {
 		dockerfilePath := dir + "/" + path
-		dockerfileBytes, err = DownloadFile(dockerfilePath)
+		dockerfileBytes, err = DownloadFile(dockerfilePath, token)
 		if err == nil {
 			// if we get a 200, return
 			return dockerfileBytes, path, err
@@ -776,17 +776,18 @@ func FindAndDownloadDockerfile(dir string) ([]byte, string, error) {
 }
 
 // DownloadFile downloads the specified file
-func DownloadFile(file string) ([]byte, error) {
-	return cdqanalysis.CurlEndpoint(file)
+func DownloadFile(file, token string) ([]byte, error) {
+	return cdqanalysis.CurlEndpoint(file, token)
 }
 
 // DownloadDevfileAndDockerfile attempts to download and return the devfile, devfile context, Dockerfile and Dockerfile context from the root of the specified url
-func DownloadDevfileAndDockerfile(url string) ([]byte, string, []byte, string) {
+// not used
+func DownloadDevfileAndDockerfile(url, token string) ([]byte, string, []byte, string) {
 	var devfileBytes, dockerfileBytes []byte
 	var devfilePath, dockerfilePath string
 
-	devfileBytes, devfilePath, _ = FindAndDownloadDevfile(url)
-	dockerfileBytes, dockerfilePath, _ = FindAndDownloadDockerfile(url)
+	devfileBytes, devfilePath, _ = FindAndDownloadDevfile(url, token)
+	dockerfileBytes, dockerfilePath, _ = FindAndDownloadDockerfile(url, token)
 
 	return devfileBytes, devfilePath, dockerfileBytes, dockerfilePath
 }

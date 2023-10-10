@@ -227,7 +227,7 @@ func TestFindAndDownloadDevfile(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			contents, devfileContext, err := FindAndDownloadDevfile(tt.url)
+			contents, devfileContext, err := FindAndDownloadDevfile(tt.url, "")
 			if tt.wantErr && (err == nil) {
 				t.Error("wanted error but got nil")
 			} else if !tt.wantErr && err != nil {
@@ -302,7 +302,7 @@ func TestFindAndDownloadDockerfile(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			contents, dockerfileContext, err := FindAndDownloadDockerfile(tt.url)
+			contents, dockerfileContext, err := FindAndDownloadDockerfile(tt.url, "")
 			if tt.wantErr && (err == nil) {
 				t.Error("wanted error but got nil")
 			} else if !tt.wantErr && err != nil {
@@ -419,7 +419,7 @@ func TestDownloadDevfileAndDockerfile(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			devfile, devfileContext, dockerfile, dockerfileContext := DownloadDevfileAndDockerfile(tt.url)
+			devfile, devfileContext, dockerfile, dockerfileContext := DownloadDevfileAndDockerfile(tt.url, "")
 			if tt.want != (len(devfile) > 0 && len(dockerfile) > 0) {
 				t.Errorf("devfile and a Dockerfile wanted: %v but got devfile: %v Dockerfile: %v", tt.want, len(devfile) > 0, len(dockerfile) > 0)
 			}
