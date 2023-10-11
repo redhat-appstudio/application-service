@@ -97,6 +97,26 @@ var (
 		},
 	)
 
+	ApplicationCreationTotalReqs = prometheus.NewCounter(
+		prometheus.CounterOpts{
+			Name: "has_application_creation_total",
+			Help: "Number of application creation requests processed",
+		},
+	)
+	ApplicationCreationFailed = prometheus.NewCounter(
+		prometheus.CounterOpts{
+			Name: "has_application_failed_creation_total",
+			Help: "Number of failed application creation requests",
+		},
+	)
+
+	ApplicationCreationSucceeded = prometheus.NewCounter(
+		prometheus.CounterOpts{
+			Name: "has_application_successful_creation_total",
+			Help: "Number of successful application creation requests",
+		},
+	)
+
 	ComponentDeletionTotalReqs = prometheus.NewCounter(
 		prometheus.CounterOpts{
 			Name: "has_component_deletion_total",
@@ -142,7 +162,7 @@ func init() {
 	// Register custom metrics with the global prometheus registry
 	metrics.Registry.MustRegister(GitOpsRepoCreationTotalReqs, GitOpsRepoCreationFailed, GitOpsRepoCreationSucceeded, ControllerGitRequest, SecondaryRateLimitCounter,
 		PrimaryRateLimitCounter, TokenPoolGauge, ApplicationDeletionTotalReqs, ApplicationDeletionSucceeded, ApplicationDeletionFailed,
-		ComponentDeletionTotalReqs, ComponentDeletionSucceeded, ComponentDeletionFailed,
+		ApplicationCreationSucceeded, ApplicationCreationFailed, ApplicationCreationTotalReqs, ComponentDeletionTotalReqs, ComponentDeletionSucceeded, ComponentDeletionFailed,
 		ImportGitRepoTotalReqs, ImportGitRepoFailed, ImportGitRepoSucceeded)
 }
 

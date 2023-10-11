@@ -34,6 +34,7 @@ import (
 	appstudiov1alpha1 "github.com/redhat-appstudio/application-api/api/v1alpha1"
 	cdqanalysis "github.com/redhat-appstudio/application-service/cdq-analysis/pkg"
 	devfile "github.com/redhat-appstudio/application-service/pkg/devfile"
+	"github.com/redhat-appstudio/application-service/pkg/metrics"
 	"github.com/redhat-appstudio/application-service/pkg/util"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -286,6 +287,7 @@ func (r *ApplicationReconciler) getAndAddComponentApplicationsToModel(log logr.L
 	})
 	if err != nil {
 		log.Error(err, fmt.Sprintf("Unable to list Components for %v", req.NamespacedName))
+		metrics.ApplicationCreationFailed.Inc()
 		return err
 	}
 
@@ -298,6 +300,8 @@ func (r *ApplicationReconciler) getAndAddComponentApplicationsToModel(log logr.L
 	// Add the components to the Devfile model
 	err = r.addComponentsToApplicationDevfileModel(devSpec, components)
 	if err != nil {
+		// User error - so increment the "success" metric - since we're tracking only system errors
+		metrics.ApplicationCreationSucceeded.Inc()
 		log.Error(err, fmt.Sprintf("Error adding components to devfile for Application %v", req.NamespacedName))
 		return err
 	}

@@ -21,11 +21,13 @@ import (
 	"time"
 
 	"github.com/devfile/library/v2/pkg/devfile/parser"
+	"github.com/prometheus/client_golang/prometheus/testutil"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	appstudiov1alpha1 "github.com/redhat-appstudio/application-api/api/v1alpha1"
 	cdqanalysis "github.com/redhat-appstudio/application-service/cdq-analysis/pkg"
+	"github.com/redhat-appstudio/application-service/pkg/metrics"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	//+kubebuilder:scaffold:imports
@@ -51,6 +53,9 @@ var _ = Describe("Application controller", func() {
 
 	Context("Create Application with no repositories set", func() {
 		It("Should create successfully with generated repositories", func() {
+			beforeCreateTotalReqs := testutil.ToFloat64(metrics.ApplicationCreationTotalReqs)
+			beforeCreateSucceedReqs := testutil.ToFloat64(metrics.ApplicationCreationSucceeded)
+			beforeCreateFailedReqs := testutil.ToFloat64(metrics.ApplicationCreationFailed)
 			ctx := context.Background()
 
 			applicationName := HASAppName + "1"
@@ -90,6 +95,11 @@ var _ = Describe("Application controller", func() {
 			// gitOpsRepo and appModelRepo should both be set
 			Expect(string(devfile.GetMetadata().Attributes["gitOpsRepository.url"].Raw)).Should(Not(Equal("")))
 			Expect(string(devfile.GetMetadata().Attributes["appModelRepository.url"].Raw)).Should(Not(Equal("")))
+
+			// Success metrics should get counted here
+			Expect(testutil.ToFloat64(metrics.ApplicationCreationTotalReqs) > beforeCreateTotalReqs).To(BeTrue())
+			Expect(testutil.ToFloat64(metrics.ApplicationCreationSucceeded) > beforeCreateSucceedReqs).To(BeTrue())
+			Expect(testutil.ToFloat64(metrics.ApplicationCreationFailed) == beforeCreateFailedReqs).To(BeTrue())
 
 			// Delete the specified resource
 			deleteHASAppCR(hasAppLookupKey)
@@ -310,6 +320,9 @@ var _ = Describe("Application controller", func() {
 
 	Context("Application CR with gitops repo creation failure", func() {
 		It("Should update successfully with updated description", func() {
+			beforeCreateTotalReqs := testutil.ToFloat64(metrics.ApplicationCreationTotalReqs)
+			beforeCreateSucceedReqs := testutil.ToFloat64(metrics.ApplicationCreationSucceeded)
+			beforeCreateFailedReqs := testutil.ToFloat64(metrics.ApplicationCreationFailed)
 			ctx := context.Background()
 
 			applicationName := "test-error-response" + "5"
@@ -344,6 +357,10 @@ var _ = Describe("Application controller", func() {
 			}, timeout, interval).Should(BeTrue())
 
 			Expect(fetchedHasApp.Status.Conditions[0].Status).Should(Equal(metav1.ConditionFalse))
+
+			Expect(testutil.ToFloat64(metrics.ApplicationCreationTotalReqs) > beforeCreateTotalReqs).To(BeTrue())
+			Expect(testutil.ToFloat64(metrics.ApplicationCreationSucceeded) == beforeCreateSucceedReqs).To(BeTrue())
+			Expect(testutil.ToFloat64(metrics.ApplicationCreationFailed) > beforeCreateFailedReqs).To(BeTrue())
 
 			// Delete the specified resource
 			deleteHASAppCR(hasAppLookupKey)

@@ -150,6 +150,7 @@ func (r *ApplicationReconciler) Reconcile(ctx context.Context, req ctrl.Request)
 	// If devfile hasn't been generated yet, generate it
 	// If the devfile hasn't been generated, the CR was just created.
 	if application.Status.Devfile == "" {
+		metrics.ApplicationCreationTotalReqs.Inc()
 		// See if a gitops/appModel repo(s) were passed in. If not, generate them.
 		gitOpsRepo := application.Spec.GitOpsRepository.URL
 		appModelRepo := application.Spec.AppModelRepository.URL
@@ -165,6 +166,7 @@ func (r *ApplicationReconciler) Reconcile(ctx context.Context, req ctrl.Request)
 			repoUrl, err := ghClient.GenerateNewRepository(ctx, r.GitHubOrg, repoName, "GitOps Repository")
 			if err != nil {
 				metrics.HandleRateLimitMetrics(err, metricsLabel)
+				metrics.ApplicationCreationFailed.Inc()
 				log.Error(err, fmt.Sprintf("Unable to create repository %v", repoUrl))
 				r.SetCreateConditionAndUpdateCR(ctx, req, &application, err)
 				return reconcile.Result{}, err
@@ -180,6 +182,7 @@ func (r *ApplicationReconciler) Reconcile(ctx context.Context, req ctrl.Request)
 		// Convert the devfile string to a devfile object
 		devfileData, err := devfile.ConvertApplicationToDevfile(application, gitOpsRepo, appModelRepo)
 		if err != nil {
+			metrics.ApplicationCreationFailed.Inc()
 			log.Error(err, fmt.Sprintf("Unable to convert Application CR to devfile, exiting reconcile loop %v", req.NamespacedName))
 			r.SetCreateConditionAndUpdateCR(ctx, req, &application, err)
 			return reconcile.Result{}, err
@@ -195,6 +198,7 @@ func (r *ApplicationReconciler) Reconcile(ctx context.Context, req ctrl.Request)
 
 		yamlData, err := yaml.Marshal(devfileData)
 		if err != nil {
+			metrics.ApplicationCreationFailed.Inc()
 			log.Error(err, fmt.Sprintf("Unable to marshall Application devfile, exiting reconcile loop %v", req.NamespacedName))
 			r.SetCreateConditionAndUpdateCR(ctx, req, &application, err)
 			return reconcile.Result{}, err
@@ -204,6 +208,7 @@ func (r *ApplicationReconciler) Reconcile(ctx context.Context, req ctrl.Request)
 
 		// Create GitOps repository
 		// Update the status of the CR
+		metrics.ApplicationCreationSucceeded.Inc()
 		r.SetCreateConditionAndUpdateCR(ctx, req, &application, nil)
 	} else {
 		// If the model already exists, see if either the displayname or description need updating
