@@ -25,8 +25,10 @@ import (
 	"github.com/devfile/api/v2/pkg/devfile"
 	v2 "github.com/devfile/library/v2/pkg/devfile/parser/data/v2"
 	"github.com/devfile/library/v2/pkg/devfile/parser/data/v2/common"
+	"github.com/prometheus/client_golang/prometheus/testutil"
 	appstudiov1alpha1 "github.com/redhat-appstudio/application-api/api/v1alpha1"
 	devfilePkg "github.com/redhat-appstudio/application-service/pkg/devfile"
+	"github.com/redhat-appstudio/application-service/pkg/metrics"
 	"github.com/stretchr/testify/assert"
 	"go.uber.org/zap/zapcore"
 	corev1 "k8s.io/api/core/v1"
@@ -516,6 +518,9 @@ func TestGetAndAddComponentApplicationsToModel(t *testing.T) {
 				fakeClient = NewFakeClient(t, tt.componentTwo)
 			}
 
+			beforeCreateSucceedReqs := testutil.ToFloat64(metrics.ApplicationCreationSucceeded)
+			beforeCreateFailedReqs := testutil.ToFloat64(metrics.ApplicationCreationFailed)
+
 			devSpec := devfileAPIV1.DevWorkspaceTemplateSpec{
 				DevWorkspaceTemplateSpecContent: devfileAPIV1.DevWorkspaceTemplateSpecContent{
 					Attributes: tt.attributes,
@@ -532,6 +537,16 @@ func TestGetAndAddComponentApplicationsToModel(t *testing.T) {
 			err := r.getAndAddComponentApplicationsToModel(log, req, tt.applicationName, &devSpec)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("TestGetAndAddComponentApplicationsToModel() unexpected error: %v", err)
+			}
+
+			if err != nil && tt.name == "Container image already exists" {
+				// This is a user error scenario, so expect the "creation success" metric to be incremented (as only system errors are counted for failure)
+				if testutil.ToFloat64(metrics.ApplicationCreationSucceeded) <= beforeCreateSucceedReqs {
+					t.Errorf("TestGetAndAddComponentApplicationsToModel() expected metric 'ApplicationCreationSucceeded' to be incremented")
+				}
+				if testutil.ToFloat64(metrics.ApplicationCreationFailed) != beforeCreateFailedReqs {
+					t.Errorf("TestGetAndAddComponentApplicationsToModel() expected metric 'ApplicationCreationFailed' to be unchanged")
+				}
 			}
 
 			components := []appstudiov1alpha1.Component{}
