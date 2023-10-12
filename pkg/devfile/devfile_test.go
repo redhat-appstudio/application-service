@@ -395,46 +395,6 @@ func TestCreateDevfileForDockerfileBuild(t *testing.T) {
 	}
 }
 
-func TestDownloadDevfileAndDockerfile(t *testing.T) {
-	tests := []struct {
-		name                  string
-		url                   string
-		wantDevfileContext    string
-		wantDockerfileContext string
-		want                  bool
-	}{
-		{
-			name:                  "Curl devfile.yaml and Dockerfile",
-			url:                   "https://raw.githubusercontent.com/maysunfaisal/devfile-sample-python-samelevel/main",
-			wantDevfileContext:    ".devfile.yaml",
-			wantDockerfileContext: "Dockerfile",
-			want:                  true,
-		},
-		{
-			name: "Cannot curl for a devfile nor a Dockerfile",
-			url:  "https://github.com/octocat/Hello-World",
-			want: false,
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			devfile, devfileContext, dockerfile, dockerfileContext := DownloadDevfileAndDockerfile(tt.url, "")
-			if tt.want != (len(devfile) > 0 && len(dockerfile) > 0) {
-				t.Errorf("devfile and a Dockerfile wanted: %v but got devfile: %v Dockerfile: %v", tt.want, len(devfile) > 0, len(dockerfile) > 0)
-			}
-
-			if devfileContext != tt.wantDevfileContext {
-				t.Errorf("devfile context did not match, got %v, wanted %v", devfileContext, tt.wantDevfileContext)
-			}
-
-			if dockerfileContext != tt.wantDockerfileContext {
-				t.Errorf("Dockerfile context did not match, got %v, wanted %v", dockerfileContext, tt.wantDockerfileContext)
-			}
-		})
-	}
-}
-
 func TestGetRouteFromEndpoint(t *testing.T) {
 
 	var (

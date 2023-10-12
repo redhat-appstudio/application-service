@@ -228,7 +228,7 @@ func validateImageComponentDockerfile(log logr.Logger, component v1alpha2.Compon
 		if absoluteDockerfileURI {
 			// absolute Dockerfile uri
 			log.Info(fmt.Sprintf("Checking if the Dockerfile location %s is reachable", dockerfileURI))
-			_, err = CurlEndpoint(dockerfileURI, token) // if private URI does it succeed?
+			_, err = CurlEndpoint(dockerfileURI, token)
 		} else {
 			if !absoluteDevfileLocation {
 				// local devfile src with relative Dockerfile uri
@@ -246,7 +246,7 @@ func validateImageComponentDockerfile(log logr.Logger, component v1alpha2.Compon
 				u.Path = path.Join(path.Dir(u.Path), dockerfileURI)
 				dockerfileURI = u.String()
 				log.Info(fmt.Sprintf("Checking if the Dockerfile location %s is reachable", dockerfileURI))
-				_, err = CurlEndpoint(dockerfileURI, token) // will it succeed on private link?
+				_, err = CurlEndpoint(dockerfileURI, token)
 			}
 		}
 		if err != nil {

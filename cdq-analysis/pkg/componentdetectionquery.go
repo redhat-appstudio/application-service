@@ -170,7 +170,7 @@ func CloneAndAnalyze(k K8sInfoClient, namespace, name, context string, cdqInfo *
 			return nil, nil, nil, nil, "", err
 		}
 
-		shouldIgnoreDevfile, devfileBytes, err := ValidateDevfile(log, updatedLink, gitToken) // check for internal private paths
+		shouldIgnoreDevfile, devfileBytes, err := ValidateDevfile(log, updatedLink, gitToken)
 		if err != nil {
 			retErr := &InvalidDevfile{Err: err}
 			k.SendBackDetectionResult(devfilesMap, devfilesURLMap, dockerfileContextMap, componentPortsMap, revision, name, namespace, retErr)

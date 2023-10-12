@@ -278,7 +278,7 @@ func (r *ComponentReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 				if string(sourceURL[len(sourceURL)-1]) == "/" {
 					sourceURL = sourceURL[0 : len(sourceURL)-1]
 				}
-				log.Info(fmt.Sprintf("Looking for default branch of repo %s... %v", source.GitSource.URL, req.NamespacedName))
+				log.Info(fmt.Sprintf("Looking for the default branch of the repo %s... %v", source.GitSource.URL, req.NamespacedName))
 				metricsLabel := prometheus.Labels{"controller": cdqName, "tokenName": ghClient.TokenName, "operation": "GetDefaultBranchFromURL"}
 				metrics.ControllerGitRequest.With(metricsLabel).Inc()
 				source.GitSource.Revision, err = ghClient.GetDefaultBranchFromURL(sourceURL, ctx)
@@ -314,7 +314,7 @@ func (r *ComponentReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 						return ctrl.Result{}, err
 					}
 
-					devfileBytes, devfileLocation, err = devfile.FindAndDownloadDevfile(gitURL)
+					devfileBytes, devfileLocation, err = devfile.FindAndDownloadDevfile(gitURL, gitToken)
 					// FindAndDownloadDevfile only returns user error
 					metrics.ImportGitRepoSucceeded.Inc()
 					if err != nil {

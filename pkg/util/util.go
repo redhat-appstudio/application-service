@@ -83,6 +83,7 @@ func ProcessGitOpsStatus(gitopsStatus appstudiov1alpha1.GitOpsStatus, gitToken s
 	return remoteURL, gitOpsBranch, gitOpsContext, nil
 }
 
+// ValidateEndpoint validates if the endpoint url can be parsed and if it has a host and a scheme
 func ValidateEndpoint(endpoint string) error {
 	u, err := url.Parse(endpoint)
 	if err != nil {

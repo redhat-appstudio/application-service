@@ -780,18 +780,6 @@ func DownloadFile(file, token string) ([]byte, error) {
 	return cdqanalysis.CurlEndpoint(file, token)
 }
 
-// DownloadDevfileAndDockerfile attempts to download and return the devfile, devfile context, Dockerfile and Dockerfile context from the root of the specified url
-// not used
-func DownloadDevfileAndDockerfile(url, token string) ([]byte, string, []byte, string) {
-	var devfileBytes, dockerfileBytes []byte
-	var devfilePath, dockerfilePath string
-
-	devfileBytes, devfilePath, _ = FindAndDownloadDevfile(url, token)
-	dockerfileBytes, dockerfilePath, _ = FindAndDownloadDockerfile(url, token)
-
-	return devfileBytes, devfilePath, dockerfileBytes, dockerfilePath
-}
-
 // UpdateLocalDockerfileURItoAbsolute takes in a Devfile, and a DockefileURL, and returns back a Devfile with any local URIs to the Dockerfile updates to be absolute
 func UpdateLocalDockerfileURItoAbsolute(devfile data.DevfileData, dockerfileURL string) (data.DevfileData, error) {
 	devfileComponents, err := devfile.GetComponents(common.DevfileOptions{ComponentOptions: common.ComponentOptions{
