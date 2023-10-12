@@ -91,7 +91,7 @@ func TestCurlEndpoint(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			contents, err := CurlEndpoint(tt.url)
+			contents, err := CurlEndpoint(tt.url, "")
 			if tt.wantErr && (err == nil) {
 				t.Error("wanted error but got nil")
 			} else if !tt.wantErr && err != nil {
