@@ -227,7 +227,7 @@ func TestFindAndDownloadDevfile(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			contents, devfileContext, err := FindAndDownloadDevfile(tt.url)
+			contents, devfileContext, err := FindAndDownloadDevfile(tt.url, "")
 			if tt.wantErr && (err == nil) {
 				t.Error("wanted error but got nil")
 			} else if !tt.wantErr && err != nil {
@@ -302,7 +302,7 @@ func TestFindAndDownloadDockerfile(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			contents, dockerfileContext, err := FindAndDownloadDockerfile(tt.url)
+			contents, dockerfileContext, err := FindAndDownloadDockerfile(tt.url, "")
 			if tt.wantErr && (err == nil) {
 				t.Error("wanted error but got nil")
 			} else if !tt.wantErr && err != nil {
@@ -390,46 +390,6 @@ func TestCreateDevfileForDockerfileBuild(t *testing.T) {
 					assert.NotNil(t, applyCommands[0].Apply, "Apply command should not be nil")
 					assert.Equal(t, "dockerfile-build", applyCommands[0].Apply.Component, "command component reference should be equal")
 				}
-			}
-		})
-	}
-}
-
-func TestDownloadDevfileAndDockerfile(t *testing.T) {
-	tests := []struct {
-		name                  string
-		url                   string
-		wantDevfileContext    string
-		wantDockerfileContext string
-		want                  bool
-	}{
-		{
-			name:                  "Curl devfile.yaml and Dockerfile",
-			url:                   "https://raw.githubusercontent.com/maysunfaisal/devfile-sample-python-samelevel/main",
-			wantDevfileContext:    ".devfile.yaml",
-			wantDockerfileContext: "Dockerfile",
-			want:                  true,
-		},
-		{
-			name: "Cannot curl for a devfile nor a Dockerfile",
-			url:  "https://github.com/octocat/Hello-World",
-			want: false,
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			devfile, devfileContext, dockerfile, dockerfileContext := DownloadDevfileAndDockerfile(tt.url)
-			if tt.want != (len(devfile) > 0 && len(dockerfile) > 0) {
-				t.Errorf("devfile and a Dockerfile wanted: %v but got devfile: %v Dockerfile: %v", tt.want, len(devfile) > 0, len(dockerfile) > 0)
-			}
-
-			if devfileContext != tt.wantDevfileContext {
-				t.Errorf("devfile context did not match, got %v, wanted %v", devfileContext, tt.wantDevfileContext)
-			}
-
-			if dockerfileContext != tt.wantDockerfileContext {
-				t.Errorf("Dockerfile context did not match, got %v, wanted %v", dockerfileContext, tt.wantDockerfileContext)
 			}
 		})
 	}

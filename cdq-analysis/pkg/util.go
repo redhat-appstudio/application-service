@@ -26,16 +26,21 @@ import (
 	"path/filepath"
 	"regexp"
 	"strings"
+	"time"
 
 	"github.com/devfile/alizer/pkg/apis/model"
 	"github.com/devfile/registry-support/index/generator/schema"
 	registryLibrary "github.com/devfile/registry-support/registry-library/library"
 )
 
+const (
+	HTTPRequestResponseTimeout = 30 * time.Second
+)
+
 type GitURL struct {
 	RepoURL  string // the repo URL where the devfile is located
 	Revision string
-	Token    string
+	Token    string // TODO: Token should not be exported/exposed via GitURL. CRUD ops should be used to access token
 }
 
 const (
@@ -113,10 +118,27 @@ func GetBranchFromRepo(clonePath string) (string, error) {
 }
 
 // CurlEndpoint curls the endpoint and returns the response or an error if the response is a non-200 status
-func CurlEndpoint(endpoint string) ([]byte, error) {
+func CurlEndpoint(endpoint, token string) ([]byte, error) {
 	var respBytes []byte
+
+	req, err := http.NewRequest("GET", endpoint, nil)
+	if err != nil {
+		return nil, err
+	}
+
+	if token != "" {
+		req.Header.Add("Authorization", fmt.Sprintf("Bearer %s", token))
+	}
+
+	client := &http.Client{
+		Transport: &http.Transport{
+			ResponseHeaderTimeout: HTTPRequestResponseTimeout,
+		},
+		Timeout: HTTPRequestResponseTimeout,
+	}
+
 	/* #nosec G107 --  The URL is validated by the CDQ if the request is coming from the UI.  If we do happen to download invalid bytes, the devfile parser will catch this and fail. */
-	resp, err := http.Get(endpoint)
+	resp, err := client.Do(req)
 	if err != nil {
 		return nil, err
 	}

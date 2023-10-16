@@ -16,14 +16,17 @@
 package pkg
 
 import (
+	"fmt"
 	"net"
 	"net/http"
 	"net/http/httptest"
 	"os"
 	"path"
 	"reflect"
+	"strings"
 	"testing"
 
+	"github.com/devfile/api/v2/pkg/apis/workspaces/v1alpha2"
 	"github.com/devfile/api/v2/pkg/attributes"
 	"github.com/devfile/api/v2/pkg/devfile"
 	devfilePkg "github.com/devfile/library/v2/pkg/devfile"
@@ -440,6 +443,208 @@ func TestValidateDevfile(t *testing.T) {
 				}
 			}
 
+		})
+	}
+}
+
+func TestValidateImageComponentDockerfile(t *testing.T) {
+	logger := ctrl.Log.WithName("TestValidateImageComponentDockerfile")
+
+	testServerURL := "127.0.0.1:9080"
+
+	simpleDockerfile := `
+FROM registry.access.redhat.com/ubi9/go-toolset:1.18.9-14
+
+COPY . .
+RUN go mod download
+
+RUN go build -o ./main
+
+ENV PORT 8081
+EXPOSE 8081
+
+CMD [ "./main" ]`
+
+	testServer := httptest.NewUnstartedServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if strings.Contains(r.URL.Path, "docker/Dockerfile") {
+			if _, err := w.Write([]byte(simpleDockerfile)); err != nil {
+				t.Errorf("TestvalidateImageComponentDockerfile() unexpected error while writing data: %v", err)
+			}
+		}
+	}))
+	// create a listener with the desired port.
+	l, err := net.Listen("tcp", testServerURL)
+	if err != nil {
+		t.Errorf("TestvalidateImageComponentDockerfile() unexpected error while creating listener: %v", err)
+		return
+	}
+
+	// NewUnstartedServer creates a listener. Close that listener and replace
+	// with the one we created.
+	testServer.Listener.Close()
+	testServer.Listener = l
+
+	testServer.Start()
+	defer testServer.Close()
+
+	Fs := NewFilesystem()
+	localPath, err := CreateTempPath("validateImageComponentDockerfile", Fs)
+	if err != nil {
+		t.Error(err, fmt.Sprintf("Unable to create a temp path %s", localPath))
+		return
+	}
+
+	localDockerfilePath := path.Join(localPath, "Dockerfile")
+	localDevfilePath := path.Join(localPath, "devfile.yaml")
+	// prepare for local file
+	err = os.MkdirAll(localPath, 0755)
+	if err != nil {
+		t.Errorf("TestvalidateImageComponentDockerfile() error: failed to create folder: %v, error: %v", localPath, err)
+	}
+	err = os.WriteFile(localDockerfilePath, []byte(simpleDockerfile), 0644)
+	if err != nil {
+		t.Errorf("TestvalidateImageComponentDockerfile() error: fail to write to file: %v", err)
+	}
+
+	defer os.RemoveAll(localPath)
+
+	tests := []struct {
+		name            string
+		devfileLocation string
+		component       v1alpha2.Component
+		wantErr         bool
+	}{
+		{
+			name: "Simple Dockerfile from an absolute URL",
+			component: v1alpha2.Component{
+				Name: "comp1",
+				ComponentUnion: v1alpha2.ComponentUnion{
+					Image: &v1alpha2.ImageComponent{
+						Image: v1alpha2.Image{
+							ImageUnion: v1alpha2.ImageUnion{
+								Dockerfile: &v1alpha2.DockerfileImage{
+									DockerfileSrc: v1alpha2.DockerfileSrc{
+										Uri: "http://" + testServerURL + "/docker/Dockerfile",
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+		{
+			name: "Simple Dockerfile from an absolute URL is in err condition",
+			component: v1alpha2.Component{
+				Name: "comp1",
+				ComponentUnion: v1alpha2.ComponentUnion{
+					Image: &v1alpha2.ImageComponent{
+						Image: v1alpha2.Image{
+							ImageUnion: v1alpha2.ImageUnion{
+								Dockerfile: &v1alpha2.DockerfileImage{
+									DockerfileSrc: v1alpha2.DockerfileSrc{
+										Uri: "http://dummyurl",
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+			wantErr: true,
+		},
+		{
+			name: "Simple Dockerfile from an absolute file path",
+			component: v1alpha2.Component{
+				Name: "comp1",
+				ComponentUnion: v1alpha2.ComponentUnion{
+					Image: &v1alpha2.ImageComponent{
+						Image: v1alpha2.Image{
+							ImageUnion: v1alpha2.ImageUnion{
+								Dockerfile: &v1alpha2.DockerfileImage{
+									DockerfileSrc: v1alpha2.DockerfileSrc{
+										Uri: "Dockerfile",
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+			devfileLocation: localDevfilePath,
+		},
+		{
+			name: "Simple Dockerfile from an absolute file path is in err condition",
+			component: v1alpha2.Component{
+				Name: "comp1",
+				ComponentUnion: v1alpha2.ComponentUnion{
+					Image: &v1alpha2.ImageComponent{
+						Image: v1alpha2.Image{
+							ImageUnion: v1alpha2.ImageUnion{
+								Dockerfile: &v1alpha2.DockerfileImage{
+									DockerfileSrc: v1alpha2.DockerfileSrc{
+										Uri: "docker/Dockerfile",
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+			devfileLocation: localDevfilePath,
+			wantErr:         true,
+		},
+		{
+			name: "Simple Dockerfile from a relative file path",
+			component: v1alpha2.Component{
+				Name: "comp1",
+				ComponentUnion: v1alpha2.ComponentUnion{
+					Image: &v1alpha2.ImageComponent{
+						Image: v1alpha2.Image{
+							ImageUnion: v1alpha2.ImageUnion{
+								Dockerfile: &v1alpha2.DockerfileImage{
+									DockerfileSrc: v1alpha2.DockerfileSrc{
+										Uri: "docker/Dockerfile",
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+			devfileLocation: "http://" + testServerURL + "/devfile.yaml",
+		},
+		{
+			name: "Simple Dockerfile from a relative file path in an err condition",
+			component: v1alpha2.Component{
+				Name: "comp1",
+				ComponentUnion: v1alpha2.ComponentUnion{
+					Image: &v1alpha2.ImageComponent{
+						Image: v1alpha2.Image{
+							ImageUnion: v1alpha2.ImageUnion{
+								Dockerfile: &v1alpha2.DockerfileImage{
+									DockerfileSrc: v1alpha2.DockerfileSrc{
+										Uri: "docker/Dockerfile",
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+			devfileLocation: "http://notvalid/devfile.yaml",
+			wantErr:         true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			err := validateImageComponentDockerfile(logger, tt.component, tt.devfileLocation, "")
+			if tt.wantErr && (err == nil) {
+				t.Error("wanted error but got nil")
+			} else if !tt.wantErr && err != nil {
+				t.Errorf("got unexpected error %v", err)
+			}
 		})
 	}
 }
