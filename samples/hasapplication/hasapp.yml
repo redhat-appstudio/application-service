@@ -1,9 +1,0 @@
-apiVersion: appstudio.redhat.com/v1alpha1
-kind: Application
-metadata:
-  annotations:
-  name: application-sample
-  namespace: default
-spec:
-  description: application definition for petclinic-app
-  displayName: petclinic

@@ -1,4 +1,4 @@
-# API type definition is in github.com/redhat-appstudio/managed-gitops
+# API type definition is in https://github.com/redhat-appstudio/application-api/tree/main/api/v1alpha1
 apiVersion: appstudio.redhat.com/v1alpha1
 kind: SnapshotEnvironmentBinding
 metadata:
