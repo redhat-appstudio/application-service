@@ -1,8 +1,11 @@
 # Using Private Git Repositories with HAS
 
+Please follow the following instructions to install SPI and use with application-service.
+
+Note: SPI _cannot_ be used on a Red Hat OpenShift Local (formerly, CRC) cluster.
 ## Configuring SPI
 
-In order to use HAS resources (e.g. `Applications`, `Components`, `ComponentDetectionQuery`) with private git repositories, SPI must be installed on the same cluster as HAS (TODO review HAS install instructions):
+In order to use HAS resources (e.g. `Application`, `Component`, `ComponentDetectionQuery`) with private git repositories, SPI must be installed on the same cluster as HAS (TODO review HAS install instructions):
 
 1) Clone the [SPI operator repo](https://github.com/redhat-appstudio/service-provider-integration-operator) and run the [make command](https://github.com/redhat-appstudio/service-provider-integration-operator/blob/main/docs/DEVELOP.md#running-in-cluster) corresponding to your target cluster type e.g. `make deploy_openshift`
 
