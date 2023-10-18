@@ -62,7 +62,7 @@ func (e *SPIFileContentRequestError) Error() string {
 	return "SPIFileContentRequest failed " + e.Message
 }
 
-var ValidDevfileLocations = []string{cdqanalysis.Devfile, cdqanalysis.HiddenDevfile, cdqanalysis.HiddenDirDevfile, cdqanalysis.HiddenDirHiddenDevfile}
+var ValidDevfileLocations = cdqanalysis.ValidDevfileLocations
 
 // GetFileContents is a wrapper call to scm file retriever's GetFileContents()
 func (s SPIClient) GetFileContents(ctx context.Context, name string, component v1alpha1.Component, repoUrl string, filepath string, ref string) (io.ReadCloser, error) {
