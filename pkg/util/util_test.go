@@ -136,7 +136,6 @@ func TestProcessGitOpsStatus(t *testing.T) {
 }
 
 func TestValidateEndpoint(t *testing.T) {
-	invalidEndpoint := "failed to get the url"
 	parseFail := "failed to parse the url"
 
 	tests := []struct {
@@ -151,11 +150,6 @@ func TestValidateEndpoint(t *testing.T) {
 		{
 			name: "Valid private repo",
 			url:  "https://github.com/yangcao77/multi-components-private",
-		},
-		{
-			name:    "Invalid Endpoint",
-			url:     "protocal://google.ca/somepath",
-			wantErr: &invalidEndpoint,
 		},
 		{
 			name:    "Invalid URL failed to be parsed",

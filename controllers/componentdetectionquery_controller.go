@@ -159,6 +159,9 @@ func (r *ComponentDetectionQueryReconciler) Reconcile(ctx context.Context, req c
 		if string(sourceURL[len(sourceURL)-1]) == "/" {
 			sourceURL = sourceURL[0 : len(sourceURL)-1]
 		}
+
+		// there is no need to perform a GET on the url as we are going to clone soon,
+		// this also saves us the headache of using token here for private repos.
 		err = util.ValidateEndpoint(sourceURL)
 		if err != nil {
 			log.Error(err, fmt.Sprintf("Failed to validate the source URL %v... %v", source.URL, req.NamespacedName))

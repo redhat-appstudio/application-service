@@ -20,12 +20,10 @@ import (
 	"encoding/base64"
 	"fmt"
 	"math/rand"
-	"net/http"
 	"net/url"
 	"reflect"
 	"regexp"
 	"strings"
-	"time"
 
 	appstudiov1alpha1 "github.com/redhat-appstudio/application-api/api/v1alpha1"
 	gitopsgenv1alpha1 "github.com/redhat-developer/gitops-generator/api/v1alpha1"
@@ -85,10 +83,8 @@ func ProcessGitOpsStatus(gitopsStatus appstudiov1alpha1.GitOpsStatus, gitToken s
 	return remoteURL, gitOpsBranch, gitOpsContext, nil
 }
 
+// ValidateEndpoint validates if the endpoint url can be parsed and if it has a host and a scheme
 func ValidateEndpoint(endpoint string) error {
-	var (
-		retries int = 3
-	)
 	u, err := url.Parse(endpoint)
 	if err != nil {
 		return fmt.Errorf("failed to parse the url: %v, err: %v", endpoint, err)
@@ -98,16 +94,7 @@ func ValidateEndpoint(endpoint string) error {
 		return fmt.Errorf("url %v is invalid", endpoint)
 	}
 
-	client := &http.Client{Timeout: 3 * time.Second}
-	for retries > 0 {
-		_, err := client.Get(endpoint)
-		if err != nil {
-			retries -= 1
-		} else {
-			return nil
-		}
-	}
-	return fmt.Errorf("failed to get the url: %v, might due to a network issue or the url is invalid", endpoint)
+	return nil
 }
 
 // CheckWithRegex checks if a name matches the pattern.
