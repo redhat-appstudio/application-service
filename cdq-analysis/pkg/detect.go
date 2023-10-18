@@ -370,7 +370,7 @@ func AnalyzeAndDetectDevfile(a Alizer, path, devfileRegistryURL string) ([]byte,
 				if err != nil {
 					return nil, "", "", nil, err
 				}
-				detectedDevfileEndpoint, err := UpdateGitLink(sampleRepoURL, "", DevfileName)
+				detectedDevfileEndpoint, err := UpdateGitLink(sampleRepoURL, "", Devfile)
 				if err != nil {
 					return nil, "", "", nil, err
 				}
