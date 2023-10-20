@@ -75,7 +75,8 @@ func search(log logr.Logger, a Alizer, localpath string, srcContext string, cdqI
 			}
 			for _, f := range files {
 				lowerCaseFileName := strings.ToLower(f.Name())
-				if lowerCaseFileName == DevfileName || lowerCaseFileName == HiddenDevfileName {
+				if lowerCaseFileName == Devfile || lowerCaseFileName == HiddenDevfile ||
+					lowerCaseFileName == DevfileYml || lowerCaseFileName == HiddenDirDevfileYml {
 					// Check for devfile.yaml or .devfile.yaml
 					/* #nosec G304 -- false positive, filename is not based on user input*/
 					devfilePath := path.Join(curPath, f.Name())
@@ -97,7 +98,7 @@ func search(log logr.Logger, a Alizer, localpath string, srcContext string, cdqI
 						isDevfilePresent = true
 					}
 				} else if f.IsDir() && f.Name() == HiddenDevfileDir {
-					// Check for .devfile/devfile.yaml or .devfile/.devfile.yaml
+					// Check for .devfile/devfile.yaml, .devfile/.devfile.yaml, .devfile/devfile.yml or .devfile/.devfile.yml
 					// if the dir is .devfile, we dont increment currentLevel
 					// consider devfile.yaml and .devfile/devfile.yaml as the same level, for example
 					hiddenDirPath := path.Join(curPath, HiddenDevfileDir)
@@ -107,8 +108,9 @@ func search(log logr.Logger, a Alizer, localpath string, srcContext string, cdqI
 					}
 					for _, f := range hiddenfiles {
 						lowerCaseFileName := strings.ToLower(f.Name())
-						if lowerCaseFileName == DevfileName || lowerCaseFileName == HiddenDevfileName {
-							// Check for devfile.yaml or .devfile.yaml
+						if lowerCaseFileName == Devfile || lowerCaseFileName == HiddenDevfile ||
+							lowerCaseFileName == DevfileYml || lowerCaseFileName == HiddenDirDevfileYml {
+							// Check for devfile.yaml , .devfile.yaml, devfile.yml or .devfile.yml
 							/* #nosec G304 -- false positive, filename is not based on user input*/
 							devfilePath := path.Join(hiddenDirPath, f.Name())
 							// Set the proper devfile URL for the detected devfile
@@ -368,7 +370,7 @@ func AnalyzeAndDetectDevfile(a Alizer, path, devfileRegistryURL string) ([]byte,
 				if err != nil {
 					return nil, "", "", nil, err
 				}
-				detectedDevfileEndpoint, err := UpdateGitLink(sampleRepoURL, "", DevfileName)
+				detectedDevfileEndpoint, err := UpdateGitLink(sampleRepoURL, "", Devfile)
 				if err != nil {
 					return nil, "", "", nil, err
 				}

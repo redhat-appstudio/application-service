@@ -36,8 +36,10 @@ import (
 )
 
 const (
-	DevfileName             = "devfile.yaml"
-	HiddenDevfileName       = ".devfile.yaml"
+	DevfileName             = "devfile"
+	HiddenDevfileName       = ".devfile"
+	YamlExtension           = ".yaml"
+	YmlExtension            = ".yml"
 	HiddenDevfileDir        = ".devfile"
 	DockerfileName          = "Dockerfile"
 	AlternateDockerfileName = "dockerfile"
@@ -46,10 +48,14 @@ const (
 	DockerDir               = "docker"
 	BuildDir                = "build"
 
-	Devfile                = DevfileName                                // devfile.yaml
-	HiddenDevfile          = HiddenDevfileName                          // .devfile.yaml
-	HiddenDirDevfile       = HiddenDevfileDir + "/" + DevfileName       // .devfile/devfile.yaml
-	HiddenDirHiddenDevfile = HiddenDevfileDir + "/" + HiddenDevfileName // .devfile/.devfile.yaml
+	Devfile                   = DevfileName + YamlExtension                                // devfile.yaml
+	HiddenDevfile             = HiddenDevfileName + YamlExtension                          // .devfile.yaml
+	DevfileYml                = DevfileName + YmlExtension                                 // devfile.yml
+	HiddenDevfilYml           = HiddenDevfileName + YmlExtension                           // .devfile.yml
+	HiddenDirDevfile          = HiddenDevfileDir + "/" + DevfileName + YamlExtension       // .devfile/devfile.yaml
+	HiddenDirHiddenDevfile    = HiddenDevfileDir + "/" + HiddenDevfileName + YamlExtension // .devfile/.devfile.yaml
+	HiddenDirDevfileYml       = HiddenDevfileDir + "/" + DevfileName + YmlExtension        // .devfile/devfile.yml
+	HiddenDirHiddenDevfileYml = HiddenDevfileDir + "/" + HiddenDevfileName + YmlExtension  // .devfile/.devfile.yml
 
 	Dockerfile                   = DockerfileName                                  // Dockerfile
 	HiddenDirDockerfile          = HiddenDockerDir + "/" + DockerfileName          // .docker/Dockerfile
@@ -75,7 +81,8 @@ const (
 	CDQAnalysisImage = "quay.io/redhat-appstudio/cdq-analysis:latest"
 )
 
-var ValidDevfileLocations = []string{Devfile, HiddenDevfile, HiddenDirDevfile, HiddenDirHiddenDevfile}
+var ValidDevfileLocations = []string{Devfile, HiddenDevfile, DevfileYml, HiddenDevfilYml, HiddenDirDevfile,
+	HiddenDirHiddenDevfile, HiddenDirDevfileYml, HiddenDirHiddenDevfileYml}
 
 var ValidDockerfileLocations = []string{Dockerfile, DockerDirDockerfile, HiddenDirDockerfile, BuildDirDockerfile,
 	AlternateDockerfile, DockerDirAlternateDockerfile, HiddenDirAlternateDockerfile, BuildDirAlternateDockerfile,

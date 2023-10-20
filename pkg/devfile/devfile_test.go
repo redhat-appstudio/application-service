@@ -200,23 +200,43 @@ func TestFindAndDownloadDevfile(t *testing.T) {
 	}{
 		{
 			name:               "Curl devfile.yaml",
-			url:                "https://raw.githubusercontent.com/maysunfaisal/devfilepriority/main/case1",
+			url:                "https://raw.githubusercontent.com/has-resources/devfile-priority/main/case1",
 			wantDevfileContext: "devfile.yaml",
 		},
 		{
 			name:               "Curl .devfile.yaml",
-			url:                "https://raw.githubusercontent.com/maysunfaisal/devfilepriority/main/case2",
+			url:                "https://raw.githubusercontent.com/has-resources/devfile-priority/main/case2",
 			wantDevfileContext: ".devfile.yaml",
 		},
 		{
+			name:               "Curl devfile.yml",
+			url:                "https://raw.githubusercontent.com/has-resources/devfile-priority/main/case3",
+			wantDevfileContext: "devfile.yml",
+		},
+		{
+			name:               "Curl .devfile.yml",
+			url:                "https://raw.githubusercontent.com/has-resources/devfile-priority/main/case4",
+			wantDevfileContext: ".devfile.yml",
+		},
+		{
 			name:               "Curl .devfile/devfile.yaml",
-			url:                "https://raw.githubusercontent.com/maysunfaisal/devfilepriority/main/case3",
+			url:                "https://raw.githubusercontent.com/has-resources/devfile-priority/main/case5",
 			wantDevfileContext: ".devfile/devfile.yaml",
 		},
 		{
 			name:               "Curl .devfile/.devfile.yaml",
-			url:                "https://raw.githubusercontent.com/maysunfaisal/devfilepriority/main/case4",
+			url:                "https://raw.githubusercontent.com/has-resources/devfile-priority/main/case6",
 			wantDevfileContext: ".devfile/.devfile.yaml",
+		},
+		{
+			name:               "Curl .devfile/devfile.yml",
+			url:                "https://raw.githubusercontent.com/has-resources/devfile-priority/main/case7",
+			wantDevfileContext: ".devfile/devfile.yml",
+		},
+		{
+			name:               "Curl .devfile/.devfile.yml",
+			url:                "https://raw.githubusercontent.com/has-resources/devfile-priority/main/case8",
+			wantDevfileContext: ".devfile/.devfile.yml",
 		},
 		{
 			name:    "Cannot curl for a devfile",
