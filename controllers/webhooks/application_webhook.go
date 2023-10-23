@@ -42,11 +42,19 @@ func (w *ApplicationWebhook) Register(mgr ctrl.Manager, log *logr.Logger) error 
 
 	return ctrl.NewWebhookManagedBy(mgr).
 		For(&appstudiov1alpha1.Application{}).
+		WithDefaulter(w).
 		WithValidator(w).
 		Complete()
 }
 
 // +kubebuilder:webhook:path=/validate-appstudio-redhat-com-v1alpha1-application,mutating=false,failurePolicy=fail,sideEffects=None,groups=appstudio.redhat.com,resources=applications,verbs=create;update,versions=v1alpha1,name=vapplication.kb.io,admissionReviewVersions=v1
+
+// Default implements webhook.Defaulter so a webhook will be registered for the type
+func (r *ApplicationWebhook) Default(ctx context.Context, obj runtime.Object) error {
+
+	// TODO(user): fill in your defaulting logic.
+	return nil
+}
 
 // ValidateCreate implements webhook.Validator so a webhook will be registered for the type
 func (r *ApplicationWebhook) ValidateCreate(ctx context.Context, obj runtime.Object) error {

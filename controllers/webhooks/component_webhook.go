@@ -44,6 +44,7 @@ func (w *ComponentWebhook) Register(mgr ctrl.Manager, log *logr.Logger) error {
 
 	return ctrl.NewWebhookManagedBy(mgr).
 		For(&appstudiov1alpha1.Component{}).
+		WithDefaulter(w).
 		WithValidator(w).
 		Complete()
 }
@@ -54,6 +55,13 @@ func (w *ComponentWebhook) Register(mgr ctrl.Manager, log *logr.Logger) error {
 
 // Github is the only supported vendor right now
 const SupportedGitRepo = "github.com"
+
+// Default implements webhook.Defaulter so a webhook will be registered for the type
+func (r *ComponentWebhook) Default(ctx context.Context, obj runtime.Object) error {
+
+	// TODO(user): fill in your defaulting logic.
+	return nil
+}
 
 // TODO(user): change verbs to "verbs=create;update;delete" if you want to enable deletion validation.
 // +kubebuilder:webhook:path=/validate-appstudio-redhat-com-v1alpha1-component,mutating=false,failurePolicy=fail,sideEffects=None,groups=appstudio.redhat.com,resources=components,verbs=create;update,versions=v1alpha1,name=vcomponent.kb.io,admissionReviewVersions=v1
