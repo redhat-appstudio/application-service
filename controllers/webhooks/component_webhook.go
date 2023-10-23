@@ -26,7 +26,9 @@ import (
 	appstudiov1alpha1 "github.com/redhat-appstudio/application-api/api/v1alpha1"
 
 	"github.com/go-logr/logr"
+	k8sErrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/validation"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -44,6 +46,7 @@ func (w *ComponentWebhook) Register(mgr ctrl.Manager, log *logr.Logger) error {
 
 	return ctrl.NewWebhookManagedBy(mgr).
 		For(&appstudiov1alpha1.Component{}).
+		WithDefaulter(w).
 		WithValidator(w).
 		Complete()
 }
@@ -51,6 +54,12 @@ func (w *ComponentWebhook) Register(mgr ctrl.Manager, log *logr.Logger) error {
 // EDIT THIS FILE!  THIS IS SCAFFOLDING FOR YOU TO OWN!
 
 // +kubebuilder:webhook:path=/mutate-appstudio-redhat-com-v1alpha1-component,mutating=true,failurePolicy=fail,sideEffects=None,groups=appstudio.redhat.com,resources=components,verbs=create;update,versions=v1alpha1,name=mcomponent.kb.io,admissionReviewVersions=v1
+// Default implements webhook.Defaulter so a webhook will be registered for the type
+func (r *ComponentWebhook) Default(ctx context.Context, obj runtime.Object) error {
+
+	// TODO(user): fill in your defaulting logic.
+	return nil
+}
 
 // Github is the only supported vendor right now
 const SupportedGitRepo = "github.com"
@@ -86,6 +95,13 @@ func (r *ComponentWebhook) ValidateCreate(ctx context.Context, obj runtime.Objec
 		return errors.New(appstudiov1alpha1.MissingGitOrImageSource)
 	}
 
+	if len(comp.Spec.BuildNudgesRef) != 0 {
+		err := r.validateBuildNudgesRefGraph(ctx, comp.Spec.BuildNudgesRef, comp.Namespace, comp.Name, comp.Spec.Application)
+		if err != nil {
+			return err
+		}
+	}
+
 	return nil
 }
 
@@ -108,6 +124,12 @@ func (r *ComponentWebhook) ValidateUpdate(ctx context.Context, oldObj, newObj ru
 	if newComp.Spec.Source.GitSource != nil && oldComp.Spec.Source.GitSource != nil && (newComp.Spec.Source.GitSource.URL != oldComp.Spec.Source.GitSource.URL) {
 		return fmt.Errorf(appstudiov1alpha1.GitSourceUpdateError, *(newComp.Spec.Source.GitSource))
 	}
+	if len(newComp.Spec.BuildNudgesRef) != 0 {
+		err := r.validateBuildNudgesRefGraph(ctx, newComp.Spec.BuildNudgesRef, newComp.Namespace, newComp.Name, newComp.Spec.Application)
+		if err != nil {
+			return err
+		}
+	}
 
 	return nil
 }
@@ -116,5 +138,35 @@ func (r *ComponentWebhook) ValidateUpdate(ctx context.Context, oldObj, newObj ru
 func (r *ComponentWebhook) ValidateDelete(ctx context.Context, obj runtime.Object) error {
 
 	// TODO(user): fill in your validation logic upon object deletion.
+	return nil
+}
+
+// validateBuildNudgesRefTree returns an error if a cycle was found in the 'build-nudges-ref' dependency graph
+// If no cycle is found, it returns nil
+func (r *ComponentWebhook) validateBuildNudgesRefGraph(ctx context.Context, nudgedComponentNames []string, componentNamespace string, componentName string, componentApp string) error {
+	for _, nudgedComponentName := range nudgedComponentNames {
+		if nudgedComponentName == componentName {
+			return fmt.Errorf("cycle detected: component %s cannot reference itself, directly or indirectly, via build-nudges-ref", nudgedComponentName)
+		}
+
+		nudgedComponent := &appstudiov1alpha1.Component{}
+		err := r.client.Get(ctx, types.NamespacedName{Namespace: componentNamespace, Name: nudgedComponentName}, nudgedComponent)
+		if err != nil {
+			// Return an error if an error was encountered retrieving the resource
+			if !k8sErrors.IsNotFound(err) {
+				return err
+			}
+		}
+
+		if nudgedComponent.Spec.Application != componentApp {
+			return fmt.Errorf("component %s cannot be added to spec.build-nudges-ref as it belongs to a different application", nudgedComponentName)
+		}
+
+		err = r.validateBuildNudgesRefGraph(ctx, nudgedComponent.Spec.BuildNudgesRef, componentNamespace, componentName, componentApp)
+		if err != nil {
+			return err
+		}
+	}
+
 	return nil
 }

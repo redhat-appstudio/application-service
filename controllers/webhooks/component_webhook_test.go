@@ -183,6 +183,115 @@ var _ = Describe("Application validation webhook", func() {
 		})
 	})
 
+	Context("Create Application CR with invalid build-nudges-ref", func() {
+		It("Should reject until it's resolved", func() {
+			ctx := context.Background()
+
+			uniqueHASCompName := HASCompName + "3"
+
+			nudgedComp := &appstudiov1alpha1.Component{
+				TypeMeta: metav1.TypeMeta{
+					APIVersion: "appstudio.redhat.com/v1alpha1",
+					Kind:       "Component",
+				},
+				ObjectMeta: metav1.ObjectMeta{
+					Namespace: HASAppNamespace,
+					Name:      uniqueHASCompName + "-nudge",
+				},
+				Spec: appstudiov1alpha1.ComponentSpec{
+					ComponentName: uniqueHASCompName + "-nudge",
+					Application:   "test-application",
+					Source: appstudiov1alpha1.ComponentSource{
+						ComponentSourceUnion: appstudiov1alpha1.ComponentSourceUnion{
+							GitSource: &appstudiov1alpha1.GitSource{
+								URL: SampleRepoLink,
+							},
+						},
+					},
+				},
+			}
+
+			err := k8sClient.Create(ctx, nudgedComp)
+			Expect(err).Should(Not(HaveOccurred()))
+
+			// comp in a different app
+			differentAppComp := &appstudiov1alpha1.Component{
+				TypeMeta: metav1.TypeMeta{
+					APIVersion: "appstudio.redhat.com/v1alpha1",
+					Kind:       "Component",
+				},
+				ObjectMeta: metav1.ObjectMeta{
+					Namespace: HASAppNamespace,
+					Name:      uniqueHASCompName + "-new-app",
+				},
+				Spec: appstudiov1alpha1.ComponentSpec{
+					ComponentName: uniqueHASCompName + "-new-app",
+					Application:   "test-application2",
+					Source: appstudiov1alpha1.ComponentSource{
+						ComponentSourceUnion: appstudiov1alpha1.ComponentSourceUnion{
+							GitSource: &appstudiov1alpha1.GitSource{
+								URL: SampleRepoLink,
+							},
+						},
+					},
+				},
+			}
+
+			err = k8sClient.Create(ctx, differentAppComp)
+			Expect(err).Should(Not(HaveOccurred()))
+
+			// nudgingComp
+			nudgingComp := &appstudiov1alpha1.Component{
+				TypeMeta: metav1.TypeMeta{
+					APIVersion: "appstudio.redhat.com/v1alpha1",
+					Kind:       "Component",
+				},
+				ObjectMeta: metav1.ObjectMeta{
+					Namespace: HASAppNamespace,
+					Name:      uniqueHASCompName,
+				},
+				Spec: appstudiov1alpha1.ComponentSpec{
+					ComponentName:  uniqueHASCompName,
+					Application:    "test-application",
+					BuildNudgesRef: []string{uniqueHASCompName},
+					Source: appstudiov1alpha1.ComponentSource{
+						ComponentSourceUnion: appstudiov1alpha1.ComponentSourceUnion{
+							GitSource: &appstudiov1alpha1.GitSource{
+								URL: SampleRepoLink,
+							},
+						},
+					},
+				},
+			}
+
+			err = k8sClient.Create(ctx, nudgingComp)
+			Expect(err).Should((HaveOccurred()))
+			Expect(err.Error()).Should(ContainSubstring("cycle detected"))
+
+			// After changing to a valid build nudges ref, create should succeed
+			nudgingComp.Spec.BuildNudgesRef = []string{uniqueHASCompName + "-nudge"}
+			err = k8sClient.Create(ctx, nudgingComp)
+			Expect(err).Should(BeNil())
+
+			// Look up the has app resource that was created.
+			hasCompLookupKey := types.NamespacedName{Name: uniqueHASCompName, Namespace: HASAppNamespace}
+			createdHasComp := &appstudiov1alpha1.Component{}
+			Eventually(func() bool {
+				k8sClient.Get(ctx, hasCompLookupKey, createdHasComp)
+				return !reflect.DeepEqual(createdHasComp, &appstudiov1alpha1.Component{})
+			}, timeout, interval).Should(BeTrue())
+
+			// Now attempt to update the build-nudges-ref field to an invalid component (different app)
+			createdHasComp.Spec.BuildNudgesRef = []string{uniqueHASCompName + "-new-app"}
+			err = k8sClient.Update(ctx, createdHasComp)
+			Expect(err).Should((HaveOccurred()))
+			Expect(err.Error()).Should(ContainSubstring("belongs to a different application"))
+
+			// Delete the specified HASComp resource
+			deleteHASCompCR(hasCompLookupKey)
+		})
+	})
+
 })
 
 // deleteHASCompCR deletes the specified hasComp resource and verifies it was properly deleted

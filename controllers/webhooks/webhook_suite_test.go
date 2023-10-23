@@ -62,7 +62,7 @@ var _ = BeforeSuite(func() {
 	ctx, cancel = context.WithCancel(context.TODO())
 
 	By("bootstrapping test environment")
-	applicationAPIDepVersion := "v0.0.0-20230616144210-9dad8e40e3ed"
+	applicationAPIDepVersion := "v0.0.0-20231016183051-2dde965fce17"
 	testEnv = &envtest.Environment{
 		CRDDirectoryPaths:     []string{filepath.Join(build.Default.GOPATH, "pkg", "mod", "github.com", "redhat-appstudio", "application-api@"+applicationAPIDepVersion, "manifests")},
 		ErrorIfCRDPathMissing: false,
