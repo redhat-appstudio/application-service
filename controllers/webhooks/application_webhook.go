@@ -48,6 +48,7 @@ func (w *ApplicationWebhook) Register(mgr ctrl.Manager, log *logr.Logger) error 
 }
 
 // +kubebuilder:webhook:path=/validate-appstudio-redhat-com-v1alpha1-application,mutating=false,failurePolicy=fail,sideEffects=None,groups=appstudio.redhat.com,resources=applications,verbs=create;update,versions=v1alpha1,name=vapplication.kb.io,admissionReviewVersions=v1
+
 // Default implements webhook.Defaulter so a webhook will be registered for the type
 func (r *ApplicationWebhook) Default(ctx context.Context, obj runtime.Object) error {
 

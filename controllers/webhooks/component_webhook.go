@@ -54,6 +54,7 @@ func (w *ComponentWebhook) Register(mgr ctrl.Manager, log *logr.Logger) error {
 // EDIT THIS FILE!  THIS IS SCAFFOLDING FOR YOU TO OWN!
 
 // +kubebuilder:webhook:path=/mutate-appstudio-redhat-com-v1alpha1-component,mutating=true,failurePolicy=fail,sideEffects=None,groups=appstudio.redhat.com,resources=components,verbs=create;update,versions=v1alpha1,name=mcomponent.kb.io,admissionReviewVersions=v1
+
 // Default implements webhook.Defaulter so a webhook will be registered for the type
 func (r *ComponentWebhook) Default(ctx context.Context, obj runtime.Object) error {
 
