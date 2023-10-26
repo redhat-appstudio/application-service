@@ -617,7 +617,7 @@ func (r *ComponentReconciler) generateGitops(ctx context.Context, ghClient *gith
 			splited := strings.Split(strings.ToLower(err.Error()), "unblock-secret/")
 			if len(splited) > 1 {
 				token := strings.Split(splited[1], " ")[0]
-				unblockURL = fmt.Sprintf("%v/security/secret-scanning/unblock-secret/%v", gitOpsURL, token)
+				unblockURL = fmt.Sprintf("%v/security/secret-scanning/unblock-secret/%v", component.Status.GitOps.RepositoryURL, token)
 				log.Error(retErr, fmt.Sprintf("unable to generate gitops resources due to git push protecton error, follow the link to unblock the secret: %v", unblockURL))
 			}
 		} else {
@@ -640,7 +640,7 @@ func (r *ComponentReconciler) generateGitops(ctx context.Context, ghClient *gith
 			splited := strings.Split(strings.ToLower(err.Error()), "unblock-secret/")
 			if len(splited) > 1 {
 				token := strings.Split(splited[1], " ")[0]
-				unblockURL = fmt.Sprintf("%v/security/secret-scanning/unblock-secret/%v", gitOpsURL, token)
+				unblockURL = fmt.Sprintf("%v/security/secret-scanning/unblock-secret/%v", component.Status.GitOps.RepositoryURL, token)
 				log.Error(retErr, fmt.Sprintf("unable to commit and push gitops resources due to git push protecton error, follow the link to unblock the secret: %v", unblockURL))
 			}
 		} else {
