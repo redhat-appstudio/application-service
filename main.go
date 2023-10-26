@@ -160,12 +160,6 @@ func main() {
 		}
 	}
 
-	// Retrieve the option to enable HTTP2 on the Webhook server
-	enableWebhookHTTP2 := os.Getenv("ENABLE_WEBHOOK_HTTP2")
-	if enableWebhookHTTP2 == "" {
-		enableWebhookHTTP2 = "false"
-	}
-
 	// Parse any passed in tokens and set up a client for handling the github tokens
 	err = github.ParseGitHubTokens()
 	if err != nil {
@@ -232,15 +226,6 @@ func main() {
 	if os.Getenv("ENABLE_WEBHOOKS") != "false" {
 		setupLog.Info("setting up webhooks")
 		setUpWebhooks(mgr)
-		server := mgr.GetWebhookServer()
-		if enableWebhookHTTP2 == "false" {
-			setupLog.Info("disabling http/2 on the webhook server")
-			server.TLSOpts = append(server.TLSOpts,
-				func(c *tls.Config) {
-					c.NextProtos = []string{"http/1.1"}
-				},
-			)
-		}
 	}
 
 	if err = (&controllers.SnapshotEnvironmentBindingReconciler{
@@ -278,5 +263,21 @@ func setUpWebhooks(mgr ctrl.Manager) {
 	if err != nil {
 		setupLog.Error(err, "unable to setup webhooks")
 		os.Exit(1)
+	}
+
+	// Retrieve the option to enable HTTP2 on the Webhook server
+	enableWebhookHTTP2 := os.Getenv("ENABLE_WEBHOOK_HTTP2")
+	if enableWebhookHTTP2 == "" {
+		enableWebhookHTTP2 = "false"
+	}
+
+	if enableWebhookHTTP2 == "false" {
+		setupLog.Info("disabling http/2 on the webhook server")
+		server := mgr.GetWebhookServer()
+		server.TLSOpts = append(server.TLSOpts,
+			func(c *tls.Config) {
+				c.NextProtos = []string{"http/1.1"}
+			},
+		)
 	}
 }
