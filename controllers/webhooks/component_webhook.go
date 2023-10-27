@@ -142,7 +142,7 @@ func (r *ComponentWebhook) ValidateDelete(ctx context.Context, obj runtime.Objec
 	return nil
 }
 
-// validateBuildNudgesRefTree returns an error if a cycle was found in the 'build-nudges-ref' dependency graph
+// validateBuildNudgesRefGraph returns an error if a cycle was found in the 'build-nudges-ref' dependency graph
 // If no cycle is found, it returns nil
 func (r *ComponentWebhook) validateBuildNudgesRefGraph(ctx context.Context, nudgedComponentNames []string, componentNamespace string, componentName string, componentApp string) error {
 	for _, nudgedComponentName := range nudgedComponentNames {
