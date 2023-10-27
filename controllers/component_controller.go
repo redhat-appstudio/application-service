@@ -22,6 +22,7 @@ import (
 	"os"
 	"path/filepath"
 	"reflect"
+	"strings"
 	"time"
 
 	corev1 "k8s.io/api/core/v1"
@@ -607,18 +608,46 @@ func (r *ComponentReconciler) generateGitops(ctx context.Context, ghClient *gith
 	metrics.ControllerGitRequest.With(prometheus.Labels{"controller": componentName, "tokenName": ghClient.TokenName, "operation": "CloneGenerateAndPush"}).Inc()
 	err = r.Generator.CloneGenerateAndPush(tempDir, gitOpsURL, mappedGitOpsComponent, r.AppFS, gitOpsBranch, gitOpsContext, false)
 	if err != nil {
-		log.Error(err, "unable to generate gitops resources due to error")
+		retErr := err
+		if strings.Contains(strings.ToLower(err.Error()), "github push protection") {
+			retErr = fmt.Errorf("potential secret leak caught by github push protection")
+			// to get the URL token
+			// e.g. <GitURL>/security/secret-scanning/unblock-secret/2WlUv72plUf05tgshlpRLzSlH4R        \n
+			var unblockURL string
+			splited := strings.Split(strings.ToLower(err.Error()), "unblock-secret/")
+			if len(splited) > 1 {
+				token := strings.Split(splited[1], " ")[0]
+				unblockURL = fmt.Sprintf("%v/security/secret-scanning/unblock-secret/%v", component.Status.GitOps.RepositoryURL, token)
+				log.Error(retErr, fmt.Sprintf("unable to generate gitops resources due to git push protecton error, follow the link to unblock the secret: %v", unblockURL))
+			}
+		} else {
+			log.Error(retErr, "unable to generate gitops resources due to error")
+		}
 		ioutils.RemoveFolderAndLogError(log, r.AppFS, tempDir)
-		return err
+		return retErr
 	}
 
 	//Gitops functions return sanitized error messages
 	metrics.ControllerGitRequest.With(prometheus.Labels{"controller": componentName, "tokenName": ghClient.TokenName, "operation": "CommitAndPush"}).Inc()
 	err = r.Generator.CommitAndPush(tempDir, "", gitOpsURL, mappedGitOpsComponent.Name, gitOpsBranch, "Generating GitOps resources")
 	if err != nil {
-		log.Error(err, "unable to commit and push gitops resources due to error")
+		retErr := err
+		if strings.Contains(strings.ToLower(err.Error()), "github push protection") {
+			retErr = fmt.Errorf("potential secret leak caught by github push protection")
+			// to get the URL token
+			// e.g. <GitURL>/security/secret-scanning/unblock-secret/2WlUv72plUf05tgshlpRLzSlH4R        \n
+			var unblockURL string
+			splited := strings.Split(strings.ToLower(err.Error()), "unblock-secret/")
+			if len(splited) > 1 {
+				token := strings.Split(splited[1], " ")[0]
+				unblockURL = fmt.Sprintf("%v/security/secret-scanning/unblock-secret/%v", component.Status.GitOps.RepositoryURL, token)
+				log.Error(retErr, fmt.Sprintf("unable to commit and push gitops resources due to git push protecton error, follow the link to unblock the secret: %v", unblockURL))
+			}
+		} else {
+			log.Error(retErr, "unable to commit and push gitops resources due to error")
+		}
 		ioutils.RemoveFolderAndLogError(log, r.AppFS, tempDir)
-		return err
+		return retErr
 	}
 
 	// Get the commit ID for the gitops repository
