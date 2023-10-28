@@ -19,7 +19,7 @@ require (
 	github.com/openshift/api v0.0.0-20220912161038-458ad9ca9ca5
 	github.com/pact-foundation/pact-go/v2 v2.0.0-beta.23
 	github.com/prometheus/client_golang v1.16.0
-	github.com/redhat-appstudio/application-api v0.0.0-20230704143842-035c661f115f
+	github.com/redhat-appstudio/application-api v0.0.0-20231016183051-2dde965fce17
 	github.com/redhat-appstudio/application-service/cdq-analysis v0.0.0
 	github.com/redhat-appstudio/operator-toolkit v0.0.0-20230913085326-6c5e9d368a6a
 	github.com/redhat-appstudio/service-provider-integration-operator v0.2023.22-0.20230713080056-eae17aa8c172
