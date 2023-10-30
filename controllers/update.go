@@ -131,14 +131,14 @@ func (r *ComponentReconciler) updateComponentDevfileModel(req ctrl.Request, hasC
 			for i, devfileEnv := range currentENV {
 				if devfileEnv.Name == name {
 					isPresent = true
-					log.Info(fmt.Sprintf("setting devfileComponent %s env %s value to %v", kubernetesComponent.Name, devfileEnv.Name, value))
+					log.Info(fmt.Sprintf("setting devfileComponent %s env %s", kubernetesComponent.Name, devfileEnv.Name))
 					devfileEnv.Value = value
 					currentENV[i] = devfileEnv
 				}
 			}
 
 			if !isPresent {
-				log.Info(fmt.Sprintf("appending to devfile component %s env %s : %v", kubernetesComponent.Name, name, value))
+				log.Info(fmt.Sprintf("appending to devfile component %s env %s", kubernetesComponent.Name, name))
 				currentENV = append(currentENV, env)
 			}
 			var err error
