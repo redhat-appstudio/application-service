@@ -101,6 +101,12 @@ For example:
 
 `DEVFILE_REGISTRY_URL=https://myregistry make deploy` would deploy application-service configured to use https://myregistry.
 
+#### Enabling HTTP/2 on the Webhook Server
+
+By default, http/2 on the webhook server is disabled due to CVE-2023-44487.
+
+If you want to enable http/2 for the webhook server, build with `ENABLE_WEBHOOK_HTTP2=true make docker-build`
+
 ### Deploying Locally
 
 #### Disabling Webhooks for Local Development

@@ -17,6 +17,7 @@ limitations under the License.
 package main
 
 import (
+	"crypto/tls"
 	"flag"
 	"fmt"
 	"log"
@@ -262,5 +263,21 @@ func setUpWebhooks(mgr ctrl.Manager) {
 	if err != nil {
 		setupLog.Error(err, "unable to setup webhooks")
 		os.Exit(1)
+	}
+
+	// Retrieve the option to enable HTTP2 on the Webhook server
+	enableWebhookHTTP2 := os.Getenv("ENABLE_WEBHOOK_HTTP2")
+	if enableWebhookHTTP2 == "" {
+		enableWebhookHTTP2 = "false"
+	}
+
+	if enableWebhookHTTP2 == "false" {
+		setupLog.Info("disabling http/2 on the webhook server")
+		server := mgr.GetWebhookServer()
+		server.TLSOpts = append(server.TLSOpts,
+			func(c *tls.Config) {
+				c.NextProtos = []string{"http/1.1"}
+			},
+		)
 	}
 }

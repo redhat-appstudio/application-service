@@ -37,6 +37,10 @@ RUN chmod +x /usr/local/bin/entrypoint.sh
 ARG ENABLE_WEBHOOKS=true
 ENV ENABLE_WEBHOOKS=${ENABLE_WEBHOOKS}
 
+# disable http/2 on the webhook server by default
+ARG ENABLE_WEBHOOK_HTTP2=false 
+ENV ENABLE_WEBHOOK_HTTP2=${ENABLE_WEBHOOK_HTTP2}
+
 # Set the Git config for the AppData bot
 WORKDIR /
 COPY --from=builder /workspace/manager .
