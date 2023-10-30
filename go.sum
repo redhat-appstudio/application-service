@@ -1140,8 +1140,8 @@ github.com/prometheus/procfs v0.6.0/go.mod h1:cz+aTbrPOrUb4q7XlbU9ygM+/jj0fzG6c1
 github.com/prometheus/procfs v0.10.1 h1:kYK1Va/YMlutzCGazswoHKo//tZVlFpKYh+PymziUAg=
 github.com/prometheus/procfs v0.10.1/go.mod h1:nwNm2aOCAYw8uTR/9bWRREkZFxAUcWzPHWJq+XBB/FM=
 github.com/prometheus/tsdb v0.7.1/go.mod h1:qhTCs0VvXwvX/y3TZrWD7rabWM+ijKTux40TwIPHuXU=
-github.com/redhat-appstudio/application-api v0.0.0-20230704143842-035c661f115f h1:XeHZfA9nZQjLBfjwWo2EvL8TiF3vUZLj7AlY19yTUoM=
-github.com/redhat-appstudio/application-api v0.0.0-20230704143842-035c661f115f/go.mod h1:LpcTNLCDMf1CUNTw2bgTiz8M49sUsN2F9T7bOSKcJEo=
+github.com/redhat-appstudio/application-api v0.0.0-20231016183051-2dde965fce17 h1:j/PSJj8lrHvW/V06wJzpr7XEa4UBr5QhBmFMm4H8bvY=
+github.com/redhat-appstudio/application-api v0.0.0-20231016183051-2dde965fce17/go.mod h1:E277KEEjL6rEXUHIhc0FQd6jyf3CzCQ7MOkauqF3gt4=
 github.com/redhat-appstudio/operator-toolkit v0.0.0-20230913085326-6c5e9d368a6a h1:pwTvkRzRF6zyLW1Bb4vEuqaNXlGJOnBtt9n5gNp0/r4=
 github.com/redhat-appstudio/operator-toolkit v0.0.0-20230913085326-6c5e9d368a6a/go.mod h1:7cX2+4KGZLJ4Yoj+1v0iV5hkCGBzbSd9wkNJQjCdDJs=
 github.com/redhat-appstudio/remote-secret v0.0.0-20230713072146-a6094c712436 h1:6XYknDslXDSVpNqEKnI+gKj3Uu4afK2S+IIH3KogX1E=
