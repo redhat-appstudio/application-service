@@ -79,6 +79,7 @@ const (
 	applicationFailCounterAnnotation = "applicationFailCounter"
 	maxApplicationFailCount          = 5
 	componentName                    = "Component"
+	forceGenerationAnnotation        = "forceGitopsGeneration"
 )
 
 //+kubebuilder:rbac:groups=appstudio.redhat.com,resources=components,verbs=get;list;watch;create;update;patch;delete
@@ -133,7 +134,7 @@ func (r *ComponentReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 
 	setCounterAnnotation(applicationFailCounterAnnotation, &component, 0)
 	forceGenerateGitopsResource := false
-	forceGenerateGitopsResource, err = getForceGenerateGitopsAnnotation(&component)
+	forceGenerateGitopsResource, err = getForceGenerateGitopsAnnotation(component)
 	if err != nil {
 		log.Info("failed to get forceGeneration annotation, set forceGenerateGitopsResource to false")
 		forceGenerateGitopsResource = false
@@ -242,6 +243,7 @@ func (r *ComponentReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 				return ctrl.Result{}, err
 			} else {
 				log.Info(fmt.Sprintf("GitOps re-generation successful for %s", component.Name))
+				setForceGenerateGitopsAnnotation(&component, "false")
 				err := r.SetGitOpsGeneratedConditionAndUpdateCR(ctx, req, &component, nil)
 				if err != nil {
 					return ctrl.Result{}, err
@@ -764,12 +766,19 @@ func (r *ComponentReconciler) incrementCounterAndRequeue(log logr.Logger, ctx co
 }
 
 // getForceGenerateGitopsAnnotation gets the internal annotation on the component whether to force generate the gitops resource
-func getForceGenerateGitopsAnnotation(obj client.Object) (bool, error) {
-	forceGenerationAnnotation := "forceGitopsGeneration"
-	objAnnotations := obj.GetAnnotations()
-	if objAnnotations == nil || objAnnotations[forceGenerationAnnotation] == "" {
+func getForceGenerateGitopsAnnotation(component appstudiov1alpha1.Component) (bool, error) {
+	compAnnotations := component.GetAnnotations()
+	if compAnnotations == nil || compAnnotations[forceGenerationAnnotation] == "" {
 		return false, nil
 	} else {
-		return strconv.ParseBool(objAnnotations[forceGenerationAnnotation])
+		return strconv.ParseBool(compAnnotations[forceGenerationAnnotation])
 	}
+}
+
+func setForceGenerateGitopsAnnotation(component *appstudiov1alpha1.Component, value string) {
+	compAnnotations := component.GetAnnotations()
+	if compAnnotations == nil {
+		compAnnotations = make(map[string]string)
+	}
+	compAnnotations[forceGenerationAnnotation] = value
 }
