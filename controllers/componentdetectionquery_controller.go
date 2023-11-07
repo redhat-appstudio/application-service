@@ -262,7 +262,10 @@ func (r *ComponentDetectionQueryReconciler) Reconcile(ctx context.Context, req c
 				}
 
 				cm, err := waitForConfigMap(clientset, ctx, req.Name, req.Namespace)
-				if err != nil {
+				if err != nil || cm == nil {
+					if cm == nil {
+						err = fmt.Errorf("failed to wait for configmap creation, configmap is nil")
+					}
 					log.Error(err, fmt.Sprintf("Error waiting for configmap creation ...%v", req.NamespacedName))
 					r.SetCompleteConditionAndUpdateCR(ctx, req, &componentDetectionQuery, copiedCDQ, err)
 					cleanupK8sResources(log, clientset, ctx, fmt.Sprintf("%s-job", req.Name), req.Name, req.Namespace)
@@ -510,7 +513,7 @@ func waitForConfigMap(clientset *kubernetes.Clientset, ctx context.Context, name
 			return configMap, nil
 
 		case <-ctx.Done():
-			return nil, nil
+			return nil, fmt.Errorf("context done while waiting for configmap creation, the context might be cancelled or exceeded")
 		}
 	}
 }
