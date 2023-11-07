@@ -262,7 +262,7 @@ func (r *ComponentDetectionQueryReconciler) Reconcile(ctx context.Context, req c
 				}
 
 				cm, err := waitForConfigMap(clientset, ctx, req.Name, req.Namespace)
-				if err != nil {
+				if err != nil || cm == nil {
 					log.Error(err, fmt.Sprintf("Error waiting for configmap creation ...%v", req.NamespacedName))
 					r.SetCompleteConditionAndUpdateCR(ctx, req, &componentDetectionQuery, copiedCDQ, err)
 					cleanupK8sResources(log, clientset, ctx, fmt.Sprintf("%s-job", req.Name), req.Name, req.Namespace)
