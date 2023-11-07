@@ -3429,7 +3429,7 @@ schemaVersion: 2.2.0`
 										ProbeHandler: corev1.ProbeHandler{
 											HTTPGet: &corev1.HTTPGetAction{
 												Path: "/",
-												Port: intstr.FromInt(5566),
+												Port: intstr.FromInt(1111),
 											},
 										},
 										InitialDelaySeconds: int32(10),
@@ -3446,7 +3446,7 @@ schemaVersion: 2.2.0`
 									ReadinessProbe: &corev1.Probe{
 										ProbeHandler: corev1.ProbeHandler{
 											TCPSocket: &corev1.TCPSocketAction{
-												Port: intstr.FromInt(5566),
+												Port: intstr.FromInt(1111),
 											},
 										},
 										InitialDelaySeconds: int32(10),
