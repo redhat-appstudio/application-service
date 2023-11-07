@@ -513,7 +513,7 @@ func waitForConfigMap(clientset *kubernetes.Clientset, ctx context.Context, name
 			return configMap, nil
 
 		case <-ctx.Done():
-			return nil, fmt.Errorf("context done while waiting for configmap creation")
+			return nil, fmt.Errorf("context done while waiting for configmap creation, the context might be cancelled or exceeded")
 		}
 	}
 }
