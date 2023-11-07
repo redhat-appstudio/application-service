@@ -89,7 +89,7 @@ func containsString(slice []string, s string) bool {
 	return false
 }
 
-// getApplicationFailCount gets the given counter annotation on the resource (defaults to 0 if unset)
+// getCounterAnnotation gets the given counter annotation on the resource (defaults to 0 if unset)
 func getCounterAnnotation(annotation string, obj client.Object) (int, error) {
 	objAnnotations := obj.GetAnnotations()
 	if objAnnotations == nil || objAnnotations[annotation] == "" {
@@ -100,7 +100,7 @@ func getCounterAnnotation(annotation string, obj client.Object) (int, error) {
 	return strconv.Atoi(counterAnnotation)
 }
 
-// setApplicationFailCount sets the given counter annotation on the resource to the specified value
+// setCounterAnnotation sets the given counter annotation on the resource to the specified value
 func setCounterAnnotation(annotation string, obj client.Object, count int) {
 	objAnnotations := obj.GetAnnotations()
 	if objAnnotations == nil {
