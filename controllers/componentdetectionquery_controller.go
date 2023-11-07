@@ -510,7 +510,7 @@ func waitForConfigMap(clientset *kubernetes.Clientset, ctx context.Context, name
 			return configMap, nil
 
 		case <-ctx.Done():
-			return nil, nil
+			return nil, fmt.Errorf("timeout while waiting for CDQ confiig map")
 		}
 	}
 }
