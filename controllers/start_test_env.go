@@ -132,6 +132,7 @@ func SetupTestEnv() (client.Client, *envtest.Environment, context.Context, conte
 		Config:             cfg,
 		RunKubernetesJob:   true,
 		CdqAnalysisImage:   cdqAnalysisImage,
+		CDQUtil:            cdqanalysis.NewCDQUtilMockClient(),
 	}).SetupWithManager(ctx, k8sManager)
 	gomega.Expect(err).ToNot(gomega.HaveOccurred())
 

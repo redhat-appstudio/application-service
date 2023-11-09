@@ -228,11 +228,11 @@ func TestCloneAndAnalyze(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.testCase, func(t *testing.T) {
-			cdqInfo := &CDQInfoClient{
+			cdqInfo := &CDQInfo{
 				DevfileRegistryURL: tt.DevfileRegistryURL,
 				GitURL:             GitURL{RepoURL: tt.URL, Revision: tt.Revision, Token: tt.gitToken},
 			}
-			devfilesMap, devfilesURLMap, dockerfileContextMap, componentsPortMap, branch, err := CloneAndAnalyze(k8sClient, namespaceName, compName, tt.context, cdqInfo)
+			devfilesMap, devfilesURLMap, dockerfileContextMap, componentsPortMap, branch, err := CloneAndAnalyze(k8sClient, namespaceName, compName, tt.context, cdqInfo, NewCDQUtilClient())
 			if (err != nil) != (tt.wantErr != "") {
 				t.Errorf("got unexpected error %v", err)
 			} else if err == nil {
@@ -392,19 +392,19 @@ metadata:
 func TestGetDevfileAndDockerFilePaths(t *testing.T) {
 	tests := []struct {
 		testCase           string
-		cdqInfo            CDQInfoClient
+		cdqInfo            CDQInfo
 		wantDevfilePath    string
 		wantDockerfilePath string
 	}{
 		{
 			testCase:           "Unset dockerfilepath and devfilepath",
-			cdqInfo:            CDQInfoClient{},
+			cdqInfo:            CDQInfo{},
 			wantDevfilePath:    "",
 			wantDockerfilePath: "",
 		},
 		{
 			testCase:           "Set dockerfilepath and devfilepath",
-			cdqInfo:            CDQInfoClient{dockerfilePath: "/dockerfile", devfilePath: "devfile.yml"},
+			cdqInfo:            CDQInfo{dockerfilePath: "/dockerfile", devfilePath: "devfile.yml"},
 			wantDevfilePath:    "devfile.yml",
 			wantDockerfilePath: "/dockerfile",
 		},

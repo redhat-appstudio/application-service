@@ -588,9 +588,6 @@ var _ = Describe("Component Detection Query controller", func() {
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      queryName,
 					Namespace: HASNamespace,
-					Annotations: map[string]string{
-						"runCDQAnalysisLocal": "true",
-					},
 				},
 				StringData: map[string]string{
 					"password": "fake-token",
@@ -639,8 +636,8 @@ var _ = Describe("Component Detection Query controller", func() {
 		})
 	})
 
-	Context("Create multi Component Detection Query with private git repo + invalid token", func() {
-		It("Should error out due to invalid token", func() {
+	Context("Create Component Detection Query with private git repo + valid mock token", func() {
+		It("Should successfully detect the component from the repo", func() {
 			ctx := context.Background()
 
 			queryName := HASCompDetQuery + "12"
@@ -653,12 +650,9 @@ var _ = Describe("Component Detection Query controller", func() {
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      queryName,
 					Namespace: HASNamespace,
-					Annotations: map[string]string{
-						"runCDQAnalysisLocal": "true",
-					},
 				},
 				StringData: map[string]string{
-					"password": "fake-token",
+					"password": "valid-mock-token", // string is tied to mock clone func in cdq-analysis/pkg/componentdetectionquery_mock.go
 				},
 			}
 
@@ -679,7 +673,7 @@ var _ = Describe("Component Detection Query controller", func() {
 				Spec: appstudiov1alpha1.ComponentDetectionQuerySpec{
 					Secret: queryName,
 					GitSource: appstudiov1alpha1.GitSource{
-						URL: "https://github.com/yangcao77/multi-components-private",
+						URL: SampleRepoLink, // using an actual public repo here for testing a valid token case, see cdq-analysis/pkg/componentdetectionquery_mock.go for more information
 					},
 				},
 			}
@@ -695,9 +689,16 @@ var _ = Describe("Component Detection Query controller", func() {
 				return len(createdHasCompDetectionQuery.Status.Conditions) > 1
 			}, timeout, interval).Should(BeTrue())
 
-			// index is 1 because of CDQ status condition Processing
-			Expect(createdHasCompDetectionQuery.Status.Conditions[1].Status).Should(Equal(metav1.ConditionFalse))
-			Expect(createdHasCompDetectionQuery.Status.Conditions[1].Message).Should(ContainSubstring("authentication failed"))
+			// Make sure the a devfile is detected
+			Expect(len(createdHasCompDetectionQuery.Status.ComponentDetected)).Should(Equal(1))
+
+			for devfileName, devfileDesc := range createdHasCompDetectionQuery.Status.ComponentDetected {
+				Expect(devfileName).Should(ContainSubstring("spring"))
+				Expect(devfileDesc.ComponentStub.Source.GitSource.Context).Should(ContainSubstring("./"))
+				Expect(devfileDesc.ComponentStub.Source.GitSource.Revision).Should(ContainSubstring("main"))
+				Expect(devfileDesc.ComponentStub.Source.GitSource.DevfileURL).Should(Equal("https://raw.githubusercontent.com/devfile-samples/devfile-sample-java-springboot-basic/main/devfile.yaml"))
+				Expect(devfileDesc.DevfileFound).Should(BeTrue())
+			}
 
 			// Delete the specified Detection Query resource
 			deleteCompDetQueryCR(hasCompDetQueryLookupKey)
