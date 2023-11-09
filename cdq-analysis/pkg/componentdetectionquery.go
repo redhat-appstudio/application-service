@@ -239,12 +239,13 @@ func (k K8sInfoClient) SendBackDetectionResult(devfilesMap map[string][]byte, de
 	log := k.Log
 	if !k.CreateK8sJob {
 		log.Info("Skip creating the job...")
-		// remove the clone path after cdq is done
+		// remove the clone path after cdq
 		if isExist, _ := IsExisting(Fs, clonePath); isExist {
 			if err := Fs.RemoveAll(clonePath); err != nil {
 				log.Error(err, fmt.Sprintf("Unable to remove the clonepath %s %v", clonePath, namespace))
 			}
 		}
+		return
 	}
 	log.Info(fmt.Sprintf("Sending back result, devfilesMap %v,devfilesURLMap %v, dockerfileContextMap %v, componentPortsMap %v, error %v ... %v", devfilesMap, devfilesURLMap, dockerfileContextMap, componentPortsMap, completeError, namespace))
 
