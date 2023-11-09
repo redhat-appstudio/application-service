@@ -203,3 +203,13 @@ func GenerateRandomRouteName(componentName string) string {
 	routeName = routeName + GetRandomString(4, true)
 	return routeName
 }
+
+// StrInList returns true if the given string is present in strList
+func StrInList(str string, strList []string) bool {
+	for _, val := range strList {
+		if str == val {
+			return true
+		}
+	}
+	return false
+}

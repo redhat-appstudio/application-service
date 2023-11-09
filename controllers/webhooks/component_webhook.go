@@ -24,12 +24,14 @@ import (
 	"strings"
 
 	appstudiov1alpha1 "github.com/redhat-appstudio/application-api/api/v1alpha1"
+	"github.com/redhat-appstudio/application-service/pkg/util"
 
 	"github.com/go-logr/logr"
 	k8sErrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/validation"
+	"k8s.io/client-go/util/retry"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
@@ -56,9 +58,43 @@ func (w *ComponentWebhook) Register(mgr ctrl.Manager, log *logr.Logger) error {
 // +kubebuilder:webhook:path=/mutate-appstudio-redhat-com-v1alpha1-component,mutating=true,failurePolicy=fail,sideEffects=None,groups=appstudio.redhat.com,resources=components,verbs=create;update,versions=v1alpha1,name=mcomponent.kb.io,admissionReviewVersions=v1
 
 // Default implements webhook.Defaulter so a webhook will be registered for the type
+// Default retrieves the list of components that the Component nudges and updates their statuses to list
+// the component as a nudging component (status.BuildNudgedBy)
 func (r *ComponentWebhook) Default(ctx context.Context, obj runtime.Object) error {
+	return nil
+}
 
-	// TODO(user): fill in your defaulting logic.
+// UpdateNudgedComponentStatus retrieves the list of components that the Component nudges and updates their statuses to list
+// the component as a nudging component (status.BuildNudgedBy)
+func (r *ComponentWebhook) UpdateNudgedComponentStatus(ctx context.Context, obj runtime.Object) error {
+	comp := obj.(*appstudiov1alpha1.Component)
+	compName := comp.Name
+
+	// For each component that the Component nudges, retrieve its resource and update its status accordingly
+	for _, nudgedCompName := range comp.Spec.BuildNudgesRef {
+		// Retrieved the nudged component
+		nudgedComp := &appstudiov1alpha1.Component{}
+		err := r.client.Get(ctx, types.NamespacedName{Namespace: comp.Namespace, Name: nudgedCompName}, nudgedComp)
+		if err != nil {
+			// Return an error if an error was encountered retrieving the resource.
+			// If the resource wasn't found yet - leave it however
+			if !k8sErrors.IsNotFound(err) {
+				return err
+			}
+		}
+
+		// Add the component to the status if it's not already present
+		if !util.StrInList(compName, nudgedComp.Status.BuildNudgedBy) {
+			nudgedComp.Status.BuildNudgedBy = append(nudgedComp.Status.BuildNudgedBy, compName)
+
+			// Update the Component's status - retry on conflict
+			err = retry.RetryOnConflict(retry.DefaultRetry, func() error {
+				err = r.client.Status().Update(ctx, nudgedComp)
+				return err
+			})
+		}
+
+	}
 	return nil
 }
 
@@ -101,6 +137,10 @@ func (r *ComponentWebhook) ValidateCreate(ctx context.Context, obj runtime.Objec
 		if err != nil {
 			return err
 		}
+		err = r.UpdateNudgedComponentStatus(ctx, comp)
+		if err != nil {
+			return err
+		}
 	}
 
 	return nil
@@ -127,6 +167,12 @@ func (r *ComponentWebhook) ValidateUpdate(ctx context.Context, oldObj, newObj ru
 	}
 	if len(newComp.Spec.BuildNudgesRef) != 0 {
 		err := r.validateBuildNudgesRefGraph(ctx, newComp.Spec.BuildNudgesRef, newComp.Namespace, newComp.Name, newComp.Spec.Application)
+		if err != nil {
+			return err
+		}
+
+		// If the dependency graph was successfully validated, update the statuses of the Components
+		err = r.UpdateNudgedComponentStatus(ctx, newComp)
 		if err != nil {
 			return err
 		}
