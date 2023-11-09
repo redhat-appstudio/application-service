@@ -9,3 +9,4 @@ ignore:
   - "cdq-analysis/main.go" # entry point for cdq-analysis docker image
   - "pkg/github/mock.go" # mock file for testing
   - "pkg/github/token_moke.go" # mock file for testing
+  - "contracts/" # contract testing files
