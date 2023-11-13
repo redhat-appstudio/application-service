@@ -8,5 +8,5 @@ ignore:
   - "cdq-analysis/pkg/detect_mock.go" # mock file for testing
   - "cdq-analysis/main.go" # entry point for cdq-analysis docker image
   - "pkg/github/mock.go" # mock file for testing
-  - "pkg/github/token_moke.go" # mock file for testing
+  - "pkg/github/token_mock.go" # mock file for testing
   - "contracts/" # contract testing files
