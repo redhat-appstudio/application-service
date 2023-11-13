@@ -22,6 +22,7 @@ import (
 	"reflect"
 	"testing"
 
+	"github.com/spf13/afero"
 	"github.com/stretchr/testify/assert"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes/fake"
@@ -274,6 +275,7 @@ func TestSendBackDetectionResult(t *testing.T) {
 	ctx := context.TODO()
 	clientset := fake.NewSimpleClientset()
 	ctrl.SetLogger(zap.New(zap.UseFlagOptions(&zap.Options{})))
+	Fs := afero.Afero{}
 	log := ctrl.Log.WithName("TestSendBackDetectionResult")
 
 	k8sClient := K8sInfoClient{
@@ -374,7 +376,7 @@ metadata:
 	}
 	for _, tt := range tests {
 		t.Run(tt.testCase, func(t *testing.T) {
-			k8sClient.SendBackDetectionResult(tt.devfilesMap, tt.devfilesURLMap, tt.dockerfileContextMap, tt.componentPortsMap, revision, compName, namespaceName, tt.err)
+			k8sClient.SendBackDetectionResult(tt.devfilesMap, tt.devfilesURLMap, tt.dockerfileContextMap, tt.componentPortsMap, revision, compName, namespaceName, "", Fs, tt.err)
 			configMap, err := clientset.CoreV1().ConfigMaps(namespaceName).Get(k8sClient.Ctx, compName, metav1.GetOptions{})
 			if err != nil {
 				t.Errorf("got unexpected error %v", err)
