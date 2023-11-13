@@ -22,7 +22,6 @@ import (
 	"os"
 	"path/filepath"
 	"reflect"
-	"strconv"
 	"strings"
 	"time"
 
@@ -134,11 +133,7 @@ func (r *ComponentReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 
 	setCounterAnnotation(applicationFailCounterAnnotation, &component, 0)
 	forceGenerateGitopsResource := false
-	forceGenerateGitopsResource, err = getForceGenerateGitopsAnnotation(component)
-	if err != nil {
-		log.Info("failed to get forceGeneration annotation, set forceGenerateGitopsResource to false")
-		forceGenerateGitopsResource = false
-	}
+	forceGenerateGitopsResource = getForceGenerateGitopsAnnotation(component)
 	log.Info(fmt.Sprintf("forceGenerateGitopsResource is %v", forceGenerateGitopsResource))
 
 	ghClient, err := r.GitHubTokenClient.GetNewGitHubClient("")
@@ -243,8 +238,8 @@ func (r *ComponentReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 				return ctrl.Result{}, err
 			} else {
 				log.Info(fmt.Sprintf("GitOps re-generation successful for %s", component.Name))
-				setForceGenerateGitopsAnnotation(&component, "false")
 				err := r.SetGitOpsGeneratedConditionAndUpdateCR(ctx, req, &component, nil)
+				setForceGenerateGitopsAnnotation(&component, "false")
 				if err != nil {
 					return ctrl.Result{}, err
 				}
@@ -766,13 +761,12 @@ func (r *ComponentReconciler) incrementCounterAndRequeue(log logr.Logger, ctx co
 }
 
 // getForceGenerateGitopsAnnotation gets the internal annotation on the component whether to force generate the gitops resource
-func getForceGenerateGitopsAnnotation(component appstudiov1alpha1.Component) (bool, error) {
+func getForceGenerateGitopsAnnotation(component appstudiov1alpha1.Component) bool {
 	compAnnotations := component.GetAnnotations()
-	if compAnnotations == nil || compAnnotations[forceGenerationAnnotation] == "" {
-		return false, nil
-	} else {
-		return strconv.ParseBool(compAnnotations[forceGenerationAnnotation])
+	if compAnnotations != nil && compAnnotations[forceGenerationAnnotation] == "true" {
+		return true
 	}
+	return false
 }
 
 func setForceGenerateGitopsAnnotation(component *appstudiov1alpha1.Component, value string) {

@@ -115,13 +115,19 @@ func (r *ComponentReconciler) SetUpdateConditionAndUpdateCR(ctx context.Context,
 func (r *ComponentReconciler) SetGitOpsGeneratedConditionAndUpdateCR(ctx context.Context, req ctrl.Request, component *appstudiov1alpha1.Component, generateError error) error {
 	log := ctrl.LoggerFrom(ctx)
 	condition := metav1.Condition{}
-
+	forceGenerateGitops := getForceGenerateGitopsAnnotation(*component)
 	if generateError == nil {
+		message := "GitOps resource generated successfully"
+		reason := "OK"
+		if forceGenerateGitops {
+			message = "forceGitopsGeneration has been enabled, GitOps resource generated successfully"
+			reason = "GitOpsResourcesForceGenerated"
+		}
 		condition = metav1.Condition{
 			Type:    "GitOpsResourcesGenerated",
 			Status:  metav1.ConditionTrue,
-			Reason:  "OK",
-			Message: "GitOps resource generated successfully",
+			Reason:  reason,
+			Message: message,
 		}
 	} else {
 		condition = metav1.Condition{
