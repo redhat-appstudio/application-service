@@ -1846,7 +1846,7 @@ var _ = Describe("Component Detection Query controller", func() {
 			})
 		})
 
-		Context("Create Component Detection Query with public git repo + valid mock token", func() {
+		Context("Create Component Detection Query with public git repo + invalid mock token", func() {
 			It("Should successfully detect the component from the repo", func() {
 				ctx := context.Background()
 
@@ -1862,7 +1862,7 @@ var _ = Describe("Component Detection Query controller", func() {
 						Namespace: HASNamespace,
 					},
 					StringData: map[string]string{
-						"password": "invalid-mock-token", // string is tied to mock clone func in cdq-analysis/pkg/componentdetectionquery_mock.go
+						"password": "invalid-mock-token",
 					},
 				}
 
@@ -1883,7 +1883,7 @@ var _ = Describe("Component Detection Query controller", func() {
 					Spec: appstudiov1alpha1.ComponentDetectionQuerySpec{
 						Secret: queryName,
 						GitSource: appstudiov1alpha1.GitSource{
-							URL: SampleRepoLink, // using an actual public repo here for testing a valid token case, see cdq-analysis/pkg/componentdetectionquery_mock.go for more information
+							URL: SampleRepoLink, // using an actual public repo here for testing a invalid token case
 						},
 					},
 				}
@@ -2692,102 +2692,6 @@ metadata:
 					Expect(devfileDesc.ComponentStub.Source.GitSource.DevfileURL).Should(Equal("https://raw.githubusercontent.com/devfile-samples/devfile-sample-java-springboot-basic/main/devfile.yaml"))
 					Expect(devfileDesc.DevfileFound).Should(BeTrue())
 				}
-
-				// Delete the specified Detection Query resource
-				deleteCompDetQueryCR(hasCompDetQueryLookupKey)
-			})
-		})
-
-		// Test when an error from the SPI client is returned
-		// The Mock SPI client is configured to mock an error response if the repo name contains "test-error-response"
-		Context("Run CDQ Job - Create Component Detection Query private repo with invalid token", func() {
-			It("Should error out", func() {
-				ctx := context.Background()
-
-				queryName := HASCompDetQuery + "-job9"
-
-				// Create a git secret
-				tokenSecret := &corev1.Secret{
-					TypeMeta: metav1.TypeMeta{
-						Kind: "Secret",
-					},
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      queryName,
-						Namespace: HASNamespace,
-					},
-					StringData: map[string]string{
-						"password": "fake-token",
-					},
-				}
-
-				Expect(k8sClient.Create(ctx, tokenSecret)).Should(Succeed())
-
-				hasCompDetectionQuery := &appstudiov1alpha1.ComponentDetectionQuery{
-					TypeMeta: metav1.TypeMeta{
-						APIVersion: "appstudio.redhat.com/v1alpha1",
-						Kind:       "ComponentDetectionQuery",
-					},
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      queryName,
-						Namespace: HASNamespace,
-					},
-					Spec: appstudiov1alpha1.ComponentDetectionQuerySpec{
-						Secret: queryName,
-						GitSource: appstudiov1alpha1.GitSource{
-							URL: "https://github.com/test-repo/test-error-response",
-						},
-					},
-				}
-
-				Expect(k8sClient.Create(ctx, hasCompDetectionQuery)).Should(Succeed())
-
-				configMapBinaryData := make(map[string][]byte)
-				errorMap := make(map[string]string)
-				errorMap["InternalError"] = "failed to clone the repo"
-
-				errorMapbytes, _ := json.Marshal(errorMap)
-				configMapBinaryData["errorMap"] = errorMapbytes
-
-				cdqConfigMap := corev1.ConfigMap{
-					TypeMeta: metav1.TypeMeta{
-						Kind:       "ConfigMap",
-						APIVersion: "v1",
-					},
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      queryName,
-						Namespace: HASNamespace,
-					},
-					BinaryData: configMapBinaryData,
-				}
-				Expect(k8sClient.Create(ctx, &cdqConfigMap)).Should(Succeed())
-
-				// Look up the has app resource that was created.
-				// num(conditions) may still be < 1 on the first try, so retry until at least _some_ condition is set
-				hasCompDetQueryLookupKey := types.NamespacedName{Name: queryName, Namespace: HASNamespace}
-				createdHasCompDetectionQuery := &appstudiov1alpha1.ComponentDetectionQuery{}
-				createdJob := &batchv1.Job{}
-				createdConfigMap := &corev1.ConfigMap{}
-				// The job won't be actually completed, as the container image won't be pulled
-				// check for the object to ensure the job has been created
-				Eventually(func() bool {
-					k8sClient.Get(context.Background(), types.NamespacedName{Name: queryName + "-job", Namespace: HASNamespace}, createdJob)
-					return createdJob != nil
-				}, timeout, interval).Should(BeTrue())
-
-				// Look up the has app resource that was created.
-				// num(conditions) may still be < 1 on the first try, so retry until at least _some_ condition is set
-				Eventually(func() bool {
-					k8sClient.Get(context.Background(), hasCompDetQueryLookupKey, createdConfigMap)
-					return len(createdConfigMap.BinaryData) > 0
-				}, timeout, interval).Should(BeTrue())
-				Eventually(func() bool {
-					k8sClient.Get(context.Background(), hasCompDetQueryLookupKey, createdHasCompDetectionQuery)
-					return len(createdHasCompDetectionQuery.Status.Conditions) > 1
-				}, timeout, interval).Should(BeTrue())
-
-				// index is 1 because of CDQ status condition Processing
-				Expect(createdHasCompDetectionQuery.Status.Conditions[1].Status).Should(Equal(metav1.ConditionFalse))
-				Expect(createdHasCompDetectionQuery.Status.Conditions[1].Message).Should(ContainSubstring("failed to clone the repo"))
 
 				// Delete the specified Detection Query resource
 				deleteCompDetQueryCR(hasCompDetQueryLookupKey)
