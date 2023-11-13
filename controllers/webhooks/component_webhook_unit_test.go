@@ -504,6 +504,11 @@ func TestUpdateNudgedComponentStatus(t *testing.T) {
 			webhook:  errCompWebhook,
 			errStr:   "some error",
 		},
+		{
+			name:     "component not found, shouldn't error out",
+			compName: "nudged-component-missing",
+			webhook:  compWebhook,
+		},
 	}
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
@@ -927,6 +932,35 @@ func setUpComponents(t *testing.T) client.WithWatch {
 	}
 	err = fakeClient.Create(context.Background(), &component13)
 	require.NoError(t, err)
+
+	nudgedComponentMissing := appstudiov1alpha1.Component{
+		ObjectMeta: v1.ObjectMeta{
+			Name:      "nudged-component-missing",
+			Namespace: "default",
+		},
+		TypeMeta: v1.TypeMeta{
+			APIVersion: "appstudio.redhat.com/v1alpha1",
+			Kind:       "Component",
+		},
+		Spec: appstudiov1alpha1.ComponentSpec{
+			ComponentName:  "nudged-component-missing",
+			Application:    "application1",
+			BuildNudgesRef: []string{"fake-fake"},
+		},
+	}
+	err = fakeClient.Create(context.Background(), &nudgedComponentMissing)
+	require.NoError(t, err)
+
+	return fakeClient
+}
+
+func NewFakeClient(t *testing.T, initObjs ...runtime.Object) client.WithWatch {
+	s := scheme.Scheme
+	err := appstudiov1alpha1.AddToScheme(s)
+	require.NoError(t, err)
+	fakeClient := fake.NewClientBuilder().
+		WithScheme(s).
+		Build()
 
 	return fakeClient
 }

@@ -58,8 +58,6 @@ func (w *ComponentWebhook) Register(mgr ctrl.Manager, log *logr.Logger) error {
 // +kubebuilder:webhook:path=/mutate-appstudio-redhat-com-v1alpha1-component,mutating=true,failurePolicy=fail,sideEffects=None,groups=appstudio.redhat.com,resources=components,verbs=create;update,versions=v1alpha1,name=mcomponent.kb.io,admissionReviewVersions=v1
 
 // Default implements webhook.Defaulter so a webhook will be registered for the type
-// Default retrieves the list of components that the Component nudges and updates their statuses to list
-// the component as a nudging component (status.BuildNudgedBy)
 func (r *ComponentWebhook) Default(ctx context.Context, obj runtime.Object) error {
 	return nil
 }
@@ -69,6 +67,7 @@ func (r *ComponentWebhook) Default(ctx context.Context, obj runtime.Object) erro
 func (r *ComponentWebhook) UpdateNudgedComponentStatus(ctx context.Context, obj runtime.Object) error {
 	comp := obj.(*appstudiov1alpha1.Component)
 	compName := comp.Name
+	componentlog := r.log.WithValues("controllerKind", "Component").WithValues("name", compName).WithValues("namespace", comp.Namespace)
 
 	// For each component that the Component nudges, retrieve its resource and update its status accordingly
 	for _, nudgedCompName := range comp.Spec.BuildNudgesRef {
@@ -80,6 +79,9 @@ func (r *ComponentWebhook) UpdateNudgedComponentStatus(ctx context.Context, obj 
 			// If the resource wasn't found yet - leave it however
 			if !k8sErrors.IsNotFound(err) {
 				return err
+			} else {
+				componentlog.Error(err, "nudged component not found, skip setting the status for now")
+				continue
 			}
 		}
 
