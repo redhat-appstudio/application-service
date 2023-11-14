@@ -2060,6 +2060,8 @@ var _ = Describe("Component controller", func() {
 			gitopsCondition := createdHasComp.Status.Conditions[len(createdHasComp.Status.Conditions)-2]
 			Expect(gitopsCondition.Type).To(Equal("GitOpsResourcesGenerated"))
 			Expect(gitopsCondition.Status).To(Equal(metav1.ConditionTrue))
+
+			// set the annotation and update a spec to force enter the reconcile
 			setForceGenerateGitopsAnnotation(createdHasComp, "true")
 			createdHasComp.Spec.TargetPort = 1111
 			Expect(k8sClient.Update(ctx, createdHasComp)).Should(Succeed())
