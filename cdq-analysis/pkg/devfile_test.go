@@ -286,11 +286,11 @@ func TestScanRepo(t *testing.T) {
 			if err != nil {
 				t.Errorf("got unexpected error %v", err)
 			} else {
-				devfileInfo := CDQInfoClient{
+				devfileInfo := CDQInfo{
 					DevfileRegistryURL: DevfileStageRegistryEndpoint,
 					GitURL:             GitURL{RepoURL: URL},
 				}
-				devfileMap, devfileURLMap, dockerfileMap, portsMap, err := ScanRepo(logger, alizerClient, tt.clonePath, "", devfileInfo)
+				devfileMap, devfileURLMap, dockerfileMap, portsMap, err := ScanRepo(logger, alizerClient, tt.clonePath, "", devfileInfo, NewCDQUtilClient())
 				if tt.wantErr && (err == nil) {
 					t.Error("wanted error but got nil")
 				} else if !tt.wantErr && err != nil {
@@ -430,7 +430,8 @@ func TestValidateDevfile(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			shouldIgnoreDevfile, devfileBytes, err := ValidateDevfile(logger, tt.url, "")
+			cdqUtil := NewCDQUtilClient()
+			shouldIgnoreDevfile, devfileBytes, err := cdqUtil.ValidateDevfile(logger, tt.url, "")
 			if (err != nil) != tt.wantErr {
 				t.Errorf("TestValidateDevfile() unexpected error: %v", err)
 			}

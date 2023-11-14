@@ -218,6 +218,7 @@ func main() {
 		CdqAnalysisImage:   cdqAnalysisImage,
 		RunKubernetesJob:   RunKubernetesJob,
 		Config:             config,
+		CDQUtil:            cdqanalysis.NewCDQUtilClient(),
 	}).SetupWithManager(ctx, mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "ComponentDetectionQuery")
 		os.Exit(1)

@@ -94,13 +94,15 @@ func main() {
 		CreateK8sJob: createK8sJob,
 	}
 
-	cdqInfo := &pkg.CDQInfoClient{
+	cdqInfo := &pkg.CDQInfo{
 		DevfileRegistryURL: DevfileRegistryURL,
 		GitURL:             pkg.GitURL{RepoURL: URL, Revision: Revision, Token: gitToken},
 	}
 
+	cdqUtil := pkg.NewCDQUtilClient()
+
 	/* #nosec G104 -- the main.go is triggerred by docker image, and the result as well as the error will be send by the k8s job*/
-	pkg.CloneAndAnalyze(k8sInfoClient, namespace, name, contextPath, cdqInfo)
+	pkg.CloneAndAnalyze(k8sInfoClient, namespace, name, contextPath, cdqInfo, cdqUtil)
 
 }
 
