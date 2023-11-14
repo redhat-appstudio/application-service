@@ -132,8 +132,7 @@ func (r *ComponentReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 	}
 
 	setCounterAnnotation(applicationFailCounterAnnotation, &component, 0)
-	forceGenerateGitopsResource := false
-	forceGenerateGitopsResource = getForceGenerateGitopsAnnotation(component)
+	forceGenerateGitopsResource := getForceGenerateGitopsAnnotation(component)
 	log.Info(fmt.Sprintf("forceGenerateGitopsResource is %v", forceGenerateGitopsResource))
 
 	ghClient, err := r.GitHubTokenClient.GetNewGitHubClient("")
@@ -239,10 +238,10 @@ func (r *ComponentReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 			} else {
 				log.Info(fmt.Sprintf("GitOps re-generation successful for %s", component.Name))
 				err := r.SetGitOpsGeneratedConditionAndUpdateCR(ctx, req, &component, nil)
-				setForceGenerateGitopsAnnotation(&component, "false")
 				if err != nil {
 					return ctrl.Result{}, err
 				}
+				setForceGenerateGitopsAnnotation(&component, "false")
 				isGitOpsRegenSuccessful = true
 			}
 		} else if condition.Type == "Updated" && condition.Reason == "Error" && condition.Status == metav1.ConditionFalse {
