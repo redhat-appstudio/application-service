@@ -132,8 +132,9 @@ func clone(k K8sInfoClient, cdqInfo *CDQInfo, namespace, name, context string) e
 	return nil
 }
 
-// CloneAndAnalyze clones and analyzes the Git repo with Alizer if necessary
-func CloneAndAnalyze(k K8sInfoClient, namespace, name, context string, cdqInfo *CDQInfo, cdqUtil CDQUtil) (map[string][]byte, map[string]string, map[string]string, map[string][]int, string, error) {
+// CloneAndAnalyze clones and analyzes the Git repo with Alizer if necessary and returns
+// devfilesMap, devfilesURLMap, dockerfileContextMap, componentPortsMap, revision and an error
+func CloneAndAnalyze(k K8sInfoClient, namespace, name, context string, cdqInfo *CDQInfo, cdqUtil CDQUtil) (devfilesMap map[string][]byte, devfilesURLMap map[string]string, dockerfileContextMap map[string]string, componentPortsMap map[string][]int, revision string, err error) {
 	if cdqInfo == nil {
 		return nil, nil, nil, nil, "", fmt.Errorf("CDQ cannot clone and analyze because no information was passed to it")
 	}
@@ -141,12 +142,11 @@ func CloneAndAnalyze(k K8sInfoClient, namespace, name, context string, cdqInfo *
 	log := k.Log
 	var clonePath, componentPath string
 	alizerClient := AlizerClient{}
-	devfilesMap := make(map[string][]byte)
-	devfilesURLMap := make(map[string]string)
-	dockerfileContextMap := make(map[string]string)
-	componentPortsMap := make(map[string][]int)
+	devfilesMap = make(map[string][]byte)
+	devfilesURLMap = make(map[string]string)
+	dockerfileContextMap = make(map[string]string)
+	componentPortsMap = make(map[string][]int)
 	var Fs afero.Afero
-	var err error
 
 	var components []model.Component
 
@@ -178,7 +178,7 @@ func CloneAndAnalyze(k K8sInfoClient, namespace, name, context string, cdqInfo *
 	Fs = cdqInfo.ClonedRepo.Fs
 	componentPath = cdqInfo.ClonedRepo.ComponentPath
 	clonePath = cdqInfo.ClonedRepo.ClonedPath
-	revision := cdqInfo.GitURL.Revision
+	revision = cdqInfo.GitURL.Revision
 	devfilePath := cdqInfo.devfilePath
 	dockerfilePath := cdqInfo.dockerfilePath
 
