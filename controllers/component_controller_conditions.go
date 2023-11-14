@@ -116,16 +116,20 @@ func (r *ComponentReconciler) SetGitOpsGeneratedConditionAndUpdateCR(ctx context
 	log := ctrl.LoggerFrom(ctx)
 	condition := metav1.Condition{}
 	forceGenerateGitopsResource := getForceGenerateGitopsAnnotation(*component)
+	conditionType := "GitOpsResourcesGenerated"
+	if forceGenerateGitopsResource {
+		conditionType = "GitOpsResourcesForceGenerated"
+	}
 	if generateError == nil {
 		condition = metav1.Condition{
-			Type:    "GitOpsResourcesGenerated",
+			Type:    conditionType,
 			Status:  metav1.ConditionTrue,
 			Reason:  "OK",
 			Message: "GitOps resource generated successfully",
 		}
 	} else {
 		condition = metav1.Condition{
-			Type:    "GitOpsResourcesGenerated",
+			Type:    conditionType,
 			Status:  metav1.ConditionFalse,
 			Reason:  "GenerateError",
 			Message: fmt.Sprintf("GitOps resources failed to generate: %v", generateError),
@@ -139,13 +143,6 @@ func (r *ComponentReconciler) SetGitOpsGeneratedConditionAndUpdateCR(ctx context
 			return err
 		}
 		meta.SetStatusCondition(&currentComponent.Status.Conditions, condition)
-		gitopsCond := meta.FindStatusCondition(currentComponent.Status.Conditions, "GitOpsResourcesGenerated")
-		if gitopsCond != nil {
-			gitopsCond.LastTransitionTime = metav1.Now()
-			if forceGenerateGitopsResource {
-				gitopsCond.Message = "forceGitopsGeneration has been enabled, GitOps resource generated successfully"
-			}
-		}
 		currentComponent.Status.Devfile = component.Status.Devfile
 		currentComponent.Status.ContainerImage = component.Status.ContainerImage
 		currentComponent.Status.GitOps = component.Status.GitOps

@@ -2016,6 +2016,80 @@ var _ = Describe("Component controller", func() {
 			deleteHASAppCR(hasAppLookupKey)
 		})
 	})
+	Context("force generate gitops resource", func() {
+		It("Should successfully update CR conditions and status", func() {
+			ctx := context.Background()
+
+			applicationName := HASAppName + "23"
+			componentName := HASCompName + "23"
+
+			createAndFetchSimpleApp(applicationName, HASAppNamespace, DisplayName, Description)
+
+			hasComp := &appstudiov1alpha1.Component{
+				TypeMeta: metav1.TypeMeta{
+					APIVersion: "appstudio.redhat.com/v1alpha1",
+					Kind:       "Component",
+				},
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      componentName,
+					Namespace: HASAppNamespace,
+				},
+				Spec: appstudiov1alpha1.ComponentSpec{
+					ComponentName: ComponentName,
+					Application:   applicationName,
+					Source: appstudiov1alpha1.ComponentSource{
+						ComponentSourceUnion: appstudiov1alpha1.ComponentSourceUnion{
+							GitSource: &appstudiov1alpha1.GitSource{
+								URL: SampleRepoLink,
+							},
+						},
+					},
+				},
+			}
+			Expect(k8sClient.Create(ctx, hasComp)).Should(Succeed())
+
+			// Look up the has app resource that was created.
+			// num(conditions) may still be < 2 (GeneratedGitOps, Created) on the first try, so retry until at least _some_ condition is set
+			hasCompLookupKey := types.NamespacedName{Name: componentName, Namespace: HASAppNamespace}
+			createdHasComp := &appstudiov1alpha1.Component{}
+			Eventually(func() bool {
+				k8sClient.Get(context.Background(), hasCompLookupKey, createdHasComp)
+				return len(createdHasComp.Status.Conditions) > 1 && createdHasComp.Status.GitOps.RepositoryURL != ""
+			}, timeout, interval).Should(BeTrue())
+			// Verify that the GitOpsGenerated status condition was also set
+			gitopsCondition := createdHasComp.Status.Conditions[len(createdHasComp.Status.Conditions)-2]
+			Expect(gitopsCondition.Type).To(Equal("GitOpsResourcesGenerated"))
+			Expect(gitopsCondition.Status).To(Equal(metav1.ConditionTrue))
+			setForceGenerateGitopsAnnotation(createdHasComp, "true")
+			createdHasComp.Spec.TargetPort = 1111
+			Expect(k8sClient.Update(ctx, createdHasComp)).Should(Succeed())
+
+			createdHasComp = &appstudiov1alpha1.Component{}
+			// Verify that the GitOpsResourcesForceGenerated status condition was set
+			Eventually(func() bool {
+				var gitOpsForceGenerateCheck bool
+
+				k8sClient.Get(context.Background(), hasCompLookupKey, createdHasComp)
+				for _, condition := range createdHasComp.Status.Conditions {
+					if condition.Type == "GitOpsResourcesForceGenerated" && condition.Status == metav1.ConditionTrue {
+						gitOpsForceGenerateCheck = true
+					}
+				}
+				return gitOpsForceGenerateCheck
+			}, timeout, interval).Should(BeTrue())
+			gitopsCondition = createdHasComp.Status.Conditions[len(createdHasComp.Status.Conditions)-1]
+			Expect(gitopsCondition.Type).To(Equal("GitOpsResourcesForceGenerated"))
+			Expect(gitopsCondition.Status).To(Equal(metav1.ConditionTrue))
+
+			hasAppLookupKey := types.NamespacedName{Name: applicationName, Namespace: HASAppNamespace}
+
+			// Delete the specified HASComp resource
+			deleteHASCompCR(hasCompLookupKey)
+
+			// Delete the specified HASApp resource
+			deleteHASAppCR(hasAppLookupKey)
+		})
+	})
 
 })
 

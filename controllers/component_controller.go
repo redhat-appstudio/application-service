@@ -771,7 +771,7 @@ func getForceGenerateGitopsAnnotation(component appstudiov1alpha1.Component) boo
 func setForceGenerateGitopsAnnotation(component *appstudiov1alpha1.Component, value string) {
 	compAnnotations := component.GetAnnotations()
 	if compAnnotations == nil {
-		compAnnotations = make(map[string]string)
+		component.Annotations = make(map[string]string)
 	}
-	compAnnotations[forceGenerationAnnotation] = value
+	component.Annotations[forceGenerationAnnotation] = value
 }
