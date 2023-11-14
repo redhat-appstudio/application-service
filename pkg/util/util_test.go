@@ -618,6 +618,33 @@ func TestGetIntValue(t *testing.T) {
 	}
 }
 
+func TestStrInList(t *testing.T) {
+	tests := []struct {
+		name string
+		str  string
+		list []string
+		want bool
+	}{
+		{
+			name: "str not in list",
+			str:  "test",
+			list: []string{"some", "words"},
+			want: false,
+		},
+		{
+			name: "str in list",
+			str:  "test",
+			list: []string{"some", "test", "words"},
+			want: true,
+		},
+	}
+
+	for _, tt := range tests {
+		val := StrInList(tt.str, tt.list)
+		assert.True(t, val == tt.want, "Expected bool value %v got %v", tt.want, val)
+	}
+}
+
 func TestGenerateRandomRouteName(t *testing.T) {
 
 	tests := []struct {

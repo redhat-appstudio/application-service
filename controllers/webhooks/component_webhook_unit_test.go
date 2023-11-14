@@ -36,14 +36,19 @@ import (
 
 func TestComponentCreateValidatingWebhook(t *testing.T) {
 
+	fakeClient := setUpComponents(t)
+	fakeErrorClient := setUpComponentsForFakeErrorClient(t)
+
 	tests := []struct {
 		name    string
+		client  client.Client
 		newComp appstudiov1alpha1.Component
 		err     string
 	}{
 		{
-			name: "component metadata.name is invalid",
-			err:  "invalid component name",
+			name:   "component metadata.name is invalid",
+			client: fakeClient,
+			err:    "invalid component name",
 			newComp: appstudiov1alpha1.Component{
 				ObjectMeta: v1.ObjectMeta{
 					Name: "1-test-component",
@@ -55,8 +60,9 @@ func TestComponentCreateValidatingWebhook(t *testing.T) {
 			},
 		},
 		{
-			name: "component cannot be created due to bad URL",
-			err:  "invalid URI for request" + appstudiov1alpha1.InvalidSchemeGitSourceURL,
+			name:   "component cannot be created due to bad URL",
+			client: fakeClient,
+			err:    "invalid URI for request" + appstudiov1alpha1.InvalidSchemeGitSourceURL,
 			newComp: appstudiov1alpha1.Component{
 				ObjectMeta: v1.ObjectMeta{
 					Name: "test-component",
@@ -75,8 +81,9 @@ func TestComponentCreateValidatingWebhook(t *testing.T) {
 			},
 		},
 		{
-			name: "component needs to have one source specified",
-			err:  appstudiov1alpha1.MissingGitOrImageSource,
+			name:   "component needs to have one source specified",
+			client: fakeClient,
+			err:    appstudiov1alpha1.MissingGitOrImageSource,
 			newComp: appstudiov1alpha1.Component{
 				ObjectMeta: v1.ObjectMeta{
 					Name: "test-component",
@@ -93,8 +100,9 @@ func TestComponentCreateValidatingWebhook(t *testing.T) {
 			},
 		},
 		{
-			name: "valid component with invalid git vendor src",
-			err:  fmt.Errorf(appstudiov1alpha1.InvalidGithubVendorURL, "http://url", SupportedGitRepo).Error(),
+			name:   "valid component with invalid git vendor src",
+			client: fakeClient,
+			err:    fmt.Errorf(appstudiov1alpha1.InvalidGithubVendorURL, "http://url", SupportedGitRepo).Error(),
 			newComp: appstudiov1alpha1.Component{
 				ObjectMeta: v1.ObjectMeta{
 					Name: "test-component",
@@ -113,8 +121,9 @@ func TestComponentCreateValidatingWebhook(t *testing.T) {
 			},
 		},
 		{
-			name: "valid component with invalid git scheme src",
-			err:  "invalid URI for request" + appstudiov1alpha1.InvalidSchemeGitSourceURL,
+			name:   "valid component with invalid git scheme src",
+			client: fakeClient,
+			err:    "invalid URI for request" + appstudiov1alpha1.InvalidSchemeGitSourceURL,
 			newComp: appstudiov1alpha1.Component{
 				ObjectMeta: v1.ObjectMeta{
 					Name: "test-component",
@@ -133,7 +142,8 @@ func TestComponentCreateValidatingWebhook(t *testing.T) {
 			},
 		},
 		{
-			name: "valid component with container image",
+			name:   "valid component with container image",
+			client: fakeClient,
 			newComp: appstudiov1alpha1.Component{
 				ObjectMeta: v1.ObjectMeta{
 					Name: "test-component",
@@ -145,10 +155,30 @@ func TestComponentCreateValidatingWebhook(t *testing.T) {
 				},
 			},
 		},
+		{
+			name:   "validate succeeds but updating nudged component fails",
+			client: fakeErrorClient,
+			err:    "some error",
+			newComp: appstudiov1alpha1.Component{
+				ObjectMeta: v1.ObjectMeta{
+					Name:      "test-component",
+					Namespace: "default",
+				},
+				Spec: appstudiov1alpha1.ComponentSpec{
+					ComponentName:  "component1",
+					Application:    "application",
+					ContainerImage: "image",
+					BuildNudgesRef: []string{
+						"alternating-error-comp",
+					},
+				},
+			},
+		},
 	}
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
 			compWebhook := ComponentWebhook{
+				client: test.client,
 				log: zap.New(zap.UseFlagOptions(&zap.Options{
 					Development: true,
 					TimeEncoder: zapcore.ISO8601TimeEncoder,
@@ -166,6 +196,8 @@ func TestComponentCreateValidatingWebhook(t *testing.T) {
 }
 
 func TestComponentUpdateValidatingWebhook(t *testing.T) {
+	fakeClient := setUpComponents(t)
+	fakeErrorClient := setUpComponentsForFakeErrorClient(t)
 
 	originalComponent := appstudiov1alpha1.Component{
 		ObjectMeta: v1.ObjectMeta{
@@ -187,12 +219,14 @@ func TestComponentUpdateValidatingWebhook(t *testing.T) {
 
 	tests := []struct {
 		name       string
+		client     client.Client
 		updateComp appstudiov1alpha1.Component
 		err        string
 	}{
 		{
-			name: "component name cannot be changed",
-			err:  fmt.Errorf(appstudiov1alpha1.ComponentNameUpdateError, "component1").Error(),
+			name:   "component name cannot be changed",
+			client: fakeClient,
+			err:    fmt.Errorf(appstudiov1alpha1.ComponentNameUpdateError, "component1").Error(),
 			updateComp: appstudiov1alpha1.Component{
 				Spec: appstudiov1alpha1.ComponentSpec{
 					ComponentName: "component1",
@@ -200,8 +234,9 @@ func TestComponentUpdateValidatingWebhook(t *testing.T) {
 			},
 		},
 		{
-			name: "application name cannot be changed",
-			err:  fmt.Errorf(appstudiov1alpha1.ApplicationNameUpdateError, "application1").Error(),
+			name:   "application name cannot be changed",
+			client: fakeClient,
+			err:    fmt.Errorf(appstudiov1alpha1.ApplicationNameUpdateError, "application1").Error(),
 			updateComp: appstudiov1alpha1.Component{
 				Spec: appstudiov1alpha1.ComponentSpec{
 					ComponentName: "component",
@@ -210,7 +245,8 @@ func TestComponentUpdateValidatingWebhook(t *testing.T) {
 			},
 		},
 		{
-			name: "git src url cannot be changed",
+			name:   "git src url cannot be changed",
+			client: fakeClient,
 			err: fmt.Errorf(appstudiov1alpha1.GitSourceUpdateError, appstudiov1alpha1.GitSource{
 				URL:     "http://link1",
 				Context: "context",
@@ -231,7 +267,8 @@ func TestComponentUpdateValidatingWebhook(t *testing.T) {
 			},
 		},
 		{
-			name: "non-url git source can be changed",
+			name:   "non-url git source can be changed",
+			client: fakeClient,
 			updateComp: appstudiov1alpha1.Component{
 				Spec: appstudiov1alpha1.ComponentSpec{
 					ComponentName: "component",
@@ -249,7 +286,8 @@ func TestComponentUpdateValidatingWebhook(t *testing.T) {
 			},
 		},
 		{
-			name: "container image can be changed",
+			name:   "container image can be changed",
+			client: fakeClient,
 			updateComp: appstudiov1alpha1.Component{
 				Spec: appstudiov1alpha1.ComponentSpec{
 					ComponentName:  "component",
@@ -258,11 +296,34 @@ func TestComponentUpdateValidatingWebhook(t *testing.T) {
 				},
 			},
 		},
+		{
+			name:   "validate succeeds but updating nudged component fails",
+			client: fakeErrorClient,
+			err:    "some error",
+			updateComp: appstudiov1alpha1.Component{
+				ObjectMeta: v1.ObjectMeta{
+					Name:      "component",
+					Namespace: "default",
+				},
+				Spec: appstudiov1alpha1.ComponentSpec{
+					ComponentName:  "component",
+					Application:    "application",
+					ContainerImage: "image1",
+					BuildNudgesRef: []string{
+						"alternating-error-comp",
+					},
+				},
+			},
+		},
 	}
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
 			if test.err == "" {
 				originalComponent = appstudiov1alpha1.Component{
+					ObjectMeta: v1.ObjectMeta{
+						Name:      "component",
+						Namespace: "default",
+					},
 					Spec: appstudiov1alpha1.ComponentSpec{
 						ComponentName:  "component",
 						Application:    "application",
@@ -279,6 +340,7 @@ func TestComponentUpdateValidatingWebhook(t *testing.T) {
 			}
 			var err error
 			compWebhook := ComponentWebhook{
+				client: test.client,
 				log: zap.New(zap.UseFlagOptions(&zap.Options{
 					Development: true,
 					TimeEncoder: zapcore.ISO8601TimeEncoder,
@@ -329,7 +391,7 @@ func TestComponentDeleteValidatingWebhook(t *testing.T) {
 
 func TestValidateBuildNudgesRefGraph(t *testing.T) {
 	fakeClient := setUpComponents(t)
-	fakeErrorClient := NewFakeErrorClient(t)
+	fakeErrorClient := setUpComponentsForFakeErrorClient(t)
 
 	compWebhook := ComponentWebhook{
 		client: fakeClient,
@@ -398,6 +460,169 @@ func TestValidateBuildNudgesRefGraph(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestUpdateNudgedComponentStatus(t *testing.T) {
+	fakeClient := setUpComponents(t)
+	fakeErrorClient := setUpComponentsForFakeErrorClient(t)
+
+	compWebhook := ComponentWebhook{
+		client: fakeClient,
+		log: zap.New(zap.UseFlagOptions(&zap.Options{
+			Development: true,
+			TimeEncoder: zapcore.ISO8601TimeEncoder,
+		})),
+	}
+
+	errCompWebhook := ComponentWebhook{
+		client: fakeErrorClient,
+		log: zap.New(zap.UseFlagOptions(&zap.Options{
+			Development: true,
+			TimeEncoder: zapcore.ISO8601TimeEncoder,
+		})),
+	}
+
+	tests := []struct {
+		name     string
+		compName string
+		webhook  ComponentWebhook
+		errStr   string
+	}{
+		{
+			name:     "simple component relationship",
+			compName: "component1",
+			webhook:  compWebhook,
+		},
+		{
+			name:     "multiple nudged components",
+			compName: "component10",
+			webhook:  compWebhook,
+		},
+		{
+			name:     "simple component relationship, errors retrieving resource",
+			compName: "component1",
+			webhook:  errCompWebhook,
+			errStr:   "some error",
+		},
+		{
+			name:     "component not found, shouldn't error out",
+			compName: "nudged-component-missing",
+			webhook:  compWebhook,
+		},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			component := &appstudiov1alpha1.Component{}
+			fakeClient.Get(context.Background(), types.NamespacedName{Namespace: "default", Name: test.compName}, component)
+
+			err := test.webhook.UpdateNudgedComponentStatus(context.Background(), component)
+			var errStr string
+			if err != nil {
+				errStr = err.Error()
+			}
+			if errStr != test.errStr {
+				t.Errorf("TestComponentDefault() unexpected error value: want: %v, got: %v", test.errStr, errStr)
+			}
+
+			// For each nudged component now, retrieve it, and validate that its status was updated
+			if test.errStr != "" {
+				for _, nudgedCompName := range component.Spec.BuildNudgesRef {
+					nudgedComp := &appstudiov1alpha1.Component{}
+					err = fakeClient.Get(context.Background(), types.NamespacedName{Namespace: "default", Name: nudgedCompName}, nudgedComp)
+					if err != nil {
+						t.Errorf("TestComponentDefault(): unexpected error: %v", err)
+					}
+					if len(nudgedComp.Status.BuildNudgedBy) != 1 {
+						t.Errorf("TestComponentDefault(): status.BuildNudgedBy unexpected length: want: %v, got: %v", 1, len(nudgedComp.Status.BuildNudgedBy))
+					}
+					if nudgedComp.Status.BuildNudgedBy[0] != component.Name {
+						t.Errorf("TestComponentDefault(): status.BuildNudgedBy[0] unexpected value. want: %v, got %v", component.Name, nudgedComp.Status.BuildNudgedBy[0])
+					}
+				}
+
+				// Additional test scenario for this test case:
+				// Adding multiple nudging components to a nudged component
+				if test.name == "multiple nudged components" {
+					// Add another component (which in turn nudges component13) and verify their statuses get updated too
+					newComp := &appstudiov1alpha1.Component{
+						ObjectMeta: v1.ObjectMeta{
+							Name:      "new-comp",
+							Namespace: "default",
+						},
+						TypeMeta: v1.TypeMeta{
+							APIVersion: "appstudio.redhat.com/v1alpha1",
+							Kind:       "Component",
+						},
+						Spec: appstudiov1alpha1.ComponentSpec{
+							ComponentName:  "new-comp",
+							Application:    "application1",
+							BuildNudgesRef: []string{"component13"},
+						},
+					}
+					err = fakeClient.Create(ctx, newComp)
+					require.NoError(t, err)
+
+					// Now call the update function for both resources
+					err = test.webhook.UpdateNudgedComponentStatus(context.Background(), newComp)
+					require.NoError(t, err)
+
+					// Retrieve the component that the new component nudged (component13) and validate its status was updated
+					comp13 := &appstudiov1alpha1.Component{}
+					err := test.webhook.client.Get(ctx, types.NamespacedName{Namespace: "default", Name: "component13"}, comp13)
+					require.NoError(t, err)
+					if len(comp13.Status.BuildNudgedBy) != 2 {
+						t.Errorf("TestComponentDefault(): status.BuildNudgedBy unexpected length: want: %v, got: %v", 2, len(newComp.Status.BuildNudgedBy))
+					}
+					if comp13.Status.BuildNudgedBy[0] != "component10" || comp13.Status.BuildNudgedBy[1] != "new-comp" {
+						t.Errorf("TestComponentDefault(): unexpected status.BuildNudgedBy values. want: %v, got: %v", []string{"component10", "new-comp"}, comp13.Status.BuildNudgedBy)
+					}
+
+				}
+
+			}
+		})
+	}
+}
+
+// setUpComponentsForFakeErrorClient creates a fake controller-runtime Kube client with components to test error scenarios
+func setUpComponentsForFakeErrorClient(t *testing.T) *FakeClient {
+	fakeErrorClient := NewFakeErrorClient(t)
+	component1 := appstudiov1alpha1.Component{
+		ObjectMeta: v1.ObjectMeta{
+			Name:      "component1",
+			Namespace: "default",
+		},
+		TypeMeta: v1.TypeMeta{
+			APIVersion: "appstudio.redhat.com/v1alpha1",
+			Kind:       "Component",
+		},
+		Spec: appstudiov1alpha1.ComponentSpec{
+			ComponentName:  "component1",
+			Application:    "application",
+			BuildNudgesRef: []string{"alternating-error-comp"},
+		},
+	}
+	err := fakeErrorClient.Create(context.Background(), &component1)
+	require.NoError(t, err)
+
+	component2 := appstudiov1alpha1.Component{
+		ObjectMeta: v1.ObjectMeta{
+			Name:      "alternating-error-comp",
+			Namespace: "default",
+		},
+		TypeMeta: v1.TypeMeta{
+			APIVersion: "appstudio.redhat.com/v1alpha1",
+			Kind:       "Component",
+		},
+		Spec: appstudiov1alpha1.ComponentSpec{
+			ComponentName: "alternating-error-comp",
+			Application:   "application",
+		},
+	}
+	err = fakeErrorClient.Create(context.Background(), &component2)
+	require.NoError(t, err)
+
+	return fakeErrorClient
 }
 
 // setUpComponents creates a fake controller-runtime Kube client with components to test the build-nudges-ref field
@@ -639,12 +864,113 @@ func setUpComponents(t *testing.T) client.WithWatch {
 	err = fakeClient.Create(context.Background(), &component9)
 	require.NoError(t, err)
 
+	component10 := appstudiov1alpha1.Component{
+		ObjectMeta: v1.ObjectMeta{
+			Name:      "component10",
+			Namespace: "default",
+		},
+		TypeMeta: v1.TypeMeta{
+			APIVersion: "appstudio.redhat.com/v1alpha1",
+			Kind:       "Component",
+		},
+		Spec: appstudiov1alpha1.ComponentSpec{
+			ComponentName:  "component10",
+			Application:    "application1",
+			BuildNudgesRef: []string{"component11", "component12", "component13"},
+		},
+	}
+	err = fakeClient.Create(context.Background(), &component10)
+	require.NoError(t, err)
+
+	component11 := appstudiov1alpha1.Component{
+		ObjectMeta: v1.ObjectMeta{
+			Name:      "component11",
+			Namespace: "default",
+		},
+		TypeMeta: v1.TypeMeta{
+			APIVersion: "appstudio.redhat.com/v1alpha1",
+			Kind:       "Component",
+		},
+		Spec: appstudiov1alpha1.ComponentSpec{
+			ComponentName: "component11",
+			Application:   "application1",
+		},
+	}
+	err = fakeClient.Create(context.Background(), &component11)
+	require.NoError(t, err)
+
+	component12 := appstudiov1alpha1.Component{
+		ObjectMeta: v1.ObjectMeta{
+			Name:      "component12",
+			Namespace: "default",
+		},
+		TypeMeta: v1.TypeMeta{
+			APIVersion: "appstudio.redhat.com/v1alpha1",
+			Kind:       "Component",
+		},
+		Spec: appstudiov1alpha1.ComponentSpec{
+			ComponentName: "component12",
+			Application:   "application1",
+		},
+	}
+	err = fakeClient.Create(context.Background(), &component12)
+	require.NoError(t, err)
+
+	component13 := appstudiov1alpha1.Component{
+		ObjectMeta: v1.ObjectMeta{
+			Name:      "component13",
+			Namespace: "default",
+		},
+		TypeMeta: v1.TypeMeta{
+			APIVersion: "appstudio.redhat.com/v1alpha1",
+			Kind:       "Component",
+		},
+		Spec: appstudiov1alpha1.ComponentSpec{
+			ComponentName: "component13",
+			Application:   "application1",
+		},
+	}
+	err = fakeClient.Create(context.Background(), &component13)
+	require.NoError(t, err)
+
+	nudgedComponentMissing := appstudiov1alpha1.Component{
+		ObjectMeta: v1.ObjectMeta{
+			Name:      "nudged-component-missing",
+			Namespace: "default",
+		},
+		TypeMeta: v1.TypeMeta{
+			APIVersion: "appstudio.redhat.com/v1alpha1",
+			Kind:       "Component",
+		},
+		Spec: appstudiov1alpha1.ComponentSpec{
+			ComponentName:  "nudged-component-missing",
+			Application:    "application1",
+			BuildNudgesRef: []string{"fake-fake"},
+		},
+	}
+	err = fakeClient.Create(context.Background(), &nudgedComponentMissing)
+	require.NoError(t, err)
+
+	return fakeClient
+}
+
+func NewFakeClient(t *testing.T, initObjs ...runtime.Object) client.WithWatch {
+	s := scheme.Scheme
+	err := appstudiov1alpha1.AddToScheme(s)
+	require.NoError(t, err)
+	fakeClient := fake.NewClientBuilder().
+		WithScheme(s).
+		Build()
+
 	return fakeClient
 }
 
 // NewFakeErrorClient returns a fake Kube client whose get method returns an error
 // Currently it always returns an error, but can be modified in the future to selectively return errors
+var errNow bool
+
 func NewFakeErrorClient(t *testing.T, initObjs ...runtime.Object) *FakeClient {
+	errNow = false
 	s := scheme.Scheme
 	err := appstudiov1alpha1.AddToScheme(s)
 	require.NoError(t, err)
@@ -653,6 +979,16 @@ func NewFakeErrorClient(t *testing.T, initObjs ...runtime.Object) *FakeClient {
 		WithRuntimeObjects(initObjs...).
 		Build()
 	return &FakeClient{Client: cl, MockGet: func(ctx context.Context, key types.NamespacedName, obj client.Object, opts ...client.GetOption) error {
+		// When the fake error client is called against a component with this name, it will error out every other call
+		// This is to help test error scenarios where we the Get operation succeeds sometimes, but not always
+		if key.Name == "alternating-error-comp" {
+			if !errNow {
+				errNow = true
+				return cl.Get(ctx, key, obj, opts...)
+			} else if errNow {
+				errNow = false
+			}
+		}
 		return fmt.Errorf("some error")
 	}}
 }
