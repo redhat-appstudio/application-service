@@ -78,6 +78,7 @@ const (
 	applicationFailCounterAnnotation = "applicationFailCounter"
 	maxApplicationFailCount          = 5
 	componentName                    = "Component"
+	forceGenerationAnnotation        = "forceGitopsGeneration"
 )
 
 //+kubebuilder:rbac:groups=appstudio.redhat.com,resources=components,verbs=get;list;watch;create;update;patch;delete
@@ -131,6 +132,8 @@ func (r *ComponentReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 	}
 
 	setCounterAnnotation(applicationFailCounterAnnotation, &component, 0)
+	forceGenerateGitopsResource := getForceGenerateGitopsAnnotation(component)
+	log.Info(fmt.Sprintf("forceGenerateGitopsResource is %v", forceGenerateGitopsResource))
 
 	ghClient, err := r.GitHubTokenClient.GetNewGitHubClient("")
 	if err != nil {
@@ -180,7 +183,7 @@ func (r *ComponentReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 			log.Info(fmt.Sprintf("added the finalizer %v", req.NamespacedName))
 		}
 	} else {
-		if hasApplication.Status.Devfile != "" && len(component.Status.Conditions) > 0 && component.Status.Conditions[len(component.Status.Conditions)-1].Status == metav1.ConditionTrue && containsString(component.GetFinalizers(), compFinalizerName) {
+		if hasApplication.Status.Devfile != "" && (forceGenerateGitopsResource || len(component.Status.Conditions) > 0 && component.Status.Conditions[len(component.Status.Conditions)-1].Status == metav1.ConditionTrue && containsString(component.GetFinalizers(), compFinalizerName)) {
 			// only attempt to finalize and update the gitops repo if an Application is present & the previous Component status is good
 			// A finalizer is present for the Component CR, so make sure we do the necessary cleanup steps
 			metrics.ComponentDeletionTotalReqs.Inc()
@@ -217,7 +220,7 @@ func (r *ComponentReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 	isUpdateConditionPresent := false
 	isGitOpsRegenSuccessful := false
 	for _, condition := range component.Status.Conditions {
-		if condition.Type == "GitOpsResourcesGenerated" && condition.Reason == "GenerateError" && condition.Status == metav1.ConditionFalse {
+		if forceGenerateGitopsResource || (condition.Type == "GitOpsResourcesGenerated" && condition.Reason == "GenerateError" && condition.Status == metav1.ConditionFalse) {
 			log.Info(fmt.Sprintf("Re-attempting GitOps generation for %s", component.Name))
 			// Parse the Component Devfile
 			compDevfileData, err := cdqanalysis.ParseDevfileWithParserArgs(&devfileParser.ParserArgs{Data: []byte(component.Status.Devfile), Token: gitToken})
@@ -238,6 +241,7 @@ func (r *ComponentReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 				if err != nil {
 					return ctrl.Result{}, err
 				}
+				setForceGenerateGitopsAnnotation(&component, "false")
 				isGitOpsRegenSuccessful = true
 			}
 		} else if condition.Type == "Updated" && condition.Reason == "Error" && condition.Status == metav1.ConditionFalse {
@@ -753,4 +757,21 @@ func (r *ComponentReconciler) incrementCounterAndRequeue(log logr.Logger, ctx co
 		}
 		return ctrl.Result{}, componentErr
 	}
+}
+
+// getForceGenerateGitopsAnnotation gets the internal annotation on the component whether to force generate the gitops resource
+func getForceGenerateGitopsAnnotation(component appstudiov1alpha1.Component) bool {
+	compAnnotations := component.GetAnnotations()
+	if compAnnotations != nil && compAnnotations[forceGenerationAnnotation] == "true" {
+		return true
+	}
+	return false
+}
+
+func setForceGenerateGitopsAnnotation(component *appstudiov1alpha1.Component, value string) {
+	compAnnotations := component.GetAnnotations()
+	if compAnnotations == nil {
+		component.Annotations = make(map[string]string)
+	}
+	component.Annotations[forceGenerationAnnotation] = value
 }
