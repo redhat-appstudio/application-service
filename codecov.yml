@@ -11,3 +11,13 @@ ignore:
   - "pkg/github/mock.go" # mock file for testing
   - "pkg/github/token_mock.go" # mock file for testing
   - "contracts/" # contract testing files
+coverage:
+    status:
+        # Allows coverage to drop by a 2% when compared against the base commit.
+        project:
+            default:
+                target: auto
+                threshold: 2%
+        patch:
+            default:
+                informational: true
