@@ -156,7 +156,7 @@ func (r *ApplicationReconciler) Reconcile(ctx context.Context, req ctrl.Request)
 
 				controllerutil.RemoveFinalizer(&currentApplication, appFinalizerName)
 
-				err = r.Update(ctx, &application)
+				err = r.Update(ctx, &currentApplication)
 				return err
 			})
 			if err != nil {
