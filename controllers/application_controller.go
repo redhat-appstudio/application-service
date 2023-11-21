@@ -119,10 +119,16 @@ func (r *ApplicationReconciler) Reconcile(ctx context.Context, req ctrl.Request)
 			if finalizeErr := r.Finalize(ctx, &application, ghClient); finalizeErr != nil {
 				finalizeCounter, err := getCounterAnnotation(finalizeCount, &application)
 				if err == nil && finalizeCounter < 5 {
-					// The Finalize function failed, so increment the finalize count and return
-					setCounterAnnotation(finalizeCount, &application, finalizeCounter+1)
 					err := retry.RetryOnConflict(retry.DefaultRetry, func() error {
-						err := r.Update(ctx, &application)
+						var currentApplication appstudiov1alpha1.Application
+						err := r.Get(ctx, req.NamespacedName, &currentApplication)
+						if err != nil {
+							return err
+						}
+						// The Finalize function failed, so increment the finalize count and return
+						setCounterAnnotation(finalizeCount, &currentApplication, finalizeCounter+1)
+
+						err = r.Update(ctx, &currentApplication)
 						return err
 					})
 					if err != nil {
@@ -141,9 +147,16 @@ func (r *ApplicationReconciler) Reconcile(ctx context.Context, req ctrl.Request)
 			}
 
 			// remove the finalizer from the list and update it.
-			controllerutil.RemoveFinalizer(&application, appFinalizerName)
 			err := retry.RetryOnConflict(retry.DefaultRetry, func() error {
-				err := r.Update(ctx, &application)
+				var currentApplication appstudiov1alpha1.Application
+				err := r.Get(ctx, req.NamespacedName, &currentApplication)
+				if err != nil {
+					return err
+				}
+
+				controllerutil.RemoveFinalizer(&application, appFinalizerName)
+
+				err = r.Update(ctx, &application)
 				return err
 			})
 			if err != nil {
