@@ -33,6 +33,7 @@ import (
 
 	k8sErrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/client-go/util/retry"
 	"k8s.io/client-go/util/workqueue"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/builder"
@@ -115,12 +116,15 @@ func (r *ApplicationReconciler) Reconcile(ctx context.Context, req ctrl.Request)
 		if containsString(application.GetFinalizers(), appFinalizerName) {
 			metrics.ApplicationDeletionTotalReqs.Inc()
 			// A finalizer is present for the Application CR, so make sure we do the necessary cleanup steps
-			if err := r.Finalize(ctx, &application, ghClient); err != nil {
+			if finalizeErr := r.Finalize(ctx, &application, ghClient); finalizeErr != nil {
 				finalizeCounter, err := getCounterAnnotation(finalizeCount, &application)
 				if err == nil && finalizeCounter < 5 {
 					// The Finalize function failed, so increment the finalize count and return
 					setCounterAnnotation(finalizeCount, &application, finalizeCounter+1)
-					err := r.Update(ctx, &application)
+					err := retry.RetryOnConflict(retry.DefaultRetry, func() error {
+						err := r.Update(ctx, &application)
+						return err
+					})
 					if err != nil {
 						log.Error(err, "Error incrementing finalizer count on resource")
 					}
@@ -128,9 +132,9 @@ func (r *ApplicationReconciler) Reconcile(ctx context.Context, req ctrl.Request)
 				} else {
 					// if fail to delete the external dependency here, log the error, but don't return error
 					// Don't want to get stuck in a cycle of repeatedly trying to delete the repository and failing
-					log.Error(err, "Unable to delete GitOps repository for application %v in namespace %v", application.GetName(), application.GetNamespace())
 
 					// Increment the Application deletion failed metric as the application delete did not fully succeed
+					log.Error(finalizeErr, "Unable to delete GitOps repository for application")
 					metrics.ApplicationDeletionFailed.Inc()
 				}
 
@@ -138,7 +142,11 @@ func (r *ApplicationReconciler) Reconcile(ctx context.Context, req ctrl.Request)
 
 			// remove the finalizer from the list and update it.
 			controllerutil.RemoveFinalizer(&application, appFinalizerName)
-			if err := r.Update(ctx, &application); err != nil {
+			err := retry.RetryOnConflict(retry.DefaultRetry, func() error {
+				err := r.Update(ctx, &application)
+				return err
+			})
+			if err != nil {
 				return ctrl.Result{}, err
 			} else {
 				metrics.ApplicationDeletionSucceeded.Inc()
