@@ -17,7 +17,13 @@ jobs:
           go-version: 1.19
       - name: Run Go Tests
         run: |
+          # Temporarily adding a pact-go installation. 
+          # It should be gone once https://issues.redhat.com/browse/HAC-4879 is solved
+          go get github.com/pact-foundation/pact-go/v2@2.x.x
+          go install github.com/pact-foundation/pact-go/v2@2.x.x
+          sudo /home/runner/go/bin/pact-go -l DEBUG install 
+
           go mod download
-          make unit-tests && make cdq-analysis-unit-tests
+          make test
       - name: Codecov
         uses: codecov/codecov-action@v2.1.0
