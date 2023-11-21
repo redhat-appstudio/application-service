@@ -15,7 +15,9 @@ jobs:
         uses: actions/setup-go@v2
         with:
           go-version: 1.19
-      - name: Run tests
-        run: make test
+      - name: Run Go Tests
+        run: |
+          go mod download
+          make unit-tests && make cdq-analysis-unit-tests
       - name: Codecov
         uses: codecov/codecov-action@v2.1.0
