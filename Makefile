@@ -45,6 +45,7 @@ DEVFILE_REGISTRY_URL ?= https://registry.devfile.io
 # ENVIRONMENT is used for feature flagging.  For testing, values should be development, staging, and production
 ENVIRONMENT ?= ""
 ENABLE_WEBHOOKS ?= true
+ENABLE_WEBHOOK_HTTP2 ?=false
 
 APPLICATION_API_CRD = https://raw.githubusercontent.com/redhat-appstudio/application-api/main/manifests/application-api-customresourcedefinitions.yaml
 
@@ -169,7 +170,7 @@ run: manifests generate fmt vet ## Run a controller from your host.
 	go run ./main.go
 
 docker-build: test ## Build docker image with the manager.
-	docker build --build-arg ENABLE_WEBHOOKS=${ENABLE_WEBHOOKS} -t ${IMG} .
+	docker build --build-arg ENABLE_WEBHOOKS=${ENABLE_WEBHOOKS} --build-arg ENABLE_WEBHOOK_HTTP2=${ENABLE_WEBHOOK_HTTP2} -t ${IMG} .
 
 docker-push: ## Push docker image with the manager.
 	docker push ${IMG}

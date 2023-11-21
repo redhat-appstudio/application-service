@@ -131,14 +131,14 @@ func (r *ComponentReconciler) updateComponentDevfileModel(req ctrl.Request, hasC
 			for i, devfileEnv := range currentENV {
 				if devfileEnv.Name == name {
 					isPresent = true
-					log.Info(fmt.Sprintf("setting devfileComponent %s env %s value to %v", kubernetesComponent.Name, devfileEnv.Name, value))
+					log.Info(fmt.Sprintf("setting devfileComponent %s env %s", kubernetesComponent.Name, devfileEnv.Name))
 					devfileEnv.Value = value
 					currentENV[i] = devfileEnv
 				}
 			}
 
 			if !isPresent {
-				log.Info(fmt.Sprintf("appending to devfile component %s env %s : %v", kubernetesComponent.Name, name, value))
+				log.Info(fmt.Sprintf("appending to devfile component %s env %s", kubernetesComponent.Name, name))
 				currentENV = append(currentENV, env)
 			}
 			var err error
@@ -309,7 +309,7 @@ func (r *ApplicationReconciler) getAndAddComponentApplicationsToModel(log logr.L
 	return nil
 }
 
-func (r *ComponentDetectionQueryReconciler) updateComponentStub(req ctrl.Request, ctx context.Context, componentDetectionQuery *appstudiov1alpha1.ComponentDetectionQuery, devfilesMap map[string][]byte, devfilesURLMap map[string]string, dockerfileContextMap map[string]string, componentPortsMap map[string][]int, token string) error {
+func (r *ComponentDetectionQueryReconciler) updateComponentStub(req ctrl.Request, ctx context.Context, componentDetectionQuery *appstudiov1alpha1.ComponentDetectionQuery, devfilesMap map[string][]byte, devfilesURLMap map[string]string, dockerfileContextMap map[string]string, componentPortsMap map[string][]int) error {
 
 	if componentDetectionQuery == nil {
 		return fmt.Errorf("componentDetectionQuery is nil")
@@ -326,7 +326,7 @@ func (r *ComponentDetectionQueryReconciler) updateComponentStub(req ctrl.Request
 	for context, devfileBytes := range devfilesMap {
 		log.Info(fmt.Sprintf("Currently reading the devfile for context %v", context))
 		// Parse the Component Devfile
-		compDevfileData, err := cdqanalysis.ParseDevfileWithParserArgs(&parser.ParserArgs{Data: devfileBytes, Token: token})
+		compDevfileData, err := cdqanalysis.ParseDevfileWithParserArgs(&parser.ParserArgs{Data: devfileBytes})
 		if err != nil {
 			return err
 		}

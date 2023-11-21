@@ -281,6 +281,17 @@ var _ = Describe("Application validation webhook", func() {
 				return !reflect.DeepEqual(createdHasComp, &appstudiov1alpha1.Component{})
 			}, timeout, interval).Should(BeTrue())
 
+			// Look up the nudged component and verify that the status was appropriately set
+			nudgedCompLookupKey := types.NamespacedName{Name: uniqueHASCompName + "-nudge", Namespace: HASAppNamespace}
+			nudgedComp = &appstudiov1alpha1.Component{}
+			Eventually(func() bool {
+				k8sClient.Get(ctx, nudgedCompLookupKey, nudgedComp)
+				return len(nudgedComp.Status.BuildNudgedBy) != 0
+			}, timeout, interval).Should(BeTrue())
+			buildNudgedByList := nudgedComp.Status.BuildNudgedBy
+			Expect(len(buildNudgedByList)).To(Equal(1))
+			Expect(buildNudgedByList[0] == uniqueHASCompName)
+
 			// Now attempt to update the build-nudges-ref field to an invalid component (different app)
 			createdHasComp.Spec.BuildNudgesRef = []string{uniqueHASCompName + "-new-app"}
 			err = k8sClient.Update(ctx, createdHasComp)

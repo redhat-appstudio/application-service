@@ -43,10 +43,9 @@ type ClonedInfo struct {
 	Fs            afero.Afero // For locally cloned git repos
 }
 
-// CDQInfoClient is a struct that contains the relevant information to 1) clone and search a given git repo for the presence of a devfile or dockerfile and 2) search for matching samples in the devfile
+// CDQInfo is a struct that contains the relevant information to 1) clone and search a given git repo for the presence of a devfile or dockerfile and 2) search for matching samples in the devfile
 // registry if no devfile or dockerfiles are found.
-
-type CDQInfoClient struct {
+type CDQInfo struct {
 	DevfileRegistryURL string
 	GitURL             GitURL
 	ClonedRepo         ClonedInfo
@@ -54,11 +53,39 @@ type CDQInfoClient struct {
 	dockerfilePath     string // A resolved dockerfile
 }
 
-func GetDevfileAndDockerFilePaths(client CDQInfoClient) (string, string) {
+// CDQUtil interface contains all the CDQ utiliy methods that can be implemented by controller and tests
+type CDQUtil interface {
+	// Clone is a method signature to help clone a given repository into a path
+	Clone(k K8sInfoClient, cdqInfo *CDQInfo, namespace, name, context string) error
+
+	// ValidateDevfile is a method signature to help validate the devfile from the given devfile location
+	ValidateDevfile(log logr.Logger, devfileLocation string, token string) (shouldIgnoreDevfile bool, devfileBytes []byte, err error)
+}
+type CDQUtilClient struct {
+}
+
+func NewCDQUtilClient() CDQUtilClient {
+	return CDQUtilClient{}
+}
+
+func GetDevfileAndDockerFilePaths(client CDQInfo) (string, string) {
 	return client.devfilePath, client.dockerfilePath
 }
 
-func (cdqInfo *CDQInfoClient) clone(k K8sInfoClient, namespace, name, context string) error {
+func (cdqUtilClient CDQUtilClient) Clone(k K8sInfoClient, cdqInfo *CDQInfo, namespace, name, context string) error {
+	return clone(k, cdqInfo, namespace, name, context)
+}
+
+func (cdqUtilClient CDQUtilClient) ValidateDevfile(log logr.Logger, devfileLocation string, token string) (shouldIgnoreDevfile bool, devfileBytes []byte, err error) {
+	return validateDevfile(log, devfileLocation, token)
+}
+
+// clones the Git repository into a temporary path and sets the corresponding CDQ Info for the cloned repository
+func clone(k K8sInfoClient, cdqInfo *CDQInfo, namespace, name, context string) error {
+	if cdqInfo == nil {
+		return nil
+	}
+
 	log := k.Log
 	var clonePath, componentPath string
 	var err error
@@ -74,14 +101,14 @@ func (cdqInfo *CDQInfoClient) clone(k K8sInfoClient, namespace, name, context st
 	clonePath, err = CreateTempPath(name, Fs)
 	if err != nil {
 		log.Error(err, fmt.Sprintf("Unable to create a temp path %s for cloning %v", clonePath, namespace))
-		k.SendBackDetectionResult(devfilesMap, devfilesURLMap, dockerfileContextMap, componentPortsMap, revision, name, namespace, err)
+		k.SendBackDetectionResult(devfilesMap, devfilesURLMap, dockerfileContextMap, componentPortsMap, revision, name, namespace, clonePath, Fs, err)
 		return err
 	}
 
 	err = CloneRepo(clonePath, GitURL{RepoURL: repoURL, Revision: revision, Token: gitToken})
 	if err != nil {
 		log.Error(err, fmt.Sprintf("Unable to clone repo %s to path %s, exiting reconcile loop %v", repoURL, clonePath, namespace))
-		k.SendBackDetectionResult(devfilesMap, devfilesURLMap, dockerfileContextMap, componentPortsMap, revision, name, namespace, err)
+		k.SendBackDetectionResult(devfilesMap, devfilesURLMap, dockerfileContextMap, componentPortsMap, revision, name, namespace, clonePath, Fs, err)
 		return err
 	}
 	log.Info(fmt.Sprintf("cloned from %s to path %s... %v", repoURL, clonePath, namespace))
@@ -94,7 +121,7 @@ func (cdqInfo *CDQInfoClient) clone(k K8sInfoClient, namespace, name, context st
 		revision, err = GetBranchFromRepo(componentPath)
 		if err != nil {
 			log.Error(err, fmt.Sprintf("Unable to get branch from cloned repo for component path %s, exiting reconcile loop %v", componentPath, namespace))
-			k.SendBackDetectionResult(devfilesMap, devfilesURLMap, dockerfileContextMap, componentPortsMap, revision, name, namespace, err)
+			k.SendBackDetectionResult(devfilesMap, devfilesURLMap, dockerfileContextMap, componentPortsMap, revision, name, namespace, clonePath, Fs, err)
 			return err
 		}
 	}
@@ -103,21 +130,23 @@ func (cdqInfo *CDQInfoClient) clone(k K8sInfoClient, namespace, name, context st
 	cdqInfo.ClonedRepo.ComponentPath = componentPath
 	cdqInfo.GitURL.Revision = revision
 	return nil
-
 }
 
-// CDQ analyzer
-// return values are for testing purpose
-func CloneAndAnalyze(k K8sInfoClient, namespace, name, context string, cdqInfo *CDQInfoClient) (map[string][]byte, map[string]string, map[string]string, map[string][]int, string, error) {
+// CloneAndAnalyze clones and analyzes the Git repo with Alizer if necessary and returns
+// devfilesMap, devfilesURLMap, dockerfileContextMap, componentPortsMap, revision and an error
+func CloneAndAnalyze(k K8sInfoClient, namespace, name, context string, cdqInfo *CDQInfo, cdqUtil CDQUtil) (devfilesMap map[string][]byte, devfilesURLMap map[string]string, dockerfileContextMap map[string]string, componentPortsMap map[string][]int, revision string, err error) {
+	if cdqInfo == nil {
+		return nil, nil, nil, nil, "", fmt.Errorf("CDQ cannot clone and analyze because no information was passed to it")
+	}
+
 	log := k.Log
 	var clonePath, componentPath string
 	alizerClient := AlizerClient{}
-	devfilesMap := make(map[string][]byte)
-	devfilesURLMap := make(map[string]string)
-	dockerfileContextMap := make(map[string]string)
-	componentPortsMap := make(map[string][]int)
+	devfilesMap = make(map[string][]byte)
+	devfilesURLMap = make(map[string]string)
+	dockerfileContextMap = make(map[string]string)
+	componentPortsMap = make(map[string][]int)
 	var Fs afero.Afero
-	var err error
 
 	var components []model.Component
 
@@ -125,7 +154,7 @@ func CloneAndAnalyze(k K8sInfoClient, namespace, name, context string, cdqInfo *
 	gitToken := cdqInfo.GitURL.Token
 	registryURL := cdqInfo.DevfileRegistryURL
 
-	err = cdqInfo.clone(k, namespace, name, context)
+	err = cdqUtil.Clone(k, cdqInfo, namespace, name, context)
 	if err != nil {
 		return nil, nil, nil, nil, "", err
 	}
@@ -149,7 +178,7 @@ func CloneAndAnalyze(k K8sInfoClient, namespace, name, context string, cdqInfo *
 	Fs = cdqInfo.ClonedRepo.Fs
 	componentPath = cdqInfo.ClonedRepo.ComponentPath
 	clonePath = cdqInfo.ClonedRepo.ClonedPath
-	revision := cdqInfo.GitURL.Revision
+	revision = cdqInfo.GitURL.Revision
 	devfilePath := cdqInfo.devfilePath
 	dockerfilePath := cdqInfo.dockerfilePath
 
@@ -166,14 +195,14 @@ func CloneAndAnalyze(k K8sInfoClient, namespace, name, context string, cdqInfo *
 		log.Info(fmt.Sprintf("Updating the git link to access devfile: %s ", updatedLink))
 		if err != nil {
 			log.Error(err, fmt.Sprintf("Unable to update the devfile git link for CDQ %v... %v", name, namespace))
-			k.SendBackDetectionResult(devfilesMap, devfilesURLMap, dockerfileContextMap, componentPortsMap, revision, name, namespace, err)
+			k.SendBackDetectionResult(devfilesMap, devfilesURLMap, dockerfileContextMap, componentPortsMap, revision, name, namespace, clonePath, Fs, err)
 			return nil, nil, nil, nil, "", err
 		}
 
-		shouldIgnoreDevfile, devfileBytes, err := ValidateDevfile(log, updatedLink, gitToken)
+		shouldIgnoreDevfile, devfileBytes, err := cdqUtil.ValidateDevfile(log, updatedLink, gitToken)
 		if err != nil {
 			retErr := &InvalidDevfile{Err: err}
-			k.SendBackDetectionResult(devfilesMap, devfilesURLMap, dockerfileContextMap, componentPortsMap, revision, name, namespace, retErr)
+			k.SendBackDetectionResult(devfilesMap, devfilesURLMap, dockerfileContextMap, componentPortsMap, revision, name, namespace, clonePath, Fs, retErr)
 			return nil, nil, nil, nil, "", retErr
 		}
 		if shouldIgnoreDevfile {
@@ -197,7 +226,7 @@ func CloneAndAnalyze(k K8sInfoClient, namespace, name, context string, cdqInfo *
 			components, err = alizerClient.DetectComponents(componentPath)
 			if err != nil {
 				log.Error(err, fmt.Sprintf("Unable to detect components using Alizer for repo %v, under path %v... %v ", repoURL, componentPath, namespace))
-				k.SendBackDetectionResult(devfilesMap, devfilesURLMap, dockerfileContextMap, componentPortsMap, revision, name, namespace, err)
+				k.SendBackDetectionResult(devfilesMap, devfilesURLMap, dockerfileContextMap, componentPortsMap, revision, name, namespace, clonePath, Fs, err)
 				return nil, nil, nil, nil, "", err
 			}
 			log.Info(fmt.Sprintf("components detected %v... %v", components, namespace))
@@ -213,40 +242,38 @@ func CloneAndAnalyze(k K8sInfoClient, namespace, name, context string, cdqInfo *
 	// Logic to read multiple components in from git
 	if isMultiComponent {
 		log.Info(fmt.Sprintf("Since this is a multi-component, attempt will be made to read only level 1 dir for devfiles... %v", namespace))
-		devfilesMap, devfilesURLMap, dockerfileContextMap, componentPortsMap, err = ScanRepo(log, alizerClient, componentPath, context, *cdqInfo)
+		devfilesMap, devfilesURLMap, dockerfileContextMap, componentPortsMap, err = ScanRepo(log, alizerClient, componentPath, context, *cdqInfo, cdqUtil)
 		if err != nil {
 			if _, ok := err.(*NoDevfileFound); !ok {
 				log.Error(err, fmt.Sprintf("Unable to find devfile(s) in repo %s due to an error %s, exiting reconcile loop %v", repoURL, err.Error(), namespace))
-				k.SendBackDetectionResult(devfilesMap, devfilesURLMap, dockerfileContextMap, componentPortsMap, revision, name, namespace, err)
+				k.SendBackDetectionResult(devfilesMap, devfilesURLMap, dockerfileContextMap, componentPortsMap, revision, name, namespace, clonePath, Fs, err)
 				return nil, nil, nil, nil, "", err
 			}
 		}
 	} else {
 		log.Info(fmt.Sprintf("Since this is not a multi-component, attempt will be made to read devfile at the root dir... %v", namespace))
-		err := AnalyzePath(log, alizerClient, componentPath, context, registryURL, devfilesMap, devfilesURLMap, dockerfileContextMap, componentPortsMap, isDevfilePresent, isDockerfilePresent, gitToken)
+		err := AnalyzePath(log, alizerClient, componentPath, context, registryURL, devfilesMap, devfilesURLMap, dockerfileContextMap, componentPortsMap, isDevfilePresent, isDockerfilePresent)
 		if err != nil {
 			log.Error(err, fmt.Sprintf("Unable to analyze path %s for a devfile, Dockerfile or Containerfile %v", componentPath, namespace))
-			k.SendBackDetectionResult(devfilesMap, devfilesURLMap, dockerfileContextMap, componentPortsMap, revision, name, namespace, err)
+			k.SendBackDetectionResult(devfilesMap, devfilesURLMap, dockerfileContextMap, componentPortsMap, revision, name, namespace, clonePath, Fs, err)
 			return nil, nil, nil, nil, "", err
 		}
 	}
 
-	if isExist, _ := IsExisting(Fs, clonePath); isExist {
-		if err := Fs.RemoveAll(clonePath); err != nil {
-			log.Error(err, fmt.Sprintf("Unable to remove the clonepath %s %v", clonePath, namespace))
-			k.SendBackDetectionResult(devfilesMap, devfilesURLMap, dockerfileContextMap, componentPortsMap, revision, name, namespace, err)
-			return nil, nil, nil, nil, "", err
-		}
-	}
-
-	k.SendBackDetectionResult(devfilesMap, devfilesURLMap, dockerfileContextMap, componentPortsMap, revision, name, namespace, nil)
+	k.SendBackDetectionResult(devfilesMap, devfilesURLMap, dockerfileContextMap, componentPortsMap, revision, name, namespace, clonePath, Fs, nil)
 	return devfilesMap, devfilesURLMap, dockerfileContextMap, componentPortsMap, revision, nil
 }
 
-func (k K8sInfoClient) SendBackDetectionResult(devfilesMap map[string][]byte, devfilesURLMap map[string]string, dockerfileContextMap map[string]string, componentPortsMap map[string][]int, revision, name, namespace string, completeError error) {
+func (k K8sInfoClient) SendBackDetectionResult(devfilesMap map[string][]byte, devfilesURLMap map[string]string, dockerfileContextMap map[string]string, componentPortsMap map[string][]int, revision, name, namespace, clonePath string, Fs afero.Afero, completeError error) {
 	log := k.Log
 	if !k.CreateK8sJob {
 		log.Info("Skip creating the job...")
+		// remove the clone path after cdq
+		if isExist, _ := IsExisting(Fs, clonePath); isExist {
+			if err := Fs.RemoveAll(clonePath); err != nil {
+				log.Error(err, fmt.Sprintf("Unable to remove the clonepath %s %v", clonePath, namespace))
+			}
+		}
 		return
 	}
 	log.Info(fmt.Sprintf("Sending back result, devfilesMap %v,devfilesURLMap %v, dockerfileContextMap %v, componentPortsMap %v, error %v ... %v", devfilesMap, devfilesURLMap, dockerfileContextMap, componentPortsMap, completeError, namespace))

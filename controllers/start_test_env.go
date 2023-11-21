@@ -56,7 +56,7 @@ func SetupTestEnv() (client.Client, *envtest.Environment, context.Context, conte
 	logf.SetLogger(zap.New(zap.WriteTo(ginkgo.GinkgoWriter), zap.UseDevMode(true)))
 
 	ctx, cancel = context.WithCancel(context.TODO())
-	applicationAPIDepVersion := "v0.0.0-20230616144210-9dad8e40e3ed"
+	applicationAPIDepVersion := "v0.0.0-20231016183051-2dde965fce17"
 	spiAPIDepVersion := "v0.2023.22-0.20230713080056-eae17aa8c172"
 
 	ginkgo.By("bootstrapping test environment")
@@ -132,6 +132,7 @@ func SetupTestEnv() (client.Client, *envtest.Environment, context.Context, conte
 		Config:             cfg,
 		RunKubernetesJob:   true,
 		CdqAnalysisImage:   cdqAnalysisImage,
+		CDQUtil:            cdqanalysis.NewCDQUtilMockClient(),
 	}).SetupWithManager(ctx, k8sManager)
 	gomega.Expect(err).ToNot(gomega.HaveOccurred())
 

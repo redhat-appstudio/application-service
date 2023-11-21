@@ -21,6 +21,7 @@ import (
 	"fmt"
 	"path/filepath"
 	"reflect"
+	"strings"
 
 	"github.com/prometheus/client_golang/prometheus"
 	cdqanalysis "github.com/redhat-appstudio/application-service/cdq-analysis/pkg"
@@ -373,10 +374,24 @@ func (r *SnapshotEnvironmentBindingReconciler) Reconcile(ctx context.Context, re
 		metrics.ControllerGitRequest.With(prometheus.Labels{"controller": asebName, "tokenName": ghClient.TokenName, "operation": "GenerateOverlaysAndPush"}).Inc()
 		err = r.Generator.GenerateOverlaysAndPush(tempDir, clone, gitOpsRemoteURL, genOptions, applicationName, environmentName, imageName, "", r.AppFS, gitOpsBranch, gitOpsContext, true, componentGeneratedResources)
 		if err != nil {
-			log.Error(err, fmt.Sprintf("unable to get generate gitops resources for %s %v", componentName, req.NamespacedName))
+			retErr := err
+			if strings.Contains(strings.ToLower(err.Error()), "github push protection") {
+				retErr = fmt.Errorf("potential secret leak caught by github push protection")
+				// to get the URL token
+				// e.g. <GitURL>/security/secret-scanning/unblock-secret/2WlUv72plUf05tgshlpRLzSlH4R        \n
+				var unblockURL string
+				splited := strings.Split(strings.ToLower(err.Error()), "unblock-secret/")
+				if len(splited) > 1 {
+					token := strings.Split(splited[1], " ")[0]
+					unblockURL = fmt.Sprintf("%v/security/secret-scanning/unblock-secret/%v", hasComponent.Status.GitOps.RepositoryURL, token)
+					log.Error(retErr, fmt.Sprintf("unable to generate gitops resources for %s due to git push protecton error, follow the link to unblock the secret: %v", componentName, unblockURL))
+				}
+			} else {
+				log.Error(err, fmt.Sprintf("unable to get generate gitops resources for %s %v", componentName, req.NamespacedName))
+			}
 			ioutils.RemoveFolderAndLogError(log, r.AppFS, tempDir) // not worried with an err, its a best case attempt to delete the temp clone dir
-			r.SetConditionAndUpdateCR(ctx, req, &appSnapshotEnvBinding, err)
-			return ctrl.Result{}, err
+			r.SetConditionAndUpdateCR(ctx, req, &appSnapshotEnvBinding, retErr)
+			return ctrl.Result{}, retErr
 		}
 
 		// Retrieve the commit ID

@@ -63,6 +63,7 @@ type ComponentDetectionQueryReconciler struct {
 	RunKubernetesJob   bool
 	Config             *rest.Config
 	CdqAnalysisImage   string
+	CDQUtil            cdqanalysis.CDQUtil
 }
 
 const cdqName = "ComponentDetectionQuery"
@@ -169,7 +170,7 @@ func (r *ComponentDetectionQueryReconciler) Reconcile(ctx context.Context, req c
 			return ctrl.Result{}, nil
 		}
 
-		cdqInfo := &cdqanalysis.CDQInfoClient{
+		cdqInfo := &cdqanalysis.CDQInfo{
 			DevfileRegistryURL: r.DevfileRegistryURL,
 			GitURL:             cdqanalysis.GitURL{RepoURL: source.URL, Revision: source.Revision, Token: gitToken},
 		}
@@ -262,7 +263,10 @@ func (r *ComponentDetectionQueryReconciler) Reconcile(ctx context.Context, req c
 				}
 
 				cm, err := waitForConfigMap(clientset, ctx, req.Name, req.Namespace)
-				if err != nil {
+				if err != nil || cm == nil {
+					if cm == nil {
+						err = fmt.Errorf("failed to wait for configmap creation, configmap is nil")
+					}
 					log.Error(err, fmt.Sprintf("Error waiting for configmap creation ...%v", req.NamespacedName))
 					r.SetCompleteConditionAndUpdateCR(ctx, req, &componentDetectionQuery, copiedCDQ, err)
 					cleanupK8sResources(log, clientset, ctx, fmt.Sprintf("%s-job", req.Name), req.Name, req.Namespace)
@@ -339,7 +343,7 @@ func (r *ComponentDetectionQueryReconciler) Reconcile(ctx context.Context, req c
 					CreateK8sJob: false,
 				}
 
-				devfilesMapReturned, devfilesURLMapReturned, dockerfileContextMapReturned, componentPortsMapReturned, revision, err = cdqanalysis.CloneAndAnalyze(k8sInfoClient, req.Namespace, req.Name, context, cdqInfo)
+				devfilesMapReturned, devfilesURLMapReturned, dockerfileContextMapReturned, componentPortsMapReturned, revision, err = cdqanalysis.CloneAndAnalyze(k8sInfoClient, req.Namespace, req.Name, context, cdqInfo, r.CDQUtil)
 				if err != nil {
 					switch err.(type) {
 					case *cdqanalysis.NoDevfileFound:
@@ -408,7 +412,7 @@ func (r *ComponentDetectionQueryReconciler) Reconcile(ctx context.Context, req c
 			// set in the CDQ spec
 			componentDetectionQuery.Spec.GitSource.Revision = source.Revision
 
-			shouldIgnoreDevfile, devfileBytes, err := cdqanalysis.ValidateDevfile(log, source.DevfileURL, gitToken)
+			shouldIgnoreDevfile, devfileBytes, err := r.CDQUtil.ValidateDevfile(log, source.DevfileURL, gitToken)
 			if err != nil {
 				// if a direct devfileURL is provided and errors out, we dont do an alizer detection
 				log.Error(err, fmt.Sprintf("Unable to GET %s, exiting reconcile loop %v", source.DevfileURL, req.NamespacedName))
@@ -441,7 +445,7 @@ func (r *ComponentDetectionQueryReconciler) Reconcile(ctx context.Context, req c
 		}
 		// only update the componentStub when a component has been detected
 		if len(devfilesMap) != 0 || len(devfilesURLMap) != 0 || len(dockerfileContextMap) != 0 {
-			err = r.updateComponentStub(req, ctx, &componentDetectionQuery, devfilesMap, devfilesURLMap, dockerfileContextMap, componentPortsMap, gitToken)
+			err = r.updateComponentStub(req, ctx, &componentDetectionQuery, devfilesMap, devfilesURLMap, dockerfileContextMap, componentPortsMap)
 			if err != nil {
 				log.Error(err, fmt.Sprintf("Unable to update the component stub %v", req.NamespacedName))
 				r.SetCompleteConditionAndUpdateCR(ctx, req, &componentDetectionQuery, copiedCDQ, err)
@@ -510,7 +514,7 @@ func waitForConfigMap(clientset *kubernetes.Clientset, ctx context.Context, name
 			return configMap, nil
 
 		case <-ctx.Done():
-			return nil, nil
+			return nil, fmt.Errorf("context done while waiting for configmap creation, the context might be cancelled or exceeded")
 		}
 	}
 }

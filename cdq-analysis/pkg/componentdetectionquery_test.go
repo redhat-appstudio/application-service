@@ -22,6 +22,7 @@ import (
 	"reflect"
 	"testing"
 
+	"github.com/spf13/afero"
 	"github.com/stretchr/testify/assert"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes/fake"
@@ -227,11 +228,11 @@ func TestCloneAndAnalyze(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.testCase, func(t *testing.T) {
-			cdqInfo := &CDQInfoClient{
+			cdqInfo := &CDQInfo{
 				DevfileRegistryURL: tt.DevfileRegistryURL,
 				GitURL:             GitURL{RepoURL: tt.URL, Revision: tt.Revision, Token: tt.gitToken},
 			}
-			devfilesMap, devfilesURLMap, dockerfileContextMap, componentsPortMap, branch, err := CloneAndAnalyze(k8sClient, namespaceName, compName, tt.context, cdqInfo)
+			devfilesMap, devfilesURLMap, dockerfileContextMap, componentsPortMap, branch, err := CloneAndAnalyze(k8sClient, namespaceName, compName, tt.context, cdqInfo, NewCDQUtilClient())
 			if (err != nil) != (tt.wantErr != "") {
 				t.Errorf("got unexpected error %v", err)
 			} else if err == nil {
@@ -274,6 +275,7 @@ func TestSendBackDetectionResult(t *testing.T) {
 	ctx := context.TODO()
 	clientset := fake.NewSimpleClientset()
 	ctrl.SetLogger(zap.New(zap.UseFlagOptions(&zap.Options{})))
+	Fs := afero.Afero{}
 	log := ctrl.Log.WithName("TestSendBackDetectionResult")
 
 	k8sClient := K8sInfoClient{
@@ -374,7 +376,7 @@ metadata:
 	}
 	for _, tt := range tests {
 		t.Run(tt.testCase, func(t *testing.T) {
-			k8sClient.SendBackDetectionResult(tt.devfilesMap, tt.devfilesURLMap, tt.dockerfileContextMap, tt.componentPortsMap, revision, compName, namespaceName, tt.err)
+			k8sClient.SendBackDetectionResult(tt.devfilesMap, tt.devfilesURLMap, tt.dockerfileContextMap, tt.componentPortsMap, revision, compName, namespaceName, "", Fs, tt.err)
 			configMap, err := clientset.CoreV1().ConfigMaps(namespaceName).Get(k8sClient.Ctx, compName, metav1.GetOptions{})
 			if err != nil {
 				t.Errorf("got unexpected error %v", err)
@@ -390,19 +392,19 @@ metadata:
 func TestGetDevfileAndDockerFilePaths(t *testing.T) {
 	tests := []struct {
 		testCase           string
-		cdqInfo            CDQInfoClient
+		cdqInfo            CDQInfo
 		wantDevfilePath    string
 		wantDockerfilePath string
 	}{
 		{
 			testCase:           "Unset dockerfilepath and devfilepath",
-			cdqInfo:            CDQInfoClient{},
+			cdqInfo:            CDQInfo{},
 			wantDevfilePath:    "",
 			wantDockerfilePath: "",
 		},
 		{
 			testCase:           "Set dockerfilepath and devfilepath",
-			cdqInfo:            CDQInfoClient{dockerfilePath: "/dockerfile", devfilePath: "devfile.yml"},
+			cdqInfo:            CDQInfo{dockerfilePath: "/dockerfile", devfilePath: "devfile.yml"},
 			wantDevfilePath:    "devfile.yml",
 			wantDockerfilePath: "/dockerfile",
 		},
