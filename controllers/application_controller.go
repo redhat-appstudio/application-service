@@ -117,7 +117,6 @@ func (r *ApplicationReconciler) Reconcile(ctx context.Context, req ctrl.Request)
 			metrics.ApplicationDeletionTotalReqs.Inc()
 			// A finalizer is present for the Application CR, so make sure we do the necessary cleanup steps
 			if finalizeErr := r.Finalize(ctx, &application, ghClient); finalizeErr != nil {
-				log.Error(finalizeErr, "Unable to delete GitOps repository for application")
 				finalizeCounter, err := getCounterAnnotation(finalizeCount, &application)
 				if err == nil && finalizeCounter < 5 {
 					// The Finalize function failed, so increment the finalize count and return
@@ -135,6 +134,7 @@ func (r *ApplicationReconciler) Reconcile(ctx context.Context, req ctrl.Request)
 					// Don't want to get stuck in a cycle of repeatedly trying to delete the repository and failing
 
 					// Increment the Application deletion failed metric as the application delete did not fully succeed
+					log.Error(finalizeErr, "Unable to delete GitOps repository for application")
 					metrics.ApplicationDeletionFailed.Inc()
 				}
 
