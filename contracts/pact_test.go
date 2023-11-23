@@ -18,7 +18,6 @@ package contracts
 import (
 	"crypto/tls"
 	"crypto/x509"
-	"encoding/base64"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -65,8 +64,6 @@ func TestContracts(t *testing.T) {
 }
 
 func createVerifier(t *testing.T) provider.VerifyRequest {
-	brokerUsername, _ := base64.StdEncoding.DecodeString("cGFjdENvbW1vblVzZXI=")
-	brokerPassword, _ := base64.StdEncoding.DecodeString("cGFjdENvbW1vblBhc3N3b3JkMTIz")
 	verifyRequest := provider.VerifyRequest{
 		Provider:        "HAS",
 		RequestTimeout:  60 * time.Second,
@@ -75,8 +72,6 @@ func createVerifier(t *testing.T) provider.VerifyRequest {
 		ConsumerVersionSelectors:   []provider.Selector{&provider.ConsumerVersionSelector{Branch: "main"}},
 		BrokerURL:                  "https://pact-broker-hac-pact-broker.apps.hac-devsandbox.5unc.p1.openshiftapps.com",
 		PublishVerificationResults: false,
-		BrokerUsername:             string(brokerUsername),
-		BrokerPassword:             string(brokerPassword),
 		EnablePending:              true,
 		ProviderVersion:            "local",
 		ProviderBranch:             "main",
