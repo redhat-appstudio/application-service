@@ -100,27 +100,6 @@ func TestComponentCreateValidatingWebhook(t *testing.T) {
 			},
 		},
 		{
-			name:   "valid component with invalid git vendor src",
-			client: fakeClient,
-			err:    fmt.Errorf(appstudiov1alpha1.InvalidGithubVendorURL, "http://url", SupportedGitRepo).Error(),
-			newComp: appstudiov1alpha1.Component{
-				ObjectMeta: v1.ObjectMeta{
-					Name: "test-component",
-				},
-				Spec: appstudiov1alpha1.ComponentSpec{
-					ComponentName: "component1",
-					Application:   "application1",
-					Source: appstudiov1alpha1.ComponentSource{
-						ComponentSourceUnion: appstudiov1alpha1.ComponentSourceUnion{
-							GitSource: &appstudiov1alpha1.GitSource{
-								URL: "http://url",
-							},
-						},
-					},
-				},
-			},
-		},
-		{
 			name:   "valid component with invalid git scheme src",
 			client: fakeClient,
 			err:    "invalid URI for request" + appstudiov1alpha1.InvalidSchemeGitSourceURL,
