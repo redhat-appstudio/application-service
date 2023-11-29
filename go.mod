@@ -5,7 +5,7 @@ go 1.19
 require (
 	github.com/brianvoe/gofakeit/v6 v6.9.0
 	github.com/devfile/api/v2 v2.2.1
-	github.com/devfile/library/v2 v2.2.2-0.20231102090733-57a7da8b8392
+	github.com/devfile/library/v2 v2.2.2-0.20231127164128-38de98ba446b
 	github.com/go-logr/logr v1.2.4
 	github.com/gofri/go-github-ratelimit v1.0.3-0.20230428184158-a500e14de53f
 	github.com/golang/mock v1.6.0
@@ -181,7 +181,7 @@ require (
 	k8s.io/klog v1.0.0 // indirect
 	k8s.io/klog/v2 v2.100.1 // indirect
 	k8s.io/kube-openapi v0.0.0-20230501164219-8b0f38b5fd1f // indirect
-	k8s.io/pod-security-admission v0.26.1 // indirect
+	k8s.io/pod-security-admission v0.26.10 // indirect
 	k8s.io/utils v0.0.0-20230505201702-9f6742963106 // indirect
 	knative.dev/pkg v0.0.0-20221011175852-714b7630a836 // indirect
 	oras.land/oras-go v1.1.0 // indirect
@@ -192,3 +192,5 @@ require (
 replace github.com/antlr/antlr4 => github.com/antlr/antlr4 v0.0.0-20211106181442-e4c1a74c66bd
 
 replace github.com/redhat-appstudio/application-service/cdq-analysis => ./cdq-analysis
+
+replace github.com/devfile/library/v2 => /Users/maysun/dev/devfile/parser

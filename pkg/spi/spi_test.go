@@ -108,7 +108,7 @@ func TestDownloadDevfileandDockerfileUsingSPI(t *testing.T) {
 			wantErr: true,
 		},
 		{
-			comp:    v1alpha1.Component{ObjectMeta: v1.ObjectMeta{Name: "Error reading devfile", Namespace: testNamespace}},
+			comp:    v1alpha1.Component{ObjectMeta: v1.ObjectMeta{Name: "Error reading dockerfile", Namespace: testNamespace}},
 			repoUrl: "https://github.com/testrepo/test-error-dockerfile-response",
 			wantErr: true,
 		},

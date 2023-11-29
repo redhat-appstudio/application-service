@@ -49,6 +49,7 @@ import (
 	"github.com/devfile/api/v2/pkg/attributes"
 	devfileParser "github.com/devfile/library/v2/pkg/devfile/parser"
 	data "github.com/devfile/library/v2/pkg/devfile/parser/data"
+	devfileParserUtil "github.com/devfile/library/v2/pkg/devfile/parser/util"
 	"github.com/go-logr/logr"
 
 	appstudiov1alpha1 "github.com/redhat-appstudio/application-api/api/v1alpha1"
@@ -65,13 +66,14 @@ import (
 // ComponentReconciler reconciles a Component object
 type ComponentReconciler struct {
 	client.Client
-	Scheme            *runtime.Scheme
-	Log               logr.Logger
-	GitHubOrg         string
-	Generator         gitopsgen.Generator
-	AppFS             afero.Afero
-	SPIClient         spi.SPI
-	GitHubTokenClient github.GitHubToken
+	Scheme             *runtime.Scheme
+	Log                logr.Logger
+	GitHubOrg          string
+	Generator          gitopsgen.Generator
+	AppFS              afero.Afero
+	SPIClient          spi.SPI
+	GitHubTokenClient  github.GitHubToken
+	DevfileUtilsClient devfileParserUtil.DevfileUtils
 }
 
 const (
@@ -135,15 +137,6 @@ func (r *ComponentReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 	forceGenerateGitopsResource := getForceGenerateGitopsAnnotation(component)
 	log.Info(fmt.Sprintf("forceGenerateGitopsResource is %v", forceGenerateGitopsResource))
 
-	ghClient, err := r.GitHubTokenClient.GetNewGitHubClient("")
-	if err != nil {
-		log.Error(err, "Unable to create Go-GitHub client due to error")
-		return reconcile.Result{}, err
-	}
-
-	// Add the Go-GitHub client name to the context
-	ctx = context.WithValue(ctx, github.GHClientKey, ghClient.TokenName)
-
 	var gitToken string
 	//get the token to pass into the parser
 	if component.Spec.Secret != "" {
@@ -162,6 +155,15 @@ func (r *ComponentReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 
 		gitToken = string(gitSecret.Data["password"])
 	}
+
+	ghClient, err := r.GitHubTokenClient.GetNewGitHubClient(gitToken)
+	if err != nil {
+		log.Error(err, "Unable to create Go-GitHub client due to error")
+		return reconcile.Result{}, err
+	}
+
+	// Add the Go-GitHub client name to the context
+	ctx = context.WithValue(ctx, github.GHClientKey, ghClient.TokenName)
 
 	// Check if the Component CR is under deletion
 	// If so: Remove the project from the Application devfile, remove the component dir from the Gitops repo and remove the finalizer.
@@ -401,7 +403,7 @@ func (r *ComponentReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 		if devfileLocation != "" {
 			// Parse the Component Devfile
 			log.Info(fmt.Sprintf("Parsing Devfile from the Devfile location %s... %v", devfileLocation, req.NamespacedName))
-			compDevfileData, err = cdqanalysis.ParseDevfileWithParserArgs(&devfileParser.ParserArgs{URL: devfileLocation, Token: gitToken})
+			compDevfileData, err = cdqanalysis.ParseDevfileWithParserArgs(&devfileParser.ParserArgs{URL: devfileLocation, Token: gitToken, DevfileUtilsClient: r.DevfileUtilsClient})
 
 			if err != nil {
 				log.Error(err, fmt.Sprintf("Unable to parse the devfile from Component devfile location, exiting reconcile loop %v", req.NamespacedName))

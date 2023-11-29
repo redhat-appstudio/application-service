@@ -36,6 +36,7 @@ import (
 	appstudiov1alpha1 "github.com/redhat-appstudio/application-api/api/v1alpha1"
 	cdqanalysis "github.com/redhat-appstudio/application-service/cdq-analysis/pkg"
 	devfilePkg "github.com/redhat-appstudio/application-service/pkg/devfile"
+	spiapi "github.com/redhat-appstudio/service-provider-integration-operator/api/v1beta1"
 	"sigs.k8s.io/yaml"
 
 	corev1 "k8s.io/api/core/v1"
@@ -2087,6 +2088,325 @@ var _ = Describe("Component controller", func() {
 
 			// Delete the specified HASComp resource
 			deleteHASCompCR(hasCompLookupKey)
+
+			// Delete the specified HASApp resource
+			deleteHASAppCR(hasAppLookupKey)
+		})
+	})
+
+	Context("Create Private Component with basic field set", func() {
+		It("Should create successfully and update the Application", func() {
+			ctx := context.Background()
+
+			applicationName := HASAppName + "24"
+			componentName := HASCompName + "24"
+
+			// Create a git secret
+			tokenSecret := &corev1.Secret{
+				TypeMeta: metav1.TypeMeta{
+					Kind: "Secret",
+				},
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      componentName,
+					Namespace: HASAppNamespace,
+				},
+				StringData: map[string]string{
+					"password": "valid-token", // token tied to mock implementation in devfile/library
+				},
+			}
+
+			Expect(k8sClient.Create(ctx, tokenSecret)).Should(Succeed())
+
+			createAndFetchSimpleApp(applicationName, HASAppNamespace, DisplayName, Description)
+
+			hasComp := &appstudiov1alpha1.Component{
+				TypeMeta: metav1.TypeMeta{
+					APIVersion: "appstudio.redhat.com/v1alpha1",
+					Kind:       "Component",
+				},
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      componentName,
+					Namespace: HASAppNamespace,
+				},
+				Spec: appstudiov1alpha1.ComponentSpec{
+					ComponentName: ComponentName,
+					Application:   applicationName,
+					Secret:        componentName,
+					Source: appstudiov1alpha1.ComponentSource{
+						ComponentSourceUnion: appstudiov1alpha1.ComponentSourceUnion{
+							GitSource: &appstudiov1alpha1.GitSource{
+								URL: SampleRepoLink,
+							},
+						},
+					},
+				},
+			}
+			Expect(k8sClient.Create(ctx, hasComp)).Should(Succeed())
+
+			// Look up the has app resource that was created.
+			// num(conditions) may still be < 2 (GeneratedGitOps, Created) on the first try, so retry until at least _some_ condition is set
+			hasCompLookupKey := types.NamespacedName{Name: componentName, Namespace: HASAppNamespace}
+			createdHasComp := &appstudiov1alpha1.Component{}
+			Eventually(func() bool {
+				k8sClient.Get(context.Background(), hasCompLookupKey, createdHasComp)
+				return len(createdHasComp.Status.Conditions) > 1 && createdHasComp.Status.GitOps.RepositoryURL != ""
+			}, timeout, interval).Should(BeTrue())
+
+			// Verify that the GitOpsGenerated status condition was also set
+			// ToDo: Add helper func for accessing the status conditions in a better way
+			gitopsCondition := createdHasComp.Status.Conditions[len(createdHasComp.Status.Conditions)-2]
+			Expect(gitopsCondition.Type).To(Equal("GitOpsResourcesGenerated"))
+			Expect(gitopsCondition.Status).To(Equal(metav1.ConditionTrue))
+
+			// Make sure the devfile model was properly set in Component
+			Expect(createdHasComp.Status.Devfile).Should(Not(Equal("")))
+
+			hasAppLookupKey := types.NamespacedName{Name: applicationName, Namespace: HASAppNamespace}
+			createdHasApp := &appstudiov1alpha1.Application{}
+			Eventually(func() bool {
+				k8sClient.Get(context.Background(), hasAppLookupKey, createdHasApp)
+				return len(createdHasApp.Status.Conditions) > 0 && strings.Contains(createdHasApp.Status.Devfile, ComponentName)
+			}, timeout, interval).Should(BeTrue())
+
+			// Make sure the devfile model was properly set in Application
+			Expect(createdHasApp.Status.Devfile).Should(Not(Equal("")))
+
+			// Check the Component devfile
+			_, err := cdqanalysis.ParseDevfileWithParserArgs(&parser.ParserArgs{Data: []byte(createdHasComp.Status.Devfile)})
+			Expect(err).Should(Not(HaveOccurred()))
+
+			// Check the HAS Application devfile
+			hasAppDevfile, err := cdqanalysis.ParseDevfileWithParserArgs(&parser.ParserArgs{Data: []byte(createdHasApp.Status.Devfile)})
+
+			Expect(err).Should(Not(HaveOccurred()))
+
+			// gitOpsRepo and appModelRepo should both be set
+			Expect(string(hasAppDevfile.GetMetadata().Attributes["gitOpsRepository.url"].Raw)).Should(Not(Equal("")))
+			Expect(string(hasAppDevfile.GetMetadata().Attributes["appModelRepository.url"].Raw)).Should(Not(Equal("")))
+
+			// gitOpsRepo set in the component equal the repository in the app cr's devfile
+			gitopsRepo := hasAppDevfile.GetMetadata().Attributes.GetString("gitOpsRepository.url", &err)
+			Expect(err).Should(Not(HaveOccurred()))
+			Expect(string(createdHasComp.Status.GitOps.RepositoryURL)).Should(Equal(gitopsRepo))
+
+			// Commit ID should be set in the gitops repository and not be empty
+			Expect(createdHasComp.Status.GitOps.CommitID).Should(Not(BeEmpty()))
+
+			hasProjects, err := hasAppDevfile.GetProjects(common.DevfileOptions{})
+			Expect(err).Should(Not(HaveOccurred()))
+			Expect(len(hasProjects)).ShouldNot(Equal(0))
+
+			nameMatched := false
+			repoLinkMatched := false
+			for _, project := range hasProjects {
+				if project.Name == ComponentName {
+					nameMatched = true
+				}
+				if project.Git != nil && project.Git.GitLikeProjectSource.Remotes["origin"] == SampleRepoLink {
+					repoLinkMatched = true
+				}
+			}
+			Expect(nameMatched).Should(Equal(true))
+			Expect(repoLinkMatched).Should(Equal(true))
+
+			// Delete the specified HASComp resource
+			deleteHASCompCR(hasCompLookupKey)
+
+			// Delete the specified HASApp resource
+			deleteHASAppCR(hasAppLookupKey)
+		})
+	})
+
+	Context("Create private and public Components for the same Application with basic field set", func() {
+		It("Should create SPI FCR resource and associate it with only the private Component", func() {
+			ctx := context.Background()
+
+			applicationName := HASAppName + "25"
+			componentName := HASCompName + "25"
+			componentPublicName := HASCompName + "public-25"
+
+			// Create a git secret
+			tokenSecret := &corev1.Secret{
+				TypeMeta: metav1.TypeMeta{
+					Kind: "Secret",
+				},
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      componentName,
+					Namespace: HASAppNamespace,
+				},
+				StringData: map[string]string{
+					"password": "valid-token", // token tied to mock implementation in devfile/library
+				},
+			}
+
+			Expect(k8sClient.Create(ctx, tokenSecret)).Should(Succeed())
+
+			createAndFetchSimpleApp(applicationName, HASAppNamespace, DisplayName, Description)
+
+			hasCompPrivate := &appstudiov1alpha1.Component{
+				TypeMeta: metav1.TypeMeta{
+					APIVersion: "appstudio.redhat.com/v1alpha1",
+					Kind:       "Component",
+				},
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      componentName,
+					Namespace: HASAppNamespace,
+				},
+				Spec: appstudiov1alpha1.ComponentSpec{
+					ComponentName: ComponentName,
+					Application:   applicationName,
+					Secret:        componentName,
+					Source: appstudiov1alpha1.ComponentSource{
+						ComponentSourceUnion: appstudiov1alpha1.ComponentSourceUnion{
+							GitSource: &appstudiov1alpha1.GitSource{
+								URL: "http://github.com/dummy/create-spi-fcr-return-devfile",
+							},
+						},
+					},
+				},
+			}
+			Expect(k8sClient.Create(ctx, hasCompPrivate)).Should(Succeed())
+
+			// Look up the has app resource that was created.
+			// num(conditions) may still be < 2 (GeneratedGitOps, Created) on the first try, so retry until at least _some_ condition is set
+			hasCompPrivateLookupKey := types.NamespacedName{Name: componentName, Namespace: HASAppNamespace}
+			createdHasPrivateComp := &appstudiov1alpha1.Component{}
+			Eventually(func() bool {
+				k8sClient.Get(context.Background(), hasCompPrivateLookupKey, createdHasPrivateComp)
+				return len(createdHasPrivateComp.Status.Conditions) > 1 && createdHasPrivateComp.Status.GitOps.RepositoryURL != ""
+			}, timeout, interval).Should(BeTrue())
+
+			// Verify that the GitOpsGenerated status condition was also set
+			// ToDo: Add helper func for accessing the status conditions in a better way
+			gitopsConditionPrivate := createdHasPrivateComp.Status.Conditions[len(createdHasPrivateComp.Status.Conditions)-2]
+			Expect(gitopsConditionPrivate.Type).To(Equal("GitOpsResourcesGenerated"))
+			Expect(gitopsConditionPrivate.Status).To(Equal(metav1.ConditionTrue))
+
+			// Make sure the devfile model was properly set in Component
+			Expect(createdHasPrivateComp.Status.Devfile).Should(Not(Equal("")))
+
+			hasCompPublic := &appstudiov1alpha1.Component{
+				TypeMeta: metav1.TypeMeta{
+					APIVersion: "appstudio.redhat.com/v1alpha1",
+					Kind:       "Component",
+				},
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      componentPublicName,
+					Namespace: HASAppNamespace,
+				},
+				Spec: appstudiov1alpha1.ComponentSpec{
+					ComponentName: "backend2",
+					Application:   applicationName,
+					Source: appstudiov1alpha1.ComponentSource{
+						ComponentSourceUnion: appstudiov1alpha1.ComponentSourceUnion{
+							GitSource: &appstudiov1alpha1.GitSource{
+								URL: SampleRepoLink,
+							},
+						},
+					},
+				},
+			}
+			Expect(k8sClient.Create(ctx, hasCompPublic)).Should(Succeed())
+
+			// Look up the has app resource that was created.
+			// num(conditions) may still be < 2 (GeneratedGitOps, Created) on the first try, so retry until at least _some_ condition is set
+			hasCompPublicLookupKey := types.NamespacedName{Name: componentPublicName, Namespace: HASAppNamespace}
+			createdHasPublicComp := &appstudiov1alpha1.Component{}
+			Eventually(func() bool {
+				k8sClient.Get(context.Background(), hasCompPublicLookupKey, createdHasPublicComp)
+				return len(createdHasPublicComp.Status.Conditions) > 1 && createdHasPublicComp.Status.GitOps.RepositoryURL != ""
+			}, timeout, interval).Should(BeTrue())
+
+			// Verify that the GitOpsGenerated status condition was also set
+			// ToDo: Add helper func for accessing the status conditions in a better way
+			gitopsConditionPublic := createdHasPublicComp.Status.Conditions[len(createdHasPublicComp.Status.Conditions)-2]
+			Expect(gitopsConditionPublic.Type).To(Equal("GitOpsResourcesGenerated"))
+			Expect(gitopsConditionPublic.Status).To(Equal(metav1.ConditionTrue))
+
+			// Make sure the devfile model was properly set in Component
+			Expect(createdHasPublicComp.Status.Devfile).Should(Not(Equal("")))
+
+			hasAppLookupKey := types.NamespacedName{Name: applicationName, Namespace: HASAppNamespace}
+			createdHasApp := &appstudiov1alpha1.Application{}
+			Eventually(func() bool {
+				k8sClient.Get(context.Background(), hasAppLookupKey, createdHasApp)
+				return len(createdHasApp.Status.Conditions) > 0 && strings.Contains(createdHasApp.Status.Devfile, ComponentName)
+			}, timeout, interval).Should(BeTrue())
+
+			// Make sure the devfile model was properly set in Application
+			Expect(createdHasApp.Status.Devfile).Should(Not(Equal("")))
+
+			// Check both the Component devfile
+			_, err := cdqanalysis.ParseDevfileWithParserArgs(&parser.ParserArgs{Data: []byte(createdHasPrivateComp.Status.Devfile)})
+			Expect(err).Should(Not(HaveOccurred()))
+			_, err = cdqanalysis.ParseDevfileWithParserArgs(&parser.ParserArgs{Data: []byte(createdHasPublicComp.Status.Devfile)})
+			Expect(err).Should(Not(HaveOccurred()))
+
+			// check for the SPI FCR that got created for private component, its a mock test client, so the SPI FCR does not get processed besides getting created.
+			createdSPIFCR := &spiapi.SPIFileContentRequest{}
+			spiFCRQueryLookupKey := types.NamespacedName{Name: "spi-fcr-" + componentName + "0", Namespace: HASAppNamespace}
+			Eventually(func() bool {
+				k8sClient.Get(context.Background(), spiFCRQueryLookupKey, createdSPIFCR)
+				return createdSPIFCR.Spec.RepoUrl != ""
+			}, timeout, interval).Should(BeTrue())
+
+			// Check the HAS Application devfile
+			hasAppDevfile, err := cdqanalysis.ParseDevfileWithParserArgs(&parser.ParserArgs{Data: []byte(createdHasApp.Status.Devfile)})
+			Expect(err).Should(Not(HaveOccurred()))
+
+			// gitOpsRepo and appModelRepo should both be set
+			Expect(string(hasAppDevfile.GetMetadata().Attributes["gitOpsRepository.url"].Raw)).Should(Not(Equal("")))
+			Expect(string(hasAppDevfile.GetMetadata().Attributes["appModelRepository.url"].Raw)).Should(Not(Equal("")))
+
+			// gitOpsRepo set in the component equal the repository in the app cr's devfile
+			gitopsRepo := hasAppDevfile.GetMetadata().Attributes.GetString("gitOpsRepository.url", &err)
+			Expect(err).Should(Not(HaveOccurred()))
+			Expect(string(createdHasPrivateComp.Status.GitOps.RepositoryURL)).Should(Equal(gitopsRepo))
+			Expect(string(createdHasPublicComp.Status.GitOps.RepositoryURL)).Should(Equal(gitopsRepo))
+
+			// Commit ID should be set in the gitops repository and not be empty
+			Expect(createdHasPrivateComp.Status.GitOps.CommitID).Should(Not(BeEmpty()))
+			Expect(createdHasPublicComp.Status.GitOps.CommitID).Should(Not(BeEmpty()))
+
+			hasProjects, err := hasAppDevfile.GetProjects(common.DevfileOptions{})
+			Expect(err).Should(Not(HaveOccurred()))
+			Expect(len(hasProjects)).ShouldNot(Equal(0))
+
+			privateNameMatched := false
+			privateRepoLinkMatched := false
+			publicNameMatched := false
+			publicRepoLinkMatched := false
+			for _, project := range hasProjects {
+				if project.Name == ComponentName {
+					privateNameMatched = true
+				}
+				if project.Git != nil && project.Git.GitLikeProjectSource.Remotes["origin"] == "http://github.com/dummy/create-spi-fcr-return-devfile" {
+					privateRepoLinkMatched = true
+				}
+				if project.Name == "backend2" {
+					publicNameMatched = true
+				}
+				if project.Git != nil && project.Git.GitLikeProjectSource.Remotes["origin"] == SampleRepoLink {
+					publicRepoLinkMatched = true
+				}
+			}
+			Expect(privateNameMatched).Should(Equal(true))
+			Expect(privateRepoLinkMatched).Should(Equal(true))
+			Expect(publicNameMatched).Should(Equal(true))
+			Expect(publicRepoLinkMatched).Should(Equal(true))
+
+			// Delete the specified public HASComp resource
+			deleteHASCompCR(hasCompPublicLookupKey)
+
+			// Ensure the SPIFCR that is associated with the private component is still present
+			createdSPIFCR = &spiapi.SPIFileContentRequest{}
+			Eventually(func() bool {
+				k8sClient.Get(context.Background(), spiFCRQueryLookupKey, createdSPIFCR)
+				return createdSPIFCR.Spec.RepoUrl != ""
+			}, timeout, interval).Should(BeTrue())
+
+			// Delete the specified private HASComp resource
+			deleteHASCompCR(hasCompPrivateLookupKey)
 
 			// Delete the specified HASApp resource
 			deleteHASAppCR(hasAppLookupKey)
