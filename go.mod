@@ -5,7 +5,7 @@ go 1.19
 require (
 	github.com/brianvoe/gofakeit/v6 v6.9.0
 	github.com/devfile/api/v2 v2.2.1
-	github.com/devfile/library/v2 v2.2.2-0.20231127164128-38de98ba446b
+	github.com/devfile/library/v2 v2.2.2-0.20231130202909-20a0c910b0e6
 	github.com/go-logr/logr v1.2.4
 	github.com/gofri/go-github-ratelimit v1.0.3-0.20230428184158-a500e14de53f
 	github.com/golang/mock v1.6.0
@@ -192,5 +192,3 @@ require (
 replace github.com/antlr/antlr4 => github.com/antlr/antlr4 v0.0.0-20211106181442-e4c1a74c66bd
 
 replace github.com/redhat-appstudio/application-service/cdq-analysis => ./cdq-analysis
-
-replace github.com/devfile/library/v2 => /Users/maysun/dev/devfile/parser
