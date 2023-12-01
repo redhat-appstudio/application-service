@@ -2111,7 +2111,7 @@ var _ = Describe("Component controller", func() {
 					Namespace: HASAppNamespace,
 				},
 				StringData: map[string]string{
-					"password": "valid-token", // token tied to mock implementation in devfile/library
+					"password": "valid-token", // token tied to mock implementation in devfile/library. See https://github.com/devfile/library/blob/main/pkg/util/mock.go#L250
 				},
 			}
 
@@ -2135,7 +2135,7 @@ var _ = Describe("Component controller", func() {
 					Source: appstudiov1alpha1.ComponentSource{
 						ComponentSourceUnion: appstudiov1alpha1.ComponentSourceUnion{
 							GitSource: &appstudiov1alpha1.GitSource{
-								URL: SampleRepoLink,
+								URL: "https://github.com/maysunfaisal/devfile-sample-python-basic-private", // It doesn't matter if we are using pub/pvt repo here. We are mock testing the token, "valid-token" returns a mock devfile. See https://github.com/devfile/library/blob/main/pkg/util/mock.go#L250
 							},
 						},
 					},
@@ -2202,7 +2202,7 @@ var _ = Describe("Component controller", func() {
 				if project.Name == ComponentName {
 					nameMatched = true
 				}
-				if project.Git != nil && project.Git.GitLikeProjectSource.Remotes["origin"] == SampleRepoLink {
+				if project.Git != nil && project.Git.GitLikeProjectSource.Remotes["origin"] == "https://github.com/maysunfaisal/devfile-sample-python-basic-private" {
 					repoLinkMatched = true
 				}
 			}
@@ -2235,7 +2235,7 @@ var _ = Describe("Component controller", func() {
 					Namespace: HASAppNamespace,
 				},
 				StringData: map[string]string{
-					"password": "valid-token", // token tied to mock implementation in devfile/library
+					"password": "valid-token", // token tied to mock implementation in devfile/library. See https://github.com/devfile/library/blob/main/pkg/util/mock.go#L250
 				},
 			}
 
