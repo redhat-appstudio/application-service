@@ -166,7 +166,9 @@ func GetResourceFromDevfile(log logr.Logger, devfileData data.DevfileData, deplo
 						resources.Deployments[0].Spec.Template.ObjectMeta.Labels = matchLabels
 					}
 
-					resources.Deployments[0].Spec.Replicas = &currentReplica
+					if currentReplica > 0 {
+						resources.Deployments[0].Spec.Replicas = &currentReplica
+					}
 
 					if len(resources.Deployments[0].Spec.Template.Spec.Containers) > 0 {
 						if image != "" {
