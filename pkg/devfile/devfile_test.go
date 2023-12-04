@@ -1421,7 +1421,6 @@ components:
     deployment/container-port: 1111
     deployment/storageLimit: 401Mi
     deployment/storageRequest: 201Mi
-    deployment/storageRequest: 201Mi
   kubernetes:
     deployByDefault: false
     endpoints:
