@@ -1210,7 +1210,6 @@ components:
     deployment/container-port: 1111
     deployment/storageLimit: 401Mi
     deployment/storageRequest: 201Mi
-    deployment/replicas: 1
   kubernetes:
     deployByDefault: false
     endpoints:
@@ -1308,7 +1307,6 @@ components:
     deployment/container-port: 1111
     deployment/storageLimit: 401Mi
     deployment/storageRequest: 201Mi
-    deployment/replicas: 1
   kubernetes:
     deployByDefault: false
     endpoints:
@@ -1423,7 +1421,7 @@ components:
     deployment/container-port: 1111
     deployment/storageLimit: 401Mi
     deployment/storageRequest: 201Mi
-    deployment/replicas: 1
+    deployment/storageRequest: 201Mi
   kubernetes:
     deployByDefault: false
     endpoints:
@@ -1533,7 +1531,6 @@ components:
 - attributes:
     api.devfile.io/k8sLikeComponent-originalURI: deploy.yaml
     deployment/container-port: 5566
-    deployment/replicas: 1
   kubernetes:
     deployByDefault: false
     endpoints:
