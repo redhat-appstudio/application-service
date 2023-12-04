@@ -94,12 +94,6 @@ var _ = Describe("Application validation webhook", func() {
 			Expect(err).Should(HaveOccurred())
 			Expect(err.Error()).Should(ContainSubstring(errors.New("invalid URI for request" + appstudiov1alpha1.InvalidSchemeGitSourceURL).Error()))
 
-			//Bad URL with unsupported vendor
-			hasComp.Spec.Source.GitSource.URL = "http://url"
-			err = k8sClient.Create(ctx, hasComp)
-			Expect(err).Should(HaveOccurred())
-			Expect(err.Error()).Should(ContainSubstring(fmt.Errorf(appstudiov1alpha1.InvalidGithubVendorURL, "http://url", SupportedGitRepo).Error()))
-
 			// Good URL
 			hasComp.Spec.Source.GitSource.URL = SampleRepoLink
 			err = k8sClient.Create(ctx, hasComp)

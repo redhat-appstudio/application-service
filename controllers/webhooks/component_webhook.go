@@ -21,7 +21,6 @@ import (
 	"errors"
 	"fmt"
 	"net/url"
-	"strings"
 
 	appstudiov1alpha1 "github.com/redhat-appstudio/application-api/api/v1alpha1"
 	"github.com/redhat-appstudio/application-service/pkg/util"
@@ -100,9 +99,6 @@ func (r *ComponentWebhook) UpdateNudgedComponentStatus(ctx context.Context, obj 
 	return nil
 }
 
-// Github is the only supported vendor right now
-const SupportedGitRepo = "github.com"
-
 // TODO(user): change verbs to "verbs=create;update;delete" if you want to enable deletion validation.
 // +kubebuilder:webhook:path=/validate-appstudio-redhat-com-v1alpha1-component,mutating=false,failurePolicy=fail,sideEffects=None,groups=appstudio.redhat.com,resources=components,verbs=create;update,versions=v1alpha1,name=vcomponent.kb.io,admissionReviewVersions=v1
 
@@ -119,12 +115,9 @@ func (r *ComponentWebhook) ValidateCreate(ctx context.Context, obj runtime.Objec
 	sourceSpecified := false
 
 	if comp.Spec.Source.GitSource != nil && comp.Spec.Source.GitSource.URL != "" {
-		if gitsourceURL, err := url.ParseRequestURI(comp.Spec.Source.GitSource.URL); err != nil {
+		if _, err := url.ParseRequestURI(comp.Spec.Source.GitSource.URL); err != nil {
 			return fmt.Errorf(err.Error() + appstudiov1alpha1.InvalidSchemeGitSourceURL)
-		} else if SupportedGitRepo != strings.ToLower(gitsourceURL.Host) {
-			return fmt.Errorf(appstudiov1alpha1.InvalidGithubVendorURL, gitsourceURL, SupportedGitRepo)
 		}
-
 		sourceSpecified = true
 	} else if comp.Spec.ContainerImage != "" {
 		sourceSpecified = true
