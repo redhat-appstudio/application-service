@@ -484,8 +484,8 @@ github.com/devfile/api/v2 v2.2.1/go.mod h1:qp8jcw12y1JdCsxjK/7LJ7uWaJOxcY1s2LUk5
 github.com/devfile/library v1.2.1-0.20211104222135-49d635cb492f/go.mod h1:uFZZdTuRqA68FVe/JoJHP92CgINyQkyWnM2Qyiim+50=
 github.com/devfile/library v1.2.1-0.20220308191614-f0f7e11b17de/go.mod h1:GSPfJaBg0+bBjBHbwBE5aerJLH6tWGQu2q2rHYd9czM=
 github.com/devfile/library/v2 v2.0.1/go.mod h1:paJ0PARAVy0br13VpBEQ4fO3rZVDxWtooQ29+23PNBk=
-github.com/devfile/library/v2 v2.2.2-0.20231102090733-57a7da8b8392 h1:UotSxx8+XmqZCoo1cTA9T80Zyxq40Cc3zmO++aepeA4=
-github.com/devfile/library/v2 v2.2.2-0.20231102090733-57a7da8b8392/go.mod h1:WiAmCfdTLHk9Nzn/JMmRZK6Qv8e2GmnI5hE6kA2GgAA=
+github.com/devfile/library/v2 v2.2.2-0.20231130202909-20a0c910b0e6 h1:4WisxE/COs2ITGxZ1yA7qs+3HSFni4wQd4ZAiaOiBOY=
+github.com/devfile/library/v2 v2.2.2-0.20231130202909-20a0c910b0e6/go.mod h1:zKKhnbSLXi8vu46c5RLr+y4kY9S9Ubi0SeCm3awndsw=
 github.com/devfile/registry-support/index/generator v0.0.0-20220222194908-7a90a4214f3e/go.mod h1:iRPBxs+ZjfLEduVXpCCIOzdD2588Zv9OCs/CcXMcCCY=
 github.com/devfile/registry-support/index/generator v0.0.0-20220527155645-8328a8a883be/go.mod h1:1fyDJL+fPHtcrYA6yjSVWeLmXmjCNth0d5Rq1rvtryc=
 github.com/devfile/registry-support/index/generator v0.0.0-20221018203505-df96d34d4273 h1:DXENQSRTEDsk9com38njPg5511DD12HPIgzyFUErnpM=
@@ -2130,8 +2130,8 @@ k8s.io/kube-openapi v0.0.0-20220328201542-3ee0da9b0b42/go.mod h1:Z/45zLw8lUo4wdi
 k8s.io/kube-openapi v0.0.0-20230501164219-8b0f38b5fd1f h1:2kWPakN3i/k81b0gvD5C5FJ2kxm1WrQFanWchyKuqGg=
 k8s.io/kube-openapi v0.0.0-20230501164219-8b0f38b5fd1f/go.mod h1:byini6yhqGC14c3ebc/QwanvYwhuMWF6yz2F8uwW8eg=
 k8s.io/kubernetes v1.13.0/go.mod h1:ocZa8+6APFNC2tX1DZASIbocyYT5jHzqFVsY5aoB7Jk=
-k8s.io/pod-security-admission v0.26.1 h1:EDIxsYFeKMzNvN/JB0PgQcuwBP6fIkIG2O8ZWJhzOp4=
-k8s.io/pod-security-admission v0.26.1/go.mod h1:hCbYTG5UtLlivmukkMPjAWf23PUBUHzEvR60xNVWN4c=
+k8s.io/pod-security-admission v0.26.10 h1:D2MF9JbMRu3pB7Onx26DHm6MHJRh3s6ZK0UKoRRD2to=
+k8s.io/pod-security-admission v0.26.10/go.mod h1:AurbRHBkqh8GSj+nDgsY0NLefkiGCmZJbzMJXQZpte8=
 k8s.io/utils v0.0.0-20201110183641-67b214c5f920/go.mod h1:jPW/WVKK9YHAvNhRxK0md/EJ228hCsBRufyofKtW8HA=
 k8s.io/utils v0.0.0-20210722164352-7f3ee0f31471/go.mod h1:jPW/WVKK9YHAvNhRxK0md/EJ228hCsBRufyofKtW8HA=
 k8s.io/utils v0.0.0-20210802155522-efc7438f0176/go.mod h1:jPW/WVKK9YHAvNhRxK0md/EJ228hCsBRufyofKtW8HA=

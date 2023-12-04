@@ -74,7 +74,7 @@ func GetResourceFromDevfile(log logr.Logger, devfileData data.DevfileData, deplo
 				src := parser.YamlSrc{
 					Data: []byte(component.Kubernetes.Inlined),
 				}
-				values, err := parser.ReadKubernetesYaml(src, nil)
+				values, err := parser.ReadKubernetesYaml(src, nil, nil)
 				if err != nil {
 					return parser.KubernetesResources{}, err
 				}
