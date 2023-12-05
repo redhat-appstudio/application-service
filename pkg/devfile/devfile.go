@@ -74,6 +74,9 @@ func GetResourceFromDevfile(log logr.Logger, devfileData data.DevfileData, deplo
 				src := parser.YamlSrc{
 					Data: []byte(component.Kubernetes.Inlined),
 				}
+				// No need to pass in the Token or the DevfileUtils client because
+				// it is inlined data and the file has already been parsed by the devfile/library
+				// on the initial parse and stored as inlined content.
 				values, err := parser.ReadKubernetesYaml(src, nil, nil)
 				if err != nil {
 					return parser.KubernetesResources{}, err

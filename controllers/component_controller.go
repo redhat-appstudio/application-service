@@ -224,7 +224,10 @@ func (r *ComponentReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 	for _, condition := range component.Status.Conditions {
 		if forceGenerateGitopsResource || (condition.Type == "GitOpsResourcesGenerated" && condition.Reason == "GenerateError" && condition.Status == metav1.ConditionFalse) {
 			log.Info(fmt.Sprintf("Re-attempting GitOps generation for %s", component.Name))
-			// Parse the Component Devfile
+			// Parse the Component CR Devfile
+			// Not necessary to pass in a Token or DevfileUtils client to the parser here since the devfileBytes has:
+			// 1. Already been flattened on the create reconcile, so private parents are already expanded
+			// 2. Kubernetes Component Uri has already been converted to inlined content with a Token if required by default on the first parse
 			compDevfileData, err := cdqanalysis.ParseDevfileWithParserArgs(&devfileParser.ParserArgs{Data: []byte(component.Status.Devfile), Token: gitToken})
 			if err != nil {
 				errMsg := fmt.Sprintf("Unable to parse the devfile from Component status and re-attempt GitOps generation, exiting reconcile loop %v", req.NamespacedName)
@@ -401,8 +404,12 @@ func (r *ComponentReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 		}
 
 		if devfileLocation != "" {
-			// Parse the Component Devfile
 			log.Info(fmt.Sprintf("Parsing Devfile from the Devfile location %s... %v", devfileLocation, req.NamespacedName))
+			// Parse the Component CR Devfile
+			// Pass in a Token and a DevfileUtils client because we need to
+			// 1. Flatten the Devfile and access a private parent if necessary
+			// 2. Convert the Kubernetes Uri to Inline by default
+			// 3. Provide a way to mock output for Component controller tests
 			compDevfileData, err = cdqanalysis.ParseDevfileWithParserArgs(&devfileParser.ParserArgs{URL: devfileLocation, Token: gitToken, DevfileUtilsClient: r.DevfileUtilsClient})
 
 			if err != nil {
@@ -411,8 +418,11 @@ func (r *ComponentReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 				return ctrl.Result{}, err
 			}
 		} else {
-			// Parse the Component Devfile
 			log.Info(fmt.Sprintf("Parsing Devfile from the Devfile bytes %v... %v", len(devfileBytes), req.NamespacedName))
+			// Parse the Component CR Devfile
+			// Not necessary to pass in a Token or a DevfileUtils client to the parser here on devfileBytes, since:
+			// 1. devfileBytes are only used from a DockerfileURL or an Image, Component CR source (check if conditions above on Component CR sources)
+			// 2. We dont access any resources for either of these cases in devfile/library
 			compDevfileData, err = cdqanalysis.ParseDevfileWithParserArgs(&devfileParser.ParserArgs{Data: devfileBytes, Token: gitToken})
 
 			if err != nil {
@@ -430,8 +440,11 @@ func (r *ComponentReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 		}
 
 		if hasApplication.Status.Devfile != "" {
-			// Get the devfile of the hasApp CR
-			hasAppDevfileData, err := cdqanalysis.ParseDevfileWithParserArgs(&devfileParser.ParserArgs{Data: []byte(hasApplication.Status.Devfile), Token: gitToken})
+			// Parse the Application CR Devfile
+			// No need to invoke devfile/library parser with a Token or a DevfileUtils client because the Application CR Devfile model:
+			// 1. Is constructed in the Application controller and there is no need for a Token
+			// 2. Only consists of Devfile metadata attributes and projects to store the Component CR information
+			hasAppDevfileData, err := cdqanalysis.ParseDevfileWithParserArgs(&devfileParser.ParserArgs{Data: []byte(hasApplication.Status.Devfile)})
 
 			if err != nil {
 				log.Error(err, fmt.Sprintf("Unable to parse the devfile from Application, exiting reconcile loop %v", req.NamespacedName))
@@ -485,7 +498,10 @@ func (r *ComponentReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 		// If the model already exists, see if fields have been updated
 		log.Info(fmt.Sprintf("Checking if the Component has been updated %v", req.NamespacedName))
 
-		// Parse the Component Devfile
+		// Parse the Component CR Devfile
+		// Not necessary to pass in a Token or DevfileUtils client to the parser here since the devfileBytes has:
+		// 1. Already been flattened on the create reconcile, so private parents are already expanded
+		// 2. Kubernetes Component Uri has already been converted to inlined content with a Token if required by default on the first parse
 		hasCompDevfileData, err := cdqanalysis.ParseDevfileWithParserArgs(&devfileParser.ParserArgs{Data: []byte(component.Status.Devfile), Token: gitToken})
 
 		if err != nil {
@@ -501,7 +517,10 @@ func (r *ComponentReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 			return ctrl.Result{}, err
 		}
 
-		// Read the devfile again to compare it with any updates
+		// Parse the Component CR Devfile again to compare it with any updates
+		// Not necessary to pass in a Token or DevfileUtils client to the parser here since the devfileBytes has:
+		// 1. Already been flattened on the create reconcile, so private parents are already expanded
+		// 2. Kubernetes Component Uri has already been converted to inlined content with a Token if required by default on the first parse
 		oldCompDevfileData, err := cdqanalysis.ParseDevfileWithParserArgs(&devfileParser.ParserArgs{Data: []byte(component.Status.Devfile), Token: gitToken})
 
 		if err != nil {

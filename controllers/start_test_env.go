@@ -96,6 +96,7 @@ func SetupTestEnv() (client.Client, *envtest.Environment, context.Context, conte
 	gomega.Expect(err).ToNot(gomega.HaveOccurred())
 
 	mockGhTokenClient := github.MockGitHubTokenClient{}
+	mockDevfileUtilsClient := devfileParserUtil.NewMockDevfileUtilsClient()
 
 	// Retrieve the option to specify a cdq-analysis image
 	cdqAnalysisImage := os.Getenv("CDQ_ANALYSIS_IMAGE")
@@ -123,7 +124,7 @@ func SetupTestEnv() (client.Client, *envtest.Environment, context.Context, conte
 			K8sClient: k8sClient,
 		},
 		GitHubTokenClient:  mockGhTokenClient,
-		DevfileUtilsClient: devfileParserUtil.NewMockDevfileUtilsClient(),
+		DevfileUtilsClient: &mockDevfileUtilsClient,
 	}).SetupWithManager(ctx, k8sManager)
 	gomega.Expect(err).ToNot(gomega.HaveOccurred())
 

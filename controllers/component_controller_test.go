@@ -2411,6 +2411,158 @@ var _ = Describe("Component controller", func() {
 			// Delete the specified HASApp resource
 			deleteHASAppCR(hasAppLookupKey)
 		})
+
+		Context("Create Private Component with basic field set and a private parent uri", func() {
+			It("Should create successfully and update the Application", func() {
+				ctx := context.Background()
+
+				applicationName := HASAppName + "26"
+				componentName := HASCompName + "26"
+
+				originalPort := 1111
+				updatedPort := 2222
+
+				// Create a git secret
+				tokenSecret := &corev1.Secret{
+					TypeMeta: metav1.TypeMeta{
+						Kind: "Secret",
+					},
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      componentName,
+						Namespace: HASAppNamespace,
+					},
+					StringData: map[string]string{
+						"password": "parent-devfile", // notsecret - see mock implementation in devfile/library https://github.com/devfile/library/blob/main/pkg/util/mock.go
+					},
+				}
+
+				Expect(k8sClient.Create(ctx, tokenSecret)).Should(Succeed())
+
+				createAndFetchSimpleApp(applicationName, HASAppNamespace, DisplayName, Description)
+
+				hasComp := &appstudiov1alpha1.Component{
+					TypeMeta: metav1.TypeMeta{
+						APIVersion: "appstudio.redhat.com/v1alpha1",
+						Kind:       "Component",
+					},
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      componentName,
+						Namespace: HASAppNamespace,
+					},
+					Spec: appstudiov1alpha1.ComponentSpec{
+						ComponentName: ComponentName,
+						Application:   applicationName,
+						Secret:        componentName,
+						Source: appstudiov1alpha1.ComponentSource{
+							ComponentSourceUnion: appstudiov1alpha1.ComponentSourceUnion{
+								GitSource: &appstudiov1alpha1.GitSource{
+									URL: "https://github.com/maysunfaisal/devfile-sample-python-basic-private", // It doesn't matter if we are using pub/pvt repo here. We are mock testing the token, "parent-devfile" returns a mock devfile and mock parent. See https://github.com/devfile/library/blob/main/pkg/util/mock.go
+								},
+							},
+						},
+						TargetPort: originalPort,
+					},
+				}
+				Expect(k8sClient.Create(ctx, hasComp)).Should(Succeed())
+
+				// Look up the has app resource that was created.
+				// num(conditions) may still be < 2 (GeneratedGitOps, Created) on the first try, so retry until at least _some_ condition is set
+				hasCompLookupKey := types.NamespacedName{Name: componentName, Namespace: HASAppNamespace}
+				createdHasComp := &appstudiov1alpha1.Component{}
+				Eventually(func() bool {
+					k8sClient.Get(context.Background(), hasCompLookupKey, createdHasComp)
+					return len(createdHasComp.Status.Conditions) > 1 && createdHasComp.Status.GitOps.RepositoryURL != ""
+				}, timeout, interval).Should(BeTrue())
+
+				// Verify that the GitOpsGenerated status condition was also set
+				// ToDo: Add helper func for accessing the status conditions in a better way
+				gitopsCondition := createdHasComp.Status.Conditions[len(createdHasComp.Status.Conditions)-2]
+				Expect(gitopsCondition.Type).To(Equal("GitOpsResourcesGenerated"))
+				Expect(gitopsCondition.Status).To(Equal(metav1.ConditionTrue))
+
+				// Make sure the devfile model was properly set in Component
+				Expect(createdHasComp.Status.Devfile).Should(Not(Equal("")))
+
+				hasAppLookupKey := types.NamespacedName{Name: applicationName, Namespace: HASAppNamespace}
+				createdHasApp := &appstudiov1alpha1.Application{}
+				Eventually(func() bool {
+					k8sClient.Get(context.Background(), hasAppLookupKey, createdHasApp)
+					return len(createdHasApp.Status.Conditions) > 0 && strings.Contains(createdHasApp.Status.Devfile, ComponentName)
+				}, timeout, interval).Should(BeTrue())
+
+				// Make sure the devfile model was properly set in Application
+				Expect(createdHasApp.Status.Devfile).Should(Not(Equal("")))
+
+				// Check the Component devfile
+				_, err := cdqanalysis.ParseDevfileWithParserArgs(&parser.ParserArgs{Data: []byte(createdHasComp.Status.Devfile)})
+				Expect(err).Should(Not(HaveOccurred()))
+
+				// Check the HAS Application devfile
+				hasAppDevfile, err := cdqanalysis.ParseDevfileWithParserArgs(&parser.ParserArgs{Data: []byte(createdHasApp.Status.Devfile)})
+
+				Expect(err).Should(Not(HaveOccurred()))
+
+				// gitOpsRepo and appModelRepo should both be set
+				Expect(string(hasAppDevfile.GetMetadata().Attributes["gitOpsRepository.url"].Raw)).Should(Not(Equal("")))
+				Expect(string(hasAppDevfile.GetMetadata().Attributes["appModelRepository.url"].Raw)).Should(Not(Equal("")))
+
+				// gitOpsRepo set in the component equal the repository in the app cr's devfile
+				gitopsRepo := hasAppDevfile.GetMetadata().Attributes.GetString("gitOpsRepository.url", &err)
+				Expect(err).Should(Not(HaveOccurred()))
+				Expect(string(createdHasComp.Status.GitOps.RepositoryURL)).Should(Equal(gitopsRepo))
+
+				// Commit ID should be set in the gitops repository and not be empty
+				Expect(createdHasComp.Status.GitOps.CommitID).Should(Not(BeEmpty()))
+
+				hasProjects, err := hasAppDevfile.GetProjects(common.DevfileOptions{})
+				Expect(err).Should(Not(HaveOccurred()))
+				Expect(len(hasProjects)).ShouldNot(Equal(0))
+
+				nameMatched := false
+				repoLinkMatched := false
+				for _, project := range hasProjects {
+					if project.Name == ComponentName {
+						nameMatched = true
+					}
+					if project.Git != nil && project.Git.GitLikeProjectSource.Remotes["origin"] == "https://github.com/maysunfaisal/devfile-sample-python-basic-private" {
+						repoLinkMatched = true
+					}
+				}
+				Expect(nameMatched).Should(Equal(true))
+				Expect(repoLinkMatched).Should(Equal(true))
+
+				// Update Component
+				createdHasComp.Spec.TargetPort = updatedPort
+
+				Expect(k8sClient.Update(ctx, createdHasComp)).Should(Succeed())
+
+				updatedHasComp := &appstudiov1alpha1.Component{}
+				Eventually(func() bool {
+					k8sClient.Get(context.Background(), hasCompLookupKey, updatedHasComp)
+					return updatedHasComp.Status.Conditions[len(updatedHasComp.Status.Conditions)-1].Type == "Updated"
+				}, timeout, interval).Should(BeTrue())
+
+				// Make sure the devfile model was properly set in Component
+				Expect(updatedHasComp.Status.Devfile).Should(Not(Equal("")))
+
+				// Check the Component updated devfile
+				hasCompUpdatedDevfile, err := cdqanalysis.ParseDevfileWithParserArgs(&parser.ParserArgs{Data: []byte(updatedHasComp.Status.Devfile)})
+
+				Expect(err).Should(Not(HaveOccurred()))
+
+				checklist := updateChecklist{
+					port: updatedPort,
+				}
+
+				verifyHASComponentUpdates(hasCompUpdatedDevfile, checklist, nil)
+
+				// Delete the specified HASComp resource
+				deleteHASCompCR(hasCompLookupKey)
+
+				// Delete the specified HASApp resource
+				deleteHASAppCR(hasAppLookupKey)
+			})
+		})
 	})
 
 })
