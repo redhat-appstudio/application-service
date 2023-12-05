@@ -124,13 +124,26 @@ func GetResourceFromDevfile(log logr.Logger, devfileData data.DevfileData, deplo
 				}
 
 				if len(resources.Deployments) > 0 {
-					// update for replica
-					currentReplica := int32(component.Attributes.GetNumber(ReplicaKey, &err))
-					if err != nil {
-						if _, ok := err.(*attributes.KeyNotFoundError); !ok {
+					// need to pass in a new error holder, otherwise previous errors will persist and give a false error if key is found
+					var replicaErr error
+					currentReplica := int32(component.Attributes.GetNumber(ReplicaKey, &replicaErr))
+					if replicaErr != nil {
+						if _, ok := replicaErr.(*attributes.KeyNotFoundError); !ok {
 							return parser.KubernetesResources{}, err
+						} else {
+							// check the deployment to see what value is set
+							replica := resources.Deployments[0].Spec.Replicas
+							if replica != nil {
+								// if there is no component attribute, we will use the value in the deployment spec
+								currentReplica = *replica
+							} else {
+								// default value is 1.  We shouldn't hit this code path since this check is done in the update logic and will write the attribute deployment/replicas:1
+								currentReplica = 1
+							}
 						}
 					}
+
+					resources.Deployments[0].Spec.Replicas = &currentReplica
 
 					// Set the RevisionHistoryLimit for all Deployments to 0, if it's unset
 					// If set, leave it alone
@@ -166,9 +179,7 @@ func GetResourceFromDevfile(log logr.Logger, devfileData data.DevfileData, deplo
 						resources.Deployments[0].Spec.Template.ObjectMeta.Labels = matchLabels
 					}
 
-					if currentReplica > 0 {
-						resources.Deployments[0].Spec.Replicas = &currentReplica
-					}
+					//resources.Deployments[0].Spec.Replicas = &currentReplica
 
 					if len(resources.Deployments[0].Spec.Template.Spec.Containers) > 0 {
 						if image != "" {
