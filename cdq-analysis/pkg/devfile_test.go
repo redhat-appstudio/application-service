@@ -345,7 +345,8 @@ func TestValidateDevfile(t *testing.T) {
 		ConvertKubernetesContentInUri: &convert,
 	}
 
-	parserArgs.DevfileUtilsClient = devfileParserUtil.NewMockDevfileUtilsClient()
+	mockDevfileUtilsClient := devfileParserUtil.NewMockDevfileUtilsClient()
+	parserArgs.DevfileUtilsClient = &mockDevfileUtilsClient
 
 	springDevfileParser := parserArgs
 	springDevfileParser.URL = "https://raw.githubusercontent.com/devfile-samples/devfile-sample-java-springboot-basic/main/devfile.yaml"

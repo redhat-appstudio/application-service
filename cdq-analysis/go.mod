@@ -5,7 +5,7 @@ go 1.19
 require (
 	github.com/devfile/alizer v1.2.2-0.20231004141146-f36141673c7f
 	github.com/devfile/api/v2 v2.2.1
-	github.com/devfile/library/v2 v2.2.2-0.20231130202909-20a0c910b0e6
+	github.com/devfile/library/v2 v2.2.2-0.20231206202302-705f00dd96f5
 	github.com/devfile/registry-support/index/generator v0.0.0-20221018203505-df96d34d4273
 	github.com/devfile/registry-support/registry-library v0.0.0-20221018213054-47b3ffaeadba
 	github.com/go-logr/logr v1.2.4
