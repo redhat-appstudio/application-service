@@ -395,7 +395,6 @@ func TestComponentDeleteValidatingWebhook(t *testing.T) {
 					err = compWebhook.ValidateCreate(context.Background(), nudgingComponent)
 					require.NoError(t, err)
 				}
-				component = &appstudiov1alpha1.Component{}
 				err = test.client.Get(ctx, types.NamespacedName{Namespace: "default", Name: test.componentName}, component)
 				require.NoError(t, err)
 
