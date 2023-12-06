@@ -228,7 +228,7 @@ func (r *ComponentReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 			// Not necessary to pass in a Token or DevfileUtils client to the parser here since the devfileBytes has:
 			// 1. Already been flattened on the create reconcile, so private parents are already expanded
 			// 2. Kubernetes Component Uri has already been converted to inlined content with a Token if required by default on the first parse
-			compDevfileData, err := cdqanalysis.ParseDevfileWithParserArgs(&devfileParser.ParserArgs{Data: []byte(component.Status.Devfile), Token: gitToken})
+			compDevfileData, err := cdqanalysis.ParseDevfileWithParserArgs(&devfileParser.ParserArgs{Data: []byte(component.Status.Devfile)})
 			if err != nil {
 				errMsg := fmt.Sprintf("Unable to parse the devfile from Component status and re-attempt GitOps generation, exiting reconcile loop %v", req.NamespacedName)
 				log.Error(err, errMsg)
@@ -423,7 +423,7 @@ func (r *ComponentReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 			// Not necessary to pass in a Token or a DevfileUtils client to the parser here on devfileBytes, since:
 			// 1. devfileBytes are only used from a DockerfileURL or an Image, Component CR source (check if conditions above on Component CR sources)
 			// 2. We dont access any resources for either of these cases in devfile/library
-			compDevfileData, err = cdqanalysis.ParseDevfileWithParserArgs(&devfileParser.ParserArgs{Data: devfileBytes, Token: gitToken})
+			compDevfileData, err = cdqanalysis.ParseDevfileWithParserArgs(&devfileParser.ParserArgs{Data: devfileBytes})
 
 			if err != nil {
 				log.Error(err, fmt.Sprintf("Unable to parse the devfile from Component, exiting reconcile loop %v", req.NamespacedName))
@@ -502,7 +502,7 @@ func (r *ComponentReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 		// Not necessary to pass in a Token or DevfileUtils client to the parser here since the devfileBytes has:
 		// 1. Already been flattened on the create reconcile, so private parents are already expanded
 		// 2. Kubernetes Component Uri has already been converted to inlined content with a Token if required by default on the first parse
-		hasCompDevfileData, err := cdqanalysis.ParseDevfileWithParserArgs(&devfileParser.ParserArgs{Data: []byte(component.Status.Devfile), Token: gitToken})
+		hasCompDevfileData, err := cdqanalysis.ParseDevfileWithParserArgs(&devfileParser.ParserArgs{Data: []byte(component.Status.Devfile)})
 
 		if err != nil {
 			log.Error(err, fmt.Sprintf("Unable to parse the devfile from Component status, exiting reconcile loop %v", req.NamespacedName))
@@ -521,7 +521,7 @@ func (r *ComponentReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 		// Not necessary to pass in a Token or DevfileUtils client to the parser here since the devfileBytes has:
 		// 1. Already been flattened on the create reconcile, so private parents are already expanded
 		// 2. Kubernetes Component Uri has already been converted to inlined content with a Token if required by default on the first parse
-		oldCompDevfileData, err := cdqanalysis.ParseDevfileWithParserArgs(&devfileParser.ParserArgs{Data: []byte(component.Status.Devfile), Token: gitToken})
+		oldCompDevfileData, err := cdqanalysis.ParseDevfileWithParserArgs(&devfileParser.ParserArgs{Data: []byte(component.Status.Devfile)})
 
 		if err != nil {
 			log.Error(err, fmt.Sprintf("Unable to parse the devfile from Component status, exiting reconcile loop %v", req.NamespacedName))
