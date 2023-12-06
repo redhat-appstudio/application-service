@@ -213,3 +213,13 @@ func StrInList(str string, strList []string) bool {
 	}
 	return false
 }
+
+// RemoveStrFromList removes the first occurence of str from the slice strList
+func RemoveStrFromList(str string, strList []string) []string {
+	for i, v := range strList {
+		if v == str {
+			return append(strList[:i], strList[i+1:]...)
+		}
+	}
+	return strList
+}

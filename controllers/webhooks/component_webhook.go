@@ -178,8 +178,50 @@ func (r *ComponentWebhook) ValidateUpdate(ctx context.Context, oldObj, newObj ru
 
 // ValidateDelete implements webhook.Validator so a webhook will be registered for the type
 func (r *ComponentWebhook) ValidateDelete(ctx context.Context, obj runtime.Object) error {
+	comp := obj.(*appstudiov1alpha1.Component)
+	compName := comp.Name
+	componentNamespace := comp.Namespace
+	componentlog := r.log.WithValues("controllerKind", "Component").WithValues("name", compName).WithValues("namespace", comp.Namespace)
 
-	// TODO(user): fill in your validation logic upon object deletion.
+	// Check which Components this component nudges. Update their statuses to remove the component
+	for _, nudgedComponentName := range comp.Spec.BuildNudgesRef {
+		err := retry.RetryOnConflict(retry.DefaultRetry, func() error {
+			nudgedComponent := &appstudiov1alpha1.Component{}
+			err := r.client.Get(ctx, types.NamespacedName{Namespace: componentNamespace, Name: nudgedComponentName}, nudgedComponent)
+			if err != nil {
+				return err
+			}
+			nudgedComponent.Status.BuildNudgedBy = util.RemoveStrFromList(compName, nudgedComponent.Status.BuildNudgedBy)
+			err = r.client.Status().Update(ctx, nudgedComponent)
+			return err
+		})
+
+		if err != nil {
+			// Don't block component deletion if this fails, but log and continue
+			componentlog.Error(err, "error deleting component name from build-nudges-ref")
+			continue
+		}
+
+	}
+
+	// Next, loop through the Component's list of nudging components, and update their specs
+	for _, nudgedComponentName := range comp.Status.BuildNudgedBy {
+		err := retry.RetryOnConflict(retry.DefaultRetry, func() error {
+			nudgingComponent := &appstudiov1alpha1.Component{}
+			err := r.client.Get(ctx, types.NamespacedName{Namespace: componentNamespace, Name: nudgedComponentName}, nudgingComponent)
+			if err != nil {
+				return err
+			}
+			nudgingComponent.Spec.BuildNudgesRef = util.RemoveStrFromList(compName, nudgingComponent.Spec.BuildNudgesRef)
+			err = r.client.Update(ctx, nudgingComponent)
+			return err
+		})
+		if err != nil {
+			// Don't block component deletion if this fails, but log and continue
+			componentlog.Error(err, "error deleting component name from build-nudges-ref")
+			continue
+		}
+	}
 	return nil
 }
 

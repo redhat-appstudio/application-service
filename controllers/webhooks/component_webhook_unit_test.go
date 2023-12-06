@@ -21,6 +21,7 @@ import (
 	"testing"
 
 	appstudiov1alpha1 "github.com/redhat-appstudio/application-api/api/v1alpha1"
+	"github.com/redhat-appstudio/application-service/pkg/util"
 	"go.uber.org/zap/zapcore"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
@@ -337,33 +338,118 @@ func TestComponentUpdateValidatingWebhook(t *testing.T) {
 }
 
 func TestComponentDeleteValidatingWebhook(t *testing.T) {
+	fakeErrorClient := NewFakeErrorClient(t)
 
 	tests := []struct {
-		name    string
-		newComp appstudiov1alpha1.Component
-		err     string
+		name                 string
+		client               client.Client
+		newComp              appstudiov1alpha1.Component
+		componentName        string
+		nudgingComponentName string
 	}{
 		{
-			name:    "ValidateDelete should return nil, it's unimplemented",
-			err:     "",
-			newComp: appstudiov1alpha1.Component{},
+			name:          "nudging component deleted",
+			newComp:       appstudiov1alpha1.Component{},
+			client:        setUpComponents(t),
+			componentName: "component1",
+		},
+		{
+			name:                 "nudged and nudging component deleted",
+			newComp:              appstudiov1alpha1.Component{},
+			client:               setUpComponents(t),
+			componentName:        "component2",
+			nudgingComponentName: "component1",
+		},
+		{
+			name:                 "nudged component deleted",
+			newComp:              appstudiov1alpha1.Component{},
+			client:               setUpComponents(t),
+			componentName:        "component3",
+			nudgingComponentName: "component2",
+		},
+		{
+			name:          "error retrieving component",
+			newComp:       appstudiov1alpha1.Component{},
+			client:        fakeErrorClient,
+			componentName: "component2",
 		},
 	}
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
 			compWebhook := ComponentWebhook{
+				client: test.client,
 				log: zap.New(zap.UseFlagOptions(&zap.Options{
 					Development: true,
 					TimeEncoder: zapcore.ISO8601TimeEncoder,
 				})),
 			}
-			err := compWebhook.ValidateDelete(context.Background(), &test.newComp)
+			var err error
+			component := &appstudiov1alpha1.Component{}
 
-			if test.err == "" {
-				assert.Nil(t, err)
+			if test.name != "error retrieving component" {
+				if test.nudgingComponentName != "" {
+					// Validate parent component first in this test case
+					nudgingComponent := &appstudiov1alpha1.Component{}
+					err = test.client.Get(ctx, types.NamespacedName{Namespace: "default", Name: test.nudgingComponentName}, nudgingComponent)
+					require.NoError(t, err)
+					err = compWebhook.ValidateCreate(context.Background(), nudgingComponent)
+					require.NoError(t, err)
+				}
+				component = &appstudiov1alpha1.Component{}
+				err = test.client.Get(ctx, types.NamespacedName{Namespace: "default", Name: test.componentName}, component)
+				require.NoError(t, err)
+
+				// First, run the create webhook to ensure statuses are properly set
+				err = compWebhook.ValidateCreate(context.Background(), component)
+				require.NoError(t, err)
 			} else {
-				assert.Contains(t, err.Error(), test.err)
+				component = &appstudiov1alpha1.Component{
+					ObjectMeta: v1.ObjectMeta{
+						Name:      "component2",
+						Namespace: "default",
+					},
+					TypeMeta: v1.TypeMeta{
+						APIVersion: "appstudio.redhat.com/v1alpha1",
+						Kind:       "Component",
+					},
+					Spec: appstudiov1alpha1.ComponentSpec{
+						ComponentName:  "component2",
+						Application:    "application",
+						BuildNudgesRef: []string{"component3"},
+					},
+					Status: appstudiov1alpha1.ComponentStatus{
+						BuildNudgedBy: []string{"component1"},
+					},
+				}
 			}
+
+			// Next, run the delete webhook to ensure the fields previously set get removed
+			err = compWebhook.ValidateDelete(context.Background(), component)
+			require.NoError(t, err)
+
+			if test.name != "error retrieving component" {
+				for _, v := range component.Spec.BuildNudgesRef {
+					nudgedComponent := &appstudiov1alpha1.Component{}
+					test.client.Get(context.Background(), types.NamespacedName{Namespace: "default", Name: v}, nudgedComponent)
+					require.NoError(t, err)
+
+					// The nudging component should no longer be present in the nudged component's status
+					if util.StrInList(test.componentName, nudgedComponent.Status.BuildNudgedBy) {
+						t.Errorf("TestComponentDeleteValidatingWebhook(): unexpected error, expected component %v to be removed from component %v's nudged-by list %v", test.componentName, v, nudgedComponent.Status.BuildNudgedBy)
+					}
+				}
+
+				for _, v := range component.Status.BuildNudgedBy {
+					nudgingComponent := &appstudiov1alpha1.Component{}
+					test.client.Get(context.Background(), types.NamespacedName{Namespace: "default", Name: v}, nudgingComponent)
+					require.NoError(t, err)
+
+					if util.StrInList(test.componentName, nudgingComponent.Spec.BuildNudgesRef) {
+						t.Errorf("TestComponentDeleteValidatingWebhook(): unexpected error, expected component %v to be removed from component %v's build-nudges-ref list %v", test.componentName, v, nudgingComponent.Spec.BuildNudgesRef)
+					}
+				}
+			}
+
 		})
 	}
 }
@@ -626,6 +712,13 @@ func setUpComponents(t *testing.T) client.WithWatch {
 			ComponentName:  "component1",
 			Application:    "application1",
 			BuildNudgesRef: []string{"component2"},
+			Source: appstudiov1alpha1.ComponentSource{
+				ComponentSourceUnion: appstudiov1alpha1.ComponentSourceUnion{
+					GitSource: &appstudiov1alpha1.GitSource{
+						URL: "https://github.com/test/repo",
+					},
+				},
+			},
 		},
 	}
 	err = fakeClient.Create(context.Background(), &component1)
@@ -644,6 +737,13 @@ func setUpComponents(t *testing.T) client.WithWatch {
 			ComponentName:  "component2",
 			Application:    "application1",
 			BuildNudgesRef: []string{"component3"},
+			Source: appstudiov1alpha1.ComponentSource{
+				ComponentSourceUnion: appstudiov1alpha1.ComponentSourceUnion{
+					GitSource: &appstudiov1alpha1.GitSource{
+						URL: "https://github.com/test/repo",
+					},
+				},
+			},
 		},
 	}
 	err = fakeClient.Create(context.Background(), &component2)
@@ -661,6 +761,13 @@ func setUpComponents(t *testing.T) client.WithWatch {
 		Spec: appstudiov1alpha1.ComponentSpec{
 			ComponentName: "component3",
 			Application:   "application1",
+			Source: appstudiov1alpha1.ComponentSource{
+				ComponentSourceUnion: appstudiov1alpha1.ComponentSourceUnion{
+					GitSource: &appstudiov1alpha1.GitSource{
+						URL: "https://github.com/test/repo",
+					},
+				},
+			},
 		},
 	}
 	err = fakeClient.Create(context.Background(), &component3)
@@ -679,6 +786,13 @@ func setUpComponents(t *testing.T) client.WithWatch {
 			ComponentName:  "component-self-ref",
 			Application:    "application1",
 			BuildNudgesRef: []string{"component-self-ref"},
+			Source: appstudiov1alpha1.ComponentSource{
+				ComponentSourceUnion: appstudiov1alpha1.ComponentSourceUnion{
+					GitSource: &appstudiov1alpha1.GitSource{
+						URL: "https://github.com/test/repo",
+					},
+				},
+			},
 		},
 	}
 	err = fakeClient.Create(context.Background(), &componentSelfReference)
@@ -697,6 +811,13 @@ func setUpComponents(t *testing.T) client.WithWatch {
 			ComponentName:  "component-invalid-app",
 			Application:    "application1",
 			BuildNudgesRef: []string{"component4"},
+			Source: appstudiov1alpha1.ComponentSource{
+				ComponentSourceUnion: appstudiov1alpha1.ComponentSourceUnion{
+					GitSource: &appstudiov1alpha1.GitSource{
+						URL: "https://github.com/test/repo",
+					},
+				},
+			},
 		},
 	}
 	err = fakeClient.Create(context.Background(), &componentInvalidApp)
@@ -714,6 +835,13 @@ func setUpComponents(t *testing.T) client.WithWatch {
 		Spec: appstudiov1alpha1.ComponentSpec{
 			ComponentName: "component2",
 			Application:   "application2",
+			Source: appstudiov1alpha1.ComponentSource{
+				ComponentSourceUnion: appstudiov1alpha1.ComponentSourceUnion{
+					GitSource: &appstudiov1alpha1.GitSource{
+						URL: "https://github.com/test/repo",
+					},
+				},
+			},
 		},
 	}
 	err = fakeClient.Create(context.Background(), &component4)
@@ -732,6 +860,13 @@ func setUpComponents(t *testing.T) client.WithWatch {
 			ComponentName:  "complexComponent",
 			Application:    "application1",
 			BuildNudgesRef: []string{"component1", "complexComponentNudged"},
+			Source: appstudiov1alpha1.ComponentSource{
+				ComponentSourceUnion: appstudiov1alpha1.ComponentSourceUnion{
+					GitSource: &appstudiov1alpha1.GitSource{
+						URL: "https://github.com/test/repo",
+					},
+				},
+			},
 		},
 	}
 	err = fakeClient.Create(context.Background(), &complexComponent)
@@ -750,6 +885,13 @@ func setUpComponents(t *testing.T) client.WithWatch {
 			ComponentName:  "complexComponentNudged",
 			Application:    "application1",
 			BuildNudgesRef: []string{"component5", "component6", "component7"},
+			Source: appstudiov1alpha1.ComponentSource{
+				ComponentSourceUnion: appstudiov1alpha1.ComponentSourceUnion{
+					GitSource: &appstudiov1alpha1.GitSource{
+						URL: "https://github.com/test/repo",
+					},
+				},
+			},
 		},
 	}
 	err = fakeClient.Create(context.Background(), &complexComponentNudged)
@@ -767,6 +909,13 @@ func setUpComponents(t *testing.T) client.WithWatch {
 		Spec: appstudiov1alpha1.ComponentSpec{
 			ComponentName: "component5",
 			Application:   "application1",
+			Source: appstudiov1alpha1.ComponentSource{
+				ComponentSourceUnion: appstudiov1alpha1.ComponentSourceUnion{
+					GitSource: &appstudiov1alpha1.GitSource{
+						URL: "https://github.com/test/repo",
+					},
+				},
+			},
 		},
 	}
 	err = fakeClient.Create(context.Background(), &component5)
@@ -785,6 +934,13 @@ func setUpComponents(t *testing.T) client.WithWatch {
 			ComponentName:  "component6",
 			Application:    "application1",
 			BuildNudgesRef: []string{"component8"},
+			Source: appstudiov1alpha1.ComponentSource{
+				ComponentSourceUnion: appstudiov1alpha1.ComponentSourceUnion{
+					GitSource: &appstudiov1alpha1.GitSource{
+						URL: "https://github.com/test/repo",
+					},
+				},
+			},
 		},
 	}
 	err = fakeClient.Create(context.Background(), &component6)
@@ -803,6 +959,13 @@ func setUpComponents(t *testing.T) client.WithWatch {
 			ComponentName:  "component7",
 			Application:    "application1",
 			BuildNudgesRef: []string{"component9"},
+			Source: appstudiov1alpha1.ComponentSource{
+				ComponentSourceUnion: appstudiov1alpha1.ComponentSourceUnion{
+					GitSource: &appstudiov1alpha1.GitSource{
+						URL: "https://github.com/test/repo",
+					},
+				},
+			},
 		},
 	}
 	err = fakeClient.Create(context.Background(), &component7)
@@ -820,6 +983,13 @@ func setUpComponents(t *testing.T) client.WithWatch {
 		Spec: appstudiov1alpha1.ComponentSpec{
 			ComponentName: "component8",
 			Application:   "application1",
+			Source: appstudiov1alpha1.ComponentSource{
+				ComponentSourceUnion: appstudiov1alpha1.ComponentSourceUnion{
+					GitSource: &appstudiov1alpha1.GitSource{
+						URL: "https://github.com/test/repo",
+					},
+				},
+			},
 		},
 	}
 	err = fakeClient.Create(context.Background(), &component8)
@@ -838,6 +1008,13 @@ func setUpComponents(t *testing.T) client.WithWatch {
 			ComponentName:  "component9",
 			Application:    "application1",
 			BuildNudgesRef: []string{"complexComponent"},
+			Source: appstudiov1alpha1.ComponentSource{
+				ComponentSourceUnion: appstudiov1alpha1.ComponentSourceUnion{
+					GitSource: &appstudiov1alpha1.GitSource{
+						URL: "https://github.com/test/repo",
+					},
+				},
+			},
 		},
 	}
 	err = fakeClient.Create(context.Background(), &component9)
@@ -856,6 +1033,13 @@ func setUpComponents(t *testing.T) client.WithWatch {
 			ComponentName:  "component10",
 			Application:    "application1",
 			BuildNudgesRef: []string{"component11", "component12", "component13"},
+			Source: appstudiov1alpha1.ComponentSource{
+				ComponentSourceUnion: appstudiov1alpha1.ComponentSourceUnion{
+					GitSource: &appstudiov1alpha1.GitSource{
+						URL: "https://github.com/test/repo",
+					},
+				},
+			},
 		},
 	}
 	err = fakeClient.Create(context.Background(), &component10)
@@ -873,6 +1057,13 @@ func setUpComponents(t *testing.T) client.WithWatch {
 		Spec: appstudiov1alpha1.ComponentSpec{
 			ComponentName: "component11",
 			Application:   "application1",
+			Source: appstudiov1alpha1.ComponentSource{
+				ComponentSourceUnion: appstudiov1alpha1.ComponentSourceUnion{
+					GitSource: &appstudiov1alpha1.GitSource{
+						URL: "https://github.com/test/repo",
+					},
+				},
+			},
 		},
 	}
 	err = fakeClient.Create(context.Background(), &component11)
@@ -890,6 +1081,13 @@ func setUpComponents(t *testing.T) client.WithWatch {
 		Spec: appstudiov1alpha1.ComponentSpec{
 			ComponentName: "component12",
 			Application:   "application1",
+			Source: appstudiov1alpha1.ComponentSource{
+				ComponentSourceUnion: appstudiov1alpha1.ComponentSourceUnion{
+					GitSource: &appstudiov1alpha1.GitSource{
+						URL: "https://github.com/test/repo",
+					},
+				},
+			},
 		},
 	}
 	err = fakeClient.Create(context.Background(), &component12)
@@ -907,6 +1105,13 @@ func setUpComponents(t *testing.T) client.WithWatch {
 		Spec: appstudiov1alpha1.ComponentSpec{
 			ComponentName: "component13",
 			Application:   "application1",
+			Source: appstudiov1alpha1.ComponentSource{
+				ComponentSourceUnion: appstudiov1alpha1.ComponentSourceUnion{
+					GitSource: &appstudiov1alpha1.GitSource{
+						URL: "https://github.com/test/repo",
+					},
+				},
+			},
 		},
 	}
 	err = fakeClient.Create(context.Background(), &component13)
@@ -925,6 +1130,13 @@ func setUpComponents(t *testing.T) client.WithWatch {
 			ComponentName:  "nudged-component-missing",
 			Application:    "application1",
 			BuildNudgesRef: []string{"fake-fake"},
+			Source: appstudiov1alpha1.ComponentSource{
+				ComponentSourceUnion: appstudiov1alpha1.ComponentSourceUnion{
+					GitSource: &appstudiov1alpha1.GitSource{
+						URL: "https://github.com/test/repo",
+					},
+				},
+			},
 		},
 	}
 	err = fakeClient.Create(context.Background(), &nudgedComponentMissing)

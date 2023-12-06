@@ -645,6 +645,46 @@ func TestStrInList(t *testing.T) {
 	}
 }
 
+func TestRemoveStrFromList(t *testing.T) {
+	tests := []struct {
+		name string
+		str  string
+		list []string
+		want []string
+	}{
+		{
+			name: "single string in list",
+			str:  "test",
+			list: []string{"some", "test", "words"},
+			want: []string{"some", "words"},
+		},
+		{
+			name: "string not in list",
+			str:  "test",
+			list: []string{"some", "words"},
+			want: []string{"some", "words"},
+		},
+		{
+			name: "multiple occurence of string in list",
+			str:  "test",
+			list: []string{"some", "test", "words", "test", "again"},
+			want: []string{"some", "words", "test", "again"},
+		},
+	}
+
+	for _, tt := range tests {
+		strList := RemoveStrFromList(tt.str, tt.list)
+		if len(strList) != len(tt.want) {
+			t.Errorf("TestRemoveStrFromList(): unexpected error. expected string list %v, got %v", tt.want, strList)
+		}
+		for i := range strList {
+			if strList[i] != tt.want[i] {
+				t.Errorf("TestRemoveStrFromList(): unexpected error. expected string %v at index %v, got %v", tt.want[i], i, strList[i])
+			}
+		}
+	}
+}
+
 func TestGenerateRandomRouteName(t *testing.T) {
 
 	tests := []struct {
