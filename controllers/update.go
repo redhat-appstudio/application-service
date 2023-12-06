@@ -95,7 +95,7 @@ func (r *ComponentReconciler) updateComponentDevfileModel(req ctrl.Request, hasC
 			// Component.Spec.Replicas will override any other settings.
 			// We will write the attribute if it doesn't exist for the initial creation case when comp.spec.replica is 1
 			if currentReplica != numReplicas || !keyFound {
-				log.Info(fmt.Sprintf("setting devfile component %s attribute component.Spec.Replicas to %v", kubernetesComponent.Name, numReplicas))
+				log.Info(fmt.Sprintf("setting devfile component %s attribute %s to %v", kubernetesComponent.Name, devfile.ReplicaKey, numReplicas))
 				kubernetesComponent.Attributes = kubernetesComponent.Attributes.PutInteger(devfile.ReplicaKey, numReplicas)
 				compUpdateRequired = true
 			}
@@ -125,9 +125,18 @@ func (r *ComponentReconciler) updateComponentDevfileModel(req ctrl.Request, hasC
 						isDeployReplicaSet = true
 						//remove the deployment/replicas attribute which can be left behind if we go from a set value to an unset value
 						if kubernetesComponent.Attributes.Exists(devfile.ReplicaKey) {
-							num := int(kubernetesComponent.Attributes.GetNumber(devfile.ReplicaKey, nil))
-							log.Info(fmt.Sprintf("deleting %s attribute with value %v", devfile.ReplicaKey, num))
-							delete(kubernetesComponent.Attributes, devfile.ReplicaKey)
+							var err error
+							num := int(kubernetesComponent.Attributes.GetNumber(devfile.ReplicaKey, &err))
+
+							if err != nil {
+								if _, ok := err.(*attributes.KeyNotFoundError); !ok {
+									return err
+								} else {
+									log.Info(fmt.Sprintf("deleting %s attribute with value %v", devfile.ReplicaKey, num))
+									delete(kubernetesComponent.Attributes, devfile.ReplicaKey)
+								}
+							}
+
 						}
 					}
 				}
