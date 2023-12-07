@@ -1494,7 +1494,7 @@ var _ = Describe("Component controller", func() {
 			Expect(createdHasComp.Spec.Replicas).Should(BeNil())
 
 			//Update replica
-			updatedHasComp.Spec.Replicas = &numReplica
+			updatedHasComp.Spec.Replicas = &oneReplica
 			Expect(k8sClient.Update(ctx, updatedHasComp)).Should(Succeed())
 			newUpdatedHasComp := &appstudiov1alpha1.Component{}
 			Eventually(func() bool {
@@ -1505,7 +1505,7 @@ var _ = Describe("Component controller", func() {
 			Expect(newUpdatedHasComp.Status.Conditions[len(newUpdatedHasComp.Status.Conditions)-1].Status).Should(Equal(metav1.ConditionTrue))
 			//replica should not be nil and should have a value
 			Expect(newUpdatedHasComp.Spec.Replicas).Should(Not(BeNil()))
-			Expect(*newUpdatedHasComp.Spec.Replicas).Should(Equal(numReplica))
+			Expect(*newUpdatedHasComp.Spec.Replicas).Should(Equal(oneReplica))
 
 			// Delete the specified HASComp resource
 			deleteHASCompCR(hasCompLookupKey)
