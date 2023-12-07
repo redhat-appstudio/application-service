@@ -199,7 +199,6 @@ func (r *ComponentWebhook) ValidateDelete(ctx context.Context, obj runtime.Objec
 		if err != nil {
 			// Don't block component deletion if this fails, but log and continue
 			componentlog.Error(err, "error deleting component name from build-nudges-ref")
-			continue
 		}
 
 	}
@@ -219,7 +218,6 @@ func (r *ComponentWebhook) ValidateDelete(ctx context.Context, obj runtime.Objec
 		if err != nil {
 			// Don't block component deletion if this fails, but log and continue
 			componentlog.Error(err, "error deleting component name from build-nudges-ref")
-			continue
 		}
 	}
 	return nil
