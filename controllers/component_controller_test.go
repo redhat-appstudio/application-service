@@ -2408,6 +2408,21 @@ var _ = Describe("Component controller", func() {
 			// Delete the specified private HASComp resource
 			deleteHASCompCR(hasCompPrivateLookupKey)
 
+			// Ensure the SPIFCR that is associate with the private component has owner reference
+			// Kube client created with a test environment config does not clean up Kube resources
+			// with owner referneces.
+			createdSPIFCR = &spiapi.SPIFileContentRequest{}
+			Eventually(func() bool {
+				k8sClient.Get(context.Background(), spiFCRQueryLookupKey, createdSPIFCR)
+				ownerRefs := createdSPIFCR.GetOwnerReferences()
+				if len(ownerRefs) == 1 {
+					if ownerRefs[0].Name == componentName && ownerRefs[0].Kind == "Component" {
+						return true
+					}
+				}
+				return false
+			}, timeout, interval).Should(BeTrue())
+
 			// Delete the specified HASApp resource
 			deleteHASAppCR(hasAppLookupKey)
 		})
@@ -2565,6 +2580,116 @@ var _ = Describe("Component controller", func() {
 		})
 	})
 
+	Context("Create private Component for an Application with basic field set", func() {
+		It("Should create SPI FCR resource and persist it even though the associated private Component is in an error state", func() {
+			ctx := context.Background()
+
+			applicationName := HASAppName + "27"
+			componentName := HASCompName + "27"
+
+			// Create a git secret
+			tokenSecret := &corev1.Secret{
+				TypeMeta: metav1.TypeMeta{
+					Kind: "Secret",
+				},
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      componentName,
+					Namespace: HASAppNamespace,
+				},
+				StringData: map[string]string{
+					"password": "invalid-token", // token tied to mock implementation in devfile/library. See https://github.com/devfile/library/blob/main/pkg/util/mock.go#L250
+				},
+			}
+
+			Expect(k8sClient.Create(ctx, tokenSecret)).Should(Succeed())
+
+			createAndFetchSimpleApp(applicationName, HASAppNamespace, DisplayName, Description)
+
+			hasCompPrivate := &appstudiov1alpha1.Component{
+				TypeMeta: metav1.TypeMeta{
+					APIVersion: "appstudio.redhat.com/v1alpha1",
+					Kind:       "Component",
+				},
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      componentName,
+					Namespace: HASAppNamespace,
+				},
+				Spec: appstudiov1alpha1.ComponentSpec{
+					ComponentName: ComponentName,
+					Application:   applicationName,
+					Secret:        componentName,
+					Source: appstudiov1alpha1.ComponentSource{
+						ComponentSourceUnion: appstudiov1alpha1.ComponentSourceUnion{
+							GitSource: &appstudiov1alpha1.GitSource{
+								URL: "http://github.com/dummy/create-spi-fcr-return-devfile",
+							},
+						},
+					},
+				},
+			}
+			Expect(k8sClient.Create(ctx, hasCompPrivate)).Should(Succeed())
+
+			// Look up the has app resource that was created.
+			hasCompPrivateLookupKey := types.NamespacedName{Name: componentName, Namespace: HASAppNamespace}
+			createdHasPrivateComp := &appstudiov1alpha1.Component{}
+			Eventually(func() bool {
+				k8sClient.Get(context.Background(), hasCompPrivateLookupKey, createdHasPrivateComp)
+				return len(createdHasPrivateComp.Status.Conditions) > 0
+			}, timeout, interval).Should(BeTrue())
+
+			// Make sure the err was set
+			Expect(createdHasPrivateComp.Status.Devfile).Should(Equal(""))
+			Expect(createdHasPrivateComp.Status.Conditions[len(createdHasPrivateComp.Status.Conditions)-1].Reason).Should(Equal("Error"))
+			Expect(strings.ToLower(createdHasPrivateComp.Status.Conditions[len(createdHasPrivateComp.Status.Conditions)-1].Message)).Should(ContainSubstring("error getting devfile"))
+
+			hasAppLookupKey := types.NamespacedName{Name: applicationName, Namespace: HASAppNamespace}
+			createdHasApp := &appstudiov1alpha1.Application{}
+			Eventually(func() bool {
+				k8sClient.Get(context.Background(), hasAppLookupKey, createdHasApp)
+				return len(createdHasApp.Status.Conditions) > 0 && strings.Contains(createdHasApp.Status.Devfile, ComponentName)
+			}, timeout, interval).Should(BeTrue())
+
+			// Make sure the devfile model was properly set in Application
+			Expect(createdHasApp.Status.Devfile).Should(Not(Equal("")))
+
+			// Check the HAS Application devfile
+			hasAppDevfile, err := cdqanalysis.ParseDevfileWithParserArgs(&parser.ParserArgs{Data: []byte(createdHasApp.Status.Devfile)})
+			Expect(err).Should(Not(HaveOccurred()))
+
+			// gitOpsRepo and appModelRepo should both be set
+			Expect(string(hasAppDevfile.GetMetadata().Attributes["gitOpsRepository.url"].Raw)).Should(Not(Equal("")))
+			Expect(string(hasAppDevfile.GetMetadata().Attributes["appModelRepository.url"].Raw)).Should(Not(Equal("")))
+
+			// check for the SPI FCR that got created for private component, its a mock test client, so the SPI FCR does not get processed besides getting created.
+			createdSPIFCR := &spiapi.SPIFileContentRequest{}
+			spiFCRQueryLookupKey := types.NamespacedName{Name: "spi-fcr-" + componentName + "0", Namespace: HASAppNamespace}
+			Eventually(func() bool {
+				k8sClient.Get(context.Background(), spiFCRQueryLookupKey, createdSPIFCR)
+				return createdSPIFCR.Spec.RepoUrl != ""
+			}, timeout, interval).Should(BeTrue())
+
+			// Delete the specified private HASComp resource
+			deleteHASCompCR(hasCompPrivateLookupKey)
+
+			// Ensure the SPIFCR that is associate with the private component has owner reference
+			// Kube client created with a test environment config does not clean up Kube resources
+			// with owner referneces.
+			createdSPIFCR = &spiapi.SPIFileContentRequest{}
+			Eventually(func() bool {
+				k8sClient.Get(context.Background(), spiFCRQueryLookupKey, createdSPIFCR)
+				ownerRefs := createdSPIFCR.GetOwnerReferences()
+				if len(ownerRefs) == 1 {
+					if ownerRefs[0].Name == componentName && ownerRefs[0].Kind == "Component" {
+						return true
+					}
+				}
+				return false
+			}, timeout, interval).Should(BeTrue())
+
+			// Delete the specified HASApp resource
+			deleteHASAppCR(hasAppLookupKey)
+		})
+	})
 })
 
 type updateChecklist struct {
