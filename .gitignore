@@ -13,3 +13,4 @@ output.log
 syncer.yaml
 .DS_Store
 pact.log
+*resource.file*
