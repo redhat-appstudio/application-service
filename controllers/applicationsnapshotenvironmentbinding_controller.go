@@ -357,6 +357,8 @@ func (r *SnapshotEnvironmentBindingReconciler) Reconcile(ctx context.Context, re
 
 		if component.Configuration.Replicas != nil {
 			genOptions.Replicas = *component.Configuration.Replicas
+		} else {
+			genOptions.Replicas = 1 //default is 1
 		}
 
 		if !reflect.DeepEqual(kubernetesResources, devfileParser.KubernetesResources{}) {
