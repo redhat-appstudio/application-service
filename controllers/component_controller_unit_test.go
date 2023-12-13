@@ -565,3 +565,87 @@ func TestGenerateGitops(t *testing.T) {
 	}
 
 }
+
+func TestCheckForCreateReconcile(t *testing.T) {
+
+	tests := []struct {
+		name                string
+		component           appstudiov1alpha1.Component
+		wantCreateReconcile bool
+	}{
+		{
+			name: "Component with Create Condition",
+			component: appstudiov1alpha1.Component{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "comp1",
+				},
+				Spec: appstudiov1alpha1.ComponentSpec{
+					ComponentName: "comp1",
+				},
+				Status: appstudiov1alpha1.ComponentStatus{
+					Conditions: []metav1.Condition{
+						{
+							Type:    "Created",
+							Status:  metav1.ConditionTrue,
+							Reason:  "OK",
+							Message: "Component has been successfully created",
+						},
+					},
+				},
+			},
+			wantCreateReconcile: true,
+		},
+		{
+			name: "Component with no Conditions",
+			component: appstudiov1alpha1.Component{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "comp1",
+				},
+				Spec: appstudiov1alpha1.ComponentSpec{
+					ComponentName: "comp1",
+				},
+				Status: appstudiov1alpha1.ComponentStatus{},
+			},
+			wantCreateReconcile: true,
+		},
+		{
+			name: "Component with Create and Update Conditions",
+			component: appstudiov1alpha1.Component{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "comp1",
+				},
+				Spec: appstudiov1alpha1.ComponentSpec{
+					ComponentName: "comp1",
+				},
+				Status: appstudiov1alpha1.ComponentStatus{
+					Conditions: []metav1.Condition{
+						{
+							Type:    "Created",
+							Status:  metav1.ConditionTrue,
+							Reason:  "OK",
+							Message: "Component has been successfully created",
+						},
+						{
+							Type:    "Updated",
+							Status:  metav1.ConditionFalse,
+							Reason:  "Error",
+							Message: "Component updated failed",
+						},
+					},
+				},
+			},
+			wantCreateReconcile: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := checkForCreateReconcile(tt.component)
+
+			if tt.wantCreateReconcile != got {
+				t.Errorf("TestCheckForCreateReconcile error: expected %v, got %v", tt.wantCreateReconcile, got)
+			}
+		})
+	}
+
+}

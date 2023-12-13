@@ -504,6 +504,9 @@ func TestGetBranchFromURL(t *testing.T) {
 			Client: GetMockedClient(),
 		}
 
+		beforeCreateSuccess := testutil.ToFloat64(metrics.ComponentCreationSucceeded)
+		beforeCreateFailed := testutil.ToFloat64(metrics.ComponentCreationFailed)
+
 		t.Run(tt.name, func(t *testing.T) {
 			branch, err := mockedClient.GetBranchFromURL(tt.repoURL, context.Background(), tt.branchName)
 
@@ -512,6 +515,18 @@ func TestGetBranchFromURL(t *testing.T) {
 			}
 			if !tt.wantErr && *branch.Name != tt.branchName {
 				t.Errorf("TestGetBranchFromURL() error: expected %v got %v", tt.branchName, *branch.Name)
+			}
+
+			if tt.wantErr {
+				if tt.name == "Unparseable URL" {
+					if testutil.ToFloat64(metrics.ComponentCreationSucceeded) <= beforeCreateSuccess {
+						t.Errorf("TestGetBranchFromURL() expected metric 'ComponentCreationSucceeded' to be incremented, beforeCreateSuccess %v and testutil.ToFloat64(metrics.ComponentCreationSucceeded) %v", beforeCreateSuccess, testutil.ToFloat64(metrics.ComponentCreationSucceeded))
+					}
+				} else if tt.name == "Simple repo name" {
+					if testutil.ToFloat64(metrics.ComponentCreationFailed) <= beforeCreateFailed {
+						t.Errorf("TestGetBranchFromURL() expected metric 'ComponentCreationFailed' to be incremented, beforeCreateFailed %v and testutil.ToFloat64(metrics.ComponentCreationFailed) %v", beforeCreateFailed, testutil.ToFloat64(metrics.ComponentCreationFailed))
+					}
+				}
 			}
 		})
 	}

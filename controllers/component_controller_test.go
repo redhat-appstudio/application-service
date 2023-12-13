@@ -22,6 +22,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/testutil"
 	"github.com/redhat-appstudio/application-service/pkg/metrics"
 
@@ -61,8 +62,14 @@ var _ = Describe("Component controller", func() {
 		gitToken        = "" //empty for public repo test
 	)
 
+	prometheus.MustRegister(metrics.ComponentCreationTotalReqs, metrics.ComponentCreationFailed, metrics.ComponentCreationSucceeded)
+
 	Context("Create Component with basic field set", func() {
 		It("Should create successfully and update the Application", func() {
+			beforeCreateTotalReqs := testutil.ToFloat64(metrics.ComponentCreationTotalReqs)
+			beforeCreateSucceedReqs := testutil.ToFloat64(metrics.ComponentCreationSucceeded)
+			beforeCreateFailedReqs := testutil.ToFloat64(metrics.ComponentCreationFailed)
+
 			ctx := context.Background()
 
 			applicationName := HASAppName + "1"
@@ -159,6 +166,10 @@ var _ = Describe("Component controller", func() {
 			Expect(nameMatched).Should(Equal(true))
 			Expect(repoLinkMatched).Should(Equal(true))
 
+			Expect(testutil.ToFloat64(metrics.ComponentCreationTotalReqs) > beforeCreateTotalReqs).To(BeTrue())
+			Expect(testutil.ToFloat64(metrics.ComponentCreationSucceeded) > beforeCreateSucceedReqs).To(BeTrue())
+			Expect(testutil.ToFloat64(metrics.ComponentCreationFailed) == beforeCreateFailedReqs).To(BeTrue())
+
 			// Delete the specified HASComp resource
 			deleteHASCompCR(hasCompLookupKey)
 
@@ -169,6 +180,10 @@ var _ = Describe("Component controller", func() {
 
 	Context("Create Component with basic field set including devfileURL", func() {
 		It("Should create successfully on a valid url", func() {
+			beforeCreateTotalReqs := testutil.ToFloat64(metrics.ComponentCreationTotalReqs)
+			beforeCreateSucceedReqs := testutil.ToFloat64(metrics.ComponentCreationSucceeded)
+			beforeCreateFailedReqs := testutil.ToFloat64(metrics.ComponentCreationFailed)
+
 			ctx := context.Background()
 
 			applicationName := HASAppName + "2"
@@ -256,6 +271,10 @@ var _ = Describe("Component controller", func() {
 			Expect(nameMatched).Should(Equal(true))
 			Expect(repoLinkMatched).Should(Equal(true))
 
+			Expect(testutil.ToFloat64(metrics.ComponentCreationTotalReqs) > beforeCreateTotalReqs).To(BeTrue())
+			Expect(testutil.ToFloat64(metrics.ComponentCreationSucceeded) > beforeCreateSucceedReqs).To(BeTrue())
+			Expect(testutil.ToFloat64(metrics.ComponentCreationFailed) == beforeCreateFailedReqs).To(BeTrue())
+
 			// Delete the specified HASComp resource
 			deleteHASCompCR(hasCompLookupKey)
 
@@ -266,6 +285,10 @@ var _ = Describe("Component controller", func() {
 
 	Context("Create Component with basic field set including devfileURL", func() {
 		It("Should error out on a bad url", func() {
+			beforeCreateTotalReqs := testutil.ToFloat64(metrics.ComponentCreationTotalReqs)
+			beforeCreateSucceedReqs := testutil.ToFloat64(metrics.ComponentCreationSucceeded)
+			beforeCreateFailedReqs := testutil.ToFloat64(metrics.ComponentCreationFailed)
+
 			ctx := context.Background()
 
 			applicationName := HASAppName + "3"
@@ -313,6 +336,10 @@ var _ = Describe("Component controller", func() {
 
 			hasAppLookupKey := types.NamespacedName{Name: applicationName, Namespace: HASAppNamespace}
 
+			Expect(testutil.ToFloat64(metrics.ComponentCreationTotalReqs) > beforeCreateTotalReqs).To(BeTrue())
+			Expect(testutil.ToFloat64(metrics.ComponentCreationSucceeded) == beforeCreateSucceedReqs).To(BeTrue())
+			Expect(testutil.ToFloat64(metrics.ComponentCreationFailed) > beforeCreateFailedReqs).To(BeTrue())
+
 			// Delete the specified HASComp resource
 			deleteHASCompCR(hasCompLookupKey)
 
@@ -323,6 +350,10 @@ var _ = Describe("Component controller", func() {
 
 	Context("Create a Component before an Application", func() {
 		It("Should reconcile once the application is created", func() {
+			beforeCreateTotalReqs := testutil.ToFloat64(metrics.ComponentCreationTotalReqs)
+			beforeCreateSucceedReqs := testutil.ToFloat64(metrics.ComponentCreationSucceeded)
+			beforeCreateFailedReqs := testutil.ToFloat64(metrics.ComponentCreationFailed)
+
 			ctx := context.Background()
 
 			applicationName := HASAppName + "4"
@@ -378,6 +409,10 @@ var _ = Describe("Component controller", func() {
 				return len(createdHasComp.Status.Conditions) > 0 && createdHasComp.Status.Conditions[0].Reason == "OK"
 			}, timeout40s, interval).Should(BeTrue())
 
+			Expect(testutil.ToFloat64(metrics.ComponentCreationTotalReqs) > beforeCreateTotalReqs).To(BeTrue())
+			Expect(testutil.ToFloat64(metrics.ComponentCreationSucceeded) > beforeCreateSucceedReqs).To(BeTrue())
+			Expect(testutil.ToFloat64(metrics.ComponentCreationFailed) == beforeCreateFailedReqs).To(BeTrue())
+
 			// Delete the specified HASComp resource
 			deleteHASAppCR(types.NamespacedName{Name: applicationName, Namespace: HASAppNamespace})
 			deleteHASCompCR(hasCompLookupKey)
@@ -387,6 +422,10 @@ var _ = Describe("Component controller", func() {
 
 	Context("Create Component with other field set", func() {
 		It("Should create successfully and update the Application", func() {
+			beforeCreateTotalReqs := testutil.ToFloat64(metrics.ComponentCreationTotalReqs)
+			beforeCreateSucceedReqs := testutil.ToFloat64(metrics.ComponentCreationSucceeded)
+			beforeCreateFailedReqs := testutil.ToFloat64(metrics.ComponentCreationFailed)
+
 			ctx := context.Background()
 
 			applicationName := HASAppName + "5"
@@ -593,6 +632,10 @@ var _ = Describe("Component controller", func() {
 
 			verifyHASComponentUpdates(hasCompUpdatedDevfile, checklist, nil)
 
+			Expect(testutil.ToFloat64(metrics.ComponentCreationTotalReqs) > beforeCreateTotalReqs).To(BeTrue())
+			Expect(testutil.ToFloat64(metrics.ComponentCreationSucceeded) > beforeCreateSucceedReqs).To(BeTrue())
+			Expect(testutil.ToFloat64(metrics.ComponentCreationFailed) == beforeCreateFailedReqs).To(BeTrue())
+
 			// Delete the specified HASComp resource
 			deleteHASCompCR(hasCompLookupKey)
 
@@ -603,6 +646,10 @@ var _ = Describe("Component controller", func() {
 
 	Context("Create Component with built container image set", func() {
 		It("Should create successfully", func() {
+			beforeCreateTotalReqs := testutil.ToFloat64(metrics.ComponentCreationTotalReqs)
+			beforeCreateSucceedReqs := testutil.ToFloat64(metrics.ComponentCreationSucceeded)
+			beforeCreateFailedReqs := testutil.ToFloat64(metrics.ComponentCreationFailed)
+
 			ctx := context.Background()
 
 			beforeImportGitRepoTotalReqs := testutil.ToFloat64(metrics.ImportGitRepoTotalReqs)
@@ -672,6 +719,10 @@ var _ = Describe("Component controller", func() {
 			Expect(testutil.ToFloat64(metrics.ImportGitRepoSucceeded) > beforeImportGitRepoSucceeded).To(BeTrue())
 			Expect(testutil.ToFloat64(metrics.ImportGitRepoFailed) == beforeImportGitRepoFailed).To(BeTrue())
 
+			Expect(testutil.ToFloat64(metrics.ComponentCreationTotalReqs) > beforeCreateTotalReqs).To(BeTrue())
+			Expect(testutil.ToFloat64(metrics.ComponentCreationSucceeded) > beforeCreateSucceedReqs).To(BeTrue())
+			Expect(testutil.ToFloat64(metrics.ComponentCreationFailed) == beforeCreateFailedReqs).To(BeTrue())
+
 			// Delete the specified HASComp resource
 			deleteHASCompCR(hasCompLookupKey)
 
@@ -682,6 +733,10 @@ var _ = Describe("Component controller", func() {
 
 	Context("Component with invalid devfile", func() {
 		It("Should fail and have proper failure condition set", func() {
+			beforeCreateTotalReqs := testutil.ToFloat64(metrics.ComponentCreationTotalReqs)
+			beforeCreateSucceedReqs := testutil.ToFloat64(metrics.ComponentCreationSucceeded)
+			beforeCreateFailedReqs := testutil.ToFloat64(metrics.ComponentCreationFailed)
+
 			ctx := context.Background()
 
 			applicationName := HASAppName + "7"
@@ -739,6 +794,10 @@ var _ = Describe("Component controller", func() {
 			Expect(errCondition.Status).Should(Equal(metav1.ConditionFalse))
 			Expect(errCondition.Message).Should(ContainSubstring("failed to decode devfile json"))
 
+			Expect(testutil.ToFloat64(metrics.ComponentCreationTotalReqs) > beforeCreateTotalReqs).To(BeTrue())
+			Expect(testutil.ToFloat64(metrics.ComponentCreationSucceeded) > beforeCreateSucceedReqs).To(BeTrue())
+			Expect(testutil.ToFloat64(metrics.ComponentCreationFailed) == beforeCreateFailedReqs).To(BeTrue())
+
 			// Delete the specified HASComp resource
 			deleteHASCompCR(hasCompLookupKey)
 
@@ -756,6 +815,10 @@ var _ = Describe("Component controller", func() {
 	// This first test will just use an invalid gitops repository url for the component
 	Context("Component with gitops resource generation failure", func() {
 		It("Should have proper failure condition set", func() {
+			beforeCreateTotalReqs := testutil.ToFloat64(metrics.ComponentCreationTotalReqs)
+			beforeCreateSucceedReqs := testutil.ToFloat64(metrics.ComponentCreationSucceeded)
+			beforeCreateFailedReqs := testutil.ToFloat64(metrics.ComponentCreationFailed)
+
 			ctx := context.Background()
 
 			applicationName := HASAppName + "8"
@@ -828,6 +891,10 @@ var _ = Describe("Component controller", func() {
 			gitopsCondition := createdHasComp.Status.Conditions[len(createdHasComp.Status.Conditions)-2]
 			Expect(gitopsCondition.Type).To(Equal("GitOpsResourcesGenerated"))
 			Expect(gitopsCondition.Status).To(Equal(metav1.ConditionFalse))
+
+			Expect(testutil.ToFloat64(metrics.ComponentCreationTotalReqs) > beforeCreateTotalReqs).To(BeTrue())
+			Expect(testutil.ToFloat64(metrics.ComponentCreationSucceeded) == beforeCreateSucceedReqs).To(BeTrue())
+			Expect(testutil.ToFloat64(metrics.ComponentCreationFailed) > beforeCreateFailedReqs).To(BeTrue())
 
 			// Delete the specified HASComp resource
 			deleteHASCompCR(hasCompLookupKey)
@@ -910,6 +977,10 @@ var _ = Describe("Component controller", func() {
 	// The gitops generation should fail due to the gitops repository annotation missing
 	Context("Component created with App with missing gitops repository", func() {
 		It("Should fail since Application has no gitops repository", func() {
+			beforeCreateTotalReqs := testutil.ToFloat64(metrics.ComponentCreationTotalReqs)
+			beforeCreateSucceedReqs := testutil.ToFloat64(metrics.ComponentCreationSucceeded)
+			beforeCreateFailedReqs := testutil.ToFloat64(metrics.ComponentCreationFailed)
+
 			var err error
 			ctx := context.Background()
 
@@ -976,6 +1047,10 @@ var _ = Describe("Component controller", func() {
 
 			Expect(createdHasComp.Status.Conditions[len(createdHasComp.Status.Conditions)-1].Message).Should(ContainSubstring("unable to retrieve GitOps repository from Application CR devfile"))
 
+			Expect(testutil.ToFloat64(metrics.ComponentCreationTotalReqs) > beforeCreateTotalReqs).To(BeTrue())
+			Expect(testutil.ToFloat64(metrics.ComponentCreationSucceeded) == beforeCreateSucceedReqs).To(BeTrue())
+			Expect(testutil.ToFloat64(metrics.ComponentCreationFailed) > beforeCreateFailedReqs).To(BeTrue())
+
 			// Delete the specified HASComp resource
 			deleteHASCompCR(hasCompLookupKey)
 
@@ -986,6 +1061,10 @@ var _ = Describe("Component controller", func() {
 
 	Context("Create Component with invalid git url", func() {
 		It("Should fail with error", func() {
+			beforeCreateTotalReqs := testutil.ToFloat64(metrics.ComponentCreationTotalReqs)
+			beforeCreateSucceedReqs := testutil.ToFloat64(metrics.ComponentCreationSucceeded)
+			beforeCreateFailedReqs := testutil.ToFloat64(metrics.ComponentCreationFailed)
+
 			ctx := context.Background()
 
 			applicationName := HASAppName + "11"
@@ -1032,6 +1111,10 @@ var _ = Describe("Component controller", func() {
 
 			hasAppLookupKey := types.NamespacedName{Name: applicationName, Namespace: HASAppNamespace}
 
+			Expect(testutil.ToFloat64(metrics.ComponentCreationTotalReqs) > beforeCreateTotalReqs).To(BeTrue())
+			Expect(testutil.ToFloat64(metrics.ComponentCreationSucceeded) > beforeCreateSucceedReqs).To(BeTrue())
+			Expect(testutil.ToFloat64(metrics.ComponentCreationFailed) == beforeCreateFailedReqs).To(BeTrue())
+
 			// Delete the specified HASComp resource
 			deleteHASCompCR(hasCompLookupKey)
 
@@ -1042,6 +1125,10 @@ var _ = Describe("Component controller", func() {
 
 	Context("Create Component with non-exist git url", func() {
 		It("Should fail with error", func() {
+			beforeCreateTotalReqs := testutil.ToFloat64(metrics.ComponentCreationTotalReqs)
+			beforeCreateSucceedReqs := testutil.ToFloat64(metrics.ComponentCreationSucceeded)
+			beforeCreateFailedReqs := testutil.ToFloat64(metrics.ComponentCreationFailed)
+
 			ctx := context.Background()
 
 			beforeImportGitRepoTotalReqs := testutil.ToFloat64(metrics.ImportGitRepoTotalReqs)
@@ -1096,6 +1183,10 @@ var _ = Describe("Component controller", func() {
 			Expect(testutil.ToFloat64(metrics.ImportGitRepoSucceeded) > beforeImportGitRepoSucceeded).To(BeTrue())
 			Expect(testutil.ToFloat64(metrics.ImportGitRepoFailed) == beforeImportGitRepoFailed).To(BeTrue())
 
+			Expect(testutil.ToFloat64(metrics.ComponentCreationTotalReqs) > beforeCreateTotalReqs).To(BeTrue())
+			Expect(testutil.ToFloat64(metrics.ComponentCreationSucceeded) > beforeCreateSucceedReqs).To(BeTrue())
+			Expect(testutil.ToFloat64(metrics.ComponentCreationFailed) == beforeCreateFailedReqs).To(BeTrue())
+
 			// Delete the specified HASComp resource
 			deleteHASCompCR(hasCompLookupKey)
 
@@ -1106,6 +1197,10 @@ var _ = Describe("Component controller", func() {
 
 	Context("Create Component with invalid devfile url", func() {
 		It("Should fail with error that devfile couldn't be unmarshalled", func() {
+			beforeCreateTotalReqs := testutil.ToFloat64(metrics.ComponentCreationTotalReqs)
+			beforeCreateSucceedReqs := testutil.ToFloat64(metrics.ComponentCreationSucceeded)
+			beforeCreateFailedReqs := testutil.ToFloat64(metrics.ComponentCreationFailed)
+
 			ctx := context.Background()
 
 			applicationName := HASAppName + "12"
@@ -1152,6 +1247,10 @@ var _ = Describe("Component controller", func() {
 			Expect(errCondition.Message).Should(ContainSubstring("schemaVersion not present in devfile"))
 
 			hasAppLookupKey := types.NamespacedName{Name: applicationName, Namespace: HASAppNamespace}
+
+			Expect(testutil.ToFloat64(metrics.ComponentCreationTotalReqs) > beforeCreateTotalReqs).To(BeTrue())
+			Expect(testutil.ToFloat64(metrics.ComponentCreationSucceeded) == beforeCreateSucceedReqs).To(BeTrue())
+			Expect(testutil.ToFloat64(metrics.ComponentCreationFailed) > beforeCreateFailedReqs).To(BeTrue())
 
 			// Delete the specified HASComp resource
 			deleteHASCompCR(hasCompLookupKey)
@@ -1222,6 +1321,10 @@ var _ = Describe("Component controller", func() {
 
 	Context("Create Component with git secret field set to an invalid secret", func() {
 		It("Should error out due parse error", func() {
+			beforeCreateTotalReqs := testutil.ToFloat64(metrics.ComponentCreationTotalReqs)
+			beforeCreateSucceedReqs := testutil.ToFloat64(metrics.ComponentCreationSucceeded)
+			beforeCreateFailedReqs := testutil.ToFloat64(metrics.ComponentCreationFailed)
+
 			// the secret exists but it's not a real one that we can use to access a live repo
 			ctx := context.Background()
 
@@ -1286,6 +1389,10 @@ var _ = Describe("Component controller", func() {
 			Expect(strings.ToLower(createdHasComp.Status.Conditions[len(createdHasComp.Status.Conditions)-1].Message)).Should(ContainSubstring("component create failed: failed to populateandparsedevfile: error getting devfile info from url: failed to retrieve"))
 			hasAppLookupKey := types.NamespacedName{Name: applicationName, Namespace: HASAppNamespace}
 
+			Expect(testutil.ToFloat64(metrics.ComponentCreationTotalReqs) > beforeCreateTotalReqs).To(BeTrue())
+			Expect(testutil.ToFloat64(metrics.ComponentCreationSucceeded) == beforeCreateSucceedReqs).To(BeTrue())
+			Expect(testutil.ToFloat64(metrics.ComponentCreationFailed) > beforeCreateFailedReqs).To(BeTrue())
+
 			// Delete the specified HASComp resource
 			deleteHASCompCR(hasCompLookupKey)
 
@@ -1296,6 +1403,10 @@ var _ = Describe("Component controller", func() {
 
 	Context("Create Component with private repo, but no devfile", func() {
 		It("Should error out since no devfile exists", func() {
+			beforeCreateTotalReqs := testutil.ToFloat64(metrics.ComponentCreationTotalReqs)
+			beforeCreateSucceedReqs := testutil.ToFloat64(metrics.ComponentCreationSucceeded)
+			beforeCreateFailedReqs := testutil.ToFloat64(metrics.ComponentCreationFailed)
+
 			ctx := context.Background()
 
 			applicationName := HASAppName + "15"
@@ -1359,6 +1470,10 @@ var _ = Describe("Component controller", func() {
 
 			hasAppLookupKey := types.NamespacedName{Name: applicationName, Namespace: HASAppNamespace}
 
+			Expect(testutil.ToFloat64(metrics.ComponentCreationTotalReqs) > beforeCreateTotalReqs).To(BeTrue())
+			Expect(testutil.ToFloat64(metrics.ComponentCreationSucceeded) == beforeCreateSucceedReqs).To(BeTrue())
+			Expect(testutil.ToFloat64(metrics.ComponentCreationFailed) > beforeCreateFailedReqs).To(BeTrue())
+
 			// Delete the specified HASComp resource
 			deleteHASCompCR(hasCompLookupKey)
 
@@ -1369,6 +1484,10 @@ var _ = Describe("Component controller", func() {
 
 	Context("Create Component with with context folder containing no devfile", func() {
 		It("Should error out because a devfile cannot be found", func() {
+			beforeCreateTotalReqs := testutil.ToFloat64(metrics.ComponentCreationTotalReqs)
+			beforeCreateSucceedReqs := testutil.ToFloat64(metrics.ComponentCreationSucceeded)
+			beforeCreateFailedReqs := testutil.ToFloat64(metrics.ComponentCreationFailed)
+
 			ctx := context.Background()
 
 			applicationName := HASAppName + "16"
@@ -1414,6 +1533,10 @@ var _ = Describe("Component controller", func() {
 			Expect(strings.ToLower(createdHasComp.Status.Conditions[len(createdHasComp.Status.Conditions)-1].Message)).Should(ContainSubstring("unable to find devfile in the specified location https://raw.githubusercontent.com/devfile-samples/devfile-sample-python-basic/main/docker"))
 
 			hasAppLookupKey := types.NamespacedName{Name: applicationName, Namespace: HASAppNamespace}
+
+			Expect(testutil.ToFloat64(metrics.ComponentCreationTotalReqs) > beforeCreateTotalReqs).To(BeTrue())
+			Expect(testutil.ToFloat64(metrics.ComponentCreationSucceeded) > beforeCreateSucceedReqs).To(BeTrue())
+			Expect(testutil.ToFloat64(metrics.ComponentCreationFailed) == beforeCreateFailedReqs).To(BeTrue())
 
 			// Delete the specified HASComp resource
 			deleteHASCompCR(hasCompLookupKey)
@@ -1517,6 +1640,10 @@ var _ = Describe("Component controller", func() {
 
 	Context("Create Component with Dockerfile URL set", func() {
 		It("Should create successfully and update the Application", func() {
+			beforeCreateTotalReqs := testutil.ToFloat64(metrics.ComponentCreationTotalReqs)
+			beforeCreateSucceedReqs := testutil.ToFloat64(metrics.ComponentCreationSucceeded)
+			beforeCreateFailedReqs := testutil.ToFloat64(metrics.ComponentCreationFailed)
+
 			ctx := context.Background()
 
 			applicationName := HASAppName + "18"
@@ -1620,6 +1747,10 @@ var _ = Describe("Component controller", func() {
 			Expect(nameMatched).Should(Equal(true))
 			Expect(repoLinkMatched).Should(Equal(true))
 
+			Expect(testutil.ToFloat64(metrics.ComponentCreationTotalReqs) > beforeCreateTotalReqs).To(BeTrue())
+			Expect(testutil.ToFloat64(metrics.ComponentCreationSucceeded) > beforeCreateSucceedReqs).To(BeTrue())
+			Expect(testutil.ToFloat64(metrics.ComponentCreationFailed) == beforeCreateFailedReqs).To(BeTrue())
+
 			// Delete the specified HASComp resource
 			deleteHASCompCR(hasCompLookupKey)
 
@@ -1630,6 +1761,10 @@ var _ = Describe("Component controller", func() {
 
 	Context("Create Component with setGitOpsGeneration to true", func() {
 		It("Should create successfully and not create the GitOps resources, and generate the resources once set.", func() {
+			beforeCreateTotalReqs := testutil.ToFloat64(metrics.ComponentCreationTotalReqs)
+			beforeCreateSucceedReqs := testutil.ToFloat64(metrics.ComponentCreationSucceeded)
+			beforeCreateFailedReqs := testutil.ToFloat64(metrics.ComponentCreationFailed)
+
 			ctx := context.Background()
 
 			applicationName := HASAppName + "19"
@@ -1675,6 +1810,10 @@ var _ = Describe("Component controller", func() {
 			// Make sure the devfile model was properly set in Component
 			Expect(createdComp.Status.Devfile).Should(Not(Equal("")))
 
+			Expect(testutil.ToFloat64(metrics.ComponentCreationTotalReqs) > beforeCreateTotalReqs).To(BeTrue())
+			Expect(testutil.ToFloat64(metrics.ComponentCreationSucceeded) > beforeCreateSucceedReqs).To(BeTrue())
+			Expect(testutil.ToFloat64(metrics.ComponentCreationFailed) == beforeCreateFailedReqs).To(BeTrue())
+
 			// Now change skipGitOpsResourceGeneration to true and validate that the GitOps Resources are generated successfully (by validating the GitOpsResourcesGenerated status condition)
 			createdComp.Spec.SkipGitOpsResourceGeneration = false
 			Expect(k8sClient.Update(ctx, createdComp)).Should(Succeed())
@@ -1702,6 +1841,10 @@ var _ = Describe("Component controller", func() {
 
 	Context("Create Component with Dockerfile URL set for repo with devfile URL", func() {
 		It("Should create successfully and override local Dockerfile URL references in the Devfile", func() {
+			beforeCreateTotalReqs := testutil.ToFloat64(metrics.ComponentCreationTotalReqs)
+			beforeCreateSucceedReqs := testutil.ToFloat64(metrics.ComponentCreationSucceeded)
+			beforeCreateFailedReqs := testutil.ToFloat64(metrics.ComponentCreationFailed)
+
 			ctx := context.Background()
 
 			applicationName := HASAppName + "20"
@@ -1802,6 +1945,10 @@ var _ = Describe("Component controller", func() {
 			Expect(nameMatched).Should(Equal(true))
 			Expect(repoLinkMatched).Should(Equal(true))
 
+			Expect(testutil.ToFloat64(metrics.ComponentCreationTotalReqs) > beforeCreateTotalReqs).To(BeTrue())
+			Expect(testutil.ToFloat64(metrics.ComponentCreationSucceeded) > beforeCreateSucceedReqs).To(BeTrue())
+			Expect(testutil.ToFloat64(metrics.ComponentCreationFailed) == beforeCreateFailedReqs).To(BeTrue())
+
 			// Delete the specified HASComp resource
 			deleteHASCompCR(hasCompLookupKey)
 
@@ -1813,6 +1960,10 @@ var _ = Describe("Component controller", func() {
 	// Cannot test combined failure and recovery scenario since mock test uses the component name which can't be changed
 	Context("Component with empty GitOps repository", func() {
 		It("Should error out", func() {
+			beforeCreateTotalReqs := testutil.ToFloat64(metrics.ComponentCreationTotalReqs)
+			beforeCreateSucceedReqs := testutil.ToFloat64(metrics.ComponentCreationSucceeded)
+			beforeCreateFailedReqs := testutil.ToFloat64(metrics.ComponentCreationFailed)
+
 			ctx := context.Background()
 
 			applicationName := HASAppName + "21"
@@ -1894,6 +2045,10 @@ var _ = Describe("Component controller", func() {
 			// Make sure the devfile model was properly set in Component
 			Expect(createdHasComp.Status.Devfile).Should(Not(Equal("")))
 
+			Expect(testutil.ToFloat64(metrics.ComponentCreationTotalReqs) > beforeCreateTotalReqs).To(BeTrue())
+			Expect(testutil.ToFloat64(metrics.ComponentCreationSucceeded) == beforeCreateSucceedReqs).To(BeTrue())
+			Expect(testutil.ToFloat64(metrics.ComponentCreationFailed) > beforeCreateFailedReqs).To(BeTrue())
+
 			// Update the devfile to empty to see if errors out
 			createdHasComp.Status.Devfile = ""
 			Expect(k8sClient.Status().Update(ctx, createdHasComp)).Should(Succeed())
@@ -1924,6 +2079,10 @@ var _ = Describe("Component controller", func() {
 	})
 	Context("Component with valid GitOps repository", func() {
 		It("Should successfully update CR conditions and status", func() {
+			beforeCreateTotalReqs := testutil.ToFloat64(metrics.ComponentCreationTotalReqs)
+			beforeCreateSucceedReqs := testutil.ToFloat64(metrics.ComponentCreationSucceeded)
+			beforeCreateFailedReqs := testutil.ToFloat64(metrics.ComponentCreationFailed)
+
 			ctx := context.Background()
 
 			applicationName := HASAppName + "22"
@@ -2010,6 +2169,10 @@ var _ = Describe("Component controller", func() {
 			// Make sure the devfile model was properly set in Component
 			Expect(createdHasComp.Status.Devfile).Should(Not(Equal("")))
 
+			Expect(testutil.ToFloat64(metrics.ComponentCreationTotalReqs) > beforeCreateTotalReqs).To(BeTrue())
+			Expect(testutil.ToFloat64(metrics.ComponentCreationSucceeded) > beforeCreateSucceedReqs).To(BeTrue())
+			Expect(testutil.ToFloat64(metrics.ComponentCreationFailed) == beforeCreateFailedReqs).To(BeTrue())
+
 			// Delete the specified HASComp resource
 			deleteHASCompCR(hasCompLookupKey)
 
@@ -2019,6 +2182,10 @@ var _ = Describe("Component controller", func() {
 	})
 	Context("force generate gitops resource", func() {
 		It("Should successfully update CR conditions and status", func() {
+			beforeCreateTotalReqs := testutil.ToFloat64(metrics.ComponentCreationTotalReqs)
+			beforeCreateSucceedReqs := testutil.ToFloat64(metrics.ComponentCreationSucceeded)
+			beforeCreateFailedReqs := testutil.ToFloat64(metrics.ComponentCreationFailed)
+
 			ctx := context.Background()
 
 			applicationName := HASAppName + "23"
@@ -2062,6 +2229,10 @@ var _ = Describe("Component controller", func() {
 			Expect(gitopsCondition.Type).To(Equal("GitOpsResourcesGenerated"))
 			Expect(gitopsCondition.Status).To(Equal(metav1.ConditionTrue))
 
+			Expect(testutil.ToFloat64(metrics.ComponentCreationTotalReqs) > beforeCreateTotalReqs).To(BeTrue())
+			Expect(testutil.ToFloat64(metrics.ComponentCreationSucceeded) > beforeCreateSucceedReqs).To(BeTrue())
+			Expect(testutil.ToFloat64(metrics.ComponentCreationFailed) == beforeCreateFailedReqs).To(BeTrue())
+
 			// set the annotation and update a spec to force enter the reconcile
 			setForceGenerateGitopsAnnotation(createdHasComp, "true")
 			createdHasComp.Spec.TargetPort = 1111
@@ -2096,6 +2267,10 @@ var _ = Describe("Component controller", func() {
 
 	Context("Create Private Component with basic field set", func() {
 		It("Should create successfully and update the Application", func() {
+			beforeCreateTotalReqs := testutil.ToFloat64(metrics.ComponentCreationTotalReqs)
+			beforeCreateSucceedReqs := testutil.ToFloat64(metrics.ComponentCreationSucceeded)
+			beforeCreateFailedReqs := testutil.ToFloat64(metrics.ComponentCreationFailed)
+
 			ctx := context.Background()
 
 			applicationName := HASAppName + "24"
@@ -2209,6 +2384,10 @@ var _ = Describe("Component controller", func() {
 			Expect(nameMatched).Should(Equal(true))
 			Expect(repoLinkMatched).Should(Equal(true))
 
+			Expect(testutil.ToFloat64(metrics.ComponentCreationTotalReqs) > beforeCreateTotalReqs).To(BeTrue())
+			Expect(testutil.ToFloat64(metrics.ComponentCreationSucceeded) > beforeCreateSucceedReqs).To(BeTrue())
+			Expect(testutil.ToFloat64(metrics.ComponentCreationFailed) == beforeCreateFailedReqs).To(BeTrue())
+
 			// Delete the specified HASComp resource
 			deleteHASCompCR(hasCompLookupKey)
 
@@ -2219,6 +2398,10 @@ var _ = Describe("Component controller", func() {
 
 	Context("Create private and public Components for the same Application with basic field set", func() {
 		It("Should create SPI FCR resource and associate it with only the private Component", func() {
+			beforeCreateTotalReqs := testutil.ToFloat64(metrics.ComponentCreationTotalReqs)
+			beforeCreateSucceedReqs := testutil.ToFloat64(metrics.ComponentCreationSucceeded)
+			beforeCreateFailedReqs := testutil.ToFloat64(metrics.ComponentCreationFailed)
+
 			ctx := context.Background()
 
 			applicationName := HASAppName + "25"
@@ -2395,6 +2578,10 @@ var _ = Describe("Component controller", func() {
 			Expect(publicNameMatched).Should(Equal(true))
 			Expect(publicRepoLinkMatched).Should(Equal(true))
 
+			Expect(testutil.ToFloat64(metrics.ComponentCreationTotalReqs) == beforeCreateTotalReqs+2).To(BeTrue())
+			Expect(testutil.ToFloat64(metrics.ComponentCreationSucceeded) == beforeCreateSucceedReqs+2).To(BeTrue())
+			Expect(testutil.ToFloat64(metrics.ComponentCreationFailed) == beforeCreateFailedReqs).To(BeTrue())
+
 			// Delete the specified public HASComp resource
 			deleteHASCompCR(hasCompPublicLookupKey)
 
@@ -2429,6 +2616,10 @@ var _ = Describe("Component controller", func() {
 
 		Context("Create Private Component with basic field set and a private parent uri", func() {
 			It("Should create successfully and update the Application", func() {
+				beforeCreateTotalReqs := testutil.ToFloat64(metrics.ComponentCreationTotalReqs)
+				beforeCreateSucceedReqs := testutil.ToFloat64(metrics.ComponentCreationSucceeded)
+				beforeCreateFailedReqs := testutil.ToFloat64(metrics.ComponentCreationFailed)
+
 				ctx := context.Background()
 
 				applicationName := HASAppName + "26"
@@ -2546,6 +2737,10 @@ var _ = Describe("Component controller", func() {
 				Expect(nameMatched).Should(Equal(true))
 				Expect(repoLinkMatched).Should(Equal(true))
 
+				Expect(testutil.ToFloat64(metrics.ComponentCreationTotalReqs) > beforeCreateTotalReqs).To(BeTrue())
+				Expect(testutil.ToFloat64(metrics.ComponentCreationSucceeded) > beforeCreateSucceedReqs).To(BeTrue())
+				Expect(testutil.ToFloat64(metrics.ComponentCreationFailed) == beforeCreateFailedReqs).To(BeTrue())
+
 				// Update Component
 				createdHasComp.Spec.TargetPort = updatedPort
 
@@ -2582,6 +2777,9 @@ var _ = Describe("Component controller", func() {
 
 	Context("Create private Component for an Application with basic field set", func() {
 		It("Should create SPI FCR resource and persist it even though the associated private Component is in an error state", func() {
+			beforeCreateTotalReqs := testutil.ToFloat64(metrics.ComponentCreationTotalReqs)
+			beforeCreateSucceedReqs := testutil.ToFloat64(metrics.ComponentCreationSucceeded)
+			beforeCreateFailedReqs := testutil.ToFloat64(metrics.ComponentCreationFailed)
 			ctx := context.Background()
 
 			applicationName := HASAppName + "27"
@@ -2641,6 +2839,10 @@ var _ = Describe("Component controller", func() {
 			Expect(createdHasPrivateComp.Status.Devfile).Should(Equal(""))
 			Expect(createdHasPrivateComp.Status.Conditions[len(createdHasPrivateComp.Status.Conditions)-1].Reason).Should(Equal("Error"))
 			Expect(strings.ToLower(createdHasPrivateComp.Status.Conditions[len(createdHasPrivateComp.Status.Conditions)-1].Message)).Should(ContainSubstring("error getting devfile"))
+
+			Expect(testutil.ToFloat64(metrics.ComponentCreationTotalReqs) > beforeCreateTotalReqs).To(BeTrue())
+			Expect(testutil.ToFloat64(metrics.ComponentCreationSucceeded) == beforeCreateSucceedReqs).To(BeTrue())
+			Expect(testutil.ToFloat64(metrics.ComponentCreationFailed) > beforeCreateFailedReqs).To(BeTrue())
 
 			hasAppLookupKey := types.NamespacedName{Name: applicationName, Namespace: HASAppNamespace}
 			createdHasApp := &appstudiov1alpha1.Application{}

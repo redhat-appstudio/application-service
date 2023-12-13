@@ -37,3 +37,11 @@ type GitOpsCommitIdError struct {
 func (e *GitOpsCommitIdError) Error() string {
 	return util.SanitizeErrorMessage(fmt.Errorf("unable to retrieve gitops repository commit id due to error: %v", e.err)).Error()
 }
+
+type NotSupported struct {
+	err error
+}
+
+func (e *NotSupported) Error() string {
+	return util.SanitizeErrorMessage(fmt.Errorf("not supported error: %v", e.err)).Error()
+}
