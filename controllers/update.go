@@ -81,7 +81,7 @@ func (r *ComponentReconciler) updateComponentDevfileModel(req ctrl.Request, hasC
 			currentReplica = int(kubernetesComponent.Attributes.GetNumber(devfile.ReplicaKey, &err))
 			if err != nil {
 				if _, ok := err.(*attributes.KeyNotFoundError); !ok {
-					return err
+					return &devfile.DevfileAttributeParse{Key: devfile.ReplicaKey, Err: err}
 				} else {
 					keyFound = false
 					currentReplica = 1 //if an error is raised, it'll set currentReplica to 0 so we need to reset back to the default
@@ -130,7 +130,7 @@ func (r *ComponentReconciler) updateComponentDevfileModel(req ctrl.Request, hasC
 
 							if err != nil {
 								if _, ok := err.(*attributes.KeyNotFoundError); !ok {
-									return err
+									return &devfile.DevfileAttributeParse{Key: devfile.ReplicaKey, Err: err}
 								} else {
 									log.Info(fmt.Sprintf("deleting %s attribute with value %v", devfile.ReplicaKey, num))
 									delete(kubernetesComponent.Attributes, devfile.ReplicaKey)
@@ -155,7 +155,7 @@ func (r *ComponentReconciler) updateComponentDevfileModel(req ctrl.Request, hasC
 		currentPort := int(kubernetesComponent.Attributes.GetNumber(devfile.ContainerImagePortKey, &err))
 		if err != nil {
 			if _, ok := err.(*attributes.KeyNotFoundError); !ok {
-				return err
+				return &devfile.DevfileAttributeParse{Key: devfile.ContainerImagePortKey, Err: err}
 			}
 		}
 		if currentPort != component.Spec.TargetPort {
@@ -176,12 +176,12 @@ func (r *ComponentReconciler) updateComponentDevfileModel(req ctrl.Request, hasC
 		err = kubernetesComponent.Attributes.GetInto(devfile.ContainerENVKey, &currentENV)
 		if err != nil {
 			if _, ok := err.(*attributes.KeyNotFoundError); !ok {
-				return err
+				return &devfile.DevfileAttributeParse{Key: devfile.ContainerENVKey, Err: err}
 			}
 		}
 		for _, env := range component.Spec.Env {
 			if env.ValueFrom != nil {
-				return fmt.Errorf("env.ValueFrom is not supported at the moment, use env.value")
+				return &NotSupported{err: fmt.Errorf("env.ValueFrom is not supported at the moment, use env.value")}
 			}
 
 			name := env.Name
@@ -204,7 +204,7 @@ func (r *ComponentReconciler) updateComponentDevfileModel(req ctrl.Request, hasC
 			var err error
 			kubernetesComponent.Attributes = kubernetesComponent.Attributes.FromMap(map[string]interface{}{devfile.ContainerENVKey: currentENV}, &err)
 			if err != nil {
-				return err
+				return &devfile.DevfileAttributeParse{Key: devfile.ContainerENVKey, Err: err}
 			}
 			compUpdateRequired = true
 		}

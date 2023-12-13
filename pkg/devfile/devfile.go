@@ -61,7 +61,7 @@ func GetResourceFromDevfile(log logr.Logger, devfileData data.DevfileData, deplo
 	matchLabels := getMatchLabel(compName)
 
 	if len(kubernetesComponents) == 0 {
-		return parser.KubernetesResources{}, fmt.Errorf("the devfile has no kubernetes components defined, missing outerloop definition")
+		return parser.KubernetesResources{}, &MissingOuterloop{}
 	} else if len(kubernetesComponents) == 1 && len(deployAssociatedComponents) == 0 {
 		// only one kubernetes components defined, but no deploy cmd associated
 		deployAssociatedComponents[kubernetesComponents[0].Name] = "place-holder"
@@ -113,7 +113,7 @@ func GetResourceFromDevfile(log logr.Logger, devfileData data.DevfileData, deplo
 				currentPort := int(component.Attributes.GetNumber(ContainerImagePortKey, &err))
 				if err != nil {
 					if _, ok := err.(*attributes.KeyNotFoundError); !ok {
-						return parser.KubernetesResources{}, err
+						return parser.KubernetesResources{}, &DevfileAttributeParse{Key: ContainerImagePortKey, Err: err}
 					}
 				}
 
@@ -122,7 +122,7 @@ func GetResourceFromDevfile(log logr.Logger, devfileData data.DevfileData, deplo
 				err = component.Attributes.GetInto(ContainerENVKey, &currentENV)
 				if err != nil {
 					if _, ok := err.(*attributes.KeyNotFoundError); !ok {
-						return parser.KubernetesResources{}, err
+						return parser.KubernetesResources{}, &DevfileAttributeParse{Key: ContainerENVKey, Err: err}
 					}
 				}
 
@@ -132,7 +132,7 @@ func GetResourceFromDevfile(log logr.Logger, devfileData data.DevfileData, deplo
 					currentReplica := int32(component.Attributes.GetNumber(ReplicaKey, &replicaErr))
 					if replicaErr != nil {
 						if _, ok := replicaErr.(*attributes.KeyNotFoundError); !ok {
-							return parser.KubernetesResources{}, err
+							return parser.KubernetesResources{}, &DevfileAttributeParse{Key: ReplicaKey, Err: err}
 						} else {
 							// check the deployment to see what value is set
 							replica := resources.Deployments[0].Spec.Replicas
@@ -182,8 +182,6 @@ func GetResourceFromDevfile(log logr.Logger, devfileData data.DevfileData, deplo
 						resources.Deployments[0].Spec.Template.ObjectMeta.Labels = matchLabels
 					}
 
-					//resources.Deployments[0].Spec.Replicas = &currentReplica
-
 					if len(resources.Deployments[0].Spec.Template.Spec.Containers) > 0 {
 						if image != "" {
 							resources.Deployments[0].Spec.Template.Spec.Containers[0].Image = image
@@ -226,21 +224,21 @@ func GetResourceFromDevfile(log logr.Logger, devfileData data.DevfileData, deplo
 						cpuLimit := component.Attributes.GetString(CpuLimitKey, &err)
 						if err != nil {
 							if _, ok := err.(*attributes.KeyNotFoundError); !ok {
-								return parser.KubernetesResources{}, err
+								return parser.KubernetesResources{}, &DevfileAttributeParse{Key: CpuLimitKey, Err: err}
 							}
 						}
 
 						memoryLimit := component.Attributes.GetString(MemoryLimitKey, &err)
 						if err != nil {
 							if _, ok := err.(*attributes.KeyNotFoundError); !ok {
-								return parser.KubernetesResources{}, err
+								return parser.KubernetesResources{}, &DevfileAttributeParse{Key: MemoryLimitKey, Err: err}
 							}
 						}
 
 						storageLimit := component.Attributes.GetString(StorageLimitKey, &err)
 						if err != nil {
 							if _, ok := err.(*attributes.KeyNotFoundError); !ok {
-								return parser.KubernetesResources{}, err
+								return parser.KubernetesResources{}, &DevfileAttributeParse{Key: StorageLimitKey, Err: err}
 							}
 						}
 
@@ -252,7 +250,7 @@ func GetResourceFromDevfile(log logr.Logger, devfileData data.DevfileData, deplo
 						if cpuLimit != "" && cpuLimit != "0" {
 							cpuLimitQuantity, err := resource.ParseQuantity(cpuLimit)
 							if err != nil {
-								return parser.KubernetesResources{}, err
+								return parser.KubernetesResources{}, &DevfileAttributeParse{Key: CpuLimitKey, Err: err}
 							}
 							containerLimits[corev1.ResourceCPU] = cpuLimitQuantity
 						}
@@ -260,7 +258,7 @@ func GetResourceFromDevfile(log logr.Logger, devfileData data.DevfileData, deplo
 						if memoryLimit != "" && memoryLimit != "0" {
 							memoryLimitQuantity, err := resource.ParseQuantity(memoryLimit)
 							if err != nil {
-								return parser.KubernetesResources{}, err
+								return parser.KubernetesResources{}, &DevfileAttributeParse{Key: MemoryLimitKey, Err: err}
 							}
 							containerLimits[corev1.ResourceMemory] = memoryLimitQuantity
 						}
@@ -268,7 +266,7 @@ func GetResourceFromDevfile(log logr.Logger, devfileData data.DevfileData, deplo
 						if storageLimit != "" && storageLimit != "0" {
 							storageLimitQuantity, err := resource.ParseQuantity(storageLimit)
 							if err != nil {
-								return parser.KubernetesResources{}, err
+								return parser.KubernetesResources{}, &DevfileAttributeParse{Key: StorageLimitKey, Err: err}
 							}
 							containerLimits[corev1.ResourceStorage] = storageLimitQuantity
 						}
@@ -279,21 +277,21 @@ func GetResourceFromDevfile(log logr.Logger, devfileData data.DevfileData, deplo
 						cpuRequest := component.Attributes.GetString(CpuRequestKey, &err)
 						if err != nil {
 							if _, ok := err.(*attributes.KeyNotFoundError); !ok {
-								return parser.KubernetesResources{}, err
+								return parser.KubernetesResources{}, &DevfileAttributeParse{Key: CpuRequestKey, Err: err}
 							}
 						}
 
 						memoryRequest := component.Attributes.GetString(MemoryRequestKey, &err)
 						if err != nil {
 							if _, ok := err.(*attributes.KeyNotFoundError); !ok {
-								return parser.KubernetesResources{}, err
+								return parser.KubernetesResources{}, &DevfileAttributeParse{Key: MemoryRequestKey, Err: err}
 							}
 						}
 
 						storageRequest := component.Attributes.GetString(StorageRequestKey, &err)
 						if err != nil {
 							if _, ok := err.(*attributes.KeyNotFoundError); !ok {
-								return parser.KubernetesResources{}, err
+								return parser.KubernetesResources{}, &DevfileAttributeParse{Key: StorageRequestKey, Err: err}
 							}
 						}
 
@@ -305,7 +303,7 @@ func GetResourceFromDevfile(log logr.Logger, devfileData data.DevfileData, deplo
 						if cpuRequest != "" && cpuRequest != "0" {
 							cpuRequestQuantity, err := resource.ParseQuantity(cpuRequest)
 							if err != nil {
-								return parser.KubernetesResources{}, err
+								return parser.KubernetesResources{}, &DevfileAttributeParse{Key: CpuRequestKey, Err: err}
 							}
 							containerRequests[corev1.ResourceCPU] = cpuRequestQuantity
 						}
@@ -313,7 +311,7 @@ func GetResourceFromDevfile(log logr.Logger, devfileData data.DevfileData, deplo
 						if memoryRequest != "" && memoryRequest != "0" {
 							memoryRequestQuantity, err := resource.ParseQuantity(memoryRequest)
 							if err != nil {
-								return parser.KubernetesResources{}, err
+								return parser.KubernetesResources{}, &DevfileAttributeParse{Key: MemoryRequestKey, Err: err}
 							}
 							containerRequests[corev1.ResourceMemory] = memoryRequestQuantity
 						}
@@ -321,7 +319,7 @@ func GetResourceFromDevfile(log logr.Logger, devfileData data.DevfileData, deplo
 						if storageRequest != "" && storageRequest != "0" {
 							storageRequestQuantity, err := resource.ParseQuantity(storageRequest)
 							if err != nil {
-								return parser.KubernetesResources{}, err
+								return parser.KubernetesResources{}, &DevfileAttributeParse{Key: StorageRequestKey, Err: err}
 							}
 							containerRequests[corev1.ResourceStorage] = storageRequestQuantity
 						}
@@ -411,7 +409,7 @@ func GetResourceFromDevfile(log logr.Logger, devfileData data.DevfileData, deplo
 						route := component.Attributes.GetString(RouteKey, &err)
 						if err != nil {
 							if _, ok := err.(*attributes.KeyNotFoundError); !ok {
-								return parser.KubernetesResources{}, err
+								return parser.KubernetesResources{}, &DevfileAttributeParse{Key: RouteKey, Err: err}
 							}
 						}
 
