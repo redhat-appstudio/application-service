@@ -196,7 +196,7 @@ func (r *ComponentReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 				}
 				// if fail to delete the external dependency here, log the error, but don't return error
 				// Don't want to get stuck in a cycle of repeatedly trying to update the repository and failing
-				log.Error(err, "Unable to update GitOps repository for component %v in namespace %v", component.GetName(), component.GetNamespace())
+				log.Error(err, fmt.Sprintf("Unable to update GitOps repository for component %v in namespace %v", component.GetName(), component.GetNamespace()))
 
 				// Increment the Component deletion failed metric as the component delete did not fully succeed
 				metrics.ComponentDeletionFailed.Inc()
