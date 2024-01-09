@@ -792,7 +792,7 @@ var _ = Describe("Component controller", func() {
 
 			errCondition := updatedHasComp.Status.Conditions[len(updatedHasComp.Status.Conditions)-1]
 			Expect(errCondition.Status).Should(Equal(metav1.ConditionFalse))
-			Expect(errCondition.Message).Should(ContainSubstring("failed to decode devfile json"))
+			Expect(errCondition.Message).Should(ContainSubstring("cannot unmarshal string into Go value of type map[string]interface"))
 
 			Expect(testutil.ToFloat64(metrics.ComponentCreationTotalReqs) > beforeCreateTotalReqs).To(BeTrue())
 			Expect(testutil.ToFloat64(metrics.ComponentCreationSucceeded) > beforeCreateSucceedReqs).To(BeTrue())
@@ -1249,8 +1249,8 @@ var _ = Describe("Component controller", func() {
 			hasAppLookupKey := types.NamespacedName{Name: applicationName, Namespace: HASAppNamespace}
 
 			Expect(testutil.ToFloat64(metrics.ComponentCreationTotalReqs) > beforeCreateTotalReqs).To(BeTrue())
-			Expect(testutil.ToFloat64(metrics.ComponentCreationSucceeded) == beforeCreateSucceedReqs).To(BeTrue())
-			Expect(testutil.ToFloat64(metrics.ComponentCreationFailed) > beforeCreateFailedReqs).To(BeTrue())
+			Expect(testutil.ToFloat64(metrics.ComponentCreationSucceeded) > beforeCreateSucceedReqs).To(BeTrue())
+			Expect(testutil.ToFloat64(metrics.ComponentCreationFailed) == beforeCreateFailedReqs).To(BeTrue())
 
 			// Delete the specified HASComp resource
 			deleteHASCompCR(hasCompLookupKey)
@@ -1386,7 +1386,7 @@ var _ = Describe("Component controller", func() {
 			Expect(createdHasComp.Status.Devfile).Should(Equal(""))
 			Expect(createdHasComp.Status.Conditions[len(createdHasComp.Status.Conditions)-1].Status).Should(Equal(metav1.ConditionFalse))
 			// This test case uses an invalid token with a public URL.  The Devfile library expects an unset token and will error out trying to retrieve the devfile since it assumes it's from a private repo
-			Expect(strings.ToLower(createdHasComp.Status.Conditions[len(createdHasComp.Status.Conditions)-1].Message)).Should(ContainSubstring("component create failed: failed to populateandparsedevfile: error getting devfile info from url: failed to retrieve"))
+			Expect(strings.ToLower(createdHasComp.Status.Conditions[len(createdHasComp.Status.Conditions)-1].Message)).Should(ContainSubstring("error getting devfile info from url: failed to retrieve"))
 			hasAppLookupKey := types.NamespacedName{Name: applicationName, Namespace: HASAppNamespace}
 
 			Expect(testutil.ToFloat64(metrics.ComponentCreationTotalReqs) > beforeCreateTotalReqs).To(BeTrue())
@@ -2887,6 +2887,71 @@ var _ = Describe("Component controller", func() {
 				}
 				return false
 			}, timeout, interval).Should(BeTrue())
+
+			// Delete the specified HASApp resource
+			deleteHASAppCR(hasAppLookupKey)
+		})
+	})
+
+	Context("Create Component with basic field set including devfileURL", func() {
+		It("Should error out on a devfile that has incompatible data and mark it as an user error on the metrics", func() {
+			beforeCreateTotalReqs := testutil.ToFloat64(metrics.ComponentCreationTotalReqs)
+			beforeCreateSucceedReqs := testutil.ToFloat64(metrics.ComponentCreationSucceeded)
+			beforeCreateFailedReqs := testutil.ToFloat64(metrics.ComponentCreationFailed)
+
+			ctx := context.Background()
+
+			applicationName := HASAppName + "28"
+			componentName := HASCompName + "28"
+
+			createAndFetchSimpleApp(applicationName, HASAppNamespace, DisplayName, Description)
+
+			hasComp := &appstudiov1alpha1.Component{
+				TypeMeta: metav1.TypeMeta{
+					APIVersion: "appstudio.redhat.com/v1alpha1",
+					Kind:       "Component",
+				},
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      componentName,
+					Namespace: HASAppNamespace,
+				},
+				Spec: appstudiov1alpha1.ComponentSpec{
+					ComponentName: ComponentName,
+					Application:   applicationName,
+					Source: appstudiov1alpha1.ComponentSource{
+						ComponentSourceUnion: appstudiov1alpha1.ComponentSourceUnion{
+							GitSource: &appstudiov1alpha1.GitSource{
+								URL:        SampleRepoLink,
+								DevfileURL: "https://raw.githubusercontent.com/maysunfaisal/devfile-sample-go-basic-placeholder/main/devfile.yaml",
+							},
+						},
+					},
+				},
+			}
+			Expect(k8sClient.Create(ctx, hasComp)).Should(Succeed())
+
+			// Look up the has app resource that was created.
+			// num(conditions) may still be < 1 on the first try, so retry until at least _some_ condition is set
+			hasCompLookupKey := types.NamespacedName{Name: componentName, Namespace: HASAppNamespace}
+			createdHasComp := &appstudiov1alpha1.Component{}
+			Eventually(func() bool {
+				k8sClient.Get(context.Background(), hasCompLookupKey, createdHasComp)
+				return len(createdHasComp.Status.Conditions) > 0
+			}, timeout, interval).Should(BeTrue())
+
+			// Make sure the err was set
+			Expect(createdHasComp.Status.Devfile).Should(Equal(""))
+			Expect(createdHasComp.Status.Conditions[len(createdHasComp.Status.Conditions)-1].Reason).Should(Equal("Error"))
+			Expect(strings.ToLower(createdHasComp.Status.Conditions[len(createdHasComp.Status.Conditions)-1].Message)).Should(ContainSubstring("error unmarshaling"))
+
+			hasAppLookupKey := types.NamespacedName{Name: applicationName, Namespace: HASAppNamespace}
+
+			Expect(testutil.ToFloat64(metrics.ComponentCreationTotalReqs) > beforeCreateTotalReqs).To(BeTrue())
+			Expect(testutil.ToFloat64(metrics.ComponentCreationSucceeded) > beforeCreateSucceedReqs).To(BeTrue())
+			Expect(testutil.ToFloat64(metrics.ComponentCreationFailed) == beforeCreateFailedReqs).To(BeTrue())
+
+			// Delete the specified HASComp resource
+			deleteHASCompCR(hasCompLookupKey)
 
 			// Delete the specified HASApp resource
 			deleteHASAppCR(hasAppLookupKey)
