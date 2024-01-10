@@ -49,6 +49,7 @@ import (
 	"github.com/devfile/api/v2/pkg/attributes"
 	devfileParser "github.com/devfile/library/v2/pkg/devfile/parser"
 	data "github.com/devfile/library/v2/pkg/devfile/parser/data"
+	parserErrPkg "github.com/devfile/library/v2/pkg/devfile/parser/errors"
 	devfileParserUtil "github.com/devfile/library/v2/pkg/devfile/parser/util"
 	"github.com/go-logr/logr"
 
@@ -235,9 +236,20 @@ func (r *ComponentReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 			// 2. Kubernetes Component Uri has already been converted to inlined content with a Token if required by default on the first parse
 			compDevfileData, err := cdqanalysis.ParseDevfileWithParserArgs(&devfileParser.ParserArgs{Data: []byte(component.Status.Devfile)})
 			if err != nil {
-				if isCreateReconcile {
-					// Gate it with a Create reconcile flag check since this code is executed by both Create and Update reconciliation
-					metrics.ComponentCreationFailed.Inc()
+				if err != nil {
+					if _, ok := err.(*parserErrPkg.NonCompliantDevfile); ok {
+						if isCreateReconcile {
+							// Gate it with a Create reconcile flag check since this code is executed by both Create and Update reconciliation
+							// user error in devfile, increment success metric
+							metrics.ComponentCreationSucceeded.Inc()
+						}
+					} else {
+						if isCreateReconcile {
+							// Gate it with a Create reconcile flag check since this code is executed by both Create and Update reconciliation
+							// not a user error, increment fail metric
+							metrics.ComponentCreationFailed.Inc()
+						}
+					}
 				}
 				errMsg := fmt.Sprintf("Unable to parse the devfile from Component status and re-attempt GitOps generation, exiting reconcile loop %v", req.NamespacedName)
 				log.Error(err, errMsg)
@@ -431,12 +443,14 @@ func (r *ComponentReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 			// 2. Convert the Kubernetes Uri to Inline by default
 			// 3. Provide a way to mock output for Component controller tests
 			compDevfileData, err = cdqanalysis.ParseDevfileWithParserArgs(&devfileParser.ParserArgs{URL: devfileLocation, Token: gitToken, DevfileUtilsClient: r.DevfileUtilsClient})
-
 			if err != nil {
-				// Even though we are passing in a git token to devfile/library and there is a possibility of a bad token usage,
-				// we consider this a system error because the git token is being used by the git client to fetch the branch names,
-				// if there was an issue with the token, it would have been surfaced by the github client previously.
-				metrics.ComponentCreationFailed.Inc()
+				if _, ok := err.(*parserErrPkg.NonCompliantDevfile); ok {
+					// user error in devfile, increment success metric
+					metrics.ComponentCreationSucceeded.Inc()
+				} else {
+					// not a user error, increment fail metric
+					metrics.ComponentCreationFailed.Inc()
+				}
 				log.Error(err, fmt.Sprintf("Unable to parse the devfile from Component devfile location, exiting reconcile loop %v", req.NamespacedName))
 				_ = r.SetCreateConditionAndUpdateCR(ctx, req, &component, err)
 				return ctrl.Result{}, err
@@ -448,9 +462,14 @@ func (r *ComponentReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 			// 1. devfileBytes are only used from a DockerfileURL or an Image, Component CR source (check if conditions above on Component CR sources)
 			// 2. We dont access any resources for either of these cases in devfile/library
 			compDevfileData, err = cdqanalysis.ParseDevfileWithParserArgs(&devfileParser.ParserArgs{Data: devfileBytes})
-
 			if err != nil {
-				metrics.ComponentCreationFailed.Inc()
+				if _, ok := err.(*parserErrPkg.NonCompliantDevfile); ok {
+					// user error in devfile, increment success metric
+					metrics.ComponentCreationSucceeded.Inc()
+				} else {
+					// not a user error, increment fail metric
+					metrics.ComponentCreationFailed.Inc()
+				}
 				log.Error(err, fmt.Sprintf("Unable to parse the devfile from Component, exiting reconcile loop %v", req.NamespacedName))
 				_ = r.SetCreateConditionAndUpdateCR(ctx, req, &component, err)
 				return ctrl.Result{}, err
@@ -459,10 +478,12 @@ func (r *ComponentReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 
 		err = r.updateComponentDevfileModel(req, compDevfileData, component)
 		if err != nil {
-			// Increment the Component create failed metric on non-user errors
+			// Increment the Component create failed metric only on non-user errors
 			if _, ok := err.(*NotSupported); ok {
 				metrics.ComponentCreationSucceeded.Inc()
 			} else if _, ok := err.(*devfile.DevfileAttributeParse); ok {
+				metrics.ComponentCreationSucceeded.Inc()
+			} else if _, ok := err.(*parserErrPkg.NonCompliantDevfile); ok {
 				metrics.ComponentCreationSucceeded.Inc()
 			} else {
 				metrics.ComponentCreationFailed.Inc()
@@ -478,8 +499,8 @@ func (r *ComponentReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 			// 1. Is constructed in the Application controller and there is no need for a Token
 			// 2. Only consists of Devfile metadata attributes and projects to store the Component CR information
 			hasAppDevfileData, err := cdqanalysis.ParseDevfileWithParserArgs(&devfileParser.ParserArgs{Data: []byte(hasApplication.Status.Devfile)})
-
 			if err != nil {
+				// not a user error, increment fail metric
 				metrics.ComponentCreationFailed.Inc()
 				log.Error(err, fmt.Sprintf("Unable to parse the devfile from Application, exiting reconcile loop %v", req.NamespacedName))
 				_ = r.SetCreateConditionAndUpdateCR(ctx, req, &component, err)
@@ -674,6 +695,9 @@ func (r *ComponentReconciler) generateGitops(ctx context.Context, ghClient *gith
 			metrics.ComponentCreationSucceeded.Inc()
 		} else if _, ok := err.(*devfile.MissingOuterloop); ok && isCreateReconcile {
 			// If Devfile has no Outerloop component, it is considered an user error
+			metrics.ComponentCreationSucceeded.Inc()
+		} else if _, ok := err.(*parserErrPkg.NonCompliantDevfile); ok && isCreateReconcile {
+			// If Devfile is incompatible such as an issue with unmarshaling, it is considered an user error
 			metrics.ComponentCreationSucceeded.Inc()
 		} else if isCreateReconcile {
 			metrics.ComponentCreationFailed.Inc()
