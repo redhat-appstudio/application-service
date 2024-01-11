@@ -128,7 +128,7 @@ func (r *ComponentWebhook) ValidateCreate(ctx context.Context, obj runtime.Objec
 	}
 
 	if len(comp.Spec.BuildNudgesRef) != 0 {
-		err := r.validateBuildNudgesRefGraph(ctx, comp.Spec.BuildNudgesRef, comp.Namespace, comp.Name, comp.Spec.Application)
+		err := r.validateBuildNudgesRefGraph(ctx, comp.Spec.BuildNudgesRef, comp.Namespace, comp.Name)
 		if err != nil {
 			return err
 		}
@@ -161,7 +161,7 @@ func (r *ComponentWebhook) ValidateUpdate(ctx context.Context, oldObj, newObj ru
 		return fmt.Errorf(appstudiov1alpha1.GitSourceUpdateError, *(newComp.Spec.Source.GitSource))
 	}
 	if len(newComp.Spec.BuildNudgesRef) != 0 {
-		err := r.validateBuildNudgesRefGraph(ctx, newComp.Spec.BuildNudgesRef, newComp.Namespace, newComp.Name, newComp.Spec.Application)
+		err := r.validateBuildNudgesRefGraph(ctx, newComp.Spec.BuildNudgesRef, newComp.Namespace, newComp.Name)
 		if err != nil {
 			return err
 		}
@@ -225,7 +225,7 @@ func (r *ComponentWebhook) ValidateDelete(ctx context.Context, obj runtime.Objec
 
 // validateBuildNudgesRefGraph returns an error if a cycle was found in the 'build-nudges-ref' dependency graph
 // If no cycle is found, it returns nil
-func (r *ComponentWebhook) validateBuildNudgesRefGraph(ctx context.Context, nudgedComponentNames []string, componentNamespace string, componentName string, componentApp string) error {
+func (r *ComponentWebhook) validateBuildNudgesRefGraph(ctx context.Context, nudgedComponentNames []string, componentNamespace string, componentName string) error {
 	for _, nudgedComponentName := range nudgedComponentNames {
 		if nudgedComponentName == componentName {
 			return fmt.Errorf("cycle detected: component %s cannot reference itself, directly or indirectly, via build-nudges-ref", nudgedComponentName)
@@ -240,11 +240,7 @@ func (r *ComponentWebhook) validateBuildNudgesRefGraph(ctx context.Context, nudg
 			}
 		}
 
-		if nudgedComponent.Spec.Application != componentApp {
-			return fmt.Errorf("component %s cannot be added to spec.build-nudges-ref as it belongs to a different application", nudgedComponentName)
-		}
-
-		err = r.validateBuildNudgesRefGraph(ctx, nudgedComponent.Spec.BuildNudgesRef, componentNamespace, componentName, componentApp)
+		err = r.validateBuildNudgesRefGraph(ctx, nudgedComponent.Spec.BuildNudgesRef, componentNamespace, componentName)
 		if err != nil {
 			return err
 		}

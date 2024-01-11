@@ -494,7 +494,6 @@ func TestValidateBuildNudgesRefGraph(t *testing.T) {
 			name:     "nudged component belongs to different app",
 			compName: "component-invalid-app",
 			webhook:  compWebhook,
-			errStr:   "component component4 cannot be added to spec.build-nudges-ref as it belongs to a different application",
 		},
 		{
 			name:     "complex component relationship - some valid, some not valid (self referential)",
@@ -514,7 +513,7 @@ func TestValidateBuildNudgesRefGraph(t *testing.T) {
 			component := &appstudiov1alpha1.Component{}
 			fakeClient.Get(context.Background(), types.NamespacedName{Namespace: "default", Name: test.compName}, component)
 
-			err := test.webhook.validateBuildNudgesRefGraph(context.Background(), component.Spec.BuildNudgesRef, "default", test.compName, component.Spec.Application)
+			err := test.webhook.validateBuildNudgesRefGraph(context.Background(), component.Spec.BuildNudgesRef, "default", test.compName)
 			var errStr string
 			if err != nil {
 				errStr = err.Error()
