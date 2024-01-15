@@ -47,11 +47,11 @@ func TestCloneAndAnalyze(t *testing.T) {
 	compName := "testComponent"
 	namespaceName := "testNamespace"
 	springSampleURL := "https://github.com/devfile-samples/devfile-sample-java-springboot-basic"
-	privateRepoURL := "https://github.com/johnmcollier/private-repo-test"
-	multiComponentRepoURL := "https://github.com/maysunfaisal/multi-components-dockerfile"
-	springNoDevfileNoDockerfileURL := "https://github.com/kim-tsao/devfile-sample-java-springboot-basic-no-devfile-no-dockerfile"
-	springNoDevfileURL := "https://github.com/yangcao77/devfile-sample-java-springboot-basic-no-devfile"
-	multiComponentWithNoDevfileAndDockerfileURL := "https://github.com/yangcao77/quality-dashboard"
+	privateRepoURL := "https://github.com/devfile-resources/private-repo-test"
+	multiComponentRepoURL := "https://github.com/devfile-resources/multi-components-dockerfile"
+	springNoDevfileNoDockerfileURL := "https://github.com/devfile-resources/devfile-sample-java-springboot-basic-no-devfile-no-dockerfile"
+	springNoDevfileURL := "https://github.com/devfile-resources/devfile-sample-java-springboot-basic-no-devfile"
+	multiComponentWithNoDevfileAndDockerfileURL := "https://github.com/devfile-resources/quality-dashboard"
 	authenticationFailedErr := "authentication failed .*"
 
 	springDevfileContext := `
@@ -175,14 +175,14 @@ func TestCloneAndAnalyze(t *testing.T) {
 				"python-src-none":                      []byte(pythonDevfileContext),
 			},
 			wantDevfilesURLMap: map[string]string{
-				"devfile-sample-java-springboot-basic": "https://raw.githubusercontent.com/maysunfaisal/multi-components-dockerfile/main/devfile-sample-java-springboot-basic/.devfile/.devfile.yaml",
+				"devfile-sample-java-springboot-basic": "https://raw.githubusercontent.com/devfile-resources/multi-components-dockerfile/main/devfile-sample-java-springboot-basic/.devfile/.devfile.yaml",
 				"devfile-sample-nodejs-basic":          "https://raw.githubusercontent.com/nodeshift-starters/devfile-sample/main/devfile.yaml",
-				"devfile-sample-python-basic":          "https://raw.githubusercontent.com/maysunfaisal/multi-components-dockerfile/main/devfile-sample-python-basic/.devfile.yaml",
+				"devfile-sample-python-basic":          "https://raw.githubusercontent.com/devfile-resources/multi-components-dockerfile/main/devfile-sample-python-basic/.devfile.yaml",
 				"python-src-none":                      "https://raw.githubusercontent.com/devfile-samples/devfile-sample-python-basic/main/devfile.yaml",
 			},
 			wantDockerfileContextMap: map[string]string{
 				"devfile-sample-nodejs-basic": "https://raw.githubusercontent.com/nodeshift-starters/devfile-sample/main/Dockerfile",
-				"devfile-sample-python-basic": "https://raw.githubusercontent.com/maysunfaisal/multi-components-dockerfile/main/devfile-sample-python-basic/Dockerfile",
+				"devfile-sample-python-basic": "https://raw.githubusercontent.com/devfile-resources/multi-components-dockerfile/main/devfile-sample-python-basic/Dockerfile",
 				"python-src-docker":           "Dockerfile",
 				"python-src-none":             "https://raw.githubusercontent.com/devfile-samples/devfile-sample-python-basic/main/docker/Dockerfile",
 			},

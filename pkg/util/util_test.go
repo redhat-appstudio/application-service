@@ -149,7 +149,7 @@ func TestValidateEndpoint(t *testing.T) {
 		},
 		{
 			name: "Valid private repo",
-			url:  "https://github.com/yangcao77/multi-components-private",
+			url:  "https://github.com/devfile-resources/multi-components-private",
 		},
 		{
 			name:    "Invalid URL failed to be parsed",

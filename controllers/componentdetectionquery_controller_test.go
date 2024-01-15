@@ -185,7 +185,7 @@ var _ = Describe("Component Detection Query controller", func() {
 				},
 				Spec: appstudiov1alpha1.ComponentDetectionQuerySpec{
 					GitSource: appstudiov1alpha1.GitSource{
-						URL:        "https://github.com/maysunfaisal/multi-components-none",
+						URL:        "https://github.com/devfile-resources/multi-components-none",
 						DevfileURL: "https://raw.githubusercontent.com/devfile-samples/devfile-sample-java-springboot-basic/main/devfile.yaml",
 					},
 				},
@@ -238,7 +238,7 @@ var _ = Describe("Component Detection Query controller", func() {
 				},
 				Spec: appstudiov1alpha1.ComponentDetectionQuerySpec{
 					GitSource: appstudiov1alpha1.GitSource{
-						URL: "https://github.com/maysunfaisal/multi-components-none",
+						URL: "https://github.com/devfile-resources/multi-components-none",
 					},
 				},
 			}
@@ -345,7 +345,7 @@ var _ = Describe("Component Detection Query controller", func() {
 				},
 				Spec: appstudiov1alpha1.ComponentDetectionQuerySpec{
 					GitSource: appstudiov1alpha1.GitSource{
-						URL: "https://github.com/maysunfaisal/multi-components-none",
+						URL: "https://github.com/devfile-resources/multi-components-none",
 					},
 				},
 			}
@@ -399,7 +399,7 @@ var _ = Describe("Component Detection Query controller", func() {
 				},
 				Spec: appstudiov1alpha1.ComponentDetectionQuerySpec{
 					GitSource: appstudiov1alpha1.GitSource{
-						URL: "https://github.com/maysunfaisal/python-src-none",
+						URL: "https://github.com/devfile-resources/python-src-none",
 					},
 				},
 			}
@@ -545,7 +545,7 @@ var _ = Describe("Component Detection Query controller", func() {
 				},
 				Spec: appstudiov1alpha1.ComponentDetectionQuerySpec{
 					GitSource: appstudiov1alpha1.GitSource{
-						URL: "https://github.com/yangcao77/multi-components-private",
+						URL: "https://github.com/devfile-resources/multi-components-private",
 					},
 				},
 			}
@@ -611,7 +611,7 @@ var _ = Describe("Component Detection Query controller", func() {
 				Spec: appstudiov1alpha1.ComponentDetectionQuerySpec{
 					Secret: queryName,
 					GitSource: appstudiov1alpha1.GitSource{
-						URL: "https://github.com/yangcao77/multi-components-private",
+						URL: "https://github.com/devfile-resources/multi-components-private",
 					},
 				},
 			}
@@ -905,7 +905,7 @@ var _ = Describe("Component Detection Query controller", func() {
 				},
 				Spec: appstudiov1alpha1.ComponentDetectionQuerySpec{
 					GitSource: appstudiov1alpha1.GitSource{
-						URL: "https://github.com/johnmcollier/test-bad-devfile",
+						URL: "https://github.com/devfile-resources/test-bad-devfile",
 					},
 				},
 			}
@@ -949,7 +949,7 @@ var _ = Describe("Component Detection Query controller", func() {
 				},
 				Spec: appstudiov1alpha1.ComponentDetectionQuerySpec{
 					GitSource: appstudiov1alpha1.GitSource{
-						URL: "   https://github.com/maysunfaisal/devfile-sample-java-springboot-basic-1   ",
+						URL: "   https://github.com/devfile-samples/devfile-sample-java-springboot-basic   ",
 					},
 				},
 			}
@@ -972,7 +972,7 @@ var _ = Describe("Component Detection Query controller", func() {
 			Expect(len(createdHasCompDetectionQuery.Status.ComponentDetected)).Should(Equal(1))
 			for _, componentDesc := range createdHasCompDetectionQuery.Status.ComponentDetected {
 				Expect(componentDesc.ComponentStub.Source.GitSource).ShouldNot(BeNil())
-				Expect(componentDesc.ComponentStub.Source.GitSource.DevfileURL).Should(Equal("https://raw.githubusercontent.com/maysunfaisal/devfile-sample-java-springboot-basic-1/main/devfile.yaml"))
+				Expect(componentDesc.ComponentStub.Source.GitSource.DevfileURL).Should(Equal("https://raw.githubusercontent.com/devfile-samples/devfile-sample-java-springboot-basic/main/devfile.yaml"))
 			}
 
 			// Delete the specified Detection Query resource
@@ -1103,7 +1103,7 @@ var _ = Describe("Component Detection Query controller", func() {
 				},
 				Spec: appstudiov1alpha1.ComponentDetectionQuerySpec{
 					GitSource: appstudiov1alpha1.GitSource{
-						URL: "https://github.com/maysunfaisal/multi-components-dockerfile",
+						URL: "https://github.com/devfile-resources/multi-components-dockerfile",
 					},
 				},
 			}
@@ -1206,7 +1206,7 @@ var _ = Describe("Component Detection Query controller", func() {
 					},
 					Spec: appstudiov1alpha1.ComponentDetectionQuerySpec{
 						GitSource: appstudiov1alpha1.GitSource{
-							URL:     "https://github.com/maysunfaisal/multi-components-none",
+							URL:     "https://github.com/devfile-resources/multi-components-none",
 							Context: "devfile-sample-java-springboot-basic",
 						},
 					},
@@ -1306,7 +1306,7 @@ var _ = Describe("Component Detection Query controller", func() {
 					},
 					Spec: appstudiov1alpha1.ComponentDetectionQuerySpec{
 						GitSource: appstudiov1alpha1.GitSource{
-							URL:     "https://github.com/maysunfaisal/multi-components-deep",
+							URL:     "https://github.com/devfile-resources/multi-components-deep",
 							Context: "python/devfile-sample-python-basic",
 						},
 					},
@@ -1357,7 +1357,7 @@ var _ = Describe("Component Detection Query controller", func() {
 					Spec: appstudiov1alpha1.ComponentDetectionQuerySpec{
 						GitSource: appstudiov1alpha1.GitSource{
 							URL:        SampleRepoLink,
-							DevfileURL: "https://raw.githubusercontent.com/yangcao77/multi-components-with-no-kubecomps/main/devfile-sample-java-springboot-basic/.devfile/.devfile.yaml",
+							DevfileURL: "https://raw.githubusercontent.com/devfile-resources/multi-components-with-no-kubecomps/main/devfile-sample-java-springboot-basic/.devfile/.devfile.yaml",
 						},
 					},
 				}
@@ -1559,7 +1559,7 @@ var _ = Describe("Component Detection Query controller", func() {
 					},
 					Spec: appstudiov1alpha1.ComponentDetectionQuerySpec{
 						GitSource: appstudiov1alpha1.GitSource{
-							URL: "https://github.com/testjc1/node-sample",
+							URL: "https://github.com/devfile-resources/node-sample-dockerfile",
 						},
 					},
 				}
@@ -1609,7 +1609,7 @@ var _ = Describe("Component Detection Query controller", func() {
 					},
 					Spec: appstudiov1alpha1.ComponentDetectionQuerySpec{
 						GitSource: appstudiov1alpha1.GitSource{
-							URL: "https://github.com/yangcao77/multi-component-dockerfile-deep",
+							URL: "https://github.com/devfile-resources/multi-component-dockerfile-deep",
 						},
 					},
 				}
@@ -1664,7 +1664,7 @@ var _ = Describe("Component Detection Query controller", func() {
 					},
 					Spec: appstudiov1alpha1.ComponentDetectionQuerySpec{
 						GitSource: appstudiov1alpha1.GitSource{
-							URL: "https://github.com/yangcao77/quality-dashboard",
+							URL: "https://github.com/devfile-resources/quality-dashboard",
 						},
 					},
 				}
@@ -1713,7 +1713,7 @@ var _ = Describe("Component Detection Query controller", func() {
 					},
 					Spec: appstudiov1alpha1.ComponentDetectionQuerySpec{
 						GitSource: appstudiov1alpha1.GitSource{
-							URL:     "https://github.com/stuartwdouglas/multi-components-none-path",
+							URL:     "https://github.com/devfile-resources/multi-components-none-path",
 							Context: "context",
 						},
 					},
@@ -1770,7 +1770,7 @@ var _ = Describe("Component Detection Query controller", func() {
 					},
 					Spec: appstudiov1alpha1.ComponentDetectionQuerySpec{
 						GitSource: appstudiov1alpha1.GitSource{
-							URL: "https://github.com/yangcao77/empty",
+							URL: "https://github.com/devfile-resources/empty",
 						},
 					},
 				}
@@ -1817,7 +1817,7 @@ var _ = Describe("Component Detection Query controller", func() {
 					},
 					Spec: appstudiov1alpha1.ComponentDetectionQuerySpec{
 						GitSource: appstudiov1alpha1.GitSource{
-							URL: "https://github.com/yangcao77/no-outerloop-python",
+							URL: "https://github.com/devfile-resources/no-outerloop-python",
 						},
 					},
 				}
@@ -2055,7 +2055,7 @@ metadata:
 					},
 					Spec: appstudiov1alpha1.ComponentDetectionQuerySpec{
 						GitSource: appstudiov1alpha1.GitSource{
-							URL: "https://github.com/maysunfaisal/multi-components-none",
+							URL: "https://github.com/devfile-resources/multi-components-none",
 						},
 					},
 				}
@@ -2235,7 +2235,7 @@ metadata:
 					},
 					Spec: appstudiov1alpha1.ComponentDetectionQuerySpec{
 						GitSource: appstudiov1alpha1.GitSource{
-							URL: "https://github.com/maysunfaisal/multi-components-none",
+							URL: "https://github.com/devfile-resources/multi-components-none",
 						},
 					},
 				}
@@ -2333,7 +2333,7 @@ metadata:
 					},
 					Spec: appstudiov1alpha1.ComponentDetectionQuerySpec{
 						GitSource: appstudiov1alpha1.GitSource{
-							URL: "https://github.com/yangcao77/devfile-sample-java-springboot-basic-no-devfile",
+							URL: "https://github.com/devfile-resources/devfile-sample-java-springboot-basic-no-devfile",
 						},
 					},
 				}
@@ -2346,7 +2346,7 @@ metadata:
 				dockerfileContextMap := make(map[string]string)
 
 				devfilesURLMap["./"] = "https://raw.githubusercontent.com/devfile-samples/devfile-sample-java-springboot-basic/main/devfile.yaml"
-				dockerfileContextMap["./"] = "https://raw.githubusercontent.com/yangcao77/devfile-sample-java-springboot-basic-no-devfile/main/docker/Dockerfile"
+				dockerfileContextMap["./"] = "https://raw.githubusercontent.com/devfile-resources/devfile-sample-java-springboot-basic-no-devfile/main/docker/Dockerfile"
 				devfilesMap["./"] = []byte(springDevfileContext)
 
 				devfilesMapbytes, _ := json.Marshal(devfilesMap)
@@ -2403,7 +2403,7 @@ metadata:
 					Expect([]string{devfileName}).Should(ContainElement(ContainSubstring("devfile-sample-java-springboot-basic-no-devfile")))
 					Expect(devfileDesc.ComponentStub.Source.GitSource.Context).Should(BeElementOf([]string{"./"}))
 					Expect(devfileDesc.ComponentStub.Source.GitSource.DevfileURL).Should(Equal("https://raw.githubusercontent.com/devfile-samples/devfile-sample-java-springboot-basic/main/devfile.yaml"))
-					Expect(devfileDesc.ComponentStub.Source.GitSource.DockerfileURL).Should(Equal("https://raw.githubusercontent.com/yangcao77/devfile-sample-java-springboot-basic-no-devfile/main/docker/Dockerfile"))
+					Expect(devfileDesc.ComponentStub.Source.GitSource.DockerfileURL).Should(Equal("https://raw.githubusercontent.com/devfile-resources/devfile-sample-java-springboot-basic-no-devfile/main/docker/Dockerfile"))
 				}
 
 				// Delete the specified Detection Query resource
@@ -2432,7 +2432,7 @@ metadata:
 					},
 					Spec: appstudiov1alpha1.ComponentDetectionQuerySpec{
 						GitSource: appstudiov1alpha1.GitSource{
-							URL: "https://github.com/johnmcollier/private-repo-test",
+							URL: "https://github.com/devfile-resources/private-repo-test",
 						},
 					},
 				}
@@ -2529,7 +2529,7 @@ metadata:
 					Spec: appstudiov1alpha1.ComponentDetectionQuerySpec{
 						Secret: queryName,
 						GitSource: appstudiov1alpha1.GitSource{
-							URL: "https://github.com/johnmcollier/private-repo-test",
+							URL: "https://github.com/devfile-resources/private-repo-test",
 						},
 					},
 				}
@@ -2793,7 +2793,7 @@ metadata:
 					},
 					Spec: appstudiov1alpha1.ComponentDetectionQuerySpec{
 						GitSource: appstudiov1alpha1.GitSource{
-							URL: "https://github.com/johnmcollier/test-bad-devfile",
+							URL: "https://github.com/devfile-resources/test-bad-devfile",
 						},
 					},
 				}
@@ -2967,7 +2967,7 @@ metadata:
 					},
 					Spec: appstudiov1alpha1.ComponentDetectionQuerySpec{
 						GitSource: appstudiov1alpha1.GitSource{
-							URL: "https://github.com/maysunfaisal/multi-components-dockerfile",
+							URL: "https://github.com/devfile-resources/multi-components-dockerfile",
 						},
 					},
 				}
@@ -2979,23 +2979,23 @@ metadata:
 				devfilesURLMap := make(map[string]string)
 				dockerfileContextMap := make(map[string]string)
 
-				devfilesURLMap["devfile-sample-java-springboot-basic"] = "https://raw.githubusercontent.com/maysunfaisal/multi-components-dockerfile/main/devfile-sample-java-springboot-basic/devfile.yaml"
-				dockerfileContextMap["devfile-sample-java-springboot-basic"] = "https://raw.githubusercontent.com/maysunfaisal/multi-components-dockerfile/main/devfile-sample-java-springboot-basic/docker/Dockerfile"
+				devfilesURLMap["devfile-sample-java-springboot-basic"] = "https://raw.githubusercontent.com/devfile-resources/multi-components-dockerfile/main/devfile-sample-java-springboot-basic/devfile.yaml"
+				dockerfileContextMap["devfile-sample-java-springboot-basic"] = "https://raw.githubusercontent.com/devfile-resources/multi-components-dockerfile/main/devfile-sample-java-springboot-basic/docker/Dockerfile"
 				devfilesMap["devfile-sample-java-springboot-basic"] = []byte(springDevfileContext)
 
-				devfilesURLMap["devfile-sample-nodejs-basic"] = "https://raw.githubusercontent.com/maysunfaisal/multi-components-dockerfile/main/devfile-sample-nodejs-basic/devfile.yaml"
+				devfilesURLMap["devfile-sample-nodejs-basic"] = "https://raw.githubusercontent.com/devfile-resources/multi-components-dockerfile/main/devfile-sample-nodejs-basic/devfile.yaml"
 				dockerfileContextMap["devfile-sample-nodejs-basic"] = "https://raw.githubusercontent.com/nodeshift-starters/devfile-sample/main/Dockerfile"
 				devfilesMap["devfile-sample-nodejs-basic"] = []byte(nodeJSDevfileContext)
 
-				devfilesURLMap["devfile-sample-python-basic"] = "https://raw.githubusercontent.com/maysunfaisal/multi-components-dockerfile/main/devfile-sample-python-basic/devfile.yaml"
-				dockerfileContextMap["devfile-sample-python-basic"] = "https://raw.githubusercontent.com/maysunfaisal/multi-components-dockerfile/main/devfile-sample-python-basic/Dockerfile"
+				devfilesURLMap["devfile-sample-python-basic"] = "https://raw.githubusercontent.com/devfile-resources/multi-components-dockerfile/main/devfile-sample-python-basic/devfile.yaml"
+				dockerfileContextMap["devfile-sample-python-basic"] = "https://raw.githubusercontent.com/devfile-resources/multi-components-dockerfile/main/devfile-sample-python-basic/Dockerfile"
 				devfilesMap["devfile-sample-python-basic"] = []byte(pythonDevfileContext)
 
 				devfilesURLMap["python-src-none"] = "https://registry.devfile.io/devfiles/python-basic"
 				dockerfileContextMap["python-src-none"] = "https://raw.githubusercontent.com/devfile-samples/devfile-sample-python-basic/main/docker/Dockerfile"
 				devfilesMap["python-src-none"] = []byte(pythonDevfileContext)
 
-				dockerfileContextMap["python-src-docker"] = "https://raw.githubusercontent.com/maysunfaisal/multi-components-dockerfile/main/python-src-docker/Dockerfile"
+				dockerfileContextMap["python-src-docker"] = "https://raw.githubusercontent.com/devfile-resources/multi-components-dockerfile/main/python-src-docker/Dockerfile"
 
 				devfilesMapbytes, _ := json.Marshal(devfilesMap)
 				devfilesURLMapbytes, _ := json.Marshal(devfilesURLMap)
@@ -3071,7 +3071,7 @@ metadata:
 						},
 						Spec: appstudiov1alpha1.ComponentDetectionQuerySpec{
 							GitSource: appstudiov1alpha1.GitSource{
-								URL: "https://github.com/maysunfaisal/python-src-docker",
+								URL: "https://github.com/devfile-resources/python-src-docker",
 							},
 						},
 					}
@@ -3081,7 +3081,7 @@ metadata:
 					configMapBinaryData := make(map[string][]byte)
 					dockerfileContextMap := make(map[string]string)
 
-					dockerfileContextMap["./"] = "https://raw.githubusercontent.com/maysunfaisal/python-src-docker/main/Dockerfile"
+					dockerfileContextMap["./"] = "https://raw.githubusercontent.com/devfile-resources/python-src-docker/main/Dockerfile"
 
 					dockerfileContextMapbytes, _ := json.Marshal(dockerfileContextMap)
 
@@ -3131,7 +3131,7 @@ metadata:
 					for _, componentDesc := range createdHasCompDetectionQuery.Status.ComponentDetected {
 						Expect(componentDesc.ComponentStub.Source.GitSource).ShouldNot(BeNil())
 						Expect(componentDesc.ComponentStub.Source.GitSource.DockerfileURL).ShouldNot(BeEmpty())
-						Expect(componentDesc.ComponentStub.Source.GitSource.DockerfileURL).Should(Equal("https://raw.githubusercontent.com/maysunfaisal/python-src-docker/main/Dockerfile"))
+						Expect(componentDesc.ComponentStub.Source.GitSource.DockerfileURL).Should(Equal("https://raw.githubusercontent.com/devfile-resources/python-src-docker/main/Dockerfile"))
 					}
 
 					// Delete the specified Detection Query resource
@@ -3156,7 +3156,7 @@ metadata:
 						},
 						Spec: appstudiov1alpha1.ComponentDetectionQuerySpec{
 							GitSource: appstudiov1alpha1.GitSource{
-								URL:     "https://github.com/maysunfaisal/multi-components-none",
+								URL:     "https://github.com/devfile-resources/multi-components-none",
 								Context: "devfile-sample-java-springboot-basic",
 							},
 						},
@@ -3169,8 +3169,8 @@ metadata:
 					devfilesURLMap := make(map[string]string)
 					dockerfileContextMap := make(map[string]string)
 
-					devfilesURLMap["devfile-sample-java-springboot-basic"] = "https://raw.githubusercontent.com/maysunfaisal/multi-components-dockerfile/main/devfile-sample-java-springboot-basic/devfile.yaml"
-					dockerfileContextMap["devfile-sample-java-springboot-basic"] = "https://raw.githubusercontent.com/maysunfaisal/multi-components-dockerfile/main/devfile-sample-java-springboot-basic/docker/Dockerfile"
+					devfilesURLMap["devfile-sample-java-springboot-basic"] = "https://raw.githubusercontent.com/devfile-resources/multi-components-dockerfile/main/devfile-sample-java-springboot-basic/devfile.yaml"
+					dockerfileContextMap["devfile-sample-java-springboot-basic"] = "https://raw.githubusercontent.com/devfile-resources/multi-components-dockerfile/main/devfile-sample-java-springboot-basic/docker/Dockerfile"
 					devfilesMap["devfile-sample-java-springboot-basic"] = []byte(springDevfileContext)
 
 					devfilesMapbytes, _ := json.Marshal(devfilesMap)

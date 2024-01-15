@@ -139,7 +139,7 @@ func TestCloneRepo(t *testing.T) {
 		{
 			name:      "Invalid token, should err out",
 			clonePath: "/tmp/alreadyexistingdir",
-			repo:      "https://github.com/yangcao77/multi-components-private/",
+			repo:      "https://github.com/devfile-resources/multi-components-private/",
 			token:     "fake-token",
 			wantErr:   true,
 		},
@@ -602,15 +602,15 @@ func TestUpdateGitLink(t *testing.T) {
 	}{
 		{
 			name:     "context has no http",
-			repo:     "https://github.com/maysunfaisal/multi-components-dockerfile/",
+			repo:     "https://github.com/devfile-resources/multi-components-dockerfile/",
 			context:  "devfile-sample-java-springboot-basic/docker/Dockerfile",
-			wantLink: "https://raw.githubusercontent.com/maysunfaisal/multi-components-dockerfile/main/devfile-sample-java-springboot-basic/docker/Dockerfile",
+			wantLink: "https://raw.githubusercontent.com/devfile-resources/multi-components-dockerfile/main/devfile-sample-java-springboot-basic/docker/Dockerfile",
 		},
 		{
 			name:     "context has http",
-			repo:     "https://github.com/maysunfaisal/multi-components-dockerfile/",
-			context:  "https://raw.githubusercontent.com/maysunfaisal/multi-components-dockerfile/main/devfile-sample-java-springboot-basic/docker/Dockerfile",
-			wantLink: "https://raw.githubusercontent.com/maysunfaisal/multi-components-dockerfile/main/devfile-sample-java-springboot-basic/docker/Dockerfile",
+			repo:     "https://github.com/devfile-resources/multi-components-dockerfile/",
+			context:  "https://raw.githubusercontent.com/devfile-resources/multi-components-dockerfile/main/devfile-sample-java-springboot-basic/docker/Dockerfile",
+			wantLink: "https://raw.githubusercontent.com/devfile-resources/multi-components-dockerfile/main/devfile-sample-java-springboot-basic/docker/Dockerfile",
 		},
 		{
 			name:    "err case",

@@ -200,42 +200,42 @@ func TestFindAndDownloadDevfile(t *testing.T) {
 	}{
 		{
 			name:               "Curl devfile.yaml",
-			url:                "https://raw.githubusercontent.com/has-resources/devfile-priority/main/case1",
+			url:                "https://raw.githubusercontent.com/devfile-resources/devfile-priority/main/case1",
 			wantDevfileContext: "devfile.yaml",
 		},
 		{
 			name:               "Curl .devfile.yaml",
-			url:                "https://raw.githubusercontent.com/has-resources/devfile-priority/main/case2",
+			url:                "https://raw.githubusercontent.com/devfile-resources/devfile-priority/main/case2",
 			wantDevfileContext: ".devfile.yaml",
 		},
 		{
 			name:               "Curl devfile.yml",
-			url:                "https://raw.githubusercontent.com/has-resources/devfile-priority/main/case3",
+			url:                "https://raw.githubusercontent.com/devfile-resources/devfile-priority/main/case3",
 			wantDevfileContext: "devfile.yml",
 		},
 		{
 			name:               "Curl .devfile.yml",
-			url:                "https://raw.githubusercontent.com/has-resources/devfile-priority/main/case4",
+			url:                "https://raw.githubusercontent.com/devfile-resources/devfile-priority/main/case4",
 			wantDevfileContext: ".devfile.yml",
 		},
 		{
 			name:               "Curl .devfile/devfile.yaml",
-			url:                "https://raw.githubusercontent.com/has-resources/devfile-priority/main/case5",
+			url:                "https://raw.githubusercontent.com/devfile-resources/devfile-priority/main/case5",
 			wantDevfileContext: ".devfile/devfile.yaml",
 		},
 		{
 			name:               "Curl .devfile/.devfile.yaml",
-			url:                "https://raw.githubusercontent.com/has-resources/devfile-priority/main/case6",
+			url:                "https://raw.githubusercontent.com/devfile-resources/devfile-priority/main/case6",
 			wantDevfileContext: ".devfile/.devfile.yaml",
 		},
 		{
 			name:               "Curl .devfile/devfile.yml",
-			url:                "https://raw.githubusercontent.com/has-resources/devfile-priority/main/case7",
+			url:                "https://raw.githubusercontent.com/devfile-resources/devfile-priority/main/case7",
 			wantDevfileContext: ".devfile/devfile.yml",
 		},
 		{
 			name:               "Curl .devfile/.devfile.yml",
-			url:                "https://raw.githubusercontent.com/has-resources/devfile-priority/main/case8",
+			url:                "https://raw.githubusercontent.com/devfile-resources/devfile-priority/main/case8",
 			wantDevfileContext: ".devfile/.devfile.yml",
 		},
 		{
@@ -270,47 +270,47 @@ func TestFindAndDownloadDockerfile(t *testing.T) {
 	}{
 		{
 			name:                  "Curl Dockerfile",
-			url:                   "https://raw.githubusercontent.com/yangcao77/dockerfile-priority/main/case1",
+			url:                   "https://raw.githubusercontent.com/devfile-resources/dockerfile-priority/main/case1",
 			wantDockerfileContext: "Dockerfile",
 		},
 		{
 			name:                  "Curl docker/Dockerfile",
-			url:                   "https://raw.githubusercontent.com/yangcao77/dockerfile-priority/main/case2",
+			url:                   "https://raw.githubusercontent.com/devfile-resources/dockerfile-priority/main/case2",
 			wantDockerfileContext: "docker/Dockerfile",
 		},
 		{
 			name:                  "Curl .docker/Dockerfile",
-			url:                   "https://raw.githubusercontent.com/yangcao77/dockerfile-priority/main/case3",
+			url:                   "https://raw.githubusercontent.com/devfile-resources/dockerfile-priority/main/case3",
 			wantDockerfileContext: ".docker/Dockerfile",
 		},
 		{
 			name:                  "Curl build/Dockerfile",
-			url:                   "https://raw.githubusercontent.com/yangcao77/dockerfile-priority/main/case4",
+			url:                   "https://raw.githubusercontent.com/devfile-resources/dockerfile-priority/main/case4",
 			wantDockerfileContext: "build/Dockerfile",
 		},
 		{
 			name:                  "Curl Containerfile",
-			url:                   "https://raw.githubusercontent.com/yangcao77/dockerfile-priority/main/case5",
+			url:                   "https://raw.githubusercontent.com/devfile-resources/dockerfile-priority/main/case5",
 			wantDockerfileContext: "Containerfile",
 		},
 		{
 			name:                  "Curl docker/Containerfile",
-			url:                   "https://raw.githubusercontent.com/yangcao77/dockerfile-priority/main/case6",
+			url:                   "https://raw.githubusercontent.com/devfile-resources/dockerfile-priority/main/case6",
 			wantDockerfileContext: "docker/Containerfile",
 		},
 		{
 			name:                  "Curl .docker/Containerfile",
-			url:                   "https://raw.githubusercontent.com/yangcao77/dockerfile-priority/main/case7",
+			url:                   "https://raw.githubusercontent.com/devfile-resources/dockerfile-priority/main/case7",
 			wantDockerfileContext: ".docker/Containerfile",
 		},
 		{
 			name:                  "Curl build/Containerfile",
-			url:                   "https://raw.githubusercontent.com/yangcao77/dockerfile-priority/main/case8",
+			url:                   "https://raw.githubusercontent.com/devfile-resources/dockerfile-priority/main/case8",
 			wantDockerfileContext: "build/Containerfile",
 		},
 		{
 			name:                  "Curl dockerfile",
-			url:                   "https://raw.githubusercontent.com/yangcao77/dockerfile-priority/main/case9",
+			url:                   "https://raw.githubusercontent.com/devfile-resources/dockerfile-priority/main/case9",
 			wantDockerfileContext: "dockerfile",
 		},
 		{
