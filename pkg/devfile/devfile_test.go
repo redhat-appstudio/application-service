@@ -1210,6 +1210,7 @@ components:
     deployment/container-port: 1111
     deployment/storageLimit: 401Mi
     deployment/storageRequest: 201Mi
+    deployment/replicas: 1
   kubernetes:
     deployByDefault: false
     endpoints:
@@ -1307,6 +1308,7 @@ components:
     deployment/container-port: 1111
     deployment/storageLimit: 401Mi
     deployment/storageRequest: 201Mi
+    deployment/replicas: 5
   kubernetes:
     deployByDefault: false
     endpoints:
@@ -1436,7 +1438,7 @@ components:
         name: deploy-sample
       spec:
         revisionHistoryLimit: 5
-        replicas: 1
+        replicas: 5
         selector:
           matchLabels:
             app.kubernetes.io/instance: component-sample
@@ -1530,6 +1532,7 @@ components:
 - attributes:
     api.devfile.io/k8sLikeComponent-originalURI: deploy.yaml
     deployment/container-port: 5566
+    deployment/replicas: 5
   kubernetes:
     deployByDefault: false
     endpoints:
@@ -2524,7 +2527,7 @@ schemaVersion: 2.2.0`
 				},
 				Spec: appsv1.DeploymentSpec{
 					RevisionHistoryLimit: &revHistoryLimit,
-					Replicas:             &replicaUpdated,
+					Replicas:             &replica, // value from component attribute deployment/replicas
 					Selector: &metav1.LabelSelector{
 						MatchLabels: map[string]string{
 							"app.kubernetes.io/instance": "component-sample",
@@ -2714,7 +2717,7 @@ schemaVersion: 2.2.0`
 				},
 				Spec: appsv1.DeploymentSpec{
 					RevisionHistoryLimit: &setRevHistoryLimit,
-					Replicas:             &replicaUpdated,
+					Replicas:             &replica, // replica value from deployment spec
 					Selector: &metav1.LabelSelector{
 						MatchLabels: map[string]string{
 							"app.kubernetes.io/instance": "component-sample",
@@ -3397,7 +3400,7 @@ schemaVersion: 2.2.0`
 				},
 				Spec: appsv1.DeploymentSpec{
 					RevisionHistoryLimit: &revHistoryLimit,
-					Replicas:             &replicaUpdated,
+					Replicas:             &replica, //replica from component attribute
 					Selector: &metav1.LabelSelector{
 						MatchLabels: map[string]string{
 							"app.kubernetes.io/instance": "component-sample",

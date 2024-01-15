@@ -127,6 +127,12 @@ func GetMockedClient() *github.Client {
 						Name:          github.String("multi-component-dockerfile-deep"),
 						DefaultBranch: github.String("main"),
 					}))
+				} else if strings.Contains(req.RequestURI, "create-spi-fcr") {
+					/* #nosec G104 -- test code */
+					w.Write(mock.MustMarshal(github.Repository{
+						Name:          github.String("create-spi-fcr"),
+						DefaultBranch: github.String("main"),
+					}))
 				} else if strings.Contains(req.RequestURI, "test-repo-2") {
 					/* #nosec G104 -- test code */
 					w.Write(mock.MustMarshal(github.Repository{
@@ -156,6 +162,11 @@ func GetMockedClient() *github.Client {
 						Name: github.String("main"),
 					}))
 				} else if strings.Contains(req.RequestURI, "multi-component-dockerfile-deep") && strings.Contains(req.RequestURI, "main") {
+					/* #nosec G104 -- test code */
+					w.Write(mock.MustMarshal(github.Branch{
+						Name: github.String("main"),
+					}))
+				} else if strings.Contains(req.RequestURI, "create-spi-fcr") && strings.Contains(req.RequestURI, "main") {
 					/* #nosec G104 -- test code */
 					w.Write(mock.MustMarshal(github.Branch{
 						Name: github.String("main"),

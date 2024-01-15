@@ -21,7 +21,6 @@ import (
 	"errors"
 	"fmt"
 	"net/url"
-	"strings"
 
 	appstudiov1alpha1 "github.com/redhat-appstudio/application-api/api/v1alpha1"
 	"github.com/redhat-appstudio/application-service/pkg/util"
@@ -100,9 +99,6 @@ func (r *ComponentWebhook) UpdateNudgedComponentStatus(ctx context.Context, obj 
 	return nil
 }
 
-// Github is the only supported vendor right now
-const SupportedGitRepo = "github.com"
-
 // TODO(user): change verbs to "verbs=create;update;delete" if you want to enable deletion validation.
 // +kubebuilder:webhook:path=/validate-appstudio-redhat-com-v1alpha1-component,mutating=false,failurePolicy=fail,sideEffects=None,groups=appstudio.redhat.com,resources=components,verbs=create;update,versions=v1alpha1,name=vcomponent.kb.io,admissionReviewVersions=v1
 
@@ -119,12 +115,9 @@ func (r *ComponentWebhook) ValidateCreate(ctx context.Context, obj runtime.Objec
 	sourceSpecified := false
 
 	if comp.Spec.Source.GitSource != nil && comp.Spec.Source.GitSource.URL != "" {
-		if gitsourceURL, err := url.ParseRequestURI(comp.Spec.Source.GitSource.URL); err != nil {
+		if _, err := url.ParseRequestURI(comp.Spec.Source.GitSource.URL); err != nil {
 			return fmt.Errorf(err.Error() + appstudiov1alpha1.InvalidSchemeGitSourceURL)
-		} else if SupportedGitRepo != strings.ToLower(gitsourceURL.Host) {
-			return fmt.Errorf(appstudiov1alpha1.InvalidGithubVendorURL, gitsourceURL, SupportedGitRepo)
 		}
-
 		sourceSpecified = true
 	} else if comp.Spec.ContainerImage != "" {
 		sourceSpecified = true
@@ -135,7 +128,7 @@ func (r *ComponentWebhook) ValidateCreate(ctx context.Context, obj runtime.Objec
 	}
 
 	if len(comp.Spec.BuildNudgesRef) != 0 {
-		err := r.validateBuildNudgesRefGraph(ctx, comp.Spec.BuildNudgesRef, comp.Namespace, comp.Name, comp.Spec.Application)
+		err := r.validateBuildNudgesRefGraph(ctx, comp.Spec.BuildNudgesRef, comp.Namespace, comp.Name)
 		if err != nil {
 			return err
 		}
@@ -168,7 +161,7 @@ func (r *ComponentWebhook) ValidateUpdate(ctx context.Context, oldObj, newObj ru
 		return fmt.Errorf(appstudiov1alpha1.GitSourceUpdateError, *(newComp.Spec.Source.GitSource))
 	}
 	if len(newComp.Spec.BuildNudgesRef) != 0 {
-		err := r.validateBuildNudgesRefGraph(ctx, newComp.Spec.BuildNudgesRef, newComp.Namespace, newComp.Name, newComp.Spec.Application)
+		err := r.validateBuildNudgesRefGraph(ctx, newComp.Spec.BuildNudgesRef, newComp.Namespace, newComp.Name)
 		if err != nil {
 			return err
 		}
@@ -185,14 +178,54 @@ func (r *ComponentWebhook) ValidateUpdate(ctx context.Context, oldObj, newObj ru
 
 // ValidateDelete implements webhook.Validator so a webhook will be registered for the type
 func (r *ComponentWebhook) ValidateDelete(ctx context.Context, obj runtime.Object) error {
+	comp := obj.(*appstudiov1alpha1.Component)
+	compName := comp.Name
+	componentNamespace := comp.Namespace
+	componentlog := r.log.WithValues("controllerKind", "Component").WithValues("name", compName).WithValues("namespace", comp.Namespace)
 
-	// TODO(user): fill in your validation logic upon object deletion.
+	// Check which Components this component nudges. Update their statuses to remove the component
+	for _, nudgedComponentName := range comp.Spec.BuildNudgesRef {
+		err := retry.RetryOnConflict(retry.DefaultRetry, func() error {
+			nudgedComponent := &appstudiov1alpha1.Component{}
+			err := r.client.Get(ctx, types.NamespacedName{Namespace: componentNamespace, Name: nudgedComponentName}, nudgedComponent)
+			if err != nil {
+				return err
+			}
+			nudgedComponent.Status.BuildNudgedBy = util.RemoveStrFromList(compName, nudgedComponent.Status.BuildNudgedBy)
+			err = r.client.Status().Update(ctx, nudgedComponent)
+			return err
+		})
+
+		if err != nil {
+			// Don't block component deletion if this fails, but log and continue
+			componentlog.Error(err, "error deleting component name from build-nudges-ref")
+		}
+
+	}
+
+	// Next, loop through the Component's list of nudging components, and update their specs
+	for _, nudgedComponentName := range comp.Status.BuildNudgedBy {
+		err := retry.RetryOnConflict(retry.DefaultRetry, func() error {
+			nudgingComponent := &appstudiov1alpha1.Component{}
+			err := r.client.Get(ctx, types.NamespacedName{Namespace: componentNamespace, Name: nudgedComponentName}, nudgingComponent)
+			if err != nil {
+				return err
+			}
+			nudgingComponent.Spec.BuildNudgesRef = util.RemoveStrFromList(compName, nudgingComponent.Spec.BuildNudgesRef)
+			err = r.client.Update(ctx, nudgingComponent)
+			return err
+		})
+		if err != nil {
+			// Don't block component deletion if this fails, but log and continue
+			componentlog.Error(err, "error deleting component name from build-nudges-ref")
+		}
+	}
 	return nil
 }
 
 // validateBuildNudgesRefGraph returns an error if a cycle was found in the 'build-nudges-ref' dependency graph
 // If no cycle is found, it returns nil
-func (r *ComponentWebhook) validateBuildNudgesRefGraph(ctx context.Context, nudgedComponentNames []string, componentNamespace string, componentName string, componentApp string) error {
+func (r *ComponentWebhook) validateBuildNudgesRefGraph(ctx context.Context, nudgedComponentNames []string, componentNamespace string, componentName string) error {
 	for _, nudgedComponentName := range nudgedComponentNames {
 		if nudgedComponentName == componentName {
 			return fmt.Errorf("cycle detected: component %s cannot reference itself, directly or indirectly, via build-nudges-ref", nudgedComponentName)
@@ -207,11 +240,7 @@ func (r *ComponentWebhook) validateBuildNudgesRefGraph(ctx context.Context, nudg
 			}
 		}
 
-		if nudgedComponent.Spec.Application != componentApp {
-			return fmt.Errorf("component %s cannot be added to spec.build-nudges-ref as it belongs to a different application", nudgedComponentName)
-		}
-
-		err = r.validateBuildNudgesRefGraph(ctx, nudgedComponent.Spec.BuildNudgesRef, componentNamespace, componentName, componentApp)
+		err = r.validateBuildNudgesRefGraph(ctx, nudgedComponent.Spec.BuildNudgesRef, componentNamespace, componentName)
 		if err != nil {
 			return err
 		}

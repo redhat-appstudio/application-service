@@ -70,24 +70,84 @@ func (r *ComponentReconciler) updateComponentDevfileModel(req ctrl.Request, hasC
 	for _, kubernetesComponent := range kubernetesComponents {
 		compUpdateRequired := false
 		// Update for Replica
-		currentReplica := 0
+		currentReplica := 1 // default value is 1
+		keyFound := true
+
 		if len(kubernetesComponent.Attributes) == 0 {
 			kubernetesComponent.Attributes = attributes.Attributes{}
+			keyFound = false
 		} else {
 			var err error
 			currentReplica = int(kubernetesComponent.Attributes.GetNumber(devfile.ReplicaKey, &err))
 			if err != nil {
 				if _, ok := err.(*attributes.KeyNotFoundError); !ok {
-					return err
+					return &devfile.DevfileAttributeParse{Key: devfile.ReplicaKey, Err: err}
+				} else {
+					keyFound = false
+					currentReplica = 1 //if an error is raised, it'll set currentReplica to 0 so we need to reset back to the default
 				}
 			}
 		}
 
-		numReplicas := util.GetIntValue(component.Spec.Replicas)
-		if currentReplica != numReplicas {
-			log.Info(fmt.Sprintf("setting devfile component %s attribute component.Spec.Replicas to %v", kubernetesComponent.Name, numReplicas))
-			kubernetesComponent.Attributes = kubernetesComponent.Attributes.PutInteger(devfile.ReplicaKey, numReplicas)
-			compUpdateRequired = true
+		numReplicas := 1 //default value
+		if component.Spec.Replicas != nil {
+			numReplicas = util.GetIntValue(component.Spec.Replicas)
+			// Component.Spec.Replicas will override any other settings.
+			// We will write the attribute if it doesn't exist for the initial creation case when comp.spec.replica is 1
+			if currentReplica != numReplicas || !keyFound {
+				log.Info(fmt.Sprintf("setting devfile component %s attribute %s to %v", kubernetesComponent.Name, devfile.ReplicaKey, numReplicas))
+				kubernetesComponent.Attributes = kubernetesComponent.Attributes.PutInteger(devfile.ReplicaKey, numReplicas)
+				compUpdateRequired = true
+			}
+		} else {
+			//check to see if we have an inlined deployment
+			isDeployReplicaSet := false
+			inlined := kubernetesComponent.Kubernetes.Inlined
+			if inlined != "" {
+				log.Info(fmt.Sprintf("reading the kubernetes inline from component %s", component.Name))
+				src := parser.YamlSrc{
+					Data: []byte(inlined),
+				}
+
+				values, err := parser.ReadKubernetesYaml(src, nil, nil)
+				if err != nil {
+					return err
+				}
+
+				resources, err := parser.ParseKubernetesYaml(values)
+				if err != nil {
+					return err
+				}
+
+				if len(resources.Deployments) > 0 {
+					replica := resources.Deployments[0].Spec.Replicas
+					if replica != nil {
+						isDeployReplicaSet = true
+						//remove the deployment/replicas attribute which can be left behind if we go from a set value to an unset value
+						if kubernetesComponent.Attributes.Exists(devfile.ReplicaKey) {
+							var err error
+							num := int(kubernetesComponent.Attributes.GetNumber(devfile.ReplicaKey, &err))
+
+							if err != nil {
+								if _, ok := err.(*attributes.KeyNotFoundError); !ok {
+									return &devfile.DevfileAttributeParse{Key: devfile.ReplicaKey, Err: err}
+								} else {
+									log.Info(fmt.Sprintf("deleting %s attribute with value %v", devfile.ReplicaKey, num))
+									delete(kubernetesComponent.Attributes, devfile.ReplicaKey)
+								}
+							}
+
+						}
+					}
+				}
+			}
+
+			//set the default if replicas is unset in the component and deployment spec.
+			if !isDeployReplicaSet {
+				log.Info(fmt.Sprintf("setting devfile component %s attribute component.Spec.Replicas to %v", kubernetesComponent.Name, 1))
+				kubernetesComponent.Attributes = kubernetesComponent.Attributes.PutInteger(devfile.ReplicaKey, 1)
+				compUpdateRequired = true
+			}
 		}
 
 		// Update for Port
@@ -95,7 +155,7 @@ func (r *ComponentReconciler) updateComponentDevfileModel(req ctrl.Request, hasC
 		currentPort := int(kubernetesComponent.Attributes.GetNumber(devfile.ContainerImagePortKey, &err))
 		if err != nil {
 			if _, ok := err.(*attributes.KeyNotFoundError); !ok {
-				return err
+				return &devfile.DevfileAttributeParse{Key: devfile.ContainerImagePortKey, Err: err}
 			}
 		}
 		if currentPort != component.Spec.TargetPort {
@@ -116,12 +176,12 @@ func (r *ComponentReconciler) updateComponentDevfileModel(req ctrl.Request, hasC
 		err = kubernetesComponent.Attributes.GetInto(devfile.ContainerENVKey, &currentENV)
 		if err != nil {
 			if _, ok := err.(*attributes.KeyNotFoundError); !ok {
-				return err
+				return &devfile.DevfileAttributeParse{Key: devfile.ContainerENVKey, Err: err}
 			}
 		}
 		for _, env := range component.Spec.Env {
 			if env.ValueFrom != nil {
-				return fmt.Errorf("env.ValueFrom is not supported at the moment, use env.value")
+				return &NotSupported{err: fmt.Errorf("env.ValueFrom is not supported at the moment, use env.value")}
 			}
 
 			name := env.Name
@@ -144,7 +204,7 @@ func (r *ComponentReconciler) updateComponentDevfileModel(req ctrl.Request, hasC
 			var err error
 			kubernetesComponent.Attributes = kubernetesComponent.Attributes.FromMap(map[string]interface{}{devfile.ContainerENVKey: currentENV}, &err)
 			if err != nil {
-				return err
+				return &devfile.DevfileAttributeParse{Key: devfile.ContainerENVKey, Err: err}
 			}
 			compUpdateRequired = true
 		}

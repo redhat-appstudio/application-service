@@ -2371,7 +2371,7 @@ var _ = Describe("SnapshotEnvironmentBinding controller", func() {
 				return len(createdBinding.Status.GitOpsRepoConditions) > 0 && createdBinding.Status.GitOpsRepoConditions[0].Reason == "GenerateError"
 			}, timeout, interval).Should(BeTrue())
 
-			Expect(createdBinding.Status.GitOpsRepoConditions[0].Message).Should(ContainSubstring("failed to decode devfile json"))
+			Expect(createdBinding.Status.GitOpsRepoConditions[0].Message).Should(ContainSubstring("cannot unmarshal string into Go value of type map[string]interface"))
 
 			// Delete the specified HASComp resource
 			deleteHASCompCR(hasCompLookupKey)

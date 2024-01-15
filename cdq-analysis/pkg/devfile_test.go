@@ -33,6 +33,7 @@ import (
 	"github.com/devfile/library/v2/pkg/devfile/parser"
 	"github.com/devfile/library/v2/pkg/devfile/parser/data"
 	v2 "github.com/devfile/library/v2/pkg/devfile/parser/data/v2"
+	devfileParserUtil "github.com/devfile/library/v2/pkg/devfile/parser/util"
 	"github.com/go-logr/logr"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/yaml"
@@ -344,7 +345,8 @@ func TestValidateDevfile(t *testing.T) {
 		ConvertKubernetesContentInUri: &convert,
 	}
 
-	parserArgs.DevfileUtilsClient = parser.NewMockDevfileUtilsClient()
+	mockDevfileUtilsClient := devfileParserUtil.NewMockDevfileUtilsClient()
+	parserArgs.DevfileUtilsClient = &mockDevfileUtilsClient
 
 	springDevfileParser := parserArgs
 	springDevfileParser.URL = "https://raw.githubusercontent.com/devfile-samples/devfile-sample-java-springboot-basic/main/devfile.yaml"

@@ -94,12 +94,6 @@ var _ = Describe("Application validation webhook", func() {
 			Expect(err).Should(HaveOccurred())
 			Expect(err.Error()).Should(ContainSubstring(errors.New("invalid URI for request" + appstudiov1alpha1.InvalidSchemeGitSourceURL).Error()))
 
-			//Bad URL with unsupported vendor
-			hasComp.Spec.Source.GitSource.URL = "http://url"
-			err = k8sClient.Create(ctx, hasComp)
-			Expect(err).Should(HaveOccurred())
-			Expect(err.Error()).Should(ContainSubstring(fmt.Errorf(appstudiov1alpha1.InvalidGithubVendorURL, "http://url", SupportedGitRepo).Error()))
-
 			// Good URL
 			hasComp.Spec.Source.GitSource.URL = SampleRepoLink
 			err = k8sClient.Create(ctx, hasComp)
@@ -214,32 +208,6 @@ var _ = Describe("Application validation webhook", func() {
 			err := k8sClient.Create(ctx, nudgedComp)
 			Expect(err).Should(Not(HaveOccurred()))
 
-			// comp in a different app
-			differentAppComp := &appstudiov1alpha1.Component{
-				TypeMeta: metav1.TypeMeta{
-					APIVersion: "appstudio.redhat.com/v1alpha1",
-					Kind:       "Component",
-				},
-				ObjectMeta: metav1.ObjectMeta{
-					Namespace: HASAppNamespace,
-					Name:      uniqueHASCompName + "-new-app",
-				},
-				Spec: appstudiov1alpha1.ComponentSpec{
-					ComponentName: uniqueHASCompName + "-new-app",
-					Application:   "test-application2",
-					Source: appstudiov1alpha1.ComponentSource{
-						ComponentSourceUnion: appstudiov1alpha1.ComponentSourceUnion{
-							GitSource: &appstudiov1alpha1.GitSource{
-								URL: SampleRepoLink,
-							},
-						},
-					},
-				},
-			}
-
-			err = k8sClient.Create(ctx, differentAppComp)
-			Expect(err).Should(Not(HaveOccurred()))
-
 			// nudgingComp
 			nudgingComp := &appstudiov1alpha1.Component{
 				TypeMeta: metav1.TypeMeta{
@@ -291,12 +259,6 @@ var _ = Describe("Application validation webhook", func() {
 			buildNudgedByList := nudgedComp.Status.BuildNudgedBy
 			Expect(len(buildNudgedByList)).To(Equal(1))
 			Expect(buildNudgedByList[0] == uniqueHASCompName)
-
-			// Now attempt to update the build-nudges-ref field to an invalid component (different app)
-			createdHasComp.Spec.BuildNudgesRef = []string{uniqueHASCompName + "-new-app"}
-			err = k8sClient.Update(ctx, createdHasComp)
-			Expect(err).Should((HaveOccurred()))
-			Expect(err.Error()).Should(ContainSubstring("belongs to a different application"))
 
 			// Delete the specified HASComp resource
 			deleteHASCompCR(hasCompLookupKey)

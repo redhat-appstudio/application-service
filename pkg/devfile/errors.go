@@ -30,3 +30,32 @@ func (e *NoFileFound) Error() string {
 	}
 	return errMsg
 }
+
+// MissingOuterloop returns an error if no Kubernetes Component was found in a Devfile
+type MissingOuterloop struct {
+}
+
+func (e *MissingOuterloop) Error() string {
+	return "the devfile has no kubernetes components defined, missing outerloop definition"
+}
+
+// IncompatibleDevfile returns an error if the Devfile being read is incompatible due to user error
+type IncompatibleDevfile struct {
+	Err error
+}
+
+func (e *IncompatibleDevfile) Error() string {
+	return fmt.Sprintf("devfile is incompatible: %v", e.Err)
+}
+
+// DevfileAttributeParse returns an error if was an issue parsing the attribute key
+type DevfileAttributeParse struct {
+	Key string
+	Err error
+}
+
+func (e *DevfileAttributeParse) Error() string {
+	errMsg := fmt.Sprintf("error parsing key %s: %v", e.Key, e.Err)
+
+	return errMsg
+}

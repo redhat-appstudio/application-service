@@ -43,6 +43,8 @@ import (
 	github "github.com/redhat-appstudio/application-service/pkg/github"
 	"github.com/redhat-appstudio/application-service/pkg/spi"
 	"github.com/redhat-appstudio/application-service/pkg/util/ioutils"
+
+	devfileParserUtil "github.com/devfile/library/v2/pkg/devfile/parser/util"
 )
 
 var (
@@ -94,6 +96,7 @@ func SetupTestEnv() (client.Client, *envtest.Environment, context.Context, conte
 	gomega.Expect(err).ToNot(gomega.HaveOccurred())
 
 	mockGhTokenClient := github.MockGitHubTokenClient{}
+	mockDevfileUtilsClient := devfileParserUtil.NewMockDevfileUtilsClient()
 
 	// Retrieve the option to specify a cdq-analysis image
 	cdqAnalysisImage := os.Getenv("CDQ_ANALYSIS_IMAGE")
@@ -112,13 +115,16 @@ func SetupTestEnv() (client.Client, *envtest.Environment, context.Context, conte
 	gomega.Expect(err).ToNot(gomega.HaveOccurred())
 
 	err = (&ComponentReconciler{
-		Client:            k8sManager.GetClient(),
-		Scheme:            k8sManager.GetScheme(),
-		Log:               ctrl.Log.WithName("controllers").WithName("Component"),
-		Generator:         gitops.NewMockGenerator(),
-		AppFS:             ioutils.NewMemoryFilesystem(),
-		SPIClient:         spi.MockSPIClient{},
-		GitHubTokenClient: mockGhTokenClient,
+		Client:    k8sManager.GetClient(),
+		Scheme:    k8sManager.GetScheme(),
+		Log:       ctrl.Log.WithName("controllers").WithName("Component"),
+		Generator: gitops.NewMockGenerator(),
+		AppFS:     ioutils.NewMemoryFilesystem(),
+		SPIClient: spi.MockSPIClient{
+			K8sClient: k8sClient,
+		},
+		GitHubTokenClient:  mockGhTokenClient,
+		DevfileUtilsClient: &mockDevfileUtilsClient,
 	}).SetupWithManager(ctx, k8sManager)
 	gomega.Expect(err).ToNot(gomega.HaveOccurred())
 

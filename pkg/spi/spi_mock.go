@@ -22,6 +22,11 @@ import (
 	"strings"
 
 	"github.com/redhat-appstudio/application-api/api/v1alpha1"
+	spiapi "github.com/redhat-appstudio/service-provider-integration-operator/api/v1beta1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/types"
+	ctrl "sigs.k8s.io/controller-runtime"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/stretchr/testify/mock"
 )
@@ -41,6 +46,7 @@ func (m *mockReadCloser) Close() error {
 }
 
 type MockSPIClient struct {
+	K8sClient client.Client
 }
 
 var mockDevfile = `
@@ -149,17 +155,44 @@ CMD [ "waitress-serve", "--port=8081", "app:app"]
 func (s MockSPIClient) GetFileContents(ctx context.Context, name string, component v1alpha1.Component, repoURL string, filepath string, ref string) (io.ReadCloser, error) {
 	if strings.Contains(repoURL, "test-error-response") {
 		return nil, fmt.Errorf("file not found")
-	} else if strings.Contains(repoURL, "test-parse-error") || (strings.Contains(repoURL, "test-error-dockerfile-response") && strings.Contains(filepath, "Dockerfile")) {
+	} else if strings.Contains(repoURL, "test-parse-error") || (strings.Contains(repoURL, "test-error-dockerfile-response")) {
 		mockReadCloser := mockReadCloser{}
 		mockReadCloser.On("Read", mock.AnythingOfType("[]uint8")).Return(0, fmt.Errorf("error reading"))
 		mockReadCloser.On("Close").Return(fmt.Errorf("error closing"))
 		return &mockReadCloser, nil
+	} else if strings.Contains(repoURL, "create-spi-fcr") {
+		log := ctrl.LoggerFrom(ctx)
+		spiFCRLookupKey := types.NamespacedName{Name: SPIFCR_prefix + name, Namespace: component.Namespace}
+		spiFCR := &spiapi.SPIFileContentRequest{}
+		spiFCR.Name = spiFCRLookupKey.Name
+		spiFCR.Namespace = spiFCRLookupKey.Namespace
+		spiFCR.Spec.RepoUrl = repoURL
+		spiFCR.Spec.FilePath = filepath
+		spiFCR.Spec.Ref = ref
+		//add an owner reference
+		ownerReference := metav1.OwnerReference{
+			APIVersion: component.APIVersion,
+			Kind:       component.Kind,
+			Name:       component.Name,
+			UID:        component.UID,
+		}
+		spiFCR.SetOwnerReferences(append(spiFCR.GetOwnerReferences(), ownerReference))
+		err := s.K8sClient.Create(ctx, spiFCR)
+		if err != nil {
+			return nil, &SPIFileContentRequestError{fmt.Sprintf("Failed to create an SPIFileContentRequest CR: %s", err.Error())}
+		}
+
+		if strings.Contains(repoURL, "create-spi-fcr-return-devfile") {
+			stringReader := strings.NewReader(mockDevfile)
+			stringReadCloser := io.NopCloser(stringReader)
+			return stringReadCloser, nil
+		}
+
+		return getFileContentFromSPIFCR(*spiFCR, log)
 	} else if strings.Contains(filepath, "Dockerfile") {
 		stringReader := strings.NewReader(mockDockerfile)
 		stringReadCloser := io.NopCloser(stringReader)
 		return stringReadCloser, nil
-	} else if strings.Contains(filepath, "valid-repo-invalid-token") {
-		return nil, fmt.Errorf("unable to fetch the SPIAccessToken")
 	} else {
 		stringReader := strings.NewReader(mockDevfile)
 		stringReadCloser := io.NopCloser(stringReader)
