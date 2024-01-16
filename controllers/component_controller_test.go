@@ -1446,7 +1446,7 @@ var _ = Describe("Component controller", func() {
 					Source: appstudiov1alpha1.ComponentSource{
 						ComponentSourceUnion: appstudiov1alpha1.ComponentSourceUnion{
 							GitSource: &appstudiov1alpha1.GitSource{
-								URL: "https://github.com/johnmcollier/test-error-response",
+								URL: "https://github.com/devfile-resources/test-error-response",
 							},
 						},
 					},
@@ -1982,7 +1982,7 @@ var _ = Describe("Component controller", func() {
 			Expect(err).Should(Not(HaveOccurred()))
 
 			// Update the GitOps Repo to a URI that mocked API returns a dummy err
-			hasAppDevfile.GetMetadata().Attributes.PutString("gitOpsRepository.url", "https://github.com/redhat-appstudio-mjf/test-error-response")
+			hasAppDevfile.GetMetadata().Attributes.PutString("gitOpsRepository.url", "https://github.com/devfile-resources/test-error-response")
 
 			devfileYaml, err := yaml.Marshal(hasAppDevfile)
 			Expect(err).ToNot(HaveOccurred())
@@ -1996,7 +1996,7 @@ var _ = Describe("Component controller", func() {
 				Expect(err).Should(Not(HaveOccurred()))
 				gitOpsRepoURL := hasAppDevfile.GetMetadata().Attributes.GetString("gitOpsRepository.url", &err)
 				Expect(err).Should(Not(HaveOccurred()))
-				return gitOpsRepoURL == "https://github.com/redhat-appstudio-mjf/test-error-response"
+				return gitOpsRepoURL == "https://github.com/devfile-resources/test-error-response"
 			}, timeout, interval).Should(BeTrue())
 
 			hasComp := &appstudiov1alpha1.Component{
@@ -2028,7 +2028,7 @@ var _ = Describe("Component controller", func() {
 			Eventually(func() bool {
 				var gitOpsRepCheck, createConditionCheck, gitOpsConditionCheck bool
 				k8sClient.Get(context.Background(), hasCompLookupKey, createdHasComp)
-				if createdHasComp.Status.GitOps.RepositoryURL == "https://github.com/redhat-appstudio-mjf/test-error-response" {
+				if createdHasComp.Status.GitOps.RepositoryURL == "https://github.com/devfile-resources/test-error-response" {
 					gitOpsRepCheck = true
 				}
 				for _, condition := range createdHasComp.Status.Conditions {
@@ -2103,7 +2103,7 @@ var _ = Describe("Component controller", func() {
 			Expect(err).Should(Not(HaveOccurred()))
 
 			// Update the GitOps Repo to a URI that mocked API returns a dummy err
-			hasAppDevfile.GetMetadata().Attributes.PutString("gitOpsRepository.url", "https://github.com/redhat-appstudio-mjf/test-no-error")
+			hasAppDevfile.GetMetadata().Attributes.PutString("gitOpsRepository.url", "https://github.com/devfile-resources/test-no-error")
 
 			devfileYaml, err := yaml.Marshal(hasAppDevfile)
 			Expect(err).ToNot(HaveOccurred())
@@ -2119,7 +2119,7 @@ var _ = Describe("Component controller", func() {
 				Expect(err).Should(Not(HaveOccurred()))
 				gitOpsRepoURL := hasAppDevfile.GetMetadata().Attributes.GetString("gitOpsRepository.url", &err)
 				Expect(err).Should(Not(HaveOccurred()))
-				return gitOpsRepoURL == "https://github.com/redhat-appstudio-mjf/test-no-error"
+				return gitOpsRepoURL == "https://github.com/devfile-resources/test-no-error"
 			}, timeout, interval).Should(BeTrue())
 
 			hasComp := &appstudiov1alpha1.Component{
@@ -2151,7 +2151,7 @@ var _ = Describe("Component controller", func() {
 			Eventually(func() bool {
 				var gitOpsRepCheck, createConditionCheck, gitOpsConditionCheck bool
 				k8sClient.Get(context.Background(), hasCompLookupKey, createdHasComp)
-				if createdHasComp.Status.GitOps.RepositoryURL == "https://github.com/redhat-appstudio-mjf/test-no-error" {
+				if createdHasComp.Status.GitOps.RepositoryURL == "https://github.com/devfile-resources/test-no-error" {
 					gitOpsRepCheck = true
 				}
 				for _, condition := range createdHasComp.Status.Conditions {
@@ -2310,7 +2310,7 @@ var _ = Describe("Component controller", func() {
 					Source: appstudiov1alpha1.ComponentSource{
 						ComponentSourceUnion: appstudiov1alpha1.ComponentSourceUnion{
 							GitSource: &appstudiov1alpha1.GitSource{
-								URL: "https://github.com/maysunfaisal/devfile-sample-python-basic-private", // It doesn't matter if we are using pub/pvt repo here. We are mock testing the token, "valid-token" returns a mock devfile. See https://github.com/devfile/library/blob/main/pkg/util/mock.go#L250
+								URL: "https://github.com/devfile-resources/devfile-sample-python-basic-private", // It doesn't matter if we are using pub/pvt repo here. We are mock testing the token, "valid-token" returns a mock devfile. See https://github.com/devfile/library/blob/main/pkg/util/mock.go#L250
 							},
 						},
 					},
@@ -2377,7 +2377,7 @@ var _ = Describe("Component controller", func() {
 				if project.Name == ComponentName {
 					nameMatched = true
 				}
-				if project.Git != nil && project.Git.GitLikeProjectSource.Remotes["origin"] == "https://github.com/maysunfaisal/devfile-sample-python-basic-private" {
+				if project.Git != nil && project.Git.GitLikeProjectSource.Remotes["origin"] == "https://github.com/devfile-resources/devfile-sample-python-basic-private" {
 					repoLinkMatched = true
 				}
 			}
@@ -2662,7 +2662,7 @@ var _ = Describe("Component controller", func() {
 						Source: appstudiov1alpha1.ComponentSource{
 							ComponentSourceUnion: appstudiov1alpha1.ComponentSourceUnion{
 								GitSource: &appstudiov1alpha1.GitSource{
-									URL: "https://github.com/maysunfaisal/devfile-sample-python-basic-private", // It doesn't matter if we are using pub/pvt repo here. We are mock testing the token, "parent-devfile" returns a mock devfile and mock parent. See https://github.com/devfile/library/blob/main/pkg/util/mock.go
+									URL: "https://github.com/devfile-resources/devfile-sample-python-basic-private", // It doesn't matter if we are using pub/pvt repo here. We are mock testing the token, "parent-devfile" returns a mock devfile and mock parent. See https://github.com/devfile/library/blob/main/pkg/util/mock.go
 								},
 							},
 						},
@@ -2730,7 +2730,7 @@ var _ = Describe("Component controller", func() {
 					if project.Name == ComponentName {
 						nameMatched = true
 					}
-					if project.Git != nil && project.Git.GitLikeProjectSource.Remotes["origin"] == "https://github.com/maysunfaisal/devfile-sample-python-basic-private" {
+					if project.Git != nil && project.Git.GitLikeProjectSource.Remotes["origin"] == "https://github.com/devfile-resources/devfile-sample-python-basic-private" {
 						repoLinkMatched = true
 					}
 				}

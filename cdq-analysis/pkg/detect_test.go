@@ -42,7 +42,7 @@ func TestAnalyzeAndDetectDevfile(t *testing.T) {
 		{
 			name:                "Successfully detect a devfile from the registry",
 			clonePath:           "/tmp/java-springboot-basic",
-			repo:                "https://github.com/maysunfaisal/devfile-sample-java-springboot-basic-1",
+			repo:                "https://github.com/devfile-samples/devfile-sample-java-springboot-basic",
 			registryURL:         DevfileStageRegistryEndpoint,
 			wantDevfile:         true,
 			wantDevfileEndpoint: "https://raw.githubusercontent.com/devfile-samples/devfile-sample-java-springboot-basic/main/devfile.yaml",
@@ -59,35 +59,35 @@ func TestAnalyzeAndDetectDevfile(t *testing.T) {
 		{
 			name:        "Cannot detect a devfile for a Scala repository",
 			clonePath:   "/tmp/testscala",
-			repo:        "https://github.com/johnmcollier/scalatemplate",
+			repo:        "https://github.com/devfile-resources/scalatemplate",
 			registryURL: DevfileStageRegistryEndpoint,
 			wantErr:     true,
 		},
 		{
 			name:        "Test err condition for Alizer Analyze",
 			clonePath:   "/tmp/errorAnalyze",
-			repo:        "https://github.com/maysunfaisal/devfile-sample-java-springboot-basic-1",
+			repo:        "https://github.com/devfile-samples/devfile-sample-java-springboot-basic",
 			registryURL: DevfileStageRegistryEndpoint,
 			wantErr:     true,
 		},
 		{
 			name:        "Test with a fake Devfile Registry",
 			clonePath:   "/tmp/path",
-			repo:        "https://github.com/maysunfaisal/devfile-sample-java-springboot-basic-1",
+			repo:        "https://github.com/devfile-samples/devfile-sample-java-springboot-basic",
 			registryURL: "FakeDevfileRegistryEndpoint",
 			wantErr:     true,
 		},
 		{
 			name:        "Test err condition for Alizer SelectDevFileFromTypes",
 			clonePath:   "/tmp/springboot/errorSelectDevFileFromTypes",
-			repo:        "https://github.com/maysunfaisal/devfile-sample-java-springboot-basic-1",
+			repo:        "https://github.com/devfile-samples/devfile-sample-java-springboot-basic",
 			registryURL: DevfileStageRegistryEndpoint,
 			wantErr:     true,
 		},
 		{
 			name:        "Test err condition for failing to hit the devfile endpoint",
 			clonePath:   "/tmp/springboot/error/devfileendpoint",
-			repo:        "https://github.com/maysunfaisal/devfile-sample-java-springboot-basic-1",
+			repo:        "https://github.com/devfile-samples/devfile-sample-java-springboot-basic",
 			registryURL: DevfileStageRegistryEndpoint,
 			wantErr:     true,
 		},
@@ -145,7 +145,7 @@ func TestSelectDevfileFromTypes(t *testing.T) {
 		{
 			name:      "Successfully detect a devfile from the registry",
 			clonePath: "/tmp/test-selected-devfile",
-			repo:      "https://github.com/maysunfaisal/devfile-sample-java-springboot-basic-1",
+			repo:      "https://github.com/devfile-samples/devfile-sample-java-springboot-basic",
 			devfileTypes: []model.DevfileType{
 				{
 					Name: "nodejs-basic", Language: "JavaScript", ProjectType: "Node.js", Tags: []string{"Node.js", "Express"},
@@ -174,7 +174,7 @@ func TestSelectDevfileFromTypes(t *testing.T) {
 		{
 			name:      "Unable to detect a devfile from the registry",
 			clonePath: "/tmp/test-no-devfiles-selected",
-			repo:      "https://github.com/maysunfaisal/devfile-sample-java-springboot-basic-1",
+			repo:      "https://github.com/devfile-samples/devfile-sample-java-springboot-basic",
 			devfileTypes: []model.DevfileType{
 				{
 					Name: "python-basic", Language: "Python", ProjectType: "Python", Tags: []string{"Python", "Pip", "Flask"},

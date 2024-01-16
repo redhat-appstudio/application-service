@@ -40,7 +40,6 @@ import (
 )
 
 func TestParseDevfileModel(t *testing.T) {
-
 	testServerURL := "127.0.0.1:9080"
 
 	simpleDevfile := `
@@ -176,10 +175,10 @@ func TestScanRepo(t *testing.T) {
 		{
 			name:                   "Should return 2 devfile contexts, and 2 devfileURLs as this is a multi comp devfile",
 			clonePath:              "/tmp/testclone",
-			repo:                   "https://github.com/maysunfaisal/multi-components-deep",
+			repo:                   "https://github.com/devfile-resources/multi-components-deep",
 			expectedDevfileContext: []string{"python", "devfile-sample-java-springboot-basic"},
 			expectedDevfileURLContextMap: map[string]string{
-				"devfile-sample-java-springboot-basic": "https://raw.githubusercontent.com/maysunfaisal/multi-components-deep/main/devfile-sample-java-springboot-basic/.devfile/.devfile.yaml",
+				"devfile-sample-java-springboot-basic": "https://raw.githubusercontent.com/devfile-resources/multi-components-deep/main/devfile-sample-java-springboot-basic/.devfile/.devfile.yaml",
 				"python":                               "https://raw.githubusercontent.com/devfile-samples/devfile-sample-python-basic/main/devfile.yaml",
 			},
 			expectedDockerfileContextMap: map[string]string{
@@ -192,11 +191,11 @@ func TestScanRepo(t *testing.T) {
 		{
 			name:                   "Should return 2 devfile contexts, and 2 devfileURLs as this is a multi comp devfile - with revision specified",
 			clonePath:              "/tmp/testclone",
-			repo:                   "https://github.com/maysunfaisal/multi-components-deep",
+			repo:                   "https://github.com/devfile-resources/multi-components-deep",
 			revision:               "main",
 			expectedDevfileContext: []string{"python", "devfile-sample-java-springboot-basic"},
 			expectedDevfileURLContextMap: map[string]string{
-				"devfile-sample-java-springboot-basic": "https://raw.githubusercontent.com/maysunfaisal/multi-components-deep/main/devfile-sample-java-springboot-basic/.devfile/.devfile.yaml",
+				"devfile-sample-java-springboot-basic": "https://raw.githubusercontent.com/devfile-resources/multi-components-deep/main/devfile-sample-java-springboot-basic/.devfile/.devfile.yaml",
 				"python":                               "https://raw.githubusercontent.com/devfile-samples/devfile-sample-python-basic/main/devfile.yaml",
 			},
 			expectedDockerfileContextMap: map[string]string{
@@ -209,7 +208,7 @@ func TestScanRepo(t *testing.T) {
 		{
 			name:                   "Should return 2 devfile contexts, and 2 devfileURLs with multi-component but no outerloop definition",
 			clonePath:              "/tmp/testclone",
-			repo:                   "https://github.com/yangcao77/multi-components-with-no-kubecomps",
+			repo:                   "https://github.com/devfile-resources/multi-components-with-no-kubecomps",
 			expectedDevfileContext: []string{"python", "devfile-sample-java-springboot-basic"},
 			expectedDevfileURLContextMap: map[string]string{
 				"devfile-sample-java-springboot-basic": "https://raw.githubusercontent.com/devfile-samples/devfile-sample-java-springboot-basic/main/devfile.yaml",
@@ -222,12 +221,12 @@ func TestScanRepo(t *testing.T) {
 		{
 			name:                   "Should return 4 devfiles, 5 devfile url and 5 Dockerfile uri as this is a multi comp devfile",
 			clonePath:              "/tmp/testclone",
-			repo:                   "https://github.com/maysunfaisal/multi-components-dockerfile",
+			repo:                   "https://github.com/devfile-resources/multi-components-dockerfile",
 			expectedDevfileContext: []string{"devfile-sample-java-springboot-basic", "devfile-sample-nodejs-basic", "devfile-sample-python-basic", "python-src-none"},
 			expectedDevfileURLContextMap: map[string]string{
-				"devfile-sample-java-springboot-basic": "https://raw.githubusercontent.com/maysunfaisal/multi-components-dockerfile/main/devfile-sample-java-springboot-basic/.devfile/.devfile.yaml",
+				"devfile-sample-java-springboot-basic": "https://raw.githubusercontent.com/devfile-resources/multi-components-dockerfile/main/devfile-sample-java-springboot-basic/.devfile/.devfile.yaml",
 				"devfile-sample-nodejs-basic":          "https://raw.githubusercontent.com/nodeshift-starters/devfile-sample/main/devfile.yaml",
-				"devfile-sample-python-basic":          "https://raw.githubusercontent.com/maysunfaisal/multi-components-dockerfile/main/devfile-sample-python-basic/.devfile.yaml",
+				"devfile-sample-python-basic":          "https://raw.githubusercontent.com/devfile-resources/multi-components-dockerfile/main/devfile-sample-python-basic/.devfile.yaml",
 				"python-src-none":                      "https://raw.githubusercontent.com/devfile-samples/devfile-sample-python-basic/main/devfile.yaml",
 				"python-src-docker":                    "https://raw.githubusercontent.com/devfile-samples/devfile-sample-python-basic/main/devfile.yaml",
 			},
@@ -236,7 +235,7 @@ func TestScanRepo(t *testing.T) {
 				"devfile-sample-nodejs-basic":          "https://raw.githubusercontent.com/nodeshift-starters/devfile-sample/main/Dockerfile",
 				"devfile-sample-java-springboot-basic": "devfile-sample-java-springboot-basic/docker/Dockerfile",
 				"python-src-none":                      "https://raw.githubusercontent.com/devfile-samples/devfile-sample-python-basic/main/docker/Dockerfile",
-				"devfile-sample-python-basic":          "https://raw.githubusercontent.com/maysunfaisal/multi-components-dockerfile/main/devfile-sample-python-basic/Dockerfile"},
+				"devfile-sample-python-basic":          "https://raw.githubusercontent.com/devfile-resources/multi-components-dockerfile/main/devfile-sample-python-basic/Dockerfile"},
 			expectedPortsMap: map[string][]int{
 				"devfile-sample-nodejs-basic": {3000},
 			},
@@ -244,7 +243,7 @@ func TestScanRepo(t *testing.T) {
 		{
 			name:      "Should return 4 Dockerfile contexts with Dockerfile/Containerfile path, and 4 devfileURLs ",
 			clonePath: "/tmp/testclone",
-			repo:      "https://github.com/yangcao77/multi-components-dockerfile",
+			repo:      "https://github.com/devfile-resources/multi-components-dockerfile",
 			revision:  "containerfile",
 			expectedDevfileURLContextMap: map[string]string{
 				"java-springboot-containerfile": "https://raw.githubusercontent.com/devfile-samples/devfile-sample-java-springboot-basic/main/devfile.yaml",
@@ -361,7 +360,7 @@ func TestValidateDevfile(t *testing.T) {
 	}
 
 	springDevfileWithAbsoluteDockerfileParser := parserArgs
-	springDevfileWithAbsoluteDockerfileParser.URL = "https://raw.githubusercontent.com/yangcao77/spring-sample-with-absolute-dockerfileURI/main/devfile.yaml"
+	springDevfileWithAbsoluteDockerfileParser.URL = "https://raw.githubusercontent.com/devfile-resources/spring-sample-with-absolute-dockerfileURI/main/devfile.yaml"
 	springDevfileObjWithAbsoluteDockerfile, _, err := devfilePkg.ParseDevfileAndValidate(springDevfileWithAbsoluteDockerfileParser)
 	if err != nil {
 		t.Errorf("TestValidateDevfile() unexpected error: %v", err)
@@ -394,7 +393,7 @@ func TestValidateDevfile(t *testing.T) {
 		},
 		{
 			name:       "devfile.yaml with invalid deploy.yaml reference",
-			url:        "https://raw.githubusercontent.com/yangcao77/go-basic-no-deploy-file/main/devfile.yaml",
+			url:        "https://raw.githubusercontent.com/devfile-resources/go-basic-no-deploy-file/main/devfile.yaml",
 			wantIgnore: false,
 			wantErr:    true,
 		},
@@ -406,25 +405,25 @@ func TestValidateDevfile(t *testing.T) {
 		},
 		{
 			name:       "devfile.yaml should be ignored if no image components defined",
-			url:        "https://raw.githubusercontent.com/yangcao77/spring-sample-no-image-comp/main/devfile.yaml",
+			url:        "https://raw.githubusercontent.com/devfile-resources/spring-sample-no-image-comp/main/devfile.yaml",
 			wantIgnore: true,
 			wantErr:    false,
 		},
 		{
 			name:       "devfile.yaml with no outerloop definition and missing command group",
-			url:        "https://raw.githubusercontent.com/yangcao77/missing-cmd-group/main/devfile.yaml",
+			url:        "https://raw.githubusercontent.com/devfile-resources/missing-cmd-group/main/devfile.yaml",
 			wantIgnore: true,
 			wantErr:    false,
 		},
 		{
 			name:       "should error out with multiple kubernetes components but no deploy command",
-			url:        "https://raw.githubusercontent.com/yangcao77/spring-multi-kubecomps-no-deploycmd/main/devfile.yaml",
+			url:        "https://raw.githubusercontent.com/devfile-resources/spring-multi-kubecomps-no-deploycmd/main/devfile.yaml",
 			wantIgnore: false,
 			wantErr:    true,
 		},
 		{
 			name:       "should error out with multiple image components but no apply command",
-			url:        "https://raw.githubusercontent.com/yangcao77/spring-multi-imagecomps-no-applycmd/main/devfile.yaml",
+			url:        "https://raw.githubusercontent.com/devfile-resources/spring-multi-imagecomps-no-applycmd/main/devfile.yaml",
 			wantIgnore: false,
 			wantErr:    true,
 		},

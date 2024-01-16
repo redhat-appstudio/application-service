@@ -68,7 +68,7 @@ spec:
   replicas: 1
   source:
     git:
-      url: https://github.com/johnmcollier/devfile-private.git
+      url: https://github.com/devfile-resources/devfile-private.git
   secret: token-secret
 ```
 
@@ -81,6 +81,6 @@ metadata:
   name: componentdetectionquery-sample
 spec:
   git:
-    url: https://github.com/johnmcollier/multi-component-private.git
+    url: https://github.com/devfile-resources/multi-component-private.git
   secret: token-secret
 ```

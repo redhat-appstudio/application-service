@@ -1246,7 +1246,7 @@ func TestUpdateComponentStub(t *testing.T) {
 				Kubernetes: &devfileAPIV1.KubernetesComponent{
 					K8sLikeComponent: devfileAPIV1.K8sLikeComponent{
 						K8sLikeComponentLocation: devfileAPIV1.K8sLikeComponentLocation{
-							Uri: "https://raw.githubusercontent.com/yangcao77/devfile-sample-java-springboot-basic/main/deploy.yaml",
+							Uri: "https://raw.githubusercontent.com/devfile-samples/devfile-sample-java-springboot-basic/main/deploy.yaml",
 						},
 					},
 				},
@@ -1259,7 +1259,7 @@ func TestUpdateComponentStub(t *testing.T) {
 				Kubernetes: &devfileAPIV1.KubernetesComponent{
 					K8sLikeComponent: devfileAPIV1.K8sLikeComponent{
 						K8sLikeComponentLocation: devfileAPIV1.K8sLikeComponentLocation{
-							Uri: "https://raw.githubusercontent.com/yangcao77/devfile-sample-java-springboot-basic/main/deploy.yaml",
+							Uri: "https://raw.githubusercontent.com/devfile-samples/devfile-sample-java-springboot-basic/main/deploy.yaml",
 						},
 					},
 				},
@@ -1297,7 +1297,7 @@ func TestUpdateComponentStub(t *testing.T) {
 				Kubernetes: &devfileAPIV1.KubernetesComponent{
 					K8sLikeComponent: devfileAPIV1.K8sLikeComponent{
 						K8sLikeComponentLocation: devfileAPIV1.K8sLikeComponentLocation{
-							Uri: "https://raw.githubusercontent.com/yangcao77/devfile-sample-java-springboot-basic/main/deploy.yaml",
+							Uri: "https://raw.githubusercontent.com/devfile-samples/devfile-sample-java-springboot-basic/main/deploy.yaml",
 						},
 					},
 				},
@@ -2188,6 +2188,7 @@ func TestUpdateComponentStub(t *testing.T) {
 }
 
 func TestGetComponentName(t *testing.T) {
+	// Repos used in tests are most likely dummy repos
 	ctx := context.TODO()
 	fakeClientNoErr := NewFakeClient(t)
 	fakeClientNoErr.MockGet = func(ctx context.Context, key types.NamespacedName, obj client.Object, opts ...client.GetOption) error {
