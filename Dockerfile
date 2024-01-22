@@ -1,5 +1,5 @@
 # Build the manager binary
-FROM golang:1.19 as builder
+FROM registry.access.redhat.com/ubi9/go-toolset:1.20.10 as builder
 
 WORKDIR /workspace
 # Copy the Go Modules manifests
@@ -53,6 +53,12 @@ COPY --from=tini-builder /tini/tini /usr/bin
 WORKDIR /
 
 USER 1001
+
+LABEL description="RHTAP Hybrid Application Service operator"
+LABEL io.k8s.description="RHTAP Hybrid Application Service operator"
+LABEL io.k8s.display-name="application-service"
+LABEL io.openshift.tags="rhtap"
+LABEL summary="RHTAP Hybrid Application Service"
 
 ENTRYPOINT ["entrypoint.sh"]
 
