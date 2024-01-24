@@ -1,5 +1,5 @@
 # Build the manager binary
-FROM golang:1.19 as builder
+FROM registry.access.redhat.com/ubi9/go-toolset:1.20.10 as builder
 
 WORKDIR /workspace
 # Copy the Go Modules manifests
@@ -21,7 +21,7 @@ COPY gitops gitops/
 RUN CGO_ENABLED=0 GOOS=linux go build -a -o manager main.go
 
 # Build the tini binary
-FROM registry.access.redhat.com/ubi8/ubi-minimal:8.6-751 as tini-builder
+FROM registry.access.redhat.com/ubi8/ubi-minimal:8.9 as tini-builder
 RUN microdnf update --setopt=install_weak_deps=0 -y && microdnf install git cmake make gcc gcc-c++
 # build tini
 RUN git clone --branch v0.19.0 https://github.com/krallin/tini /tini
@@ -29,7 +29,7 @@ WORKDIR /tini
 ENV CFLAGS="-DPR_SET_CHILD_SUBREAPER=36 -DPR_GET_CHILD_SUBREAPER=37"
 RUN cmake . && make tini
 
-FROM registry.access.redhat.com/ubi8/ubi-minimal:8.6-751
+FROM registry.access.redhat.com/ubi8/ubi-minimal:8.9
 RUN microdnf update --setopt=install_weak_deps=0 -y && microdnf install git
 COPY entrypoint.sh /usr/local/bin/entrypoint.sh
 RUN chmod +x /usr/local/bin/entrypoint.sh
@@ -54,5 +54,10 @@ WORKDIR /
 
 USER 1001
 
-ENTRYPOINT ["entrypoint.sh"]
+LABEL description="RHTAP Hybrid Application Service operator"
+LABEL io.k8s.description="RHTAP Hybrid Application Service operator"
+LABEL io.k8s.display-name="application-service"
+LABEL io.openshift.tags="rhtap"
+LABEL summary="RHTAP Hybrid Application Service"
 
+ENTRYPOINT ["entrypoint.sh"]
