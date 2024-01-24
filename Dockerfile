@@ -61,4 +61,3 @@ LABEL io.openshift.tags="rhtap"
 LABEL summary="RHTAP Hybrid Application Service"
 
 ENTRYPOINT ["entrypoint.sh"]
-
