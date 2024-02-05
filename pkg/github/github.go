@@ -143,15 +143,12 @@ func (g *GitHubClient) GetDefaultBranchFromURL(repoURL string, ctx context.Conte
 func (g *GitHubClient) GetBranchFromURL(repoURL string, ctx context.Context, branchName string) (*github.Branch, error) {
 	repoName, orgName, err := GetRepoAndOrgFromURL(repoURL)
 	if err != nil {
-		// User error - so increment the "success" metric - since we're tracking only system errors
-		metrics.ComponentCreationSucceeded.Inc()
-		return nil, err
+		return nil, &GitHubUserErr{Err: err.Error()}
 	}
 
 	branch, _, err := g.Client.Repositories.GetBranch(ctx, orgName, repoName, branchName, false)
 	if err != nil || branch == nil {
-		metrics.ComponentCreationFailed.Inc()
-		return nil, fmt.Errorf("failed to get branch %s from repo %s under %s, error: %v", branchName, repoName, orgName, err)
+		return nil, &GitHubSystemErr{Err: fmt.Sprintf("failed to get branch %s from repo %s under %s, error: %v", branchName, repoName, orgName, err)}
 	}
 
 	return branch, nil
