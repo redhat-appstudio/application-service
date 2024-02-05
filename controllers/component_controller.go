@@ -256,6 +256,7 @@ func (r *ComponentReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 			if err := r.generateGitops(ctx, ghClient, &component, compDevfileData); err != nil {
 				errMsg := fmt.Sprintf("Unable to generate gitops resources for component %v", req.NamespacedName)
 				log.Error(err, errMsg)
+				metrics.IncrementComponentCreationSucceeded(prevErrCondition, err.Error()) // We are not tracking Component failures for GitOps due to future planning
 				_ = r.SetGitOpsGeneratedConditionAndUpdateCR(ctx, req, &component, fmt.Errorf("%v: %v", errMsg, err))
 				return ctrl.Result{}, err
 			} else {
@@ -538,6 +539,7 @@ func (r *ComponentReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 				if err := r.generateGitops(ctx, ghClient, &component, compDevfileData); err != nil {
 					errMsg := fmt.Sprintf("Unable to generate gitops resources for component %v", req.NamespacedName)
 					log.Error(err, errMsg)
+					metrics.IncrementComponentCreationSucceeded(prevErrCondition, err.Error()) // We are not tracking Component failures for GitOps due to future planning
 					_ = r.SetGitOpsGeneratedConditionAndUpdateCR(ctx, req, &component, fmt.Errorf("%v: %v", errMsg, err))
 					_ = r.SetCreateConditionAndUpdateCR(ctx, req, &component, fmt.Errorf("%v: %v", errMsg, err))
 					return ctrl.Result{}, err
@@ -661,22 +663,14 @@ func (r *ComponentReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 func (r *ComponentReconciler) generateGitops(ctx context.Context, ghClient *github.GitHubClient, component *appstudiov1alpha1.Component, compDevfileData data.DevfileData) error {
 	log := ctrl.LoggerFrom(ctx)
 
-	isCreateReconcile, prevErrCondition := checkForCreateReconcile(*component)
-
 	gitOpsURL, gitOpsBranch, gitOpsContext, err := util.ProcessGitOpsStatus(component.Status.GitOps, ghClient.Token)
 	if err != nil {
-		if isCreateReconcile {
-			metrics.IncrementComponentCreationFailed(prevErrCondition, err.Error())
-		}
 		return err
 	}
 
 	// Create a temp folder to create the gitops resources in
 	tempDir, err := ioutils.CreateTempPath(component.Name, r.AppFS)
 	if err != nil {
-		if isCreateReconcile {
-			metrics.IncrementComponentCreationFailed(prevErrCondition, err.Error())
-		}
 		log.Error(err, "unable to create temp directory for GitOps resources due to error")
 		ioutils.RemoveFolderAndLogError(log, r.AppFS, tempDir)
 		return fmt.Errorf("unable to create temp directory for GitOps resources due to error: %v", err)
@@ -684,9 +678,6 @@ func (r *ComponentReconciler) generateGitops(ctx context.Context, ghClient *gith
 
 	deployAssociatedComponents, err := devfileParser.GetDeployComponents(compDevfileData)
 	if err != nil {
-		if isCreateReconcile {
-			metrics.IncrementComponentCreationFailed(prevErrCondition, err.Error())
-		}
 		log.Error(err, "unable to get deploy components")
 		ioutils.RemoveFolderAndLogError(log, r.AppFS, tempDir)
 		return err
@@ -694,18 +685,6 @@ func (r *ComponentReconciler) generateGitops(ctx context.Context, ghClient *gith
 
 	kubernetesResources, err := devfile.GetResourceFromDevfile(log, compDevfileData, deployAssociatedComponents, component.Name, component.Spec.Application, component.Spec.ContainerImage, "")
 	if err != nil {
-		if _, ok := err.(*devfile.DevfileAttributeParse); ok && isCreateReconcile {
-			// Attribute parse error from Devfile is considered an user error
-			metrics.IncrementComponentCreationSucceeded(prevErrCondition, err.Error())
-		} else if _, ok := err.(*devfile.MissingOuterloop); ok && isCreateReconcile {
-			// If Devfile has no Outerloop component, it is considered an user error
-			metrics.IncrementComponentCreationSucceeded(prevErrCondition, err.Error())
-		} else if _, ok := err.(*parserErrPkg.NonCompliantDevfile); ok && isCreateReconcile {
-			// If Devfile is incompatible such as an issue with unmarshaling, it is considered an user error
-			metrics.IncrementComponentCreationSucceeded(prevErrCondition, err.Error())
-		} else if isCreateReconcile {
-			metrics.IncrementComponentCreationFailed(prevErrCondition, err.Error())
-		}
 		log.Error(err, "unable to get kubernetes resources from the devfile outerloop components")
 		ioutils.RemoveFolderAndLogError(log, r.AppFS, tempDir)
 		return err
@@ -730,14 +709,7 @@ func (r *ComponentReconciler) generateGitops(ctx context.Context, ghClient *gith
 				unblockURL = fmt.Sprintf("%v/security/secret-scanning/unblock-secret/%v", component.Status.GitOps.RepositoryURL, token)
 				log.Error(retErr, fmt.Sprintf("unable to generate gitops resources due to git push protecton error, follow the link to unblock the secret: %v", unblockURL))
 			}
-			if isCreateReconcile {
-				// Secret leak error is considered an user error
-				metrics.IncrementComponentCreationSucceeded(prevErrCondition, err.Error())
-			}
 		} else {
-			if isCreateReconcile {
-				metrics.IncrementComponentCreationFailed(prevErrCondition, err.Error())
-			}
 			log.Error(retErr, "unable to generate gitops resources due to error")
 		}
 		ioutils.RemoveFolderAndLogError(log, r.AppFS, tempDir)
@@ -760,14 +732,7 @@ func (r *ComponentReconciler) generateGitops(ctx context.Context, ghClient *gith
 				unblockURL = fmt.Sprintf("%v/security/secret-scanning/unblock-secret/%v", component.Status.GitOps.RepositoryURL, token)
 				log.Error(retErr, fmt.Sprintf("unable to commit and push gitops resources due to git push protecton error, follow the link to unblock the secret: %v", unblockURL))
 			}
-			if isCreateReconcile {
-				// Secret leak error is considered an user error
-				metrics.IncrementComponentCreationSucceeded(prevErrCondition, err.Error())
-			}
 		} else {
-			if isCreateReconcile {
-				metrics.IncrementComponentCreationFailed(prevErrCondition, err.Error())
-			}
 			log.Error(retErr, "unable to commit and push gitops resources due to error")
 		}
 		ioutils.RemoveFolderAndLogError(log, r.AppFS, tempDir)
@@ -780,9 +745,6 @@ func (r *ComponentReconciler) generateGitops(ctx context.Context, ghClient *gith
 	metricsLabel := prometheus.Labels{"controller": componentName, "tokenName": ghClient.TokenName, "operation": "GetCommitIDFromRepo"}
 	metrics.ControllerGitRequest.With(metricsLabel).Inc()
 	if commitID, err = r.Generator.GetCommitIDFromRepo(r.AppFS, repoPath); err != nil {
-		if isCreateReconcile {
-			metrics.IncrementComponentCreationFailed(prevErrCondition, err.Error())
-		}
 		log.Error(err, "")
 		ioutils.RemoveFolderAndLogError(log, r.AppFS, tempDir)
 		return err
@@ -793,9 +755,6 @@ func (r *ComponentReconciler) generateGitops(ctx context.Context, ghClient *gith
 	// Remove the temp folder that was created
 	err = r.AppFS.RemoveAll(tempDir)
 	if err != nil {
-		if isCreateReconcile {
-			metrics.IncrementComponentCreationFailed(prevErrCondition, err.Error())
-		}
 		log.Error(err, "unable to remove temp dir")
 		return err
 	}
@@ -908,6 +867,8 @@ func setForceGenerateGitopsAnnotation(component *appstudiov1alpha1.Component, va
 	component.Annotations[forceGenerationAnnotation] = value
 }
 
+// checkForCreateReconcile checks if the Component is in Create state or an Update state.
+// The err condition message is returned if it is in Create state.
 func checkForCreateReconcile(component appstudiov1alpha1.Component) (bool, string) {
 	var errCondition string
 	// Determine if this is a Create reconcile or an Update reconcile based on Conditions

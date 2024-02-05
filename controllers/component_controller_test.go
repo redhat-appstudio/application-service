@@ -893,8 +893,8 @@ var _ = Describe("Component controller", func() {
 			Expect(gitopsCondition.Status).To(Equal(metav1.ConditionFalse))
 
 			Expect(testutil.ToFloat64(metrics.GetComponentCreationTotalReqs()) > beforeCreateTotalReqs).To(BeTrue())
-			Expect(testutil.ToFloat64(metrics.GetComponentCreationSucceeded()) == beforeCreateSucceedReqs).To(BeTrue())
-			Expect(testutil.ToFloat64(metrics.GetComponentCreationFailed()) > beforeCreateFailedReqs).To(BeTrue())
+			Expect(testutil.ToFloat64(metrics.GetComponentCreationSucceeded()) > beforeCreateSucceedReqs).To(BeTrue())
+			Expect(testutil.ToFloat64(metrics.GetComponentCreationFailed()) == beforeCreateFailedReqs).To(BeTrue())
 
 			// Delete the specified HASComp resource
 			deleteHASCompCR(hasCompLookupKey)
@@ -2046,8 +2046,8 @@ var _ = Describe("Component controller", func() {
 			Expect(createdHasComp.Status.Devfile).Should(Not(Equal("")))
 
 			Expect(testutil.ToFloat64(metrics.GetComponentCreationTotalReqs()) > beforeCreateTotalReqs).To(BeTrue())
-			Expect(testutil.ToFloat64(metrics.GetComponentCreationSucceeded()) == beforeCreateSucceedReqs).To(BeTrue())
-			Expect(testutil.ToFloat64(metrics.GetComponentCreationFailed()) > beforeCreateFailedReqs).To(BeTrue())
+			Expect(testutil.ToFloat64(metrics.GetComponentCreationSucceeded()) > beforeCreateSucceedReqs).To(BeTrue())
+			Expect(testutil.ToFloat64(metrics.GetComponentCreationFailed()) == beforeCreateFailedReqs).To(BeTrue())
 
 			// Update the devfile to empty to see if errors out
 			createdHasComp.Status.Devfile = ""
