@@ -572,6 +572,7 @@ func TestCheckForCreateReconcile(t *testing.T) {
 		name                string
 		component           appstudiov1alpha1.Component
 		wantCreateReconcile bool
+		wantErrMsg          string
 	}{
 		{
 			name: "Component with Create Condition",
@@ -594,6 +595,29 @@ func TestCheckForCreateReconcile(t *testing.T) {
 				},
 			},
 			wantCreateReconcile: true,
+		},
+		{
+			name: "Component with Create Condition in error state",
+			component: appstudiov1alpha1.Component{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "comp1",
+				},
+				Spec: appstudiov1alpha1.ComponentSpec{
+					ComponentName: "comp1",
+				},
+				Status: appstudiov1alpha1.ComponentStatus{
+					Conditions: []metav1.Condition{
+						{
+							Type:    "Created",
+							Status:  metav1.ConditionFalse,
+							Reason:  "Error",
+							Message: "Component create failed",
+						},
+					},
+				},
+			},
+			wantCreateReconcile: true,
+			wantErrMsg:          "Component create failed",
 		},
 		{
 			name: "Component with no Conditions",
@@ -640,10 +664,14 @@ func TestCheckForCreateReconcile(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := checkForCreateReconcile(tt.component)
+			got, gotErrMsg := checkForCreateReconcile(tt.component)
 
 			if tt.wantCreateReconcile != got {
 				t.Errorf("TestCheckForCreateReconcile error: expected %v, got %v", tt.wantCreateReconcile, got)
+			}
+
+			if tt.wantErrMsg != gotErrMsg {
+				t.Errorf("TestCheckForCreateReconcile error: expected error msg %v, got %v", tt.wantErrMsg, gotErrMsg)
 			}
 		})
 	}
