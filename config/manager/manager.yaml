@@ -38,6 +38,10 @@ spec:
         securityContext:
           allowPrivilegeEscalation: false
           readOnlyRootFilesystem: true
+        ports:
+        - containerPort: 8081
+          name: health
+          protocol: TCP
         livenessProbe:
           httpGet:
             path: /healthz
