@@ -86,13 +86,22 @@ func (r *ComponentWebhook) UpdateNudgedComponentStatus(ctx context.Context, obj 
 
 		// Add the component to the status if it's not already present
 		if !util.StrInList(compName, nudgedComp.Status.BuildNudgedBy) {
-			nudgedComp.Status.BuildNudgedBy = append(nudgedComp.Status.BuildNudgedBy, compName)
 
 			// Update the Component's status - retry on conflict
-			err = retry.RetryOnConflict(retry.DefaultRetry, func() error {
-				err = r.client.Status().Update(ctx, nudgedComp)
+			err := retry.RetryOnConflict(retry.DefaultRetry, func() error {
+				currentNudgedComp := &appstudiov1alpha1.Component{}
+				err := r.client.Get(ctx, types.NamespacedName{Namespace: comp.Namespace, Name: nudgedCompName}, currentNudgedComp)
+				if err != nil {
+					return err
+				}
+				currentNudgedComp.Status.BuildNudgedBy = append(currentNudgedComp.Status.BuildNudgedBy, compName)
+				err = r.client.Status().Update(ctx, currentNudgedComp)
 				return err
 			})
+			if err != nil {
+				componentlog.Error(err, "error setting build-nudged-by in status")
+			}
+
 		}
 
 	}
