@@ -47,7 +47,7 @@ For more information, on how to debug on RHTAP Staging or how to set up a debugg
 ## FAQs
 Q. Where can I view the application-service API types?
 
-A. The application-service API types and their corresponding webhooks are defined in the [redhat-appstudio/application-api](https://github.com/redhat-appstudio/application-api) repository. You can also find the API reference information in the [Book of AppStudio](https://redhat-appstudio.github.io/book/ref/index.html) website. 
+A. The application-service API types and their corresponding webhooks are defined in the [redhat-appstudio/application-api](https://github.com/redhat-appstudio/application-api) repository. You can also find the API reference information in the [Book of AppStudio](https://redhat-appstudio.github.io/architecture/ref/index.html ) website.
 
 Q. Where are the application-service controller logic located?
 
