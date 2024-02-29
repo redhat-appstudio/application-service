@@ -1,6 +1,6 @@
 # HAS contract testing using Pact 
 
-HAS is a participant in contract testing within RHTAP using [Pact](https://pact.io/) framework. It is a provider of an API that is used by HAC-dev. This documentation is about the specifics of provider testing on HAS side. If you want to know more about contract testing using Pact, follow the [official documentation](https://docs.pact.io/). For more information about the RHTAP contract testing, follow the documentation in the [HAC-dev repo](https://github.com/openshift/hac-dev/blob/main/pactTests.md).
+HAS is a participant in contract testing within Konflux using [Pact](https://pact.io/) framework. It is a provider of an API that is used by HAC-dev. This documentation is about the specifics of provider testing on HAS side. If you want to know more about contract testing using Pact, follow the [official documentation](https://docs.pact.io/). For more information about the Konflux contract testing, follow the documentation in the [HAC-dev repo](https://github.com/openshift/hac-dev/blob/main/pactTests.md).
 
 ## Table of content
   - [When does test run](#when-does-test-run)
