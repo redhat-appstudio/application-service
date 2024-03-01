@@ -54,10 +54,10 @@ WORKDIR /
 
 USER 1001
 
-LABEL description="RHTAP Hybrid Application Service operator"
-LABEL io.k8s.description="RHTAP Hybrid Application Service operator"
+LABEL description="Konflux Hybrid Application Service operator"
+LABEL io.k8s.description="Konflux Hybrid Application Service operator"
 LABEL io.k8s.display-name="application-service"
-LABEL io.openshift.tags="rhtap"
-LABEL summary="RHTAP Hybrid Application Service"
+LABEL io.openshift.tags="konflux"
+LABEL summary="Konflux Hybrid Application Service"
 
 ENTRYPOINT ["entrypoint.sh"]
