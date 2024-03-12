@@ -40,6 +40,7 @@ const (
 
 	PaCAnnotation                     = "pipelinesascode"
 	GitProviderAnnotationName         = "git-provider"
+	GitProviderAnnotationURL          = "git-provider-url"
 	PipelinesAsCodeWebhooksSecretName = "pipelines-as-code-webhooks-secret"
 	PipelinesAsCode_githubAppIdKey    = "github-application-id"
 	PipelinesAsCode_githubPrivateKey  = "github-private-key"
@@ -106,6 +107,13 @@ func GeneratePACRepository(component appstudiov1alpha1.Component, config map[str
 		if gitProvider == "gitlab" {
 			gitProviderConfig.URL = "https://gitlab.com"
 		}
+	}
+
+	if url, ok := component.Annotations[GitProviderAnnotationURL]; ok {
+		if gitProviderConfig == nil {
+			gitProviderConfig = &pacv1alpha1.GitProvider{}
+		}
+		gitProviderConfig.URL = url
 	}
 
 	repository := &pacv1alpha1.Repository{
