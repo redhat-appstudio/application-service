@@ -3016,7 +3016,7 @@ var _ = Describe("Component controller", func() {
 
 			Expect(k8sClient.Update(ctx, createdHasComp)).Should(Succeed())
 
-			// Set deletion timestamp for application
+			// Set deletion timestamp for application.
 			gracePeriodSeconds := int64(5)
 			opts := &client.DeleteOptions{GracePeriodSeconds: &gracePeriodSeconds}
 
