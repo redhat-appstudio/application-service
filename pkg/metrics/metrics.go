@@ -24,7 +24,7 @@ import (
 func init() {
 	// Register custom metrics with the global prometheus registry
 	metrics.Registry.MustRegister(GitOpsRepoCreationTotalReqs, GitOpsRepoCreationFailed, GitOpsRepoCreationSucceeded, ControllerGitRequest,
-		SecondaryRateLimitCounter, PrimaryRateLimitCounter, TokenPoolGauge,
+		SecondaryRateLimitCounter, PrimaryRateLimitCounter, TokenPoolGauge, HASAvailabilityGauge,
 		ApplicationDeletionTotalReqs, ApplicationDeletionSucceeded, ApplicationDeletionFailed,
 		ApplicationCreationSucceeded, ApplicationCreationFailed, ApplicationCreationTotalReqs,
 		componentCreationTotalReqs, componentCreationSucceeded, componentCreationFailed,

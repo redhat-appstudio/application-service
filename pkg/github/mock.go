@@ -115,6 +115,13 @@ func GetMockedClient() *github.Client {
 			}),
 		),
 		mock.WithRequestMatchHandler(
+			mock.GetZen,
+			http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
+				/* #nosec G104 -- test code */
+				w.Write([]byte("peace"))
+			}),
+		),
+		mock.WithRequestMatchHandler(
 			mock.GetReposByOwnerByRepo,
 			http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
 				if strings.Contains(req.RequestURI, "test-error-response") {
