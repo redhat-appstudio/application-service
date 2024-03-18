@@ -192,7 +192,8 @@ func (r *ComponentReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 			// only attempt to finalize and update the gitops repo if an Application is present & not under deletion & the previous Component status is good
 			// A finalizer is present for the Component CR, so make sure we do the necessary cleanup steps
 			if !hasApplication.ObjectMeta.DeletionTimestamp.IsZero() {
-				return ctrl.Result{}, fmt.Errorf("application %v is under deletion. Skipping deletion for component %v", hasApplication.Name, component.Name)
+				log.Info("application %v is under deletion. Skipping deletion for component %v", hasApplication.Name, component.Name)
+				return ctrl.Result{}, nil
 			}
 
 			metrics.ComponentDeletionTotalReqs.Inc()
