@@ -24,21 +24,20 @@ import (
 
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/testutil"
+	cdqanalysis "github.com/redhat-appstudio/application-service/cdq-analysis/pkg"
 	"github.com/redhat-appstudio/application-service/pkg/metrics"
-
-	"github.com/devfile/library/v2/pkg/devfile/parser"
+	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/yaml"
 
 	"github.com/devfile/api/v2/pkg/apis/workspaces/v1alpha2"
 	"github.com/devfile/api/v2/pkg/attributes"
+	"github.com/devfile/library/v2/pkg/devfile/parser"
 	data "github.com/devfile/library/v2/pkg/devfile/parser/data"
 	"github.com/devfile/library/v2/pkg/devfile/parser/data/v2/common"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	appstudiov1alpha1 "github.com/redhat-appstudio/application-api/api/v1alpha1"
-	cdqanalysis "github.com/redhat-appstudio/application-service/cdq-analysis/pkg"
 	devfilePkg "github.com/redhat-appstudio/application-service/pkg/devfile"
-	spiapi "github.com/redhat-appstudio/service-provider-integration-operator/api/v1beta1"
-	"sigs.k8s.io/yaml"
 
 	corev1 "k8s.io/api/core/v1"
 
@@ -2078,6 +2077,7 @@ var _ = Describe("Component controller", func() {
 			deleteHASAppCR(hasAppLookupKey)
 		})
 	})
+
 	Context("Component with valid GitOps repository", func() {
 		It("Should successfully update CR conditions and status", func() {
 			beforeCreateTotalReqs := testutil.ToFloat64(metrics.GetComponentCreationTotalReqs())
@@ -2181,6 +2181,7 @@ var _ = Describe("Component controller", func() {
 			deleteHASAppCR(hasAppLookupKey)
 		})
 	})
+
 	Context("force generate gitops resource", func() {
 		It("Should successfully update CR conditions and status", func() {
 			beforeCreateTotalReqs := testutil.ToFloat64(metrics.GetComponentCreationTotalReqs())
@@ -2956,6 +2957,83 @@ var _ = Describe("Component controller", func() {
 
 			// Delete the specified HASApp resource
 			deleteHASAppCR(hasAppLookupKey)
+		})
+	})
+	Context("Component with application marked to be deleted", func() {
+		It("Should not increase the deletion metrics", func() {
+			beforeDeleteFailedReqs := testutil.ToFloat64(metrics.GetComponentDeletionFailed())
+			beforeDeleteSucceedReqs := testutil.ToFloat64(metrics.GetComponentDeletionSucceeded())
+			beforeDeleteTotalReqs := testutil.ToFloat64(metrics.GetComponentDeletionTotalReqs())
+
+			ctx := context.Background()
+
+			applicationName := HASAppName + "29"
+			componentName := HASCompName + "29"
+
+			createAndFetchSimpleApp(applicationName, HASAppNamespace, DisplayName, Description)
+
+			hasAppLookupKey := types.NamespacedName{Name: applicationName, Namespace: HASAppNamespace}
+			fetchedHasApp := &appstudiov1alpha1.Application{
+				ObjectMeta: metav1.ObjectMeta{},
+			}
+			Eventually(func() bool {
+				k8sClient.Get(context.Background(), hasAppLookupKey, fetchedHasApp)
+				return fetchedHasApp.Status.Devfile != ""
+			}, timeout, interval).Should(BeTrue())
+
+			hasComp := &appstudiov1alpha1.Component{
+				TypeMeta: metav1.TypeMeta{
+					APIVersion: "appstudio.redhat.com/v1alpha1",
+					Kind:       "Component",
+				},
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      componentName,
+					Namespace: HASAppNamespace,
+				},
+				Spec: appstudiov1alpha1.ComponentSpec{
+					ComponentName: ComponentName,
+					Application:   applicationName,
+					Source: appstudiov1alpha1.ComponentSource{
+						ComponentSourceUnion: appstudiov1alpha1.ComponentSourceUnion{
+							GitSource: &appstudiov1alpha1.GitSource{
+								URL: SampleRepoLink,
+							},
+						},
+					},
+				},
+			}
+			Expect(k8sClient.Create(ctx, hasComp)).Should(Succeed())
+
+			// Look up the has app resource that was created.
+			// num(conditions) may still be < 1 on the first try, so retry until at least _some_ condition is set
+			hasCompLookupKey := types.NamespacedName{Name: componentName, Namespace: HASAppNamespace}
+			createdHasComp := &appstudiov1alpha1.Component{}
+			Eventually(func() bool {
+				k8sClient.Get(context.Background(), hasCompLookupKey, createdHasComp)
+				return len(createdHasComp.Status.Conditions) > 0
+			}, timeout, interval).Should(BeTrue())
+
+			Expect(k8sClient.Update(ctx, createdHasComp)).Should(Succeed())
+
+			// Set deletion timestamp for application
+			gracePeriodSeconds := int64(5)
+			opts := &client.DeleteOptions{GracePeriodSeconds: &gracePeriodSeconds}
+
+			k8sClient.Delete(context.Background(), fetchedHasApp, opts)
+
+			// Check that the deletion timestamp has been set for component's application
+			fetchedHasApp = &appstudiov1alpha1.Application{}
+			Eventually(func() bool {
+				k8sClient.Get(context.Background(), hasAppLookupKey, fetchedHasApp)
+				return !fetchedHasApp.ObjectMeta.DeletionTimestamp.IsZero()
+			}, timeout, interval).Should(BeTrue())
+
+			// Try to delete the component. It should be ignored as the application is under deletion
+			k8sClient.Delete(ctx, createdHasComp)
+
+			Expect(testutil.ToFloat64(metrics.GetComponentDeletionFailed()) == beforeDeleteFailedReqs).To(BeTrue())
+			Expect(testutil.ToFloat64(metrics.GetComponentDeletionSucceeded()) == beforeDeleteSucceedReqs).To(BeTrue())
+			Expect(testutil.ToFloat64(metrics.GetComponentDeletionTotalReqs()) == beforeDeleteTotalReqs).To(BeTrue())
 		})
 	})
 	Context("Create component having git source from gitlab", func() {
