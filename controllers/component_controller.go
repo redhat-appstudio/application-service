@@ -301,7 +301,7 @@ func (r *ComponentReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 		if source.GitSource != nil && source.GitSource.URL != "" {
 			if !isGithubURL(source.GitSource.URL) {
 				// User error - the git url provided is not from github
-				log.Info("source git url %v is not from github", source.GitSource.URL)
+				log.Info(fmt.Sprintf("source git url %v is not from github", source.GitSource.URL))
 				metrics.IncrementComponentCreationSucceeded(prevErrCondition, err.Error())
 				return ctrl.Result{}, nil
 			}
