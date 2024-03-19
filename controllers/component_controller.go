@@ -188,14 +188,9 @@ func (r *ComponentReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 			log.Info(fmt.Sprintf("added the finalizer %v", req.NamespacedName))
 		}
 	} else {
-		if hasApplication.Status.Devfile != "" && (forceGenerateGitopsResource || len(component.Status.Conditions) > 0 && component.Status.Conditions[len(component.Status.Conditions)-1].Status == metav1.ConditionTrue && containsString(component.GetFinalizers(), compFinalizerName)) {
+		if hasApplication.Status.Devfile != "" && hasApplication.ObjectMeta.DeletionTimestamp.IsZero() && (forceGenerateGitopsResource || len(component.Status.Conditions) > 0 && component.Status.Conditions[len(component.Status.Conditions)-1].Status == metav1.ConditionTrue && containsString(component.GetFinalizers(), compFinalizerName)) {
 			// only attempt to finalize and update the gitops repo if an Application is present & not under deletion & the previous Component status is good
 			// A finalizer is present for the Component CR, so make sure we do the necessary cleanup steps
-			if !hasApplication.ObjectMeta.DeletionTimestamp.IsZero() {
-				log.Info("application %v is under deletion. Skipping deletion for component %v", hasApplication.Name, component.Name)
-				return ctrl.Result{}, nil
-			}
-
 			metrics.ComponentDeletionTotalReqs.Inc()
 			if err := r.Finalize(ctx, &component, &hasApplication, ghClient, gitToken); err != nil {
 				if errors.IsConflict(err) {
@@ -217,6 +212,9 @@ func (r *ComponentReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 			controllerutil.RemoveFinalizer(&component, compFinalizerName)
 			if err := r.Update(ctx, &component); err != nil {
 				return ctrl.Result{}, err
+			} else if !hasApplication.ObjectMeta.DeletionTimestamp.IsZero() {
+				log.Info("application %v is under deletion. Skipping deletion for component %v", hasApplication.Name, component.Name)
+				return ctrl.Result{}, nil
 			} else {
 				metrics.ComponentDeletionSucceeded.Inc()
 			}
