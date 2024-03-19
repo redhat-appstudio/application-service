@@ -318,6 +318,11 @@ func TestConvertGitHubURL(t *testing.T) {
 			wantUrl: "https://raw.githubusercontent.com/devfile/api/2.1.x",
 		},
 		{
+			name:    "A non github url",
+			url:     "https://gitlab.com/",
+			wantErr: true,
+		},
+		{
 			name:    "A non url",
 			url:     "\000x",
 			wantErr: true,
