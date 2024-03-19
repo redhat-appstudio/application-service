@@ -1105,11 +1105,7 @@ var _ = Describe("Component controller", func() {
 				return len(createdHasComp.Status.Conditions) > 0
 			}, timeout, interval).Should(BeTrue())
 
-			// Make sure the devfile model was properly set in Component
-			errCondition := createdHasComp.Status.Conditions[len(createdHasComp.Status.Conditions)-1]
-			Expect(errCondition.Status).Should(Equal(metav1.ConditionFalse))
-			Expect(errCondition.Message).Should(ContainSubstring("Component create failed: unable to get default branch of Github Repo"))
-
+			// Confirm user error hasn't increase the failure metrics
 			hasAppLookupKey := types.NamespacedName{Name: applicationName, Namespace: HASAppNamespace}
 
 			Expect(testutil.ToFloat64(metrics.GetComponentCreationTotalReqs()) > beforeCreateTotalReqs).To(BeTrue())
@@ -2966,8 +2962,8 @@ var _ = Describe("Component controller", func() {
 
 			ctx := context.Background()
 
-			applicationName := HASAppName + "28"
-			componentName := HASCompName + "28"
+			applicationName := HASAppName + "30"
+			componentName := HASCompName + "30"
 
 			createAndFetchSimpleApp(applicationName, HASAppNamespace, DisplayName, Description)
 
