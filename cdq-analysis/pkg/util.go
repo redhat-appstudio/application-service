@@ -171,7 +171,7 @@ func ConvertGitHubURL(URL string, revision string, context string) (string, erro
 		return "", &InvalidURL{URL: URL, Err: err}
 	}
 	if !strings.Contains(url.Host, "github") {
-		return "", &InvalidURL{URL: URL, Err: fmt.Errorf("url %v not from github.com")}
+		return "", &InvalidURL{URL: URL, Err: fmt.Errorf("url %v is not from github.com", URL)}
 	}
 
 	if !strings.Contains(url.Host, "raw") {
