@@ -19,13 +19,13 @@ package controllers
 import (
 	"context"
 	"fmt"
+	corev1 "k8s.io/api/core/v1"
+	"net/url"
 	"os"
 	"path/filepath"
 	"reflect"
 	"strings"
 	"time"
-
-	corev1 "k8s.io/api/core/v1"
 
 	"github.com/prometheus/client_golang/prometheus"
 	cdqanalysis "github.com/redhat-appstudio/application-service/cdq-analysis/pkg"
@@ -300,7 +300,7 @@ func (r *ComponentReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 		if source.GitSource != nil && source.GitSource.URL != "" {
 			if !isGithubURL(source.GitSource.URL) {
 				// User error - the git url provided is not from github
-				log.Error("source git url %v is not from github", source.GitSource.URL)
+				log.Info("source git url %v is not from github", source.GitSource.URL)
 				metrics.IncrementComponentCreationSucceeded(prevErrCondition, err.Error())
 				return ctrl.Result{}, nil
 			}
@@ -891,15 +891,16 @@ func checkForCreateReconcile(component appstudiov1alpha1.Component) (bool, strin
 	return true, errCondition
 }
 
-
-func isGithubURL(URL string) (bool, error) {
-	url, err := url.Parse(URL)
+// isGithubURL checks if the given url includes github in hostname
+// In case of invalid url (not able to parse) returns false.
+func isGithubURL(URL string) bool {
+	parsedURL, err := url.Parse(URL)
 	if err != nil {
-		return false, &InvalidURL{URL: URL, Err: err}
+		return false
 	}
 
-	if strings.Contains(url.Host, "github") {
-		return true, nil
+	if strings.Contains(parsedURL.Host, "github") {
+		return true
 	}
-	return false, nil
+	return false
 }
