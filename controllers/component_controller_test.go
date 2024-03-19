@@ -2959,7 +2959,7 @@ var _ = Describe("Component controller", func() {
 		})
 	})
 	Context("Create component having git source from gitlab", func() {
-		It("Should return a user error for invalid url", func() {
+		It("Should not increase the component failure metrics", func() {
 			beforeCreateTotalReqs := testutil.ToFloat64(metrics.GetComponentCreationTotalReqs())
 			beforeCreateSucceedReqs := testutil.ToFloat64(metrics.GetComponentCreationSucceeded())
 			beforeCreateFailedReqs := testutil.ToFloat64(metrics.GetComponentCreationFailed())
@@ -3002,10 +3002,6 @@ var _ = Describe("Component controller", func() {
 				k8sClient.Get(ctx, hasCompLookupKey, createdHasComp)
 				return len(createdHasComp.Status.Conditions) > 0
 			}, timeout, interval).Should(BeTrue())
-
-			// Make sure the err was set
-			Expect(createdHasComp.Status.Conditions[len(createdHasComp.Status.Conditions)-1].Reason).Should(Equal("Error"))
-			Expect(strings.ToLower(createdHasComp.Status.Conditions[len(createdHasComp.Status.Conditions)-1].Message)).Should(ContainSubstring("invalid url"))
 
 			hasAppLookupKey := types.NamespacedName{Name: applicationName, Namespace: HASAppNamespace}
 

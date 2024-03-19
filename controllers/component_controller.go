@@ -298,6 +298,12 @@ func (r *ComponentReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 		var devfileBytes []byte
 
 		if source.GitSource != nil && source.GitSource.URL != "" {
+			if !isGithubURL(source.GitSource.URL) {
+				// User error - the git url provided is not from github
+				log.Error("source git url %v is not from github", source.GitSource.URL)
+				metrics.IncrementComponentCreationSucceeded(prevErrCondition, err.Error())
+				return ctrl.Result{}, nil
+			}
 			context := source.GitSource.Context
 			// If a Git secret was passed in, retrieve it for use in our Git operations
 			// The secret needs to be in the same namespace as the Component
@@ -883,4 +889,17 @@ func checkForCreateReconcile(component appstudiov1alpha1.Component) (bool, strin
 
 	// If there are no Conditions or no Updated Condition, then this is a Create reconcile
 	return true, errCondition
+}
+
+
+func isGithubURL(URL string) (bool, error) {
+	url, err := url.Parse(URL)
+	if err != nil {
+		return false, &InvalidURL{URL: URL, Err: err}
+	}
+
+	if strings.Contains(url.Host, "github") {
+		return true, nil
+	}
+	return false, nil
 }

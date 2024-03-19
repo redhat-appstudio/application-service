@@ -170,11 +170,8 @@ func ConvertGitHubURL(URL string, revision string, context string) (string, erro
 	if err != nil {
 		return "", &InvalidURL{URL: URL, Err: err}
 	}
-	if !strings.Contains(url.Host, "github") {
-		return "", &InvalidURL{URL: URL, Err: fmt.Errorf("url %v is not from github.com", URL)}
-	}
 
-	if !strings.Contains(url.Host, "raw") {
+	if strings.Contains(url.Host, "github") && !strings.Contains(url.Host, "raw") {
 		// Convert path part of the URL
 		URLSlice := strings.Split(URL, "/")
 		if len(URLSlice) > 2 && URLSlice[len(URLSlice)-2] == "tree" {
