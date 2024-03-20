@@ -894,14 +894,14 @@ func checkForCreateReconcile(component appstudiov1alpha1.Component) (bool, strin
 
 // isGithubURL checks if the given url includes github in hostname
 // In case of invalid url (not able to parse) returns false.
-func validateGithubURL(URL string) (bool, error) {
+func validateGithubURL(URL string) error {
 	parsedURL, err := url.Parse(URL)
 	if err != nil {
-		return false, err
+		return err
 	}
 
 	if strings.Contains(parsedURL.Host, "github") {
-		return true, nil
+		return nil
 	}
-	return false, fmt.Errorf("source git url %v is not from github", URL)
+	return fmt.Errorf("source git url %v is not from github", URL)
 }
