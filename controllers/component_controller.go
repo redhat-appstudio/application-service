@@ -303,6 +303,7 @@ func (r *ComponentReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 				// User error - the git url provided is not from github
 				log.Error(err, "unable to validate github url")
 				metrics.IncrementComponentCreationSucceeded("", "")
+				_ = r.SetCreateConditionAndUpdateCR(ctx, req, &component, err)
 				return ctrl.Result{}, err
 			}
 			context := source.GitSource.Context
