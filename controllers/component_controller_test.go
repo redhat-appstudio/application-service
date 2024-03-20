@@ -1105,6 +1105,10 @@ var _ = Describe("Component controller", func() {
 				return len(createdHasComp.Status.Conditions) > 0
 			}, timeout, interval).Should(BeTrue())
 
+			// Make sure the err was set
+			Expect(createdHasComp.Status.Conditions[len(createdHasComp.Status.Conditions)-1].Reason).Should(Equal("Error"))
+			Expect(strings.ToLower(createdHasComp.Status.Conditions[len(createdHasComp.Status.Conditions)-1].Message)).Should(ContainSubstring("is not from github"))
+
 			// Confirm user error hasn't increase the failure metrics
 			hasAppLookupKey := types.NamespacedName{Name: applicationName, Namespace: HASAppNamespace}
 
@@ -2999,6 +3003,9 @@ var _ = Describe("Component controller", func() {
 				return len(createdHasComp.Status.Conditions) > 0
 			}, timeout, interval).Should(BeTrue())
 
+			// Make sure the err was set
+			Expect(createdHasComp.Status.Conditions[len(createdHasComp.Status.Conditions)-1].Reason).Should(Equal("Error"))
+			Expect(strings.ToLower(createdHasComp.Status.Conditions[len(createdHasComp.Status.Conditions)-1].Message)).Should(ContainSubstring("is not from github"))
 			hasAppLookupKey := types.NamespacedName{Name: applicationName, Namespace: HASAppNamespace}
 
 			Expect(testutil.ToFloat64(metrics.GetComponentCreationTotalReqs()) > beforeCreateTotalReqs).To(BeTrue())
