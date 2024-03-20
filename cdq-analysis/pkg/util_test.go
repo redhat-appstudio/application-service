@@ -320,7 +320,7 @@ func TestConvertGitHubURL(t *testing.T) {
 		{
 			name:    "A non github url",
 			url:     "https://gitlab.com/",
-			wantUrl: "https://gitlab.com/",
+			wantUrl: "https://gitlab.com",
 		},
 		{
 			name:    "A non url",
