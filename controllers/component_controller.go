@@ -19,7 +19,6 @@ package controllers
 import (
 	"context"
 	"fmt"
-	"net/url"
 	"os"
 	"path/filepath"
 	"reflect"
@@ -29,6 +28,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 
 	"github.com/prometheus/client_golang/prometheus"
+	"github.com/redhat-appstudio/application-service/cdq-analysis/pkg"
 	cdqanalysis "github.com/redhat-appstudio/application-service/cdq-analysis/pkg"
 	"github.com/redhat-appstudio/application-service/pkg/metrics"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -299,12 +299,12 @@ func (r *ComponentReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 		var devfileBytes []byte
 
 		if source.GitSource != nil && source.GitSource.URL != "" {
-			if err := validateGithubURL(source.GitSource.URL); err != nil {
+			if err := pkg.ValidateGithubURL(source.GitSource.URL); err != nil {
 				// User error - the git url provided is not from github
 				log.Error(err, "unable to validate github url")
 				metrics.IncrementComponentCreationSucceeded("", "")
 				_ = r.SetCreateConditionAndUpdateCR(ctx, req, &component, err)
-				return ctrl.Result{}, err
+				return ctrl.Result{}, nil
 			}
 			context := source.GitSource.Context
 			// If a Git secret was passed in, retrieve it for use in our Git operations
@@ -891,18 +891,4 @@ func checkForCreateReconcile(component appstudiov1alpha1.Component) (bool, strin
 
 	// If there are no Conditions or no Updated Condition, then this is a Create reconcile
 	return true, errCondition
-}
-
-// isGithubURL checks if the given url includes github in hostname
-// In case of invalid url (not able to parse) returns false.
-func validateGithubURL(URL string) error {
-	parsedURL, err := url.Parse(URL)
-	if err != nil {
-		return err
-	}
-
-	if strings.Contains(parsedURL.Host, "github") {
-		return nil
-	}
-	return fmt.Errorf("source git url %v is not from github", URL)
 }

@@ -640,3 +640,36 @@ func TestUpdateGitLink(t *testing.T) {
 		})
 	}
 }
+
+func TestValidateGithubURL(t *testing.T) {
+	tests := []struct {
+		name         string
+		sourceGitURL string
+		wantErr      bool
+	}{
+		{
+			name:         "Valid github url",
+			sourceGitURL: "https://github.com/devfile-samples",
+			wantErr:      false,
+		},
+		{
+			name:         "Invalid url",
+			sourceGitURL: "afgae devfile",
+			wantErr:      true,
+		},
+		{
+			name:         "Not github url",
+			sourceGitURL: "https://gitlab.com/devfile-samples",
+			wantErr:      true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			err := ValidateGithubURL(tt.sourceGitURL)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("TestValidateGithubURL() unexpected error: %v", err)
+			}
+		})
+	}
+}
