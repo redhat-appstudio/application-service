@@ -28,7 +28,6 @@ import (
 	corev1 "k8s.io/api/core/v1"
 
 	"github.com/prometheus/client_golang/prometheus"
-	"github.com/redhat-appstudio/application-service/cdq-analysis/pkg"
 	cdqanalysis "github.com/redhat-appstudio/application-service/cdq-analysis/pkg"
 	"github.com/redhat-appstudio/application-service/pkg/metrics"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -299,7 +298,7 @@ func (r *ComponentReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 		var devfileBytes []byte
 
 		if source.GitSource != nil && source.GitSource.URL != "" {
-			if err := pkg.ValidateGithubURL(source.GitSource.URL); err != nil {
+			if err := cdqanalysis.ValidateGithubURL(source.GitSource.URL); err != nil {
 				// User error - the git url provided is not from github
 				log.Error(err, "unable to validate github url")
 				metrics.IncrementComponentCreationSucceeded("", "")
