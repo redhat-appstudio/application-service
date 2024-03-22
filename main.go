@@ -51,6 +51,7 @@ import (
 	cdqanalysis "github.com/redhat-appstudio/application-service/cdq-analysis/pkg"
 	"github.com/redhat-appstudio/application-service/controllers"
 	"github.com/redhat-appstudio/application-service/controllers/webhooks"
+	"github.com/redhat-appstudio/application-service/pkg/availability"
 	"github.com/redhat-appstudio/application-service/pkg/github"
 	"github.com/redhat-appstudio/application-service/pkg/spi"
 	"github.com/redhat-appstudio/application-service/pkg/util/ioutils"
@@ -248,6 +249,12 @@ func main() {
 	}
 	if err := mgr.AddReadyzCheck("readyz", healthz.Ping); err != nil {
 		setupLog.Error(err, "unable to set up ready check")
+		os.Exit(1)
+	}
+
+	availabilityChecker := &availability.AvailabilityWatchdog{GitHubTokenClient: ghTokenClient}
+	if err := mgr.Add(availabilityChecker); err != nil {
+		setupLog.Error(err, "unable to set up availability checks")
 		os.Exit(1)
 	}
 

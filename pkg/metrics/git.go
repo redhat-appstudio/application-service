@@ -72,4 +72,13 @@ var (
 			Help: "Number of successful import from git repository requests",
 		},
 	)
+
+	HASAvailabilityGauge = prometheus.NewGaugeVec(
+		prometheus.GaugeOpts{
+			Name: "has_availability",
+			Help: "Availability of the Konflux application service component",
+		},
+		// check - can have the values of "github" or whatever availability is being checked
+		[]string{"check"},
+	)
 )

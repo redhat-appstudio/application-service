@@ -377,6 +377,41 @@ func TestGetRepoAndOrgFromURL(t *testing.T) {
 	}
 }
 
+func TestGetGitStatus(t *testing.T) {
+	tests := []struct {
+		name          string
+		repoName      string
+		orgName       string
+		wantAvailable bool
+		wantErr       bool
+	}{
+		{
+			name:          "Simple repo name",
+			repoName:      "test-repo-1",
+			orgName:       "redhat-appstudio-appdata",
+			wantAvailable: true,
+			wantErr:       false,
+		},
+	}
+
+	for _, tt := range tests {
+		mockedClient := GitHubClient{
+			Client: GetMockedClient(),
+		}
+
+		t.Run(tt.name, func(t *testing.T) {
+			isGitAvailable, err := mockedClient.GetGitStatus(context.Background())
+
+			if tt.wantErr != (err != nil) {
+				t.Errorf("TestGetGitStatus() unexpected error value: %v", err)
+			}
+			if !tt.wantErr && isGitAvailable != tt.wantAvailable {
+				t.Errorf("TestGetGitStatus() error: expected %v got %v", tt.wantAvailable, isGitAvailable)
+			}
+		})
+	}
+}
+
 func TestGetLatestCommitSHAFromRepository(t *testing.T) {
 	tests := []struct {
 		name     string
