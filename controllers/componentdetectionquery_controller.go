@@ -170,6 +170,14 @@ func (r *ComponentDetectionQueryReconciler) Reconcile(ctx context.Context, req c
 			return ctrl.Result{}, nil
 		}
 
+		// check if the given url is from github
+		if err := cdqanalysis.ValidateGithubURL(sourceURL); err != nil {
+			// User error - the git url provided is not from github
+			log.Error(err, "unable to validate github url")
+			r.SetCompleteConditionAndUpdateCR(ctx, req, &componentDetectionQuery, copiedCDQ, err)
+			return ctrl.Result{}, nil
+		}
+
 		cdqInfo := &cdqanalysis.CDQInfo{
 			DevfileRegistryURL: r.DevfileRegistryURL,
 			GitURL:             cdqanalysis.GitURL{RepoURL: source.URL, Revision: source.Revision, Token: gitToken},

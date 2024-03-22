@@ -3337,6 +3337,50 @@ metadata:
 		})
 
 	})
+	Context("Create Component Detection Query with non Github URL", func() {
+		It("Should err out", func() {
+			ctx := context.Background()
+
+			queryName := HASCompDetQuery + "21"
+
+			hasCompDetectionQuery := &appstudiov1alpha1.ComponentDetectionQuery{
+				TypeMeta: metav1.TypeMeta{
+					APIVersion: "appstudio.redhat.com/v1alpha1",
+					Kind:       "ComponentDetectionQuery",
+				},
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      queryName,
+					Namespace: HASNamespace,
+					Annotations: map[string]string{
+						"runCDQAnalysisLocal": "true",
+					},
+				},
+				Spec: appstudiov1alpha1.ComponentDetectionQuerySpec{
+					GitSource: appstudiov1alpha1.GitSource{
+						URL:      "https://gitlab.com/redhat-appstudio-appdata/sample",
+						Revision: "main",
+					},
+				},
+			}
+
+			Expect(k8sClient.Create(ctx, hasCompDetectionQuery)).Should(Succeed())
+
+			// Look up the has app resource that was created.
+			// num(conditions) may still be < 1 on the first try, so retry until at least _some_ condition is set
+			hasCompDetQueryLookupKey := types.NamespacedName{Name: queryName, Namespace: HASNamespace}
+			createdHasCompDetectionQuery := &appstudiov1alpha1.ComponentDetectionQuery{}
+			Eventually(func() bool {
+				k8sClient.Get(context.Background(), hasCompDetQueryLookupKey, createdHasCompDetectionQuery)
+				return len(createdHasCompDetectionQuery.Status.Conditions) > 1
+			}, timeout, interval).Should(BeTrue())
+
+			// Make sure the right err is set
+			Expect(createdHasCompDetectionQuery.Status.Conditions[1].Message).Should(ContainSubstring("is not from github"))
+
+			// Delete the specified Detection Query resource
+			deleteCompDetQueryCR(hasCompDetQueryLookupKey)
+		})
+	})
 
 })
 

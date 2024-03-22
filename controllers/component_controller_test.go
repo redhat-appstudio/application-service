@@ -52,14 +52,15 @@ var _ = Describe("Component controller", func() {
 
 	// Define utility constants for object names and testing timeouts/durations and intervals.
 	const (
-		HASAppName      = "test-application"
-		HASCompName     = "test-component"
-		HASAppNamespace = "default"
-		DisplayName     = "petclinic"
-		Description     = "Simple petclinic app"
-		ComponentName   = "backend"
-		SampleRepoLink  = "https://github.com/devfile-samples/devfile-sample-java-springboot-basic"
-		gitToken        = "" //empty for public repo test
+		HASAppName           = "test-application"
+		HASCompName          = "test-component"
+		HASAppNamespace      = "default"
+		DisplayName          = "petclinic"
+		Description          = "Simple petclinic app"
+		ComponentName        = "backend"
+		SampleRepoLink       = "https://github.com/devfile-samples/devfile-sample-java-springboot-basic"
+		SampleGitlabRepoLink = "https://gitlab.com/devfile-samples/devfile-sample-java-springboot-basic"
+		gitToken             = "" //empty for public repo test
 	)
 
 	prometheus.MustRegister(metrics.GetComponentCreationTotalReqs(), metrics.GetComponentCreationFailed(), metrics.GetComponentCreationSucceeded())
@@ -1104,11 +1105,11 @@ var _ = Describe("Component controller", func() {
 				return len(createdHasComp.Status.Conditions) > 0
 			}, timeout, interval).Should(BeTrue())
 
-			// Make sure the devfile model was properly set in Component
-			errCondition := createdHasComp.Status.Conditions[len(createdHasComp.Status.Conditions)-1]
-			Expect(errCondition.Status).Should(Equal(metav1.ConditionFalse))
-			Expect(errCondition.Message).Should(ContainSubstring("Component create failed: unable to get default branch of Github Repo"))
+			// Make sure the err was set
+			Expect(createdHasComp.Status.Conditions[len(createdHasComp.Status.Conditions)-1].Reason).Should(Equal("Error"))
+			Expect(strings.ToLower(createdHasComp.Status.Conditions[len(createdHasComp.Status.Conditions)-1].Message)).Should(ContainSubstring("component create failed:"))
 
+			// Confirm user error hasn't increase the failure metrics
 			hasAppLookupKey := types.NamespacedName{Name: applicationName, Namespace: HASAppNamespace}
 
 			Expect(testutil.ToFloat64(metrics.GetComponentCreationTotalReqs()) > beforeCreateTotalReqs).To(BeTrue())
@@ -2944,6 +2945,67 @@ var _ = Describe("Component controller", func() {
 			Expect(createdHasComp.Status.Conditions[len(createdHasComp.Status.Conditions)-1].Reason).Should(Equal("Error"))
 			Expect(strings.ToLower(createdHasComp.Status.Conditions[len(createdHasComp.Status.Conditions)-1].Message)).Should(ContainSubstring("error unmarshaling"))
 
+			hasAppLookupKey := types.NamespacedName{Name: applicationName, Namespace: HASAppNamespace}
+
+			Expect(testutil.ToFloat64(metrics.GetComponentCreationTotalReqs()) > beforeCreateTotalReqs).To(BeTrue())
+			Expect(testutil.ToFloat64(metrics.GetComponentCreationSucceeded()) > beforeCreateSucceedReqs).To(BeTrue())
+			Expect(testutil.ToFloat64(metrics.GetComponentCreationFailed()) == beforeCreateFailedReqs).To(BeTrue())
+
+			// Delete the specified HASComp resource
+			deleteHASCompCR(hasCompLookupKey)
+
+			// Delete the specified HASApp resource
+			deleteHASAppCR(hasAppLookupKey)
+		})
+	})
+	Context("Create component having git source from gitlab", func() {
+		It("Should not increase the component failure metrics", func() {
+			beforeCreateTotalReqs := testutil.ToFloat64(metrics.GetComponentCreationTotalReqs())
+			beforeCreateSucceedReqs := testutil.ToFloat64(metrics.GetComponentCreationSucceeded())
+			beforeCreateFailedReqs := testutil.ToFloat64(metrics.GetComponentCreationFailed())
+
+			ctx := context.Background()
+
+			applicationName := HASAppName + "30"
+			componentName := HASCompName + "30"
+
+			createAndFetchSimpleApp(applicationName, HASAppNamespace, DisplayName, Description)
+
+			hasComp := &appstudiov1alpha1.Component{
+				TypeMeta: metav1.TypeMeta{
+					APIVersion: "appstudio.redhat.com/v1alpha1",
+					Kind:       "Component",
+				},
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      componentName,
+					Namespace: HASAppNamespace,
+				},
+				Spec: appstudiov1alpha1.ComponentSpec{
+					ComponentName: ComponentName,
+					Application:   applicationName,
+					Source: appstudiov1alpha1.ComponentSource{
+						ComponentSourceUnion: appstudiov1alpha1.ComponentSourceUnion{
+							GitSource: &appstudiov1alpha1.GitSource{
+								URL: SampleGitlabRepoLink,
+							},
+						},
+					},
+				},
+			}
+			Expect(k8sClient.Create(ctx, hasComp)).Should(Succeed())
+
+			// Look up the has app resource that was created.
+			// num(conditions) may still be < 1 on the first try, so retry until at least _some_ condition is set
+			hasCompLookupKey := types.NamespacedName{Name: componentName, Namespace: HASAppNamespace}
+			createdHasComp := &appstudiov1alpha1.Component{}
+			Eventually(func() bool {
+				k8sClient.Get(ctx, hasCompLookupKey, createdHasComp)
+				return len(createdHasComp.Status.Conditions) > 0
+			}, timeout, interval).Should(BeTrue())
+
+			// Make sure the err was set
+			Expect(createdHasComp.Status.Conditions[len(createdHasComp.Status.Conditions)-1].Reason).Should(Equal("Error"))
+			Expect(strings.ToLower(createdHasComp.Status.Conditions[len(createdHasComp.Status.Conditions)-1].Message)).Should(ContainSubstring("is not from github"))
 			hasAppLookupKey := types.NamespacedName{Name: applicationName, Namespace: HASAppNamespace}
 
 			Expect(testutil.ToFloat64(metrics.GetComponentCreationTotalReqs()) > beforeCreateTotalReqs).To(BeTrue())
