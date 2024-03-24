@@ -116,11 +116,12 @@ func TestGenerateBuild(t *testing.T) {
 }
 
 func TestGeneratePACRepository(t *testing.T) {
-	getComponent := func(repoUrl string) appstudiov1alpha1.Component {
+	getComponent := func(repoUrl string, annotations map[string]string) appstudiov1alpha1.Component {
 		return appstudiov1alpha1.Component{
 			ObjectMeta: metav1.ObjectMeta{
-				Name:      "testcomponent",
-				Namespace: "workspace-name",
+				Name:        "testcomponent",
+				Namespace:   "workspace-name",
+				Annotations: annotations,
 			},
 			Spec: appstudiov1alpha1.ComponentSpec{
 				Source: appstudiov1alpha1.ComponentSource{
@@ -137,6 +138,7 @@ func TestGeneratePACRepository(t *testing.T) {
 	tests := []struct {
 		name                      string
 		repoUrl                   string
+		componentAnnotations      map[string]string
 		pacConfig                 map[string][]byte
 		expectedGitProviderConfig *pacv1alpha1.GitProvider
 	}{
@@ -173,7 +175,7 @@ func TestGeneratePACRepository(t *testing.T) {
 				},
 				WebhookSecret: &pacv1alpha1.Secret{
 					Name: PipelinesAsCodeWebhooksSecretName,
-					Key:  GetWebhookSecretKeyForComponent(getComponent("https://github.com/user/test-component-repository")),
+					Key:  GetWebhookSecretKeyForComponent(getComponent("https://github.com/user/test-component-repository", nil)),
 				},
 			},
 		},
@@ -191,7 +193,7 @@ func TestGeneratePACRepository(t *testing.T) {
 				},
 				WebhookSecret: &pacv1alpha1.Secret{
 					Name: PipelinesAsCodeWebhooksSecretName,
-					Key:  GetWebhookSecretKeyForComponent(getComponent("https://gitlab.com/user/test-component-repository/")),
+					Key:  GetWebhookSecretKeyForComponent(getComponent("https://gitlab.com/user/test-component-repository/", nil)),
 				},
 				URL: "https://gitlab.com",
 			},
@@ -211,16 +213,54 @@ func TestGeneratePACRepository(t *testing.T) {
 				},
 				WebhookSecret: &pacv1alpha1.Secret{
 					Name: PipelinesAsCodeWebhooksSecretName,
-					Key:  GetWebhookSecretKeyForComponent(getComponent("https://gitlab.com/user/test-component-repository")),
+					Key:  GetWebhookSecretKeyForComponent(getComponent("https://gitlab.com/user/test-component-repository", nil)),
 				},
 				URL: "https://gitlab.com",
+			},
+		},
+		{
+			name:    "should create PaC repository for self-hosted GitLab webhook",
+			repoUrl: "https://gitlab.self-hosted.com/user/test-component-repository/",
+			componentAnnotations: map[string]string{
+				GitProviderAnnotationName: "gitlab",
+				GitProviderAnnotationURL:  "https://gitlab.self-hosted.com",
+			},
+			pacConfig: map[string][]byte{
+				"github.token": []byte("ghp_token"),
+				"gitlab.token": []byte("glpat-token"),
+			},
+			expectedGitProviderConfig: &pacv1alpha1.GitProvider{
+				Secret: &pacv1alpha1.Secret{
+					Name: gitopsprepare.PipelinesAsCodeSecretName,
+					Key:  "gitlab.token",
+				},
+				WebhookSecret: &pacv1alpha1.Secret{
+					Name: PipelinesAsCodeWebhooksSecretName,
+					Key:  GetWebhookSecretKeyForComponent(getComponent("https://gitlab.self-hosted.com/user/test-component-repository/", nil)),
+				},
+				URL: "https://gitlab.self-hosted.com",
+			},
+		},
+		{
+			name:    "should create PaC repository for Github application on self-hosted Github",
+			repoUrl: "https://github.self-hosted.com/user/test-component-repository",
+			componentAnnotations: map[string]string{
+				GitProviderAnnotationName: "github",
+				GitProviderAnnotationURL:  "https://github.self-hosted.com",
+			},
+			pacConfig: map[string][]byte{
+				PipelinesAsCode_githubAppIdKey:   []byte("12345"),
+				PipelinesAsCode_githubPrivateKey: []byte("private-key"),
+			},
+			expectedGitProviderConfig: &pacv1alpha1.GitProvider{
+				URL: "https://github.self-hosted.com",
 			},
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			component := getComponent(tt.repoUrl)
+			component := getComponent(tt.repoUrl, tt.componentAnnotations)
 
 			pacRepo, err := GeneratePACRepository(component, tt.pacConfig)
 
