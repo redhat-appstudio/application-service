@@ -81,6 +81,10 @@ func GetComponentCreationFailed() prometheus.Counter {
 	return componentCreationFailed
 }
 
+func GetComponentDeletionFailed() prometheus.Counter {
+	return ComponentDeletionFailed
+}
+
 // IncrementComponentCreationSucceeded increments the component creation succeeded metric.
 func IncrementComponentCreationSucceeded(oldError, newError string) {
 	if oldError == "" || newError == "" || !strings.Contains(oldError, newError) {
@@ -98,6 +102,14 @@ func GetComponentCreationSucceeded() prometheus.Counter {
 	return componentCreationSucceeded
 }
 
+func GetComponentDeletionSucceeded() prometheus.Counter {
+	return ComponentDeletionSucceeded
+}
+
 func GetComponentCreationTotalReqs() prometheus.Counter {
 	return componentCreationTotalReqs
+}
+
+func GetComponentDeletionTotalReqs() prometheus.Counter {
+	return ComponentDeletionTotalReqs
 }
