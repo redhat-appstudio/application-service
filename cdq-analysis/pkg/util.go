@@ -279,17 +279,3 @@ func UpdateGitLink(repo, revision, context string) (string, error) {
 	}
 	return rawGitURL, nil
 }
-
-// ValidateGithubURL checks if the given url includes github in hostname
-// In case of invalid url (not able to parse / not github) returns an error.
-func ValidateGithubURL(URL string) error {
-	parsedURL, err := url.Parse(URL)
-	if err != nil {
-		return err
-	}
-
-	if strings.Contains(parsedURL.Host, "github") {
-		return nil
-	}
-	return fmt.Errorf("source git url %v is not from github", URL)
-}
