@@ -11,6 +11,7 @@ require (
 	github.com/golang/mock v1.6.0
 	github.com/google/go-github/v52 v52.0.1-0.20230514113659-60429b4ba0ba
 	github.com/hashicorp/go-multierror v1.1.1
+	github.com/konflux-ci/operator-toolkit v0.0.0-20240402130556-ef6dcbeca69d
 	github.com/migueleliasweb/go-github-mock v0.0.19
 	github.com/mitchellh/go-homedir v1.1.0
 	github.com/onsi/ginkgo v1.16.5
@@ -21,7 +22,6 @@ require (
 	github.com/prometheus/client_golang v1.16.0
 	github.com/redhat-appstudio/application-api v0.0.0-20231016183051-2dde965fce17
 	github.com/redhat-appstudio/application-service/cdq-analysis v0.0.0
-	github.com/redhat-appstudio/operator-toolkit v0.0.0-20230913085326-6c5e9d368a6a
 	github.com/redhat-appstudio/service-provider-integration-operator v0.2023.22-0.20230713080056-eae17aa8c172
 	github.com/redhat-developer/gitops-generator v0.0.0-20231030195824-c48f5bf6bf21
 	github.com/spf13/afero v1.9.5
