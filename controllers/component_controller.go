@@ -301,6 +301,13 @@ func (r *ComponentReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 		var devfileBytes []byte
 
 		if source.GitSource != nil && source.GitSource.URL != "" {
+			if err := util.ValidateGithubURL(source.GitSource.URL); err != nil {
+				// User error - the git url provided is not from github
+				log.Error(err, "unable to validate github url")
+				metrics.IncrementComponentCreationSucceeded("", "")
+				_ = r.SetCreateConditionAndUpdateCR(ctx, req, &component, err)
+				return ctrl.Result{}, nil
+			}
 			context := source.GitSource.Context
 			// If a Git secret was passed in, retrieve it for use in our Git operations
 			// The secret needs to be in the same namespace as the Component
