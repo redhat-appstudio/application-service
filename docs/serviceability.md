@@ -36,9 +36,9 @@ To understand the AppStudio controller logging convention, refer to the Appstudi
   - the resource name that the controller is reconciling. For example, if the `SnapshotEnvironmentBinding` resource is being reconciled, then search for `"name":"devfile-sample-go-basic-development-binding-hr9nm"` belonging to `"controllerKind":"SnapshotEnvironmentBinding"`
   - the log message. For example, `"msg":"Finished reconcile loop for user-tenant/devfile-sample-go-basic-development-binding-hr9nm"`. You may search for the string `Finished reconcile loop for` in the application-service repository to track down the code logic that is emitting the log. Remember to look out for resource name concatenation and/or error wrapping that may not turn up in your code search. It is advised to exclude such strings from the code search for debugging purposes
 
-### How to debug on RHTAP or How to set up a debugger on VS Code
+### How to debug on Konflux or How to set up a debugger on VS Code
 
-For more information, on how to debug on RHTAP Staging or how to set up a debugger on VS Code for local deployment of the application-service controller, please refer to the [Debugging](https://docs.google.com/document/d/1dneldJepfnJ6LnESSYMIhKqmFgjMtf_om_Eud5NMDtU/edit#heading=h.lz54tm3le87l) section of the Education Module document.
+For more information, on how to debug on Konflux Staging or how to set up a debugger on VS Code for local deployment of the application-service controller, please refer to the [Debugging](https://docs.google.com/document/d/1dneldJepfnJ6LnESSYMIhKqmFgjMtf_om_Eud5NMDtU/edit#heading=h.lz54tm3le87l) section of the Education Module document.
 
 ## Common Problems
 - When deploying HAS locally or on a local cluster, a Github Personal Access Token is required as the application-service controller requires the token for pushing the resources to the GitOps repository. Please refer to the [instructions](../docs/build-test-and-deploy.md#setting-the-github-token-environment-variable) in the deploy section for more information
