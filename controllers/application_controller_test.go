@@ -406,17 +406,18 @@ var _ = Describe("Application controller", func() {
 			}, timeout, interval).Should(BeTrue())
 
 			// Create application component
+			hasComponentName := "test-component"
 			hasComp := &appstudiov1alpha1.Component{
 				TypeMeta: metav1.TypeMeta{
 					APIVersion: "appstudio.redhat.com/v1alpha1",
 					Kind:       "Component",
 				},
 				ObjectMeta: metav1.ObjectMeta{
-					Name:      componentName,
+					Name:      hasComponentName,
 					Namespace: HASAppNamespace,
 				},
 				Spec: appstudiov1alpha1.ComponentSpec{
-					ComponentName: "test-component",
+					ComponentName: hasComponentName,
 					Application:   applicationName,
 					Source: appstudiov1alpha1.ComponentSource{
 						ComponentSourceUnion: appstudiov1alpha1.ComponentSourceUnion{
@@ -431,7 +432,7 @@ var _ = Describe("Application controller", func() {
 
 			// Look up the has app resource that was created.
 			// num(conditions) may still be < 1 on the first try, so retry until at least _some_ condition is set
-			hasCompLookupKey := types.NamespacedName{Name: componentName, Namespace: HASAppNamespace}
+			hasCompLookupKey := types.NamespacedName{Name: hasComponentName, Namespace: HASAppNamespace}
 			fetchedHasComp := &appstudiov1alpha1.Component{}
 			Eventually(func() bool {
 				k8sClient.Get(context.Background(), hasCompLookupKey, fetchedHasComp)
