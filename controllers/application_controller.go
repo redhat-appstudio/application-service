@@ -114,6 +114,16 @@ func (r *ApplicationReconciler) Reconcile(ctx context.Context, req ctrl.Request)
 		}
 	} else {
 		if containsString(application.GetFinalizers(), appFinalizerName) {
+			var components appstudiov1alpha1.ComponentList
+			err = r.List(context.Background(), &components)
+			if err != nil {
+				log.Error(err, "failed to check if any application component is under deletion")
+			}
+			if err := util.VerifyNoApplicationComponentUnderDeletion(components, application.Name); err != nil {
+				// requeue in case any of the application components are under deletion
+				log.Error(err, "Error an application component is under deletion. Deletion requeued")
+				return reconcile.Result{}, err
+			}
 			metrics.ApplicationDeletionTotalReqs.Inc()
 			// A finalizer is present for the Application CR, so make sure we do the necessary cleanup steps
 			if finalizeErr := r.Finalize(ctx, &application, ghClient); finalizeErr != nil {
