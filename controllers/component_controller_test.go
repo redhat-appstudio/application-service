@@ -1108,7 +1108,7 @@ var _ = Describe("Component controller", func() {
 			// Make sure the devfile model was properly set in Component
 			errCondition := createdHasComp.Status.Conditions[len(createdHasComp.Status.Conditions)-1]
 			Expect(errCondition.Status).Should(Equal(metav1.ConditionFalse))
-			Expect(errCondition.Message).Should(ContainSubstring("Component create failed: parse"))
+			Expect(strings.ToLower(createdHasComp.Status.Conditions[len(createdHasComp.Status.Conditions)-1].Message)).Should(ContainSubstring("Component create failed: unable to get default branch of Github Repo"))
 
 			hasAppLookupKey := types.NamespacedName{Name: applicationName, Namespace: HASAppNamespace}
 
@@ -3084,7 +3084,7 @@ var _ = Describe("Component controller", func() {
 
 				// Make sure the err was set
 				Expect(createdHasComp.Status.Conditions[len(createdHasComp.Status.Conditions)-1].Reason).Should(Equal("Error"))
-				Expect(strings.ToLower(createdHasComp.Status.Conditions[len(createdHasComp.Status.Conditions)-1].Message)).Should(ContainSubstring("is not from github"))
+				Expect(strings.ToLower(createdHasComp.Status.Conditions[len(createdHasComp.Status.Conditions)-1].Message)).Should(ContainSubstring("Component create failed: unable to get default branch of Github Repo"))
 				hasAppLookupKey := types.NamespacedName{Name: applicationName, Namespace: HASAppNamespace}
 
 				Expect(testutil.ToFloat64(metrics.GetComponentCreationTotalReqs()) > beforeCreateTotalReqs).To(BeTrue())
