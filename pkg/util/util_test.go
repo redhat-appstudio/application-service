@@ -19,6 +19,7 @@ import (
 	"reflect"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/devfile/library/v2/pkg/devfile/parser"
 	gitopsgenv1alpha1 "github.com/redhat-developer/gitops-generator/api/v1alpha1"
@@ -722,5 +723,62 @@ func TestGenerateRandomRouteName(t *testing.T) {
 			}
 		}
 
+	}
+}
+
+func TestVerifyNoApplicationComponentUnderDeletion(t *testing.T) {
+	testTime := time.Time{}.AddDate(2030, 12, 12)
+	tests := []struct {
+		name            string
+		components      appstudiov1alpha1.ComponentList
+		applicationName string
+		wantErr         bool
+	}{
+		{
+			name: "One component under deletion",
+			components: appstudiov1alpha1.ComponentList{
+				Items: []appstudiov1alpha1.Component{
+					{
+						Spec:       appstudiov1alpha1.ComponentSpec{Application: "application-one"},
+						ObjectMeta: metav1.ObjectMeta{DeletionTimestamp: &metav1.Time{testTime}},
+					},
+				},
+			},
+			applicationName: "application-one",
+			wantErr:         true,
+		},
+		{
+			name: "No component under deletion",
+			components: appstudiov1alpha1.ComponentList{
+				Items: []appstudiov1alpha1.Component{
+					{
+						Spec: appstudiov1alpha1.ComponentSpec{Application: "application-one"},
+					},
+				},
+			},
+			applicationName: "application-one",
+			wantErr:         false,
+		},
+		{
+			name: "No component found for application",
+			components: appstudiov1alpha1.ComponentList{
+				Items: []appstudiov1alpha1.Component{
+					{
+						Spec: appstudiov1alpha1.ComponentSpec{Application: "application-one"},
+					},
+				},
+			},
+			applicationName: "application-two",
+			wantErr:         false,
+		},
+	}
+
+	for _, tt := range tests {
+		err := VerifyNoApplicationComponentUnderDeletion(tt.components, tt.applicationName)
+		if tt.wantErr && (err == nil) {
+			t.Error("TestVerifyNoApplicationComponentUnderDeletion() error: expected error but got nil")
+		} else if !tt.wantErr && err != nil {
+			t.Errorf("TestVerifyNoApplicationComponentUnderDeletion() error: got unexpected error %v", err)
+		}
 	}
 }
