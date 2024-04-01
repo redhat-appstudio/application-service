@@ -388,9 +388,6 @@ var _ = Describe("Application controller", func() {
 				Spec: appstudiov1alpha1.ApplicationSpec{
 					DisplayName: DisplayName,
 					Description: Description,
-					AppModelRepository: appstudiov1alpha1.ApplicationGitRepository{
-						URL: "https://github.com/testorg/petclinic-app",
-					},
 				},
 			}
 
