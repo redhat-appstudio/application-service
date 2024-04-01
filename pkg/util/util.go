@@ -223,3 +223,13 @@ func RemoveStrFromList(str string, strList []string) []string {
 	}
 	return strList
 }
+
+// VerifyNoApplicationComponentUnderDeletion checks if any of the application components is under deletion
+func VerifyNoApplicationComponentUnderDeletion(components appstudiov1alpha1.ComponentList, applicationName string) error {
+	for _, component := range components.Items {
+		if component.Spec.Application == applicationName && !component.ObjectMeta.DeletionTimestamp.IsZero() {
+			return fmt.Errorf("application's %v component %v is under deletion", applicationName, component.Name)
+		}
+	}
+	return nil
+}
