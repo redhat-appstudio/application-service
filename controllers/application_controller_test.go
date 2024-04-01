@@ -22,6 +22,7 @@ import (
 
 	"github.com/devfile/library/v2/pkg/devfile/parser"
 	"github.com/prometheus/client_golang/prometheus/testutil"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -364,6 +365,97 @@ var _ = Describe("Application controller", func() {
 
 			// Delete the specified resource
 			deleteHASAppCR(hasAppLookupKey)
+		})
+	})
+	Context("Application with components marked to be deleted", func() {
+		It("Should not increase the deletion metrics", func() {
+			beforeCreateTotalReqs := testutil.ToFloat64(metrics.ApplicationCreationTotalReqs)
+			beforeCreateSucceedReqs := testutil.ToFloat64(metrics.ApplicationCreationSucceeded)
+			beforeCreateFailedReqs := testutil.ToFloat64(metrics.ApplicationCreationFailed)
+			ctx := context.Background()
+
+			applicationName := "test-error-response" + "6"
+
+			hasApp := &appstudiov1alpha1.Application{
+				TypeMeta: metav1.TypeMeta{
+					APIVersion: "appstudio.redhat.com/v1alpha1",
+					Kind:       "Application",
+				},
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      applicationName,
+					Namespace: HASAppNamespace,
+				},
+				Spec: appstudiov1alpha1.ApplicationSpec{
+					DisplayName: DisplayName,
+					Description: Description,
+					AppModelRepository: appstudiov1alpha1.ApplicationGitRepository{
+						URL: "https://github.com/testorg/petclinic-app",
+					},
+				},
+			}
+
+			Expect(k8sClient.Create(ctx, hasApp)).Should(Succeed())
+
+			// Look up the has app resource that was created.
+			// num(conditions) may still be < 1 on the first try, so retry until at least _some_ condition is set
+			hasAppLookupKey := types.NamespacedName{Name: applicationName, Namespace: HASAppNamespace}
+			fetchedHasApp := &appstudiov1alpha1.Application{}
+			Eventually(func() bool {
+				k8sClient.Get(context.Background(), hasAppLookupKey, fetchedHasApp)
+				return len(fetchedHasApp.Status.Conditions) > 0
+			}, timeout, interval).Should(BeTrue())
+
+			// Create application component
+			hasComp := &appstudiov1alpha1.Component{
+				TypeMeta: metav1.TypeMeta{
+					APIVersion: "appstudio.redhat.com/v1alpha1",
+					Kind:       "Component",
+				},
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      componentName,
+					Namespace: HASAppNamespace,
+				},
+				Spec: appstudiov1alpha1.ComponentSpec{
+					ComponentName: "test-component",
+					Application:   applicationName,
+					Source: appstudiov1alpha1.ComponentSource{
+						ComponentSourceUnion: appstudiov1alpha1.ComponentSourceUnion{
+							GitSource: &appstudiov1alpha1.GitSource{
+								URL: "https://github.com/testorg/petclinic-app",
+							},
+						},
+					},
+				},
+			}
+			Expect(k8sClient.Create(ctx, hasComp)).Should(Succeed())
+
+			// Look up the has app resource that was created.
+			// num(conditions) may still be < 1 on the first try, so retry until at least _some_ condition is set
+			hasCompLookupKey := types.NamespacedName{Name: componentName, Namespace: HASAppNamespace}
+			fetchedHasComp := &appstudiov1alpha1.Component{}
+			Eventually(func() bool {
+				k8sClient.Get(context.Background(), hasCompLookupKey, fetchedHasComp)
+				return len(fetchedHasComp.Status.Conditions) > 0
+			}, timeout, interval).Should(BeTrue())
+
+			// Set deletion timestamp for component.
+			gracePeriodSeconds := int64(5)
+			opts := &client.DeleteOptions{GracePeriodSeconds: &gracePeriodSeconds}
+
+			k8sClient.Delete(context.Background(), fetchedHasComp, opts)
+
+			// Check that the deletion timestamp has been set for application's component
+			fetchedHasComp = &appstudiov1alpha1.Component{}
+			Eventually(func() bool {
+				k8sClient.Get(context.Background(), hasCompLookupKey, fetchedHasComp)
+				return !fetchedHasComp.ObjectMeta.DeletionTimestamp.IsZero()
+			}, timeout, interval).Should(BeTrue())
+
+			// Try to delete the component. It should be ignored as the application is under deletion
+			k8sClient.Delete(ctx, fetchedHasApp)
+			Expect(testutil.ToFloat64(metrics.ApplicationCreationTotalReqs) == beforeCreateTotalReqs).To(BeTrue())
+			Expect(testutil.ToFloat64(metrics.ApplicationCreationSucceeded) == beforeCreateSucceedReqs).To(BeTrue())
+			Expect(testutil.ToFloat64(metrics.ApplicationCreationFailed) == beforeCreateFailedReqs).To(BeTrue())
 		})
 	})
 
