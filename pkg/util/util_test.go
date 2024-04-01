@@ -740,7 +740,7 @@ func TestVerifyNoApplicationComponentUnderDeletion(t *testing.T) {
 				Items: []appstudiov1alpha1.Component{
 					{
 						Spec:       appstudiov1alpha1.ComponentSpec{Application: "application-one"},
-						ObjectMeta: metav1.ObjectMeta{DeletionTimestamp: &metav1.Time{testTime}},
+						ObjectMeta: metav1.ObjectMeta{DeletionTimestamp: &metav1.Time{Time: testTime}},
 					},
 				},
 			},
