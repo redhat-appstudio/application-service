@@ -369,12 +369,12 @@ var _ = Describe("Application controller", func() {
 	})
 	Context("Application with components marked to be deleted", func() {
 		It("Should not increase the deletion metrics", func() {
-			beforeCreateTotalReqs := testutil.ToFloat64(metrics.ApplicationCreationTotalReqs)
-			beforeCreateSucceedReqs := testutil.ToFloat64(metrics.ApplicationCreationSucceeded)
-			beforeCreateFailedReqs := testutil.ToFloat64(metrics.ApplicationCreationFailed)
+			beforeDeleteTotalReqs := testutil.ToFloat64(metrics.ApplicationDeletionTotalReqs)
+			beforeDeleteSucceedReqs := testutil.ToFloat64(metrics.ApplicationDeletionSucceeded)
+			beforeDeleteFailedReqs := testutil.ToFloat64(metrics.ApplicationDeletionFailed)
 			ctx := context.Background()
 
-			applicationName := "test-error-response" + "6"
+			applicationName := HASAppName + "5"
 
 			hasApp := &appstudiov1alpha1.Application{
 				TypeMeta: metav1.TypeMeta{
@@ -388,6 +388,9 @@ var _ = Describe("Application controller", func() {
 				Spec: appstudiov1alpha1.ApplicationSpec{
 					DisplayName: DisplayName,
 					Description: Description,
+					AppModelRepository: appstudiov1alpha1.ApplicationGitRepository{
+						URL: "https://github.com/devfile-samples/devfile-sample-java-springboot-basic",
+					},
 				},
 			}
 
@@ -419,7 +422,7 @@ var _ = Describe("Application controller", func() {
 					Source: appstudiov1alpha1.ComponentSource{
 						ComponentSourceUnion: appstudiov1alpha1.ComponentSourceUnion{
 							GitSource: &appstudiov1alpha1.GitSource{
-								URL: "https://github.com/testorg/petclinic-app",
+								URL: "https://github.com/devfile-samples/devfile-sample-java-springboot-basic",
 							},
 						},
 					},
@@ -436,6 +439,8 @@ var _ = Describe("Application controller", func() {
 				return len(fetchedHasComp.Status.Conditions) > 0
 			}, timeout, interval).Should(BeTrue())
 
+			Expect(k8sClient.Update(ctx, fetchedHasComp)).Should(Succeed())
+
 			// Set deletion timestamp for component.
 			gracePeriodSeconds := int64(5)
 			opts := &client.DeleteOptions{GracePeriodSeconds: &gracePeriodSeconds}
@@ -451,9 +456,9 @@ var _ = Describe("Application controller", func() {
 
 			// Try to delete the component. It should be ignored as the application is under deletion
 			k8sClient.Delete(ctx, fetchedHasApp)
-			Expect(testutil.ToFloat64(metrics.ApplicationCreationTotalReqs) == beforeCreateTotalReqs).To(BeTrue())
-			Expect(testutil.ToFloat64(metrics.ApplicationCreationSucceeded) == beforeCreateSucceedReqs).To(BeTrue())
-			Expect(testutil.ToFloat64(metrics.ApplicationCreationFailed) == beforeCreateFailedReqs).To(BeTrue())
+			Expect(testutil.ToFloat64(metrics.ApplicationDeletionTotalReqs) == beforeDeleteTotalReqs).To(BeTrue())
+			Expect(testutil.ToFloat64(metrics.ApplicationDeletionSucceeded) == beforeDeleteSucceedReqs).To(BeTrue())
+			Expect(testutil.ToFloat64(metrics.ApplicationDeletionFailed) == beforeDeleteFailedReqs).To(BeTrue())
 		})
 	})
 
