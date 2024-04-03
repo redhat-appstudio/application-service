@@ -295,12 +295,18 @@ func (r *ComponentReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 	if component.Status.Devfile == "" {
 
 		source := component.Spec.Source
+		gitSourceFromGitlab := false
 
 		var compDevfileData data.DevfileData
 		var devfileLocation string
 		var devfileBytes []byte
 
 		if source.GitSource != nil && source.GitSource.URL != "" {
+			if err := util.ValidateGithubURL(source.GitSource.URL); err != nil {
+				// User error - the git url provided is not from github
+				log.Error(err, "unable to validate github url")
+				gitSourceFromGitlab = true
+			}
 			context := source.GitSource.Context
 			// If a Git secret was passed in, retrieve it for use in our Git operations
 			// The secret needs to be in the same namespace as the Component
@@ -323,7 +329,8 @@ func (r *ComponentReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 					_, err := ghClient.GetBranchFromURL(sourceURL, ctx, "main")
 					if err != nil {
 						metrics.HandleRateLimitMetrics(err, metricsLabel)
-						if _, ok := err.(*github.GitHubUserErr); ok {
+						_, ok := err.(*github.GitHubUserErr)
+						if ok || gitSourceFromGitlab {
 							// User error, so increment the "success" metric since we're tracking only system errors
 							metrics.IncrementComponentCreationSucceeded(prevErrCondition, err.Error())
 						} else {
@@ -373,7 +380,9 @@ func (r *ComponentReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 					devfileBytes, devfileLocation, err = spi.DownloadDevfileUsingSPI(r.SPIClient, ctx, component, gitURL, source.GitSource.Revision, context)
 					if err != nil {
 						// Increment the import git repo and component create failed metric on non-user errors
-						if _, ok := err.(*cdqanalysis.NoDevfileFound); !ok {
+						// Exclude errors from gitlab urls
+						_, ok := err.(*cdqanalysis.NoDevfileFound)
+						if !ok && !gitSourceFromGitlab {
 							metrics.ImportGitRepoFailed.Inc()
 							metrics.IncrementComponentCreationFailed(prevErrCondition, err.Error())
 						} else {
