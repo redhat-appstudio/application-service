@@ -117,7 +117,7 @@ func (r *ApplicationReconciler) Reconcile(ctx context.Context, req ctrl.Request)
 			var components appstudiov1alpha1.ComponentList
 			err = r.List(ctx, &components)
 			if err != nil {
-				log.Error(err, "failed to check if any application component is under deletion")
+				log.Error(err, "failed to check if any Component is under deletion, proceeding with Application delete")
 			}
 			if err := util.VerifyNoApplicationComponentUnderDeletion(components, application.Name); err != nil {
 				// requeue in case any of the application components are under deletion
