@@ -121,7 +121,7 @@ func (r *ApplicationReconciler) Reconcile(ctx context.Context, req ctrl.Request)
 			}
 			if err := util.VerifyNoApplicationComponentUnderDeletion(components, application.Name); err != nil {
 				// requeue in case any of the application components are under deletion
-				log.Error(err, "Error an application component is under deletion. Deletion requeued")
+				log.Error(err, "Component is under deletion, Application deletion requeued")
 				return reconcile.Result{}, err
 			}
 			metrics.ApplicationDeletionTotalReqs.Inc()
