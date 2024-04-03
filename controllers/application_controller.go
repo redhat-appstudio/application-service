@@ -115,7 +115,7 @@ func (r *ApplicationReconciler) Reconcile(ctx context.Context, req ctrl.Request)
 	} else {
 		if containsString(application.GetFinalizers(), appFinalizerName) {
 			var components appstudiov1alpha1.ComponentList
-			err = r.List(context.Background(), &components)
+			err = r.List(ctx, &components)
 			if err != nil {
 				log.Error(err, "failed to check if any application component is under deletion")
 			}
