@@ -26,7 +26,7 @@ require (
 	dario.cat/mergo v1.0.0 // indirect
 	github.com/AdaLogics/go-fuzz-headers v0.0.0-20230811130428-ced1acdcaa24 // indirect
 	github.com/Microsoft/go-winio v0.6.1 // indirect
-	github.com/Microsoft/hcsshim v0.11.4 // indirect
+	github.com/Microsoft/hcsshim v0.12.2 // indirect
 	github.com/ProtonMail/go-crypto v0.0.0-20230828082145-3c4c8a2d2371 // indirect
 	github.com/beorn7/perks v1.0.1 // indirect
 	github.com/cespare/xxhash/v2 v2.2.0 // indirect
@@ -148,3 +148,8 @@ replace github.com/antlr/antlr4 => github.com/antlr/antlr4 v0.0.0-20211106181442
 replace github.com/go-git/go-git/v5 => github.com/go-git/go-git/v5 v5.11.0
 
 replace github.com/Microsoft/hcsshim => github.com/Microsoft/hcsshim v0.12.2
+replace github.com/open-policy-agent/opa/ast => github.com/open-policy-agent/opa/ast v0.43.1
+replace github.com/lestrrat-go/jwx/jwe =>  github.com/lestrrat-go/jwx/jwe v1.2.29
+replace github.com/lestrrat-go/jwx/v2/jwe => github.com/lestrrat-go/jwx/v2/jwe v2.0.21
+replace github.com/lestrrat-go/jwx/v2/jws => github.com/lestrrat-go/jwx/v2/jws v2.0.19 
+replace github.com/lestrrat-go/jwx/v2 => github.com/lestrrat-go/jwx/v2 v2.0.11
