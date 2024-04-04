@@ -155,7 +155,7 @@ func (g *GitHubClient) GetBranchFromURL(repoURL string, ctx context.Context, bra
 		return nil, &GitHubUserErr{Err: err.Error()}
 	}
 
-	branch, _, err := g.Client.Repositories.GetBranch(ctx, orgName, repoName, branchName, false)
+	branch, _, err := g.Client.Repositories.GetBranch(ctx, orgName, repoName, branchName, 1)
 	if err != nil || branch == nil {
 		return nil, &GitHubSystemErr{Err: fmt.Sprintf("failed to get branch %s from repo %s under %s, error: %v", branchName, repoName, orgName, err)}
 	}
