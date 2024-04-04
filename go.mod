@@ -200,3 +200,5 @@ replace github.com/antlr/antlr4 => github.com/antlr/antlr4 v0.0.0-20211106181442
 replace github.com/go-git/go-git/v5 => github.com/go-git/go-git/v5 v5.11.0
 
 replace github.com/redhat-appstudio/application-service/cdq-analysis => ./cdq-analysis
+
+replace github.com/Microsoft/hcsshim => github.com/Microsoft/hcsshim v0.12.2
