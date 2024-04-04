@@ -119,7 +119,7 @@ func getRandomClient(clientPool map[string]*GitHubClient) (*GitHubClient, error)
 	}
 
 	// Check the Primary rate limit
-	rl, _, err := ghClient.Client.RateLimits(context.Background())
+	rl, _, err := ghClient.Client.RateLimit.Get(context.Background())
 	if err != nil {
 		return nil, err
 	}

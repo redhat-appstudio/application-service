@@ -126,7 +126,7 @@ func GetRepoAndOrgFromURL(repoURL string) (string, string, error) {
 
 // GetGitStatus returns the status of the Git API with a simple noop call
 func (g *GitHubClient) GetGitStatus(ctx context.Context) (bool, error) {
-	quote, response, err := g.Client.Zen(ctx)
+	quote, response, err := g.Client.Meta.Zen(ctx)
 	if err == nil && response != nil && response.StatusCode >= 200 && response.StatusCode <= 299 && quote != "" {
 		return true, nil
 	}
