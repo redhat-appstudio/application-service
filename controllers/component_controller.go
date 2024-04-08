@@ -191,7 +191,6 @@ func (r *ComponentReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 		if hasApplication.Status.Devfile != "" && hasApplication.ObjectMeta.DeletionTimestamp.IsZero() && (forceGenerateGitopsResource || len(component.Status.Conditions) > 0 && component.Status.Conditions[len(component.Status.Conditions)-1].Status == metav1.ConditionTrue && containsString(component.GetFinalizers(), compFinalizerName)) {
 			// only attempt to finalize and update the gitops repo if an Application is present & not under deletion & the previous Component status is good
 			// A finalizer is present for the Component CR, so make sure we do the necessary cleanup steps
-			metrics.ComponentDeletionTotalReqs.Inc()
 			if err := r.Finalize(ctx, &component, &hasApplication, ghClient, gitToken); err != nil {
 				if errors.IsConflict(err) {
 					//conflict means we just retry, we are updating the shared application so conflicts are not unexpected
@@ -200,6 +199,10 @@ func (r *ComponentReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 				// if fail to delete the external dependency here, log the error, but don't return error
 				// Don't want to get stuck in a cycle of repeatedly trying to update the repository and failing
 				log.Error(err, fmt.Sprintf("Unable to update GitOps repository for component %v in namespace %v", component.GetName(), component.GetNamespace()))
+
+				// Increase total deletion attempts metric only for a confirmed failure to avoid increasing
+				// it again upon a retry
+				metrics.ComponentDeletionTotalReqs.Inc()
 
 				// Increment the Component deletion failed metric as the component delete did not fully succeed
 				metrics.ComponentDeletionFailed.Inc()
@@ -216,6 +219,9 @@ func (r *ComponentReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 				log.Info("application %v is under deletion. Skipping deletion for component %v", hasApplication.Name, component.Name)
 				return ctrl.Result{}, nil
 			} else {
+				// Increase total deletion attempts metric only for a confirmed success to avoid increasing
+				// it again upon a retry or for ignored deletion attempts.
+				metrics.ComponentDeletionTotalReqs.Inc()
 				metrics.ComponentDeletionSucceeded.Inc()
 			}
 		}
