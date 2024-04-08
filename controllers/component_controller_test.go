@@ -3155,13 +3155,13 @@ var _ = Describe("Component controller", func() {
 
 			Expect(k8sClient.Update(ctx, createdHasComp)).Should(Succeed())
 
-			// Set deletion timestamp for application.
+			// Set deletion timestamp for component.
 			gracePeriodSeconds := int64(5)
 			opts := &client.DeleteOptions{GracePeriodSeconds: &gracePeriodSeconds}
 
-			k8sClient.Delete(context.Background(), fetchedHasApp, opts)
+			k8sClient.Delete(context.Background(), createdHasComp, opts)
 
-			// Update Component
+			// Try to update the component
 			updatedPort := 2222
 			createdHasComp.Spec.TargetPort = updatedPort
 
