@@ -23,7 +23,7 @@ import (
 	"sync"
 
 	"github.com/brianvoe/gofakeit/v6"
-	"github.com/google/go-github/v52/github"
+	"github.com/google/go-github/v59/github"
 	"github.com/redhat-appstudio/application-service/pkg/metrics"
 	"github.com/redhat-appstudio/application-service/pkg/util"
 )
@@ -126,7 +126,7 @@ func GetRepoAndOrgFromURL(repoURL string) (string, string, error) {
 
 // GetGitStatus returns the status of the Git API with a simple noop call
 func (g *GitHubClient) GetGitStatus(ctx context.Context) (bool, error) {
-	quote, response, err := g.Client.Zen(ctx)
+	quote, response, err := g.Client.Meta.Zen(ctx)
 	if err == nil && response != nil && response.StatusCode >= 200 && response.StatusCode <= 299 && quote != "" {
 		return true, nil
 	}
@@ -155,7 +155,7 @@ func (g *GitHubClient) GetBranchFromURL(repoURL string, ctx context.Context, bra
 		return nil, &GitHubUserErr{Err: err.Error()}
 	}
 
-	branch, _, err := g.Client.Repositories.GetBranch(ctx, orgName, repoName, branchName, false)
+	branch, _, err := g.Client.Repositories.GetBranch(ctx, orgName, repoName, branchName, 1)
 	if err != nil || branch == nil {
 		return nil, &GitHubSystemErr{Err: fmt.Sprintf("failed to get branch %s from repo %s under %s, error: %v", branchName, repoName, orgName, err)}
 	}

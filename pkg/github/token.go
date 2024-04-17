@@ -28,7 +28,7 @@ import (
 	"github.com/redhat-appstudio/application-service/pkg/metrics"
 
 	"github.com/gofri/go-github-ratelimit/github_ratelimit"
-	"github.com/google/go-github/v52/github"
+	"github.com/google/go-github/v59/github"
 	"golang.org/x/oauth2"
 
 	ctrl "sigs.k8s.io/controller-runtime"
@@ -119,7 +119,7 @@ func getRandomClient(clientPool map[string]*GitHubClient) (*GitHubClient, error)
 	}
 
 	// Check the Primary rate limit
-	rl, _, err := ghClient.Client.RateLimits(context.Background())
+	rl, _, err := ghClient.Client.RateLimit.Get(context.Background())
 	if err != nil {
 		return nil, err
 	}
