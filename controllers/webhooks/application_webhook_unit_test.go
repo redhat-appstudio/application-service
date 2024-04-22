@@ -46,36 +46,6 @@ func TestApplicationValidatingWebhook(t *testing.T) {
 		err       string
 	}{
 		{
-			name: "app model repo cannot be changed",
-			err:  "app model repository cannot be updated",
-			updateApp: appstudiov1alpha1.Application{
-				Spec: appstudiov1alpha1.ApplicationSpec{
-					DisplayName: "My App",
-					AppModelRepository: appstudiov1alpha1.ApplicationGitRepository{
-						URL: "http://appmodelrepo1",
-					},
-					GitOpsRepository: appstudiov1alpha1.ApplicationGitRepository{
-						URL: "http://gitopsrepo",
-					},
-				},
-			},
-		},
-		{
-			name: "gitops repo cannot be changed",
-			err:  "gitops repository cannot be updated",
-			updateApp: appstudiov1alpha1.Application{
-				Spec: appstudiov1alpha1.ApplicationSpec{
-					DisplayName: "My App",
-					AppModelRepository: appstudiov1alpha1.ApplicationGitRepository{
-						URL: "http://appmodelrepo",
-					},
-					GitOpsRepository: appstudiov1alpha1.ApplicationGitRepository{
-						URL: "http://gitopsrepo1",
-					},
-				},
-			},
-		},
-		{
 			name: "display name can be changed",
 			updateApp: appstudiov1alpha1.Application{
 				Spec: appstudiov1alpha1.ApplicationSpec{

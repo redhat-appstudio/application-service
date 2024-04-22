@@ -22,13 +22,9 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/redhat-developer/gitops-generator/pkg/resources"
-	"github.com/redhat-developer/gitops-generator/pkg/yaml"
-
 	pacv1alpha1 "github.com/openshift-pipelines/pipelines-as-code/pkg/apis/pipelinesascode/v1alpha1"
 	appstudiov1alpha1 "github.com/redhat-appstudio/application-api/api/v1alpha1"
 	gitopsprepare "github.com/redhat-appstudio/application-service/gitops/prepare"
-	"github.com/spf13/afero"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -45,29 +41,6 @@ const (
 	PipelinesAsCode_githubAppIdKey    = "github-application-id"
 	PipelinesAsCode_githubPrivateKey  = "github-private-key"
 )
-
-func GenerateBuild(fs afero.Fs, outputFolder string, component appstudiov1alpha1.Component, gitopsConfig gitopsprepare.GitopsConfig) error {
-	repository, err := GeneratePACRepository(component, gitopsConfig.PipelinesAsCodeCredentials)
-	if err != nil {
-		return err
-	}
-
-	buildResources := map[string]interface{}{
-		buildRepositoryFileName: repository,
-	}
-
-	kustomize := resources.Kustomization{}
-	for fileName := range buildResources {
-		kustomize.AddResources(fileName)
-	}
-
-	buildResources[kustomizeFileName] = kustomize
-
-	if _, err := yaml.WriteResources(fs, outputFolder, buildResources); err != nil {
-		return err
-	}
-	return nil
-}
 
 func getBuildCommonLabelsForComponent(component *appstudiov1alpha1.Component) map[string]string {
 	labels := map[string]string{
