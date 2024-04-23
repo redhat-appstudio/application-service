@@ -29,11 +29,6 @@ import (
 )
 
 const (
-	buildTriggerTemplateFileName = "trigger-template.yaml"
-	buildEventListenerFileName   = "event-listener.yaml"
-	buildWebhookRouteFileName    = "build-webhook-route.yaml"
-	buildRepositoryFileName      = "pac-repository.yaml"
-
 	PaCAnnotation                     = "pipelinesascode"
 	GitProviderAnnotationName         = "git-provider"
 	GitProviderAnnotationURL          = "git-provider-url"
