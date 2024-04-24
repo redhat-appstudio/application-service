@@ -4,8 +4,8 @@ go 1.19
 
 require (
 	github.com/brianvoe/gofakeit/v6 v6.9.0
-	github.com/devfile/api/v2 v2.2.1
-	github.com/devfile/library/v2 v2.2.2-0.20240108233338-2a1d045e1e65
+	github.com/devfile/api/v2 v2.2.2
+	github.com/devfile/library/v2 v2.2.2
 	github.com/go-logr/logr v1.4.1
 	github.com/gofri/go-github-ratelimit v1.0.3-0.20230428184158-a500e14de53f
 	github.com/google/go-github/v59 v59.0.0
