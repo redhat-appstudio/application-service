@@ -21,7 +21,7 @@ COPY gitops gitops/
 RUN CGO_ENABLED=0 GOOS=linux go build -a -o manager main.go
 
 # Build the tini binary
-FROM registry.access.redhat.com/ubi9/ubi-minimal:9.4 as tini-builder
+FROM registry.access.redhat.com/ubi8/ubi-minimal:8.9 as tini-builder
 RUN microdnf update --setopt=install_weak_deps=0 -y && microdnf install git cmake make gcc gcc-c++
 # build tini
 RUN git clone --branch v0.19.0 https://github.com/krallin/tini /tini
