@@ -55,6 +55,8 @@ WORKDIR /
 USER 1001
 
 LABEL description="RHTAP Hybrid Application Service operator"
+LABEL com.redhat.component="Hybrid Application Service"
+LABEL name="Hybrid Application Service"
 LABEL io.k8s.description="RHTAP Hybrid Application Service operator"
 LABEL io.k8s.display-name="application-service"
 LABEL io.openshift.tags="rhtap"
