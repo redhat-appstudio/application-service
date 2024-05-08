@@ -5,7 +5,7 @@ plugins:
   manifests.sdk.operatorframework.io/v2: {}
   scorecard.sdk.operatorframework.io/v2: {}
 projectName: application-service
-repo: github.com/redhat-appstudio/application-service
+repo: github.com/konflux-ci/application-service
 resources:
 - controller: true
   domain: redhat.com

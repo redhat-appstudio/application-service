@@ -51,7 +51,7 @@ A. The application-service API types and their corresponding webhooks are define
 
 Q. Where are the application-service controller logic located?
 
-A. Most of the application-service business logic like the reconcile functions are located in the [controllers](https://github.com/redhat-appstudio/application-service/tree/main/controllers) pkg.
+A. Most of the application-service business logic like the reconcile functions are located in the [controllers](https://github.com/konflux-ci/application-service/tree/main/controllers) pkg.
 
 Q. What is the application-service release process?
 

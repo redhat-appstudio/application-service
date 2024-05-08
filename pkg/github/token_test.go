@@ -22,9 +22,9 @@ import (
 	"testing"
 	"time"
 
+	"github.com/konflux-ci/application-service/pkg/metrics"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/testutil"
-	"github.com/redhat-appstudio/application-service/pkg/metrics"
 	"github.com/stretchr/testify/assert"
 )
 

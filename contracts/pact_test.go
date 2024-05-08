@@ -24,10 +24,10 @@ import (
 	"testing"
 	"time"
 
+	"github.com/konflux-ci/application-service/controllers"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	provider "github.com/pact-foundation/pact-go/v2/provider"
-	"github.com/redhat-appstudio/application-service/controllers"
 )
 
 func TestContracts(t *testing.T) {

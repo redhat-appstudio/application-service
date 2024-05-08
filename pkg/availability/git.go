@@ -19,9 +19,9 @@ import (
 	"context"
 	"time"
 
+	"github.com/konflux-ci/application-service/pkg/github"
+	"github.com/konflux-ci/application-service/pkg/metrics"
 	"github.com/prometheus/client_golang/prometheus"
-	"github.com/redhat-appstudio/application-service/pkg/github"
-	"github.com/redhat-appstudio/application-service/pkg/metrics"
 	ctrl "sigs.k8s.io/controller-runtime"
 )
 

@@ -25,9 +25,9 @@ import (
 
 	"github.com/prometheus/client_golang/prometheus"
 	appstudiov1alpha1 "github.com/redhat-appstudio/application-api/api/v1alpha1"
-	cdqanalysis "github.com/redhat-appstudio/application-service/cdq-analysis/pkg"
-	github "github.com/redhat-appstudio/application-service/pkg/github"
-	"github.com/redhat-appstudio/application-service/pkg/metrics"
+	cdqanalysis "github.com/konflux-ci/application-service/cdq-analysis/pkg"
+	github "github.com/konflux-ci/application-service/pkg/github"
+	"github.com/konflux-ci/application-service/pkg/metrics"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 )

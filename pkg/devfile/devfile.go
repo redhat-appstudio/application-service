@@ -26,11 +26,11 @@ import (
 	parser "github.com/devfile/library/v2/pkg/devfile/parser"
 	data "github.com/devfile/library/v2/pkg/devfile/parser/data"
 	"github.com/devfile/library/v2/pkg/devfile/parser/data/v2/common"
-	cdqanalysis "github.com/redhat-appstudio/application-service/cdq-analysis/pkg"
+	cdqanalysis "github.com/konflux-ci/application-service/cdq-analysis/pkg"
 	"golang.org/x/exp/maps"
 
+	"github.com/konflux-ci/application-service/pkg/util"
 	appstudiov1alpha1 "github.com/redhat-appstudio/application-api/api/v1alpha1"
-	"github.com/redhat-appstudio/application-service/pkg/util"
 
 	"github.com/go-logr/logr"
 

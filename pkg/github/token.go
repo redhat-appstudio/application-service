@@ -24,8 +24,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/konflux-ci/application-service/pkg/metrics"
 	"github.com/prometheus/client_golang/prometheus"
-	"github.com/redhat-appstudio/application-service/pkg/metrics"
 
 	"github.com/gofri/go-github-ratelimit/github_ratelimit"
 	"github.com/google/go-github/v59/github"

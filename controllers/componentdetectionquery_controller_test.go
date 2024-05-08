@@ -22,9 +22,9 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/konflux-ci/application-service/pkg/metrics"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/testutil"
-	"github.com/redhat-appstudio/application-service/pkg/metrics"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"

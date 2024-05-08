@@ -19,8 +19,8 @@ import (
 	"fmt"
 	"path/filepath"
 
+	"github.com/konflux-ci/application-service/gitops/prepare"
 	appstudiov1alpha1 "github.com/redhat-appstudio/application-api/api/v1alpha1"
-	"github.com/redhat-appstudio/application-service/gitops/prepare"
 	gitopsgen "github.com/redhat-developer/gitops-generator/pkg"
 	"github.com/redhat-developer/gitops-generator/pkg/util"
 	"github.com/spf13/afero"

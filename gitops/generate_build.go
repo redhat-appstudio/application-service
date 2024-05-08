@@ -25,9 +25,9 @@ import (
 	"github.com/redhat-developer/gitops-generator/pkg/resources"
 	"github.com/redhat-developer/gitops-generator/pkg/yaml"
 
+	gitopsprepare "github.com/konflux-ci/application-service/gitops/prepare"
 	pacv1alpha1 "github.com/openshift-pipelines/pipelines-as-code/pkg/apis/pipelinesascode/v1alpha1"
 	appstudiov1alpha1 "github.com/redhat-appstudio/application-api/api/v1alpha1"
-	gitopsprepare "github.com/redhat-appstudio/application-service/gitops/prepare"
 	"github.com/spf13/afero"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
@@ -155,12 +155,12 @@ func GetGitProvider(component appstudiov1alpha1.Component) (string, error) {
 	sourceUrl := component.Spec.Source.GitSource.URL
 
 	if strings.HasPrefix(sourceUrl, "git@") {
-		// git@github.com:redhat-appstudio/application-service.git
+		// git@github.com:konflux-ci/application-service.git
 		sourceUrl = strings.TrimPrefix(sourceUrl, "git@")
 		host := strings.Split(sourceUrl, ":")[0]
 		gitProvider = strings.Split(host, ".")[0]
 	} else {
-		// https://github.com/redhat-appstudio/application-service
+		// https://github.com/konflux-ci/application-service
 		u, err := url.Parse(sourceUrl)
 		if err != nil {
 			return "", err

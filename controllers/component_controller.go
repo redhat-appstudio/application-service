@@ -27,9 +27,9 @@ import (
 
 	corev1 "k8s.io/api/core/v1"
 
+	cdqanalysis "github.com/konflux-ci/application-service/cdq-analysis/pkg"
+	"github.com/konflux-ci/application-service/pkg/metrics"
 	"github.com/prometheus/client_golang/prometheus"
-	cdqanalysis "github.com/redhat-appstudio/application-service/cdq-analysis/pkg"
-	"github.com/redhat-appstudio/application-service/pkg/metrics"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -53,13 +53,13 @@ import (
 	devfileParserUtil "github.com/devfile/library/v2/pkg/devfile/parser/util"
 	"github.com/go-logr/logr"
 
+	devfile "github.com/konflux-ci/application-service/pkg/devfile"
+	"github.com/konflux-ci/application-service/pkg/github"
+	logutil "github.com/konflux-ci/application-service/pkg/log"
+	"github.com/konflux-ci/application-service/pkg/spi"
+	"github.com/konflux-ci/application-service/pkg/util"
+	"github.com/konflux-ci/application-service/pkg/util/ioutils"
 	appstudiov1alpha1 "github.com/redhat-appstudio/application-api/api/v1alpha1"
-	devfile "github.com/redhat-appstudio/application-service/pkg/devfile"
-	"github.com/redhat-appstudio/application-service/pkg/github"
-	logutil "github.com/redhat-appstudio/application-service/pkg/log"
-	"github.com/redhat-appstudio/application-service/pkg/spi"
-	"github.com/redhat-appstudio/application-service/pkg/util"
-	"github.com/redhat-appstudio/application-service/pkg/util/ioutils"
 	gitopsgen "github.com/redhat-developer/gitops-generator/pkg"
 	"github.com/spf13/afero"
 )

@@ -36,8 +36,8 @@ import (
 	"k8s.io/apimachinery/pkg/api/errors"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
-	cdqanalysis "github.com/redhat-appstudio/application-service/cdq-analysis/pkg"
-	"github.com/redhat-appstudio/application-service/pkg/devfile"
+	cdqanalysis "github.com/konflux-ci/application-service/cdq-analysis/pkg"
+	"github.com/konflux-ci/application-service/pkg/devfile"
 )
 
 type SPI interface {

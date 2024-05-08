@@ -19,10 +19,10 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/konflux-ci/application-service/gitops/prepare"
+	"github.com/konflux-ci/application-service/pkg/util/ioutils"
 	"github.com/mitchellh/go-homedir"
 	appstudiov1alpha1 "github.com/redhat-appstudio/application-api/api/v1alpha1"
-	"github.com/redhat-appstudio/application-service/gitops/prepare"
-	"github.com/redhat-appstudio/application-service/pkg/util/ioutils"
 	"github.com/redhat-developer/gitops-generator/pkg/testutils"
 	"github.com/spf13/afero"
 	"github.com/stretchr/testify/assert"

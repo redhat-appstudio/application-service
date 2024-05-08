@@ -29,7 +29,7 @@ jobs:
           username: ${{ secrets.QUAY_USERNAME }}
           password: ${{ secrets.QUAY_PASSWORD }}
           registry: quay.io
-          repository: redhat-appstudio/application-service
+          repository: konflux-ci/application-service
       - name: Docker Build & Push - application-service Operator Image
         uses: docker/build-push-action@v3
         with:

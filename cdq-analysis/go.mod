@@ -1,4 +1,4 @@
-module github.com/redhat-appstudio/application-service/cdq-analysis
+module github.com/konflux-ci/application-service/cdq-analysis
 
 go 1.19
 

@@ -14,7 +14,7 @@ Pact tests are triggered during different life phases of a product. See the tabl
 | Event       | What is checked | Pushed to Pact broker | Implemented |
 |-------------|-----------------|-----------------------|-------------|
 | Locally as part of unit tests<br />`make test` | Runs verification against <br />consumer "main" branch | No | Yes |
-| PR update   | Runs verification against consumer  <br />"main" branch and all environments | No* | Yes** [link](https://github.com/redhat-appstudio/application-service/blob/main/.github/workflows/pr.yml#L124) |
+| PR update   | Runs verification against consumer  <br />"main" branch and all environments | No* | Yes** [link](https://github.com/konflux-ci/application-service/blob/main/.github/workflows/pr.yml#L124) |
 | PR merge | ? | Yes<br />commit SHA is a version <br />tagged by branch "main" | No |
 
 \* The idea was to push also those tags, but for now, nothing is pushed as we don't have access to the secrets from this GH action.

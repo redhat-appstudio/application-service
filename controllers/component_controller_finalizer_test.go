@@ -19,9 +19,9 @@ import (
 	"context"
 	"strings"
 
+	"github.com/konflux-ci/application-service/pkg/metrics"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/testutil"
-	"github.com/redhat-appstudio/application-service/pkg/metrics"
 
 	"github.com/devfile/library/v2/pkg/devfile/parser"
 
@@ -29,8 +29,8 @@ import (
 	. "github.com/onsi/gomega"
 	"sigs.k8s.io/yaml"
 
+	cdqanalysis "github.com/konflux-ci/application-service/cdq-analysis/pkg"
 	appstudiov1alpha1 "github.com/redhat-appstudio/application-api/api/v1alpha1"
-	cdqanalysis "github.com/redhat-appstudio/application-service/cdq-analysis/pkg"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 )
