@@ -19,25 +19,13 @@ package controllers
 import (
 	"context"
 	"fmt"
-	"path/filepath"
-	"reflect"
-	"strings"
 
-	"github.com/prometheus/client_golang/prometheus"
-	cdqanalysis "github.com/redhat-appstudio/application-service/cdq-analysis/pkg"
-	"github.com/redhat-appstudio/application-service/pkg/metrics"
-	gitopsgenv1alpha1 "github.com/redhat-developer/gitops-generator/api/v1alpha1"
-	gitopsgen "github.com/redhat-developer/gitops-generator/pkg"
 	"golang.org/x/exp/maps"
-	corev1 "k8s.io/api/core/v1"
 
-	devfileParser "github.com/devfile/library/v2/pkg/devfile/parser"
 	"github.com/go-logr/logr"
 	appstudiov1alpha1 "github.com/redhat-appstudio/application-api/api/v1alpha1"
-	"github.com/redhat-appstudio/application-service/pkg/devfile"
 	"github.com/redhat-appstudio/application-service/pkg/github"
 	logutil "github.com/redhat-appstudio/application-service/pkg/log"
-	"github.com/redhat-appstudio/application-service/pkg/util"
 	"github.com/redhat-appstudio/application-service/pkg/util/ioutils"
 	"github.com/spf13/afero"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -59,11 +47,8 @@ type SnapshotEnvironmentBindingReconciler struct {
 	Scheme            *runtime.Scheme
 	Log               logr.Logger
 	AppFS             afero.Afero
-	Generator         gitopsgen.Generator
 	GitHubTokenClient github.GitHubToken
 }
-
-const asebName = "SnapshotEnvironmentBinding"
 
 //+kubebuilder:rbac:groups=appstudio.redhat.com,resources=snapshotenvironmentbindings,verbs=get;list;watch;create;update;patch;delete
 //+kubebuilder:rbac:groups=appstudio.redhat.com,resources=snapshotenvironmentbindings/status,verbs=get;update;patch
@@ -156,9 +141,7 @@ func (r *SnapshotEnvironmentBindingReconciler) Reconcile(ctx context.Context, re
 		return ctrl.Result{}, err
 	}
 
-	componentGeneratedResources := make(map[string][]string)
 	var tempDir string
-	clone := true
 
 	for _, component := range components {
 		componentName := component.Name
@@ -186,103 +169,6 @@ func (r *SnapshotEnvironmentBindingReconciler) Reconcile(ctx context.Context, re
 			return ctrl.Result{}, err
 		}
 
-		var clusterIngressDomain string
-		isKubernetesCluster := isKubernetesCluster(environment)
-		unsupportedConfig := environment.Spec.UnstableConfigurationFields
-		if unsupportedConfig != nil {
-			clusterIngressDomain = unsupportedConfig.IngressDomain
-		}
-
-		// Safeguard if Ingress Domain is empty on Kubernetes
-		if isKubernetesCluster && clusterIngressDomain == "" {
-			err = fmt.Errorf("ingress domain cannot be empty on a Kubernetes cluster")
-			log.Error(err, "unable to create an ingress resource on a Kubernetes cluster")
-			ioutils.RemoveFolderAndLogError(log, r.AppFS, tempDir)
-			r.SetConditionAndUpdateCR(ctx, req, &appSnapshotEnvBinding, err)
-			return ctrl.Result{}, err
-		}
-
-		parserArgs := &devfileParser.ParserArgs{Data: []byte(hasComponent.Status.Devfile)}
-		var gitToken string
-		//get the token to pass into the parser
-		if hasComponent.Spec.Secret != "" {
-			gitSecret := corev1.Secret{}
-			namespacedName := types.NamespacedName{
-				Name:      hasComponent.Spec.Secret,
-				Namespace: hasComponent.Namespace,
-			}
-
-			err = r.Client.Get(ctx, namespacedName, &gitSecret)
-			if err != nil {
-				log.Error(err, fmt.Sprintf("Unable to retrieve Git secret %v, exiting reconcile loop %v", hasComponent.Spec.Secret, req.NamespacedName))
-				r.SetConditionAndUpdateCR(ctx, req, &appSnapshotEnvBinding, err)
-				return ctrl.Result{}, err
-			}
-
-			gitToken = string(gitSecret.Data["password"])
-		}
-
-		parserArgs.Token = gitToken
-		compDevfileData, err := cdqanalysis.ParseDevfileWithParserArgs(parserArgs)
-		if err != nil {
-			errMsg := fmt.Sprintf("Unable to parse the devfile from Component status, exiting reconcile loop %v", req.NamespacedName)
-			log.Error(err, errMsg)
-			ioutils.RemoveFolderAndLogError(log, r.AppFS, tempDir)
-			r.SetConditionAndUpdateCR(ctx, req, &appSnapshotEnvBinding, fmt.Errorf("%v: %v", errMsg, err))
-			return ctrl.Result{}, err
-		}
-
-		deployAssociatedComponents, err := devfileParser.GetDeployComponents(compDevfileData)
-		if err != nil {
-			log.Error(err, "unable to get deploy components")
-			ioutils.RemoveFolderAndLogError(log, r.AppFS, tempDir)
-			r.SetConditionAndUpdateCR(ctx, req, &appSnapshotEnvBinding, err)
-			return ctrl.Result{}, err
-		}
-
-		var hostname string
-		if isKubernetesCluster {
-			hostname, err = devfile.GetIngressHostName(hasComponent.Name, appSnapshotEnvBinding.Namespace, clusterIngressDomain)
-			if err != nil {
-				log.Error(err, fmt.Sprintf("unable to get generate a host name from an ingress domain for %s %v", hasComponent.Name, req.NamespacedName))
-				ioutils.RemoveFolderAndLogError(log, r.AppFS, tempDir)
-				r.SetConditionAndUpdateCR(ctx, req, &appSnapshotEnvBinding, err)
-				return ctrl.Result{}, err
-			}
-		}
-
-		// Generate a route name for the component
-
-		kubernetesResources, err := devfile.GetResourceFromDevfile(log, compDevfileData, deployAssociatedComponents, hasComponent.Name, hasComponent.Spec.Application, hasComponent.Spec.ContainerImage, hostname)
-		if err != nil {
-			log.Error(err, "unable to get kubernetes resources from the devfile outerloop components")
-			ioutils.RemoveFolderAndLogError(log, r.AppFS, tempDir)
-			r.SetConditionAndUpdateCR(ctx, req, &appSnapshotEnvBinding, err)
-			return ctrl.Result{}, err
-		}
-
-		// Create a random, generated name for the route
-		// ToDo: Ideally we wouldn't need to loop here, but since the Component status is a list, we can't avoid it
-		var routeName string
-		for _, compStatus := range appSnapshotEnvBinding.Status.Components {
-			if compStatus.Name == componentName {
-				if compStatus.GeneratedRouteName != "" {
-					routeName = compStatus.GeneratedRouteName
-					log.Info(fmt.Sprintf("route name for component is %s", routeName))
-				}
-				break
-			}
-		}
-		if routeName == "" {
-			routeName = util.GenerateRandomRouteName(hasComponent.Name)
-			log.Info(fmt.Sprintf("generated route name %s", routeName))
-		}
-
-		// If a route is present, update the first instance's name
-		if len(kubernetesResources.Routes) > 0 {
-			kubernetesResources.Routes[0].ObjectMeta.Name = routeName
-		}
-
 		var imageName string
 
 		for _, snapshotComponent := range appSnapshot.Spec.Components {
@@ -300,134 +186,15 @@ func (r *SnapshotEnvironmentBindingReconciler) Reconcile(ctx context.Context, re
 			return ctrl.Result{}, err
 		}
 
-		gitOpsRemoteURL, gitOpsBranch, gitOpsContext, err := util.ProcessGitOpsStatus(hasComponent.Status.GitOps, ghClient.Token)
-		if err != nil {
-			r.SetConditionAndUpdateCR(ctx, req, &appSnapshotEnvBinding, err)
-			ioutils.RemoveFolderAndLogError(log, r.AppFS, tempDir)
-			return ctrl.Result{}, err
-		}
-
-		if clone {
-			// Create a temp folder to create the gitops resources in
-			tempDir, err = ioutils.CreateTempPath(appSnapshotEnvBinding.Name, r.AppFS)
-			if err != nil {
-				log.Error(err, "unable to create temp directory for gitops resources due to error")
-				r.SetConditionAndUpdateCR(ctx, req, &appSnapshotEnvBinding, err)
-				return ctrl.Result{}, fmt.Errorf("unable to create temp directory for gitops resources due to error: %v", err)
-			}
-		}
-
-		envVars := make([]corev1.EnvVar, 0)
-		for _, env := range component.Configuration.Env {
-			envVars = append(envVars, corev1.EnvVar{
-				Name:  env.Name,
-				Value: env.Value,
-			})
-		}
-
-		environmentConfigEnvVars := make([]corev1.EnvVar, 0)
-		for _, env := range environment.Spec.Configuration.Env {
-			environmentConfigEnvVars = append(environmentConfigEnvVars, corev1.EnvVar{
-				Name:  env.Name,
-				Value: env.Value,
-			})
-		}
-		componentResources := corev1.ResourceRequirements{}
-		if component.Configuration.Resources != nil {
-			componentResources = *component.Configuration.Resources
-		}
-
-		kubeLabels := map[string]string{
-			"app.kubernetes.io/name":       componentName,
-			"app.kubernetes.io/instance":   component.Name,
-			"app.kubernetes.io/part-of":    applicationName,
-			"app.kubernetes.io/managed-by": "kustomize",
-			"app.kubernetes.io/created-by": "application-service",
-		}
-		genOptions := gitopsgenv1alpha1.GeneratorOptions{
-			Name:                component.Name,
-			RouteName:           routeName,
-			Resources:           componentResources,
-			BaseEnvVar:          envVars,
-			OverlayEnvVar:       environmentConfigEnvVars,
-			K8sLabels:           kubeLabels,
-			IsKubernetesCluster: isKubernetesCluster,
-			TargetPort:          hasComponent.Spec.TargetPort, // pass the target port to the gitops gen library as they may generate a route/ingress based on the target port if the devfile does not have an ingress/route or an endpoint
-		}
-
-		if component.Configuration.Replicas != nil {
-			genOptions.Replicas = *component.Configuration.Replicas
-		} else {
-			genOptions.Replicas = 1 //default is 1
-		}
-
-		if !reflect.DeepEqual(kubernetesResources, devfileParser.KubernetesResources{}) {
-			genOptions.KubernetesResources.Routes = append(genOptions.KubernetesResources.Routes, kubernetesResources.Routes...)
-			genOptions.KubernetesResources.Ingresses = append(genOptions.KubernetesResources.Ingresses, kubernetesResources.Ingresses...)
-		}
-
-		if isKubernetesCluster && len(genOptions.KubernetesResources.Ingresses) == 0 {
-			// provide the hostname for the component if there are no ingresses
-			// Gitops Generator Library will create the Ingress with the hostname
-			genOptions.Route = hostname
-		}
-
-		//Gitops functions return sanitized error messages
-		metrics.ControllerGitRequest.With(prometheus.Labels{"controller": asebName, "tokenName": ghClient.TokenName, "operation": "GenerateOverlaysAndPush"}).Inc()
-		err = r.Generator.GenerateOverlaysAndPush(tempDir, clone, gitOpsRemoteURL, genOptions, applicationName, environmentName, imageName, "", r.AppFS, gitOpsBranch, gitOpsContext, true, componentGeneratedResources)
-		if err != nil {
-			retErr := err
-			if strings.Contains(strings.ToLower(err.Error()), "github push protection") {
-				retErr = fmt.Errorf("potential secret leak caught by github push protection")
-				// to get the URL token
-				// e.g. <GitURL>/security/secret-scanning/unblock-secret/2WlUv72plUf05tgshlpRLzSlH4R        \n
-				var unblockURL string
-				splited := strings.Split(strings.ToLower(err.Error()), "unblock-secret/")
-				if len(splited) > 1 {
-					token := strings.Split(splited[1], " ")[0]
-					unblockURL = fmt.Sprintf("%v/security/secret-scanning/unblock-secret/%v", hasComponent.Status.GitOps.RepositoryURL, token)
-					log.Error(retErr, fmt.Sprintf("unable to generate gitops resources for %s due to git push protecton error, follow the link to unblock the secret: %v", componentName, unblockURL))
-				}
-			} else {
-				log.Error(err, fmt.Sprintf("unable to get generate gitops resources for %s %v", componentName, req.NamespacedName))
-			}
-			ioutils.RemoveFolderAndLogError(log, r.AppFS, tempDir) // not worried with an err, its a best case attempt to delete the temp clone dir
-			r.SetConditionAndUpdateCR(ctx, req, &appSnapshotEnvBinding, retErr)
-			return ctrl.Result{}, retErr
-		}
-
-		// Retrieve the commit ID
-		var commitID string
-		repoPath := filepath.Join(tempDir, applicationName)
-		metricsLabel := prometheus.Labels{"controller": asebName, "tokenName": ghClient.TokenName, "operation": "GetCommitIDFromRepo"}
-		metrics.ControllerGitRequest.With(metricsLabel).Inc()
-		if commitID, err = r.Generator.GetCommitIDFromRepo(r.AppFS, repoPath); err != nil {
-			//gitops generator errors are sanitized
-			log.Error(err, "")
-			ioutils.RemoveFolderAndLogError(log, r.AppFS, tempDir)
-			r.SetConditionAndUpdateCR(ctx, req, &appSnapshotEnvBinding, err)
-			return ctrl.Result{}, err
-		}
-
 		// Set the BindingComponent status
 		componentStatus := appstudiov1alpha1.BindingComponentStatus{
 			Name: componentName,
 			GitOpsRepository: appstudiov1alpha1.BindingComponentGitOpsRepository{
-				URL:      hasComponent.Status.GitOps.RepositoryURL,
-				Branch:   gitOpsBranch,
-				Path:     filepath.Join(gitOpsContext, "components", componentName, "overlays", environmentName),
-				CommitID: commitID,
+				URL:                "",
+				Branch:             "",
+				Path:               "",
+				GeneratedResources: []string{},
 			},
-		}
-
-		// On OpenShift, we generate a unique route name for each Component, so include that in the status
-		if !isKubernetesCluster {
-			componentStatus.GeneratedRouteName = routeName
-			log.Info(fmt.Sprintf("added RouteName %s for Component %s to status", routeName, componentName))
-		}
-
-		if _, ok := componentGeneratedResources[componentName]; ok {
-			componentStatus.GitOpsRepository.GeneratedResources = componentGeneratedResources[componentName]
 		}
 
 		isNewComponent := true
@@ -442,14 +209,6 @@ func (r *SnapshotEnvironmentBindingReconciler) Reconcile(ctx context.Context, re
 			appSnapshotEnvBinding.Status.Components = append(appSnapshotEnvBinding.Status.Components, componentStatus)
 		}
 
-		// Set the clone to false, since we dont want to clone the repo again for the other components
-		clone = false
-	}
-
-	// Remove the cloned path
-	err = r.AppFS.RemoveAll(tempDir)
-	if err != nil {
-		log.Error(err, "Unable to remove the clone dir")
 	}
 
 	// Update the binding status to reflect the GitOps data
@@ -464,20 +223,6 @@ func (r *SnapshotEnvironmentBindingReconciler) Reconcile(ctx context.Context, re
 
 	log.Info(fmt.Sprintf("Finished reconcile loop for %v", req.NamespacedName))
 	return ctrl.Result{}, nil
-}
-
-// isKubernetesCluster checks if its either a Kubernetes or an OpenShift cluster
-// from the Environment custom resource
-func isKubernetesCluster(environment appstudiov1alpha1.Environment) bool {
-	unstableConfig := environment.Spec.UnstableConfigurationFields
-
-	if unstableConfig != nil {
-		if unstableConfig.ClusterType == appstudiov1alpha1.ConfigurationClusterType_Kubernetes {
-			return true
-		}
-	}
-
-	return false
 }
 
 // SetupWithManager sets up the controller with the Manager.

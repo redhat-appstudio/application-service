@@ -28,8 +28,6 @@ import (
 
 	spiapi "github.com/redhat-appstudio/service-provider-integration-operator/api/v1beta1"
 
-	gitopsgen "github.com/redhat-developer/gitops-generator/pkg"
-
 	// Import all Kubernetes client auth plugins (e.g. Azure, GCP, OIDC, etc.)
 	// to ensure that exec-entrypoint and run can make use of them.
 	"go.uber.org/zap/zapcore"
@@ -130,12 +128,6 @@ func main() {
 		os.Exit(1)
 	}
 
-	// Retrieve the name of the GitHub org to use
-	ghOrg := os.Getenv("GITHUB_ORG")
-	if ghOrg == "" {
-		ghOrg = "redhat-appstudio-appdata"
-	}
-
 	// Retrieve the option to specify a custom devfile registry
 	devfileRegistryURL := os.Getenv("DEVFILE_REGISTRY_URL")
 	if devfileRegistryURL == "" {
@@ -171,11 +163,9 @@ func main() {
 	setupLog.Info(fmt.Sprintf("There are %v token(s) available", len(github.Clients)))
 
 	if err = (&controllers.ApplicationReconciler{
-		Client:            mgr.GetClient(),
-		Scheme:            mgr.GetScheme(),
-		Log:               ctrl.Log.WithName("controllers").WithName("Application"),
-		GitHubTokenClient: ghTokenClient,
-		GitHubOrg:         ghOrg,
+		Client: mgr.GetClient(),
+		Scheme: mgr.GetScheme(),
+		Log:    ctrl.Log.WithName("controllers").WithName("Application"),
 	}).SetupWithManager(ctx, mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "Application")
 		os.Exit(1)
@@ -184,7 +174,6 @@ func main() {
 		Client:            mgr.GetClient(),
 		Scheme:            mgr.GetScheme(),
 		Log:               ctrl.Log.WithName("controllers").WithName("Component"),
-		Generator:         gitopsgen.NewGitopsGen(),
 		AppFS:             ioutils.NewFilesystem(),
 		GitHubTokenClient: ghTokenClient,
 		SPIClient: spi.SPIClient{
@@ -234,7 +223,6 @@ func main() {
 		Client:            mgr.GetClient(),
 		Scheme:            mgr.GetScheme(),
 		Log:               ctrl.Log.WithName("controllers").WithName("SnapshotEnvironmentBinding"),
-		Generator:         gitopsgen.NewGitopsGen(),
 		AppFS:             ioutils.NewFilesystem(),
 		GitHubTokenClient: ghTokenClient,
 	}).SetupWithManager(ctx, mgr); err != nil {

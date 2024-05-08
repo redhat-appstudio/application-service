@@ -16,104 +16,15 @@ limitations under the License.
 package gitops
 
 import (
-	"path/filepath"
 	"reflect"
 	"strings"
 	"testing"
 
-	"github.com/mitchellh/go-homedir"
 	pacv1alpha1 "github.com/openshift-pipelines/pipelines-as-code/pkg/apis/pipelinesascode/v1alpha1"
 	appstudiov1alpha1 "github.com/redhat-appstudio/application-api/api/v1alpha1"
 	gitopsprepare "github.com/redhat-appstudio/application-service/gitops/prepare"
-	"github.com/redhat-appstudio/application-service/pkg/util/ioutils"
-	"github.com/redhat-developer/gitops-generator/pkg/testutils"
-	"github.com/spf13/afero"
-	"github.com/stretchr/testify/assert"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
-
-func TestGenerateBuild(t *testing.T) {
-	outoutFolder := "output"
-	emptyGitopsConfig := gitopsprepare.GitopsConfig{}
-
-	tests := []struct {
-		name         string
-		fs           afero.Afero
-		component    appstudiov1alpha1.Component
-		gitopsConfig gitopsprepare.GitopsConfig
-		want         []string
-	}{
-		{
-			name: "Check pipeline as code resources with annotation",
-			fs:   ioutils.NewMemoryFilesystem(),
-			component: appstudiov1alpha1.Component{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "testcomponent",
-					Namespace: "workspace-name",
-					Annotations: map[string]string{
-						PaCAnnotation: "1",
-					},
-				},
-				Spec: appstudiov1alpha1.ComponentSpec{
-					Source: appstudiov1alpha1.ComponentSource{
-						ComponentSourceUnion: appstudiov1alpha1.ComponentSourceUnion{
-							GitSource: &appstudiov1alpha1.GitSource{
-								URL: "https://github.com/user/git-repo.git",
-							},
-						},
-					},
-				},
-			},
-			gitopsConfig: emptyGitopsConfig,
-			want: []string{
-				kustomizeFileName,
-				buildRepositoryFileName,
-			},
-		},
-		{
-			name: "Check pipeline as code resources on HACBS",
-			fs:   ioutils.NewMemoryFilesystem(),
-			component: appstudiov1alpha1.Component{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "testcomponent",
-					Namespace: "workspace-name",
-				},
-				Spec: appstudiov1alpha1.ComponentSpec{
-					Source: appstudiov1alpha1.ComponentSource{
-						ComponentSourceUnion: appstudiov1alpha1.ComponentSourceUnion{
-							GitSource: &appstudiov1alpha1.GitSource{
-								URL: "https://github.com/user/git-repo.git",
-							},
-						},
-					},
-				},
-			},
-			gitopsConfig: emptyGitopsConfig,
-			want: []string{
-				kustomizeFileName,
-				buildRepositoryFileName,
-			},
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			if err := GenerateBuild(tt.fs, outoutFolder, tt.component, tt.gitopsConfig); err != nil {
-				t.Errorf("Failed to generate builf gitops resources. Cause: %v", err)
-			}
-
-			// Ensure that needed resources generated
-			path, err := homedir.Expand(outoutFolder)
-			testutils.AssertNoError(t, err)
-
-			for _, item := range tt.want {
-				exist, err := tt.fs.Exists(filepath.Join(path, item))
-				testutils.AssertNoError(t, err)
-				assert.True(t, exist, "Expected file %s missing in gitops", item)
-			}
-		})
-	}
-}
 
 func TestGeneratePACRepository(t *testing.T) {
 	getComponent := func(repoUrl string, annotations map[string]string) appstudiov1alpha1.Component {

@@ -24,7 +24,6 @@ import (
 
 	"github.com/devfile/library/v2/pkg/devfile/parser"
 
-	"github.com/prometheus/client_golang/prometheus"
 	cdqanalysis "github.com/redhat-appstudio/application-service/cdq-analysis/pkg"
 	"github.com/redhat-appstudio/application-service/pkg/metrics"
 
@@ -33,13 +32,11 @@ import (
 
 	k8sErrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/client-go/util/retry"
 	"k8s.io/client-go/util/workqueue"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/builder"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
-	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	"sigs.k8s.io/controller-runtime/pkg/event"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
 	"sigs.k8s.io/controller-runtime/pkg/predicate"
@@ -49,21 +46,15 @@ import (
 
 	appstudiov1alpha1 "github.com/redhat-appstudio/application-api/api/v1alpha1"
 	devfile "github.com/redhat-appstudio/application-service/pkg/devfile"
-	github "github.com/redhat-appstudio/application-service/pkg/github"
 	logutil "github.com/redhat-appstudio/application-service/pkg/log"
-	util "github.com/redhat-appstudio/application-service/pkg/util"
 )
 
 // ApplicationReconciler reconciles a Application object
 type ApplicationReconciler struct {
 	client.Client
-	Scheme            *runtime.Scheme
-	Log               logr.Logger
-	GitHubTokenClient github.GitHubToken
-	GitHubOrg         string
+	Scheme *runtime.Scheme
+	Log    logr.Logger
 }
-
-const applicationName = "Application"
 
 //+kubebuilder:rbac:groups=appstudio.redhat.com,resources=applications,verbs=get;list;watch;create;update;patch;delete
 //+kubebuilder:rbac:groups=appstudio.redhat.com,resources=applications/status,verbs=get;update;patch
@@ -95,113 +86,14 @@ func (r *ApplicationReconciler) Reconcile(ctx context.Context, req ctrl.Request)
 		return reconcile.Result{}, err
 	}
 
-	ghClient, err := r.GitHubTokenClient.GetNewGitHubClient("")
-	if err != nil {
-		log.Error(err, "Unable to create Go-GitHub client due to error")
-		return reconcile.Result{}, err
-	}
-
-	// Add the Go-GitHub client name to the context
-	ctx = context.WithValue(ctx, github.GHClientKey, ghClient.TokenName)
-
-	// Check if the Application CR is under deletion
-	// If so: Remove the GitOps repo (if generated) and remove the finalizer.
-	if application.ObjectMeta.DeletionTimestamp.IsZero() {
-		if !containsString(application.GetFinalizers(), appFinalizerName) {
-			// Attach the finalizer and return to reset the reconciler loop
-			err := r.AddFinalizer(ctx, &application)
-			return ctrl.Result{}, err
-		}
-	} else {
-		if containsString(application.GetFinalizers(), appFinalizerName) {
-			metrics.ApplicationDeletionTotalReqs.Inc()
-			// A finalizer is present for the Application CR, so make sure we do the necessary cleanup steps
-			if finalizeErr := r.Finalize(ctx, &application, ghClient); finalizeErr != nil {
-				finalizeCounter, err := getCounterAnnotation(finalizeCount, &application)
-				if err == nil && finalizeCounter < 5 {
-					err := retry.RetryOnConflict(retry.DefaultRetry, func() error {
-						var currentApplication appstudiov1alpha1.Application
-						err := r.Get(ctx, req.NamespacedName, &currentApplication)
-						if err != nil {
-							return err
-						}
-						// The Finalize function failed, so increment the finalize count and return
-						setCounterAnnotation(finalizeCount, &currentApplication, finalizeCounter+1)
-
-						err = r.Update(ctx, &currentApplication)
-						return err
-					})
-					if err != nil {
-						log.Error(err, "Error incrementing finalizer count on resource")
-					}
-					return ctrl.Result{}, nil
-				} else {
-					// if fail to delete the external dependency here, log the error, but don't return error
-					// Don't want to get stuck in a cycle of repeatedly trying to delete the repository and failing
-
-					// Increment the Application deletion failed metric as the application delete did not fully succeed
-					log.Error(finalizeErr, "Unable to delete GitOps repository for application")
-					metrics.ApplicationDeletionFailed.Inc()
-				}
-
-			}
-
-			// remove the finalizer from the list and update it.
-			err := retry.RetryOnConflict(retry.DefaultRetry, func() error {
-				var currentApplication appstudiov1alpha1.Application
-				err := r.Get(ctx, req.NamespacedName, &currentApplication)
-				if err != nil {
-					return err
-				}
-
-				controllerutil.RemoveFinalizer(&currentApplication, appFinalizerName)
-
-				err = r.Update(ctx, &currentApplication)
-				return err
-			})
-			if err != nil {
-				return ctrl.Result{}, err
-			} else {
-				metrics.ApplicationDeletionSucceeded.Inc()
-			}
-		}
-	}
-
 	log.Info(fmt.Sprintf("Starting reconcile loop for %v", req.NamespacedName))
 	// If devfile hasn't been generated yet, generate it
 	// If the devfile hasn't been generated, the CR was just created.
 	if application.Status.Devfile == "" {
 		metrics.ApplicationCreationTotalReqs.Inc()
-		// See if a gitops/appModel repo(s) were passed in. If not, generate them.
-		gitOpsRepo := application.Spec.GitOpsRepository.URL
-		appModelRepo := application.Spec.AppModelRepository.URL
-		if gitOpsRepo == "" {
-			// If both repositories are blank, just generate a single shared repository
-			uniqueHash := util.GenerateUniqueHashForWorkloadImageTag(application.Namespace)
-			repoName := github.GenerateNewRepositoryName(application.Name, uniqueHash)
-
-			// Generate the git repo in the redhat-appstudio-appdata org
-			// Not an SLI metric.  Used for determining the number of git operation requests
-			metricsLabel := prometheus.Labels{"controller": applicationName, "tokenName": ghClient.TokenName, "operation": "GenerateNewRepository"}
-			metrics.ControllerGitRequest.With(metricsLabel).Inc()
-			repoUrl, err := ghClient.GenerateNewRepository(ctx, r.GitHubOrg, repoName, "GitOps Repository")
-			if err != nil {
-				metrics.HandleRateLimitMetrics(err, metricsLabel)
-				metrics.ApplicationCreationFailed.Inc()
-				log.Error(err, fmt.Sprintf("Unable to create repository %v", repoUrl))
-				r.SetCreateConditionAndUpdateCR(ctx, req, &application, err)
-				return reconcile.Result{}, err
-			}
-
-			gitOpsRepo = repoUrl
-		}
-		if appModelRepo == "" {
-			// If the appModelRepo is unset, just set it to the gitops repo
-			appModelRepo = gitOpsRepo
-		}
 
 		// Convert the devfile string to a devfile object
-		devfileData, err := devfile.ConvertApplicationToDevfile(application, gitOpsRepo, appModelRepo)
+		devfileData, err := devfile.ConvertApplicationToDevfile(application)
 		if err != nil {
 			metrics.ApplicationCreationFailed.Inc()
 			log.Error(err, fmt.Sprintf("Unable to convert Application CR to devfile, exiting reconcile loop %v", req.NamespacedName))
@@ -227,7 +119,6 @@ func (r *ApplicationReconciler) Reconcile(ctx context.Context, req ctrl.Request)
 
 		application.Status.Devfile = string(yamlData)
 
-		// Create GitOps repository
 		// Update the status of the CR
 		metrics.ApplicationCreationSucceeded.Inc()
 		r.SetCreateConditionAndUpdateCR(ctx, req, &application, nil)

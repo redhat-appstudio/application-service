@@ -22,10 +22,8 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/brianvoe/gofakeit/v6"
 	"github.com/google/go-github/v59/github"
 	"github.com/redhat-appstudio/application-service/pkg/metrics"
-	"github.com/redhat-appstudio/application-service/pkg/util"
 )
 
 const AppStudioAppDataOrg = "redhat-appstudio-appdata"
@@ -57,14 +55,6 @@ type ServerError struct {
 
 func (e *ServerError) Error() string {
 	return fmt.Errorf("failed to create gitops repo due to error: %v", e.err).Error()
-}
-
-// GenerateNewRepositoryName creates a new gitops repository name, based on the following format:
-// <display-name>-<partial-hash-of-clustername-and-namespace>-<random-word>-<random-word>
-func GenerateNewRepositoryName(displayName, uniqueHash string) string {
-	sanitizedName := util.SanitizeName(displayName)
-	repoName := sanitizedName + "-" + uniqueHash + "-" + util.SanitizeName(gofakeit.Verb()) + "-" + util.SanitizeName(gofakeit.Verb())
-	return repoName
 }
 
 func (g *GitHubClient) GenerateNewRepository(ctx context.Context, orgName string, repoName string, description string) (string, error) {
