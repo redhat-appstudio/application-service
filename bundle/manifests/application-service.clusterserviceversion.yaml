@@ -342,7 +342,7 @@ spec:
                       key: DEVFILE_REGISTRY_URL
                       name: application-service-devfile-registry-config
                       optional: true
-                image: quay.io/redhat-appstudio/application-service:next
+                image: quay.io/konflux-ci/application-service:next
                 imagePullPolicy: Always
                 livenessProbe:
                   httpGet:
