@@ -19,7 +19,6 @@ package webhooks
 import (
 	"context"
 	"fmt"
-	"reflect"
 
 	"github.com/go-logr/logr"
 	appstudiov1alpha1 "github.com/redhat-appstudio/application-api/api/v1alpha1"
@@ -74,18 +73,9 @@ func (r *ApplicationWebhook) ValidateCreate(ctx context.Context, obj runtime.Obj
 
 // ValidateUpdate implements webhook.Validator so a webhook will be registered for the type
 func (r *ApplicationWebhook) ValidateUpdate(ctx context.Context, oldObj, newObj runtime.Object) error {
-	oldApp := oldObj.(*appstudiov1alpha1.Application)
 	newApp := newObj.(*appstudiov1alpha1.Application)
 	applicationlog := r.log.WithValues("controllerKind", "Application").WithValues("name", newApp.Name).WithValues("namespace", newApp.Namespace)
 	applicationlog.Info("validating the update request")
-
-	if !reflect.DeepEqual(newApp.Spec.AppModelRepository, oldApp.Spec.AppModelRepository) {
-		return fmt.Errorf("app model repository cannot be updated to %+v", newApp.Spec.AppModelRepository)
-	}
-
-	if !reflect.DeepEqual(newApp.Spec.GitOpsRepository, oldApp.Spec.GitOpsRepository) {
-		return fmt.Errorf("gitops repository cannot be updated to %+v", newApp.Spec.GitOpsRepository)
-	}
 
 	return nil
 }
