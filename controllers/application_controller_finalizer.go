@@ -23,11 +23,11 @@ import (
 
 	"github.com/devfile/library/v2/pkg/devfile/parser"
 
-	"github.com/prometheus/client_golang/prometheus"
-	appstudiov1alpha1 "github.com/redhat-appstudio/application-api/api/v1alpha1"
+	appstudiov1alpha1 "github.com/konflux-ci/application-api/api/v1alpha1"
 	cdqanalysis "github.com/konflux-ci/application-service/cdq-analysis/pkg"
 	github "github.com/konflux-ci/application-service/pkg/github"
 	"github.com/konflux-ci/application-service/pkg/metrics"
+	"github.com/prometheus/client_golang/prometheus"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 )

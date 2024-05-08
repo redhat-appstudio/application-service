@@ -1,13 +1,15 @@
 # Serviceability
 
-The serviceability document aims to help the local application-service developer and the Site Reliability Engineer (SRE) to access and service the application-service component. This document will help you understand how to access and understand the application-service logs, how to debug an application-service problem and provides a quick summary on the various questions that you might have regarding application-service. 
+The serviceability document aims to help the local application-service developer and the Site Reliability Engineer (SRE) to access and service the application-service component. This document will help you understand how to access and understand the application-service logs, how to debug an application-service problem and provides a quick summary on the various questions that you might have regarding application-service.
 
 ## Accessing the Logs
 
 ### Deployed Locally
+
 View the application-service controller logs in the terminal window where the executable manager is running. Example, `./bin/manager` will output the controller logs in the terminal.
 
 ### Deployed on a Local Cluster
+
 View the application-service controller logs by tailing the manager container log of the controller manager pod. The pod resides in the application-service namespace. Example,
 
 ```
@@ -16,10 +18,11 @@ oc logs -f application-service-application-service-controller-manager -c manager
 
 ### Deployed on a Managed Cluster
 
-To access the application-service controller logs on either the AppStudio Staging or Production clusters, you would need access to CloudWatch service. To learn more about how to request access to CloudWatch and view the application-service logs, refer to the HAS Access Control [documentation](https://docs.google.com/document/d/1cK4XGKpXBEYOKfIqSiHuuCfsfHjElxhG9lrlEozzgVE/edit#heading=h.yxk6h5uvh57d). 
+To access the application-service controller logs on either the AppStudio Staging or Production clusters, you would need access to CloudWatch service. To learn more about how to request access to CloudWatch and view the application-service logs, refer to the HAS Access Control [documentation](https://docs.google.com/document/d/1cK4XGKpXBEYOKfIqSiHuuCfsfHjElxhG9lrlEozzgVE/edit#heading=h.yxk6h5uvh57d).
 
 ## Understanding the Logs
-Each application-service controller logs their reconcile logic to the manager. The log message format is generally of format 
+
+Each application-service controller logs their reconcile logic to the manager. The log message format is generally of format
 
 ```
 {"level":"info","ts":"2023-08-31T19:59:21.144Z","msg":"Finished reconcile loop for user-tenant/devfile-sample-go-basic-development-binding-hr9nm","controller":"snapshotenvironmentbinding","controllerGroup":"appstudio.redhat.com","controllerKind":"SnapshotEnvironmentBinding","SnapshotEnvironmentBinding":{"name":"devfile-sample-go-basic-development-binding-hr9nm","namespace":"user-tenant"},"namespace":"user-tenant","name":"devfile-sample-go-basic-development-binding-hr9nm","reconcileID":"d5c8545b-957b-4f1a-b177-84a5d5f0d26c"}
@@ -41,13 +44,15 @@ To understand the AppStudio controller logging convention, refer to the Appstudi
 For more information, on how to debug on RHTAP Staging or how to set up a debugger on VS Code for local deployment of the application-service controller, please refer to the [Debugging](https://docs.google.com/document/d/1dneldJepfnJ6LnESSYMIhKqmFgjMtf_om_Eud5NMDtU/edit#heading=h.lz54tm3le87l) section of the Education Module document.
 
 ## Common Problems
+
 - When deploying HAS locally or on a local cluster, a Github Personal Access Token is required as the application-service controller requires the token for pushing the resources to the GitOps repository. Please refer to the [instructions](../docs/build-test-and-deploy.md#setting-the-github-token-environment-variable) in the deploy section for more information
 - When creating a `Component` from the `ComponentDetectionQuery`, remember to replace the generic application name `insert-application-name`, if the information is being used from a `ComponentDetectionQuery` status
 
 ## FAQs
+
 Q. Where can I view the application-service API types?
 
-A. The application-service API types and their corresponding webhooks are defined in the [redhat-appstudio/application-api](https://github.com/redhat-appstudio/application-api) repository. You can also find the API reference information in the [Book of AppStudio](https://redhat-appstudio.github.io/architecture/ref/index.html) website.
+A. The application-service API types and their corresponding webhooks are defined in the [redhat-appstudio/application-api](https://github.com/konflux-ci/application-api) repository. You can also find the API reference information in the [Book of AppStudio](https://redhat-appstudio.github.io/architecture/ref/index.html) website.
 
 Q. Where are the application-service controller logic located?
 

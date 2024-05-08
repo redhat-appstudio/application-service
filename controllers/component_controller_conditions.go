@@ -25,8 +25,8 @@ import (
 	"k8s.io/client-go/util/retry"
 	ctrl "sigs.k8s.io/controller-runtime"
 
+	appstudiov1alpha1 "github.com/konflux-ci/application-api/api/v1alpha1"
 	logutil "github.com/konflux-ci/application-service/pkg/log"
-	appstudiov1alpha1 "github.com/redhat-appstudio/application-api/api/v1alpha1"
 )
 
 func (r *ComponentReconciler) SetCreateConditionAndUpdateCR(ctx context.Context, req ctrl.Request, component *appstudiov1alpha1.Component, createError error) error {

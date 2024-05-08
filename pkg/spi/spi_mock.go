@@ -21,7 +21,7 @@ import (
 	"io"
 	"strings"
 
-	"github.com/redhat-appstudio/application-api/api/v1alpha1"
+	"github.com/konflux-ci/application-api/api/v1alpha1"
 	spiapi "github.com/redhat-appstudio/service-provider-integration-operator/api/v1beta1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"

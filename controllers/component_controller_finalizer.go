@@ -25,11 +25,11 @@ import (
 	"k8s.io/apimachinery/pkg/api/errors"
 	ctrl "sigs.k8s.io/controller-runtime"
 
+	appstudiov1alpha1 "github.com/konflux-ci/application-api/api/v1alpha1"
 	cdqanalysis "github.com/konflux-ci/application-service/cdq-analysis/pkg"
 	github "github.com/konflux-ci/application-service/pkg/github"
 	"github.com/konflux-ci/application-service/pkg/util"
 	"github.com/konflux-ci/application-service/pkg/util/ioutils"
-	appstudiov1alpha1 "github.com/redhat-appstudio/application-api/api/v1alpha1"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	"sigs.k8s.io/yaml"
 )

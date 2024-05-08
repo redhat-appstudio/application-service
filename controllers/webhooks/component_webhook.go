@@ -22,8 +22,8 @@ import (
 	"fmt"
 	"net/url"
 
+	appstudiov1alpha1 "github.com/konflux-ci/application-api/api/v1alpha1"
 	"github.com/konflux-ci/application-service/pkg/util"
-	appstudiov1alpha1 "github.com/redhat-appstudio/application-api/api/v1alpha1"
 
 	"github.com/go-logr/logr"
 	k8sErrors "k8s.io/apimachinery/pkg/api/errors"

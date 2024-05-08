@@ -25,9 +25,9 @@ import (
 	"github.com/redhat-developer/gitops-generator/pkg/resources"
 	"github.com/redhat-developer/gitops-generator/pkg/yaml"
 
+	appstudiov1alpha1 "github.com/konflux-ci/application-api/api/v1alpha1"
 	gitopsprepare "github.com/konflux-ci/application-service/gitops/prepare"
 	pacv1alpha1 "github.com/openshift-pipelines/pipelines-as-code/pkg/apis/pipelinesascode/v1alpha1"
-	appstudiov1alpha1 "github.com/redhat-appstudio/application-api/api/v1alpha1"
 	"github.com/spf13/afero"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )

@@ -47,6 +47,7 @@ import (
 
 	routev1 "github.com/openshift/api/route/v1"
 
+	appstudiov1alpha1 "github.com/konflux-ci/application-api/api/v1alpha1"
 	cdqanalysis "github.com/konflux-ci/application-service/cdq-analysis/pkg"
 	"github.com/konflux-ci/application-service/controllers"
 	"github.com/konflux-ci/application-service/controllers/webhooks"
@@ -54,7 +55,6 @@ import (
 	"github.com/konflux-ci/application-service/pkg/github"
 	"github.com/konflux-ci/application-service/pkg/spi"
 	"github.com/konflux-ci/application-service/pkg/util/ioutils"
-	appstudiov1alpha1 "github.com/redhat-appstudio/application-api/api/v1alpha1"
 
 	// Enable pprof for profiling
 	/* #nosec G108 -- debug code */

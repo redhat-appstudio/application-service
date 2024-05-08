@@ -34,10 +34,10 @@ import (
 	"github.com/devfile/library/v2/pkg/devfile/parser"
 	data "github.com/devfile/library/v2/pkg/devfile/parser/data"
 	"github.com/devfile/library/v2/pkg/devfile/parser/data/v2/common"
+	appstudiov1alpha1 "github.com/konflux-ci/application-api/api/v1alpha1"
 	devfilePkg "github.com/konflux-ci/application-service/pkg/devfile"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
-	appstudiov1alpha1 "github.com/redhat-appstudio/application-api/api/v1alpha1"
 
 	spiapi "github.com/redhat-appstudio/service-provider-integration-operator/api/v1beta1"
 	corev1 "k8s.io/api/core/v1"

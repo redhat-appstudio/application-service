@@ -22,13 +22,13 @@ import (
 
 	"github.com/devfile/library/v2/pkg/devfile/parser"
 
+	appstudiov1alpha1 "github.com/konflux-ci/application-api/api/v1alpha1"
+	cdqanalysis "github.com/konflux-ci/application-service/cdq-analysis/pkg"
+	"github.com/konflux-ci/application-service/pkg/metrics"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/testutil"
-	appstudiov1alpha1 "github.com/redhat-appstudio/application-api/api/v1alpha1"
-	cdqanalysis "github.com/konflux-ci/application-service/cdq-analysis/pkg"
-	"github.com/konflux-ci/application-service/pkg/metrics"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/yaml"

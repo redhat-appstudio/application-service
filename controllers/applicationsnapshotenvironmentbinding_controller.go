@@ -33,12 +33,12 @@ import (
 
 	devfileParser "github.com/devfile/library/v2/pkg/devfile/parser"
 	"github.com/go-logr/logr"
+	appstudiov1alpha1 "github.com/konflux-ci/application-api/api/v1alpha1"
 	"github.com/konflux-ci/application-service/pkg/devfile"
 	"github.com/konflux-ci/application-service/pkg/github"
 	logutil "github.com/konflux-ci/application-service/pkg/log"
 	"github.com/konflux-ci/application-service/pkg/util"
 	"github.com/konflux-ci/application-service/pkg/util/ioutils"
-	appstudiov1alpha1 "github.com/redhat-appstudio/application-api/api/v1alpha1"
 	"github.com/spf13/afero"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
