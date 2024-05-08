@@ -23,8 +23,6 @@ import (
 
 	spiapi "github.com/redhat-appstudio/service-provider-integration-operator/api/v1beta1"
 
-	"github.com/redhat-appstudio/application-service/gitops"
-
 	ginkgo "github.com/onsi/ginkgo"
 	gomega "github.com/onsi/gomega"
 	"k8s.io/client-go/kubernetes/scheme"
@@ -106,20 +104,17 @@ func SetupTestEnv() (client.Client, *envtest.Environment, context.Context, conte
 
 	// To Do: Set up reconcilers for the other controllers
 	err = (&ApplicationReconciler{
-		Client:            k8sManager.GetClient(),
-		Scheme:            k8sManager.GetScheme(),
-		Log:               ctrl.Log.WithName("controllers").WithName("Application"),
-		GitHubTokenClient: mockGhTokenClient,
-		GitHubOrg:         github.AppStudioAppDataOrg,
+		Client: k8sManager.GetClient(),
+		Scheme: k8sManager.GetScheme(),
+		Log:    ctrl.Log.WithName("controllers").WithName("Application"),
 	}).SetupWithManager(ctx, k8sManager)
 	gomega.Expect(err).ToNot(gomega.HaveOccurred())
 
 	err = (&ComponentReconciler{
-		Client:    k8sManager.GetClient(),
-		Scheme:    k8sManager.GetScheme(),
-		Log:       ctrl.Log.WithName("controllers").WithName("Component"),
-		Generator: gitops.NewMockGenerator(),
-		AppFS:     ioutils.NewMemoryFilesystem(),
+		Client: k8sManager.GetClient(),
+		Scheme: k8sManager.GetScheme(),
+		Log:    ctrl.Log.WithName("controllers").WithName("Component"),
+		AppFS:  ioutils.NewMemoryFilesystem(),
 		SPIClient: spi.MockSPIClient{
 			K8sClient: k8sClient,
 		},
@@ -146,7 +141,6 @@ func SetupTestEnv() (client.Client, *envtest.Environment, context.Context, conte
 		Client:            k8sManager.GetClient(),
 		Scheme:            k8sManager.GetScheme(),
 		Log:               ctrl.Log.WithName("controllers").WithName("SnapshotEnvironmentBinding"),
-		Generator:         gitops.NewMockGenerator(),
 		AppFS:             ioutils.NewMemoryFilesystem(),
 		GitHubTokenClient: mockGhTokenClient,
 	}).SetupWithManager(ctx, k8sManager)

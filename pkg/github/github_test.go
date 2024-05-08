@@ -24,39 +24,8 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/testutil"
 	"github.com/redhat-appstudio/application-service/pkg/metrics"
-	"github.com/redhat-appstudio/application-service/pkg/util"
 	"github.com/stretchr/testify/assert"
 )
-
-func TestGenerateNewRepositoryName(t *testing.T) {
-	tests := []struct {
-		name        string
-		displayName string
-		namespace   string
-		clusterName string
-		want        string
-	}{
-		{
-			name:        "Simple display name, no spaces",
-			displayName: "PetClinic",
-			namespace:   "default",
-			clusterName: "root:test-workspace",
-			want:        "petclinic-default",
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			sanitizedName := util.SanitizeName(tt.displayName)
-			uniqueHash := util.GenerateUniqueHashForWorkloadImageTag(tt.namespace)
-			generatedRepo := GenerateNewRepositoryName(tt.displayName, uniqueHash)
-
-			if !strings.Contains(generatedRepo, sanitizedName) || !strings.Contains(generatedRepo, uniqueHash) {
-				t.Errorf("TestSanitizeDisplayName() error: expected %v got %v", tt.want, sanitizedName)
-			}
-		})
-	}
-}
 
 func TestGenerateNewRepository(t *testing.T) {
 

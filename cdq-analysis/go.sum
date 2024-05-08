@@ -56,10 +56,10 @@ github.com/davecgh/go-spew v1.1.2-0.20180830191138-d8f796af33cc h1:U9qPSI2PIWSS1
 github.com/davecgh/go-spew v1.1.2-0.20180830191138-d8f796af33cc/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
 github.com/devfile/alizer v1.4.0 h1:m1vifzRqeLVWmArwZvnUvZ1HXKCfcdkXbI0xPwuyjtk=
 github.com/devfile/alizer v1.4.0/go.mod h1:5kjRnm61+eUU5AQaowgdvVif4oNTWvHqyymoZFga//s=
-github.com/devfile/api/v2 v2.2.1 h1:VSX297YqY4C4j4uhn7M0RdZeBaeWqyVi4NnagzEmxu0=
-github.com/devfile/api/v2 v2.2.1/go.mod h1:qp8jcw12y1JdCsxjK/7LJ7uWaJOxcY1s2LUk5PhbkbM=
-github.com/devfile/library/v2 v2.2.2-0.20231206202302-705f00dd96f5 h1:RcqH+Kg4mYWXRYyjNC+tQ3rZmsHEiAjXd1mCZfaoc8Y=
-github.com/devfile/library/v2 v2.2.2-0.20231206202302-705f00dd96f5/go.mod h1:zKKhnbSLXi8vu46c5RLr+y4kY9S9Ubi0SeCm3awndsw=
+github.com/devfile/api/v2 v2.2.2 h1:DXRCPWFlZhTIE38Of2jzTRjQHadfbxBC8GS+m+EjoCU=
+github.com/devfile/api/v2 v2.2.2/go.mod h1:qp8jcw12y1JdCsxjK/7LJ7uWaJOxcY1s2LUk5PhbkbM=
+github.com/devfile/library/v2 v2.2.2 h1:iLtFQ16aYMcB+vUx7NKtKPiTEursxwueu6/qOailubA=
+github.com/devfile/library/v2 v2.2.2/go.mod h1:LHgAu9VApI++hE+cr6CWrkj1OlzHOJeKbraqC5PxSec=
 github.com/devfile/registry-support/index/generator v0.0.0-20240311135803-6215550f93d4 h1:t09mGdy31tC2YBp6kVD7x8m0jq1CyBUSYMUvrF0iaWw=
 github.com/devfile/registry-support/index/generator v0.0.0-20240311135803-6215550f93d4/go.mod h1:3Ngbmm12LW03tAEHpDNymM7zryd5H1Xo3ZAGlBpecf8=
 github.com/devfile/registry-support/registry-library v0.0.0-20240404132339-d10fc19d3acc h1:TuOJ37ZnFJtHh55Yi9spX/+sNxYBjDgH2bmQNIyRMeE=

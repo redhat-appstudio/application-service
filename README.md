@@ -21,7 +21,6 @@ This repository is closely associated with the [application-api](https://github.
 
 ### ⭐ Other Info
 
-* [Gitops-generation](./docs/gitops-generation.md) - information on the GitOps resource generation from application-service
 * [Pact tests](./docs/pact-tests.md) - contract tests using a Pact framework (part of the unit tests)
 * [OpenShift CI job artifacts](https://docs.ci.openshift.org/docs/how-tos/artifacts/) - Prow job executed by the CI system generates an artifacts directory, this document describes the contents of this directory and how they can be used to investigate the job steps
 
