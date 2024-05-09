@@ -32,11 +32,13 @@ import (
 
 	k8sErrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/client-go/util/retry"
 	"k8s.io/client-go/util/workqueue"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/builder"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
+	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	"sigs.k8s.io/controller-runtime/pkg/event"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
 	"sigs.k8s.io/controller-runtime/pkg/predicate"
@@ -48,6 +50,8 @@ import (
 	devfile "github.com/redhat-appstudio/application-service/pkg/devfile"
 	logutil "github.com/redhat-appstudio/application-service/pkg/log"
 )
+
+const appFinalizerName = "application.appstudio.redhat.com/finalizer"
 
 // ApplicationReconciler reconciles a Application object
 type ApplicationReconciler struct {
@@ -86,6 +90,25 @@ func (r *ApplicationReconciler) Reconcile(ctx context.Context, req ctrl.Request)
 		return reconcile.Result{}, err
 	}
 
+	// If the resource still has the finalizer attached to it, just remove it so deletion doesn't get blocked
+	if containsString(application.GetFinalizers(), appFinalizerName) {
+		// remove the finalizer from the list and update it.
+		err := retry.RetryOnConflict(retry.DefaultRetry, func() error {
+			var currentApplication appstudiov1alpha1.Application
+			err := r.Get(ctx, req.NamespacedName, &currentApplication)
+			if err != nil {
+				return err
+			}
+
+			controllerutil.RemoveFinalizer(&currentApplication, appFinalizerName)
+
+			err = r.Update(ctx, &currentApplication)
+			return err
+		})
+		if err != nil {
+			return ctrl.Result{}, err
+		}
+	}
 	log.Info(fmt.Sprintf("Starting reconcile loop for %v", req.NamespacedName))
 	// If devfile hasn't been generated yet, generate it
 	// If the devfile hasn't been generated, the CR was just created.
@@ -231,4 +254,14 @@ func (r *ApplicationReconciler) SetupWithManager(ctx context.Context, mgr ctrl.M
 			},
 		})).
 		Complete(r)
+}
+
+// Helper functions to check and remove string from a slice of strings.
+func containsString(slice []string, s string) bool {
+	for _, item := range slice {
+		if item == s {
+			return true
+		}
+	}
+	return false
 }

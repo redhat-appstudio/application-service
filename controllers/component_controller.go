@@ -38,6 +38,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/builder"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
+	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	"sigs.k8s.io/controller-runtime/pkg/event"
 	"sigs.k8s.io/controller-runtime/pkg/predicate"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
@@ -57,6 +58,8 @@ import (
 	"github.com/redhat-appstudio/application-service/pkg/util"
 	"github.com/spf13/afero"
 )
+
+const compFinalizerName = "component.appstudio.redhat.com/finalizer"
 
 // ComponentReconciler reconciles a Component object
 type ComponentReconciler struct {
@@ -102,6 +105,26 @@ func (r *ComponentReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 		}
 		// Error reading the object - requeue the request.
 		return ctrl.Result{}, err
+	}
+
+	// If a resource still has the finalizer attached from it, just remove it so deletion doesn't get blocked
+	if containsString(component.GetFinalizers(), compFinalizerName) {
+		// remove the finalizer from the list and update it.
+		err := retry.RetryOnConflict(retry.DefaultRetry, func() error {
+			var currentComponent appstudiov1alpha1.Component
+			err := r.Get(ctx, req.NamespacedName, &currentComponent)
+			if err != nil {
+				return err
+			}
+
+			controllerutil.RemoveFinalizer(&currentComponent, compFinalizerName)
+
+			err = r.Update(ctx, &currentComponent)
+			return err
+		})
+		if err != nil {
+			return ctrl.Result{}, err
+		}
 	}
 
 	_, prevErrCondition := checkForCreateReconcile(component)
