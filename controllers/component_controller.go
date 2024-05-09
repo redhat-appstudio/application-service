@@ -117,7 +117,7 @@ func (r *ComponentReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 				return err
 			}
 
-			controllerutil.RemoveFinalizer(&currentComponent, appFinalizerName)
+			controllerutil.RemoveFinalizer(&currentComponent, compFinalizerName)
 
 			err = r.Update(ctx, &currentComponent)
 			return err
