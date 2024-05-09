@@ -145,6 +145,39 @@ var _ = Describe("Application controller", func() {
 		})
 	})
 
+	Context("Application CR with finalizer", func() {
+		It("Should delete successfully", func() {
+			ctx := context.Background()
+
+			applicationName := HASAppName + "5"
+
+			hasApp := &appstudiov1alpha1.Application{
+				TypeMeta: metav1.TypeMeta{
+					APIVersion: "appstudio.redhat.com/v1alpha1",
+					Kind:       "Application",
+				},
+				ObjectMeta: metav1.ObjectMeta{
+					Name:       applicationName,
+					Namespace:  HASAppNamespace,
+					Finalizers: []string{appFinalizerName},
+				},
+				Spec: appstudiov1alpha1.ApplicationSpec{
+					DisplayName: DisplayName,
+					Description: Description,
+				},
+			}
+
+			Expect(k8sClient.Create(ctx, hasApp)).Should(Succeed())
+
+			// Look up the has app resource that was created.
+			// num(conditions) may still be < 1 on the first try, so retry until at least _some_ condition is set
+			hasAppLookupKey := types.NamespacedName{Name: applicationName, Namespace: HASAppNamespace}
+
+			// Delete the specified resource
+			deleteHASAppCR(hasAppLookupKey)
+		})
+	})
+
 })
 
 // deleteHASAppCR deletes the specified hasApp resource and verifies it was properly deleted
