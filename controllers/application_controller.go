@@ -90,24 +90,23 @@ func (r *ApplicationReconciler) Reconcile(ctx context.Context, req ctrl.Request)
 		return reconcile.Result{}, err
 	}
 
-	if !application.ObjectMeta.DeletionTimestamp.IsZero() {
-		if containsString(application.GetFinalizers(), appFinalizerName) {
-			// remove the finalizer from the list and update it.
-			err := retry.RetryOnConflict(retry.DefaultRetry, func() error {
-				var currentApplication appstudiov1alpha1.Application
-				err := r.Get(ctx, req.NamespacedName, &currentApplication)
-				if err != nil {
-					return err
-				}
-
-				controllerutil.RemoveFinalizer(&currentApplication, appFinalizerName)
-
-				err = r.Update(ctx, &currentApplication)
-				return err
-			})
+	// If the resource still has the finalizer attached to it, just remove it so deletion doesn't get blocked
+	if containsString(application.GetFinalizers(), appFinalizerName) {
+		// remove the finalizer from the list and update it.
+		err := retry.RetryOnConflict(retry.DefaultRetry, func() error {
+			var currentApplication appstudiov1alpha1.Application
+			err := r.Get(ctx, req.NamespacedName, &currentApplication)
 			if err != nil {
-				return ctrl.Result{}, err
+				return err
 			}
+
+			controllerutil.RemoveFinalizer(&currentApplication, appFinalizerName)
+
+			err = r.Update(ctx, &currentApplication)
+			return err
+		})
+		if err != nil {
+			return ctrl.Result{}, err
 		}
 	}
 	log.Info(fmt.Sprintf("Starting reconcile loop for %v", req.NamespacedName))

@@ -107,26 +107,23 @@ func (r *ComponentReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 		return ctrl.Result{}, err
 	}
 
-	// If a resource is under deletion and still has the finalizer attached from it,
-	// just remove it before deletion to prevent it from being blocked
-	if !component.ObjectMeta.DeletionTimestamp.IsZero() {
-		if containsString(component.GetFinalizers(), appFinalizerName) {
-			// remove the finalizer from the list and update it.
-			err := retry.RetryOnConflict(retry.DefaultRetry, func() error {
-				var currentComponent appstudiov1alpha1.Component
-				err := r.Get(ctx, req.NamespacedName, &currentComponent)
-				if err != nil {
-					return err
-				}
-
-				controllerutil.RemoveFinalizer(&currentComponent, appFinalizerName)
-
-				err = r.Update(ctx, &currentComponent)
-				return err
-			})
+	// If a resource still has the finalizer attached from it, just remove it so deletion doesn't get blocked
+	if containsString(component.GetFinalizers(), compFinalizerName) {
+		// remove the finalizer from the list and update it.
+		err := retry.RetryOnConflict(retry.DefaultRetry, func() error {
+			var currentComponent appstudiov1alpha1.Component
+			err := r.Get(ctx, req.NamespacedName, &currentComponent)
 			if err != nil {
-				return ctrl.Result{}, err
+				return err
 			}
+
+			controllerutil.RemoveFinalizer(&currentComponent, appFinalizerName)
+
+			err = r.Update(ctx, &currentComponent)
+			return err
+		})
+		if err != nil {
+			return ctrl.Result{}, err
 		}
 	}
 
