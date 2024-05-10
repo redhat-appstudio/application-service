@@ -5,7 +5,6 @@ WORKDIR /workspace
 # Copy the Go Modules manifests
 COPY go.mod go.mod
 COPY go.sum go.sum
-COPY cdq-analysis/ cdq-analysis/
 # cache deps before building and copying source so that we don't need to re-download as much
 # and so that source changes don't invalidate our downloaded layer
 RUN go mod download
@@ -13,21 +12,11 @@ RUN go mod download
 # Copy the go source
 COPY main.go main.go
 # ToDo: Uncomment once API added
-COPY controllers/ controllers/
+COPY webhooks/ webhooks/
 COPY pkg pkg/
-COPY gitops gitops/
 
 # Build
 RUN CGO_ENABLED=0 GOOS=linux go build -a -o manager main.go
-
-# Build the tini binary
-FROM registry.access.redhat.com/ubi8/ubi-minimal:8.9 as tini-builder
-RUN microdnf update --setopt=install_weak_deps=0 -y && microdnf install git cmake make gcc gcc-c++
-# build tini
-RUN git clone --branch v0.19.0 https://github.com/krallin/tini /tini
-WORKDIR /tini
-ENV CFLAGS="-DPR_SET_CHILD_SUBREAPER=36 -DPR_GET_CHILD_SUBREAPER=37"
-RUN cmake . && make tini
 
 FROM registry.access.redhat.com/ubi8/ubi-minimal:8.9
 RUN microdnf update --setopt=install_weak_deps=0 -y && microdnf install git
@@ -48,8 +37,6 @@ COPY --from=builder /workspace/manager .
 COPY appdata.gitconfig /.gitconfig
 RUN chgrp -R 0 /.gitconfig && chmod -R g=u /.gitconfig
 
-# copy tini
-COPY --from=tini-builder /tini/tini /usr/bin
 WORKDIR /
 
 USER 1001
