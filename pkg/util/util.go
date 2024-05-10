@@ -15,67 +15,6 @@
 
 package util
 
-import (
-	"fmt"
-	"math/rand"
-	"net/url"
-	"regexp"
-	"strings"
-)
-
-var RevisionHistoryLimit = int32(0)
-
-// GetIntValue returns the value of an int pointer, with the default of 0 if nil
-func GetIntValue(intPtr *int) int {
-	if intPtr != nil {
-		return *intPtr
-	}
-
-	return 0
-}
-
-// ValidateEndpoint validates if the endpoint url can be parsed and if it has a host and a scheme
-func ValidateEndpoint(endpoint string) error {
-	u, err := url.Parse(endpoint)
-	if err != nil {
-		return fmt.Errorf("failed to parse the url: %v, err: %v", endpoint, err)
-	}
-
-	if len(u.Host) == 0 || len(u.Scheme) == 0 {
-		return fmt.Errorf("url %v is invalid", endpoint)
-	}
-
-	return nil
-}
-
-// CheckWithRegex checks if a name matches the pattern.
-// If a pattern fails to compile, it returns false
-func CheckWithRegex(pattern, name string) bool {
-	reg, err := regexp.Compile(pattern)
-	if err != nil {
-		return false
-	}
-
-	return reg.MatchString(name)
-}
-
-const schemaBytes = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789"
-
-// GetRandomString returns a random string which is n characters long.
-// If lower is set to true a lower case string is returned.
-func GetRandomString(n int, lower bool) string {
-	b := make([]byte, n)
-	for i := range b {
-		/* #nosec G404 -- not used for cryptographic purposes*/
-		b[i] = schemaBytes[rand.Intn(len(schemaBytes)-1)]
-	}
-	randomString := string(b)
-	if lower {
-		randomString = strings.ToLower(randomString)
-	}
-	return randomString
-}
-
 // StrInList returns true if the given string is present in strList
 func StrInList(str string, strList []string) bool {
 	for _, val := range strList {
@@ -94,18 +33,4 @@ func RemoveStrFromList(str string, strList []string) []string {
 		}
 	}
 	return strList
-}
-
-// ValidateGithubURL checks if the given url includes github in hostname
-// In case of invalid url (not able to parse / not github) returns an error.
-func ValidateGithubURL(URL string) error {
-	parsedURL, err := url.Parse(URL)
-	if err != nil {
-		return err
-	}
-
-	if strings.Contains(parsedURL.Host, "github") {
-		return nil
-	}
-	return fmt.Errorf("source git url %v is not from github", URL)
 }

@@ -6,33 +6,4 @@ plugins:
   scorecard.sdk.operatorframework.io/v2: {}
 projectName: application-service
 repo: github.com/redhat-appstudio/application-service
-resources:
-- controller: true
-  domain: redhat.com
-  group: appstudio
-  kind: Application
-  version: v1alpha1
-  webhooks:
-    defaulting: true
-    validation: true
-    webhookVersion: v1
-- controller: true
-  domain: redhat.com
-  group: appstudio
-  kind: Component
-  version: v1alpha1
-  webhooks:
-    defaulting: true
-    validation: true
-    webhookVersion: v1
-- controller: true
-  domain: redhat.com
-  group: appstudio
-  kind: ComponentDetectionQuery
-  version: v1alpha1
-- controller: true
-  domain: redhat.com
-  group: appstudio
-  kind: SnapshotEnvironmentBinding
-  version: v1alpha1
 version: "3"
