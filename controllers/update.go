@@ -56,10 +56,6 @@ func (r *ComponentReconciler) updateComponentDevfileModel(req ctrl.Request, hasC
 		}
 	}
 
-	if err != nil {
-		return err
-	}
-
 	return nil
 }
 
