@@ -44,60 +44,7 @@ import (
 	"sigs.k8s.io/yaml"
 )
 
-var (
-	oneReplica    = 1
-	zeroReplica   = 0
-	threeReplicas = 3
-)
-
-var k8sInlined = ` 
-      apiVersion: apps/v1
-      kind: Deployment
-      metadata:
-        creationTimestamp: null
-        labels:
-          maysun: test
-        name: deploy-sample
-      spec:
-        replicas: 3
-        selector: {}
-        strategy: {}
-        template:
-          metadata:
-            creationTimestamp: null
-            labels:
-              app.kubernetes.io/instance: component-sample
-          spec:
-            containers:
-            - env:
-              - name: FOO
-                value: foo1
-              - name: BARBAR
-                value: bar1
-              image: quay.io/redhat-appstudio/user-workload:application-service-system-component-sample
-              imagePullPolicy: Always
-              livenessProbe:
-                httpGet:
-                  path: /
-                  port: 1111
-                initialDelaySeconds: 10
-                periodSeconds: 10
-              name: container-image
-              ports:
-              - containerPort: 1111
-              readinessProbe:
-                initialDelaySeconds: 10
-                periodSeconds: 10
-                tcpSocket:
-                  port: 1111
-              resources:
-                limits:
-                  cpu: "2"
-                  memory: 500Mi
-                requests:
-                  cpu: 700m
-                  memory: 400Mi
-      status: {}`
+var oneReplica = 1
 
 func TestUpdateApplicationDevfileModel(t *testing.T) {
 	tests := []struct {
