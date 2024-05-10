@@ -370,16 +370,6 @@ func (r *ComponentReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 
 		err = r.updateComponentDevfileModel(req, compDevfileData, component)
 		if err != nil {
-			// Increment the Component create failed metric only on non-user errors
-			if _, ok := err.(*NotSupported); ok {
-				metrics.IncrementComponentCreationSucceeded(prevErrCondition, err.Error())
-			} else if _, ok := err.(*devfile.DevfileAttributeParse); ok {
-				metrics.IncrementComponentCreationSucceeded(prevErrCondition, err.Error())
-			} else if _, ok := err.(*parserErrPkg.NonCompliantDevfile); ok {
-				metrics.IncrementComponentCreationSucceeded(prevErrCondition, err.Error())
-			} else {
-				metrics.IncrementComponentCreationFailed(prevErrCondition, err.Error())
-			}
 			log.Error(err, fmt.Sprintf("Unable to update the Component Devfile model %v", req.NamespacedName))
 			_ = r.SetCreateConditionAndUpdateCR(ctx, req, &component, err)
 			return ctrl.Result{}, err
