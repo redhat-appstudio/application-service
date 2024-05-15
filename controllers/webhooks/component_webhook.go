@@ -64,7 +64,7 @@ func (r *ComponentWebhook) Default(ctx context.Context, obj runtime.Object) erro
 	compName := component.Name
 	componentlog := r.log.WithValues("controllerKind", "Component").WithValues("name", compName).WithValues("namespace", component.Namespace)
 
-	if len(component.OwnerReferences) == 0 {
+	if len(component.OwnerReferences) == 0 && component.DeletionTimestamp.IsZero() {
 		// Get the Application CR
 		hasApplication := appstudiov1alpha1.Application{}
 		err := r.client.Get(ctx, types.NamespacedName{Name: component.Spec.Application, Namespace: component.Namespace}, &hasApplication)
