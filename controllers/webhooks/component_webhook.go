@@ -55,8 +55,7 @@ func (w *ComponentWebhook) Register(mgr ctrl.Manager, log *logr.Logger) error {
 
 // EDIT THIS FILE!  THIS IS SCAFFOLDING FOR YOU TO OWN!
 
-// +kubebuilder:webhook:path=/mutate-appstudio-redhat-com-v1alpha1-component,mutating=true,failurePolicy=fail,sideEffects=None,groups=appstudio.redhat.com,resources=components,verbs=create;update,versions=v1alpha1,name=mcomponent.kb.io,admissionReviewVersions=v1
-// +kubebuilder:webhook:path=/mutate-appstudio-redhat-com-v1alpha1-component,mutating=true,failurePolicy=fail,sideEffects=None,groups=appstudio.redhat.com,resources=components/status,verbs=create;update,versions=v1alpha1,name=mcomponent.kb.io,admissionReviewVersions=v1
+// +kubebuilder:webhook:path=/mutate-appstudio-redhat-com-v1alpha1-component,mutating=true,failurePolicy=fail,sideEffects=None,groups=appstudio.redhat.com,resources=components;components/status,verbs=create;update,versions=v1alpha1,name=mcomponent.kb.io,admissionReviewVersions=v1
 
 // Default implements webhook.Defaulter so a webhook will be registered for the type
 func (r *ComponentWebhook) Default(ctx context.Context, obj runtime.Object) error {
@@ -72,14 +71,16 @@ func (r *ComponentWebhook) Default(ctx context.Context, obj runtime.Object) erro
 			// Don't block if the Application doesn't exist yet - this will retrigger whenever the resource is modified
 			err = fmt.Errorf("unable to get the Application %s for Component %s, ignoring for now", component.Spec.Application, compName)
 			componentlog.Error(err, "skip setting owner reference on component")
+		} else {
+			ownerReference := metav1.OwnerReference{
+				APIVersion: hasApplication.APIVersion,
+				Kind:       hasApplication.Kind,
+				Name:       hasApplication.Name,
+				UID:        hasApplication.UID,
+			}
+			component.SetOwnerReferences(append(component.GetOwnerReferences(), ownerReference))
 		}
-		ownerReference := metav1.OwnerReference{
-			APIVersion: hasApplication.APIVersion,
-			Kind:       hasApplication.Kind,
-			Name:       hasApplication.Name,
-			UID:        hasApplication.UID,
-		}
-		component.SetOwnerReferences(append(component.GetOwnerReferences(), ownerReference))
+
 	}
 
 	return nil
