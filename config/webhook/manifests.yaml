@@ -44,6 +44,7 @@ webhooks:
     - UPDATE
     resources:
     - components
+    - components/status
   sideEffects: None
 ---
 apiVersion: admissionregistration.k8s.io/v1
