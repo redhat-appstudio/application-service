@@ -65,6 +65,7 @@ func (r *ComponentWebhook) Default(ctx context.Context, obj runtime.Object) erro
 
 	if len(component.OwnerReferences) == 0 && component.DeletionTimestamp.IsZero() {
 		// Get the Application CR
+		// Use the background context to ensure the operator's kubeconfig is used
 		hasApplication := appstudiov1alpha1.Application{}
 		err := r.client.Get(context.Background(), types.NamespacedName{Name: component.Spec.Application, Namespace: component.Namespace}, &hasApplication)
 		if err != nil {
@@ -76,6 +77,7 @@ func (r *ComponentWebhook) Default(ctx context.Context, obj runtime.Object) erro
 			err = retry.RetryOnConflict(retry.DefaultRetry, func() error {
 				var curComp appstudiov1alpha1.Component
 				// Get the Component to update using the operator's kubeconfig so that there aren't any permissions issues setting the owner reference
+				// Use the background context to ensure the operator's kubeconfig is used
 				err := r.client.Get(context.Background(), types.NamespacedName{Name: compName, Namespace: component.Namespace}, &curComp)
 				if err != nil {
 					componentlog.Error(err, "unable to get current component, so skip setting owner reference")
