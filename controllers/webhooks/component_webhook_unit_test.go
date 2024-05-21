@@ -66,7 +66,7 @@ func TestComponentDefaultingWebhook(t *testing.T) {
 			client: fakeClient,
 			comp: appstudiov1alpha1.Component{
 				ObjectMeta: v1.ObjectMeta{
-					Name:      "1-test-component",
+					Name:      "1-test-component-owner-ref",
 					Namespace: "default",
 				},
 				Spec: appstudiov1alpha1.ComponentSpec{
@@ -80,7 +80,7 @@ func TestComponentDefaultingWebhook(t *testing.T) {
 			client: fakeClient,
 			comp: appstudiov1alpha1.Component{
 				ObjectMeta: v1.ObjectMeta{
-					Name:      "1-test-component",
+					Name:      "1-test-component-not-found",
 					Namespace: "default",
 				},
 				Spec: appstudiov1alpha1.ComponentSpec{
@@ -92,6 +92,8 @@ func TestComponentDefaultingWebhook(t *testing.T) {
 	}
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
+			err := test.client.Create(context.Background(), &test.comp)
+			assert.Nil(t, err)
 			compWebhook := ComponentWebhook{
 				client: test.client,
 				log: zap.New(zap.UseFlagOptions(&zap.Options{
@@ -99,16 +101,20 @@ func TestComponentDefaultingWebhook(t *testing.T) {
 					TimeEncoder: zapcore.ISO8601TimeEncoder,
 				})),
 			}
-			err := compWebhook.Default(context.Background(), &test.comp)
+			err = compWebhook.Default(context.Background(), &test.comp)
 
 			// Defaulting webhook should not return an error
 			assert.Nil(t, err)
 
 			// Ensure that the component had its owner reference set correctly
-			if len(test.comp.OwnerReferences) != 1 && test.name != "application not found" {
+			// Get the updated component
+			var updatedComp appstudiov1alpha1.Component
+			test.client.Get(context.Background(), types.NamespacedName{Namespace: "default", Name: test.comp.Name}, &updatedComp)
+
+			if len(updatedComp.OwnerReferences) != 1 && test.name != "application not found" {
 				t.Error("expected component to have owner reference set")
 			} else if test.name != "application not found" {
-				if test.comp.OwnerReferences[0].Name != "application1" {
+				if updatedComp.OwnerReferences[0].Name != "application1" {
 					t.Errorf("expected component to have owner reference set to application %s, got %s", "application1", test.comp.OwnerReferences[0].Name)
 				}
 			}
