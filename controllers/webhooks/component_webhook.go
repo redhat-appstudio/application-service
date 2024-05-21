@@ -75,6 +75,7 @@ func (r *ComponentWebhook) Default(ctx context.Context, obj runtime.Object) erro
 			// Update the Component's owner ref's - retry on conflict
 			err = retry.RetryOnConflict(retry.DefaultRetry, func() error {
 				var curComp appstudiov1alpha1.Component
+				// Get the Component to update using the operator's kubeconfig so that there aren't any permissions issues setting the owner reference
 				err := r.client.Get(context.Background(), types.NamespacedName{Name: compName, Namespace: component.Namespace}, &curComp)
 				if err != nil {
 					componentlog.Error(err, "unable to get current component, so skip setting owner reference")
