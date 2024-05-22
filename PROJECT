@@ -30,9 +30,4 @@ resources:
   group: appstudio
   kind: ComponentDetectionQuery
   version: v1alpha1
-- controller: true
-  domain: redhat.com
-  group: appstudio
-  kind: SnapshotEnvironmentBinding
-  version: v1alpha1
 version: "3"

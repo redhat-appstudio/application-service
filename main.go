@@ -219,16 +219,6 @@ func main() {
 		setUpWebhooks(mgr)
 	}
 
-	if err = (&controllers.SnapshotEnvironmentBindingReconciler{
-		Client:            mgr.GetClient(),
-		Scheme:            mgr.GetScheme(),
-		Log:               ctrl.Log.WithName("controllers").WithName("SnapshotEnvironmentBinding"),
-		AppFS:             ioutils.NewFilesystem(),
-		GitHubTokenClient: ghTokenClient,
-	}).SetupWithManager(ctx, mgr); err != nil {
-		setupLog.Error(err, "unable to create controller", "controller", "SnapshotEnvironmentBinding")
-		os.Exit(1)
-	}
 	//+kubebuilder:scaffold:builder
 
 	if err := mgr.AddHealthzCheck("healthz", healthz.Ping); err != nil {

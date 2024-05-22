@@ -137,15 +137,6 @@ func SetupTestEnv() (client.Client, *envtest.Environment, context.Context, conte
 	}).SetupWithManager(ctx, k8sManager)
 	gomega.Expect(err).ToNot(gomega.HaveOccurred())
 
-	err = (&SnapshotEnvironmentBindingReconciler{
-		Client:            k8sManager.GetClient(),
-		Scheme:            k8sManager.GetScheme(),
-		Log:               ctrl.Log.WithName("controllers").WithName("SnapshotEnvironmentBinding"),
-		AppFS:             ioutils.NewMemoryFilesystem(),
-		GitHubTokenClient: mockGhTokenClient,
-	}).SetupWithManager(ctx, k8sManager)
-	gomega.Expect(err).ToNot(gomega.HaveOccurred())
-
 	go func() {
 		defer ginkgo.GinkgoRecover()
 		err = k8sManager.Start(ctx)
