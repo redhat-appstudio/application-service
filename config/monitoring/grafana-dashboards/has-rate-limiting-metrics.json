@@ -4320,13 +4320,6 @@
       "targets": [
         {
           "exemplar": true,
-          "expr": "sum(increase(controller_git_request{controller=\"SnapshotEnvironmentBinding\", operation=\"GetCommitIDFromRepo\"}[1h]))",
-          "interval": "",
-          "legendFormat": "ASEB_GetCommitIDFromRepo",
-          "refId": "A"
-        },
-        {
-          "exemplar": true,
           "expr": "sum(increase(controller_git_request{controller=\"Component\", operation=\"GetCommitIDFromRepo\"}[1h]))",
           "hide": false,
           "interval": "",
@@ -4340,14 +4333,6 @@
           "interval": "",
           "legendFormat": "Comp_CloneGenerateAndPush",
           "refId": "C"
-        },
-        {
-          "exemplar": true,
-          "expr": "sum(increase(controller_git_request{controller=\"SnapshotEnvironmentBinding\", operation=\"GenerateOverlaysAndPush\"}[1h]))",
-          "hide": false,
-          "interval": "",
-          "legendFormat": "ASEB_GenerateOverlaysAndPush",
-          "refId": "D"
         },
         {
           "exemplar": true,
@@ -4443,14 +4428,6 @@
           "targets": [
             {
               "exemplar": true,
-              "expr": "sum(increase(controller_git_request{controller=\"SnapshotEnvironmentBinding\", operation=\"GetCommitIDFromRepo\", tokenName=\"token1\"}[1h])) by (operation)",
-              "hide": false,
-              "interval": "",
-              "legendFormat": "ASEB_GetCommitIDFromRepo",
-              "refId": "A"
-            },
-            {
-              "exemplar": true,
               "expr": "sum(increase(controller_git_request{controller=\"Component\", operation=\"GetCommitIDFromRepo\", tokenName=\"token1\"}[1h])) by (operation)",
               "hide": false,
               "interval": "",
@@ -4464,14 +4441,6 @@
               "interval": "",
               "legendFormat": "Comp_CloneGenerateAndPush",
               "refId": "C"
-            },
-            {
-              "exemplar": true,
-              "expr": "sum(increase(controller_git_request{controller=\"SnapshotEnvironmentBinding\", operation=\"GenerateOverlaysAndPush\", tokenName=\"token1\"}[1h])) by (operation)",
-              "hide": false,
-              "interval": "",
-              "legendFormat": "ASEB_GenerateOverlaysAndPush",
-              "refId": "D"
             },
             {
               "exemplar": true,
@@ -4556,14 +4525,6 @@
           "targets": [
             {
               "exemplar": true,
-              "expr": "sum(increase(controller_git_request{controller=\"SnapshotEnvironmentBinding\", operation=\"GetCommitIDFromRepo\", tokenName=\"token2\"}[1h])) by (operation)",
-              "hide": false,
-              "interval": "",
-              "legendFormat": "ASEB_GetCommitIDFromRepo",
-              "refId": "A"
-            },
-            {
-              "exemplar": true,
               "expr": "sum(increase(controller_git_request{controller=\"Component\", operation=\"GetCommitIDFromRepo\", tokenName=\"token2\"}[1h])) by (operation)",
               "hide": false,
               "interval": "",
@@ -4577,14 +4538,6 @@
               "interval": "",
               "legendFormat": "Comp_CloneGenerateAndPush",
               "refId": "C"
-            },
-            {
-              "exemplar": true,
-              "expr": "sum(increase(controller_git_request{controller=\"SnapshotEnvironmentBinding\", operation=\"GenerateOverlaysAndPush\", tokenName=\"token2\"}[1h])) by (operation)",
-              "hide": false,
-              "interval": "",
-              "legendFormat": "ASEB_GenerateOverlaysAndPush",
-              "refId": "D"
             },
             {
               "exemplar": true,
@@ -4669,14 +4622,6 @@
           "targets": [
             {
               "exemplar": true,
-              "expr": "sum(increase(controller_git_request{controller=\"SnapshotEnvironmentBinding\", operation=\"GetCommitIDFromRepo\", tokenName=\"token3\"}[1h])) by (operation)",
-              "hide": false,
-              "interval": "",
-              "legendFormat": "ASEB_GetCommitIDFromRepo",
-              "refId": "A"
-            },
-            {
-              "exemplar": true,
               "expr": "sum(increase(controller_git_request{controller=\"Component\", operation=\"GetCommitIDFromRepo\", tokenName=\"token3\"}[1h])) by (operation)",
               "hide": false,
               "interval": "",
@@ -4690,14 +4635,6 @@
               "interval": "",
               "legendFormat": "Comp_CloneGenerateAndPush",
               "refId": "C"
-            },
-            {
-              "exemplar": true,
-              "expr": "sum(increase(controller_git_request{controller=\"SnapshotEnvironmentBinding\", operation=\"GenerateOverlaysAndPush\", tokenName=\"token3\"}[1h])) by (operation)",
-              "hide": false,
-              "interval": "",
-              "legendFormat": "ASEB_GenerateOverlaysAndPush",
-              "refId": "D"
             },
             {
               "exemplar": true,
@@ -4782,14 +4719,6 @@
           "targets": [
             {
               "exemplar": true,
-              "expr": "sum(increase(controller_git_request{controller=\"SnapshotEnvironmentBinding\", operation=\"GetCommitIDFromRepo\", tokenName=\"token4\"}[1h])) by (operation)",
-              "hide": false,
-              "interval": "",
-              "legendFormat": "ASEB_GetCommitIDFromRepo",
-              "refId": "A"
-            },
-            {
-              "exemplar": true,
               "expr": "sum(increase(controller_git_request{controller=\"Component\", operation=\"GetCommitIDFromRepo\", tokenName=\"token4\"}[1h])) by (operation)",
               "hide": false,
               "interval": "",
@@ -4803,14 +4732,6 @@
               "interval": "",
               "legendFormat": "Comp_CloneGenerateAndPush",
               "refId": "C"
-            },
-            {
-              "exemplar": true,
-              "expr": "sum(increase(controller_git_request{controller=\"SnapshotEnvironmentBinding\", operation=\"GenerateOverlaysAndPush\", tokenName=\"token4\"}[1h])) by (operation)",
-              "hide": false,
-              "interval": "",
-              "legendFormat": "ASEB_GenerateOverlaysAndPush",
-              "refId": "D"
             },
             {
               "exemplar": true,
@@ -4895,14 +4816,6 @@
           "targets": [
             {
               "exemplar": true,
-              "expr": "sum(increase(controller_git_request{controller=\"SnapshotEnvironmentBinding\", operation=\"GetCommitIDFromRepo\", tokenName=\"token5\"}[1h])) by (operation)",
-              "hide": false,
-              "interval": "",
-              "legendFormat": "ASEB_GetCommitIDFromRepo",
-              "refId": "A"
-            },
-            {
-              "exemplar": true,
               "expr": "sum(increase(controller_git_request{controller=\"Component\", operation=\"GetCommitIDFromRepo\", tokenName=\"token5\"}[1h])) by (operation)",
               "hide": false,
               "interval": "",
@@ -4916,14 +4829,6 @@
               "interval": "",
               "legendFormat": "Comp_CloneGenerateAndPush",
               "refId": "C"
-            },
-            {
-              "exemplar": true,
-              "expr": "sum(increase(controller_git_request{controller=\"SnapshotEnvironmentBinding\", operation=\"GenerateOverlaysAndPush\", tokenName=\"token5\"}[1h])) by (operation)",
-              "hide": false,
-              "interval": "",
-              "legendFormat": "ASEB_GenerateOverlaysAndPush",
-              "refId": "D"
             },
             {
               "exemplar": true,
@@ -5008,14 +4913,6 @@
           "targets": [
             {
               "exemplar": true,
-              "expr": "sum(increase(controller_git_request{controller=\"SnapshotEnvironmentBinding\", operation=\"GetCommitIDFromRepo\", tokenName=\"token6\"}[1h])) by (operation)",
-              "hide": false,
-              "interval": "",
-              "legendFormat": "ASEB_GetCommitIDFromRepo",
-              "refId": "A"
-            },
-            {
-              "exemplar": true,
               "expr": "sum(increase(controller_git_request{controller=\"Component\", operation=\"GetCommitIDFromRepo\", tokenName=\"token6\"}[1h])) by (operation)",
               "hide": false,
               "interval": "",
@@ -5029,14 +4926,6 @@
               "interval": "",
               "legendFormat": "Comp_CloneGenerateAndPush",
               "refId": "C"
-            },
-            {
-              "exemplar": true,
-              "expr": "sum(increase(controller_git_request{controller=\"SnapshotEnvironmentBinding\", operation=\"GenerateOverlaysAndPush\", tokenName=\"token6\"}[1h])) by (operation)",
-              "hide": false,
-              "interval": "",
-              "legendFormat": "ASEB_GenerateOverlaysAndPush",
-              "refId": "D"
             },
             {
               "exemplar": true,
@@ -5121,14 +5010,6 @@
           "targets": [
             {
               "exemplar": true,
-              "expr": "sum(increase(controller_git_request{controller=\"SnapshotEnvironmentBinding\", operation=\"GetCommitIDFromRepo\", tokenName=\"token7\"}[1h])) by (operation)",
-              "hide": false,
-              "interval": "",
-              "legendFormat": "ASEB_GetCommitIDFromRepo",
-              "refId": "A"
-            },
-            {
-              "exemplar": true,
               "expr": "sum(increase(controller_git_request{controller=\"Component\", operation=\"GetCommitIDFromRepo\", tokenName=\"token7\"}[1h])) by (operation)",
               "hide": false,
               "interval": "",
@@ -5142,14 +5023,6 @@
               "interval": "",
               "legendFormat": "Comp_CloneGenerateAndPush",
               "refId": "C"
-            },
-            {
-              "exemplar": true,
-              "expr": "sum(increase(controller_git_request{controller=\"SnapshotEnvironmentBinding\", operation=\"GenerateOverlaysAndPush\", tokenName=\"token7\"}[1h])) by (operation)",
-              "hide": false,
-              "interval": "",
-              "legendFormat": "ASEB_GenerateOverlaysAndPush",
-              "refId": "D"
             },
             {
               "exemplar": true,
@@ -5234,14 +5107,6 @@
           "targets": [
             {
               "exemplar": true,
-              "expr": "sum(increase(controller_git_request{controller=\"SnapshotEnvironmentBinding\", operation=\"GetCommitIDFromRepo\", tokenName=\"token8\"}[1h])) by (operation)",
-              "hide": false,
-              "interval": "",
-              "legendFormat": "ASEB_GetCommitIDFromRepo",
-              "refId": "A"
-            },
-            {
-              "exemplar": true,
               "expr": "sum(increase(controller_git_request{controller=\"Component\", operation=\"GetCommitIDFromRepo\", tokenName=\"token8\"}[1h])) by (operation)",
               "hide": false,
               "interval": "",
@@ -5255,14 +5120,6 @@
               "interval": "",
               "legendFormat": "Comp_CloneGenerateAndPush",
               "refId": "C"
-            },
-            {
-              "exemplar": true,
-              "expr": "sum(increase(controller_git_request{controller=\"SnapshotEnvironmentBinding\", operation=\"GenerateOverlaysAndPush\", tokenName=\"token8\"}[1h])) by (operation)",
-              "hide": false,
-              "interval": "",
-              "legendFormat": "ASEB_GenerateOverlaysAndPush",
-              "refId": "D"
             },
             {
               "exemplar": true,
@@ -5347,14 +5204,6 @@
           "targets": [
             {
               "exemplar": true,
-              "expr": "sum(increase(controller_git_request{controller=\"SnapshotEnvironmentBinding\", operation=\"GetCommitIDFromRepo\", tokenName=\"token9\"}[1h])) by (operation)",
-              "hide": false,
-              "interval": "",
-              "legendFormat": "ASEB_GetCommitIDFromRepo",
-              "refId": "A"
-            },
-            {
-              "exemplar": true,
               "expr": "sum(increase(controller_git_request{controller=\"Component\", operation=\"GetCommitIDFromRepo\", tokenName=\"token9\"}[1h])) by (operation)",
               "hide": false,
               "interval": "",
@@ -5368,14 +5217,6 @@
               "interval": "",
               "legendFormat": "Comp_CloneGenerateAndPush",
               "refId": "C"
-            },
-            {
-              "exemplar": true,
-              "expr": "sum(increase(controller_git_request{controller=\"SnapshotEnvironmentBinding\", operation=\"GenerateOverlaysAndPush\", tokenName=\"token9\"}[1h])) by (operation)",
-              "hide": false,
-              "interval": "",
-              "legendFormat": "ASEB_GenerateOverlaysAndPush",
-              "refId": "D"
             },
             {
               "exemplar": true,
@@ -5460,14 +5301,6 @@
           "targets": [
             {
               "exemplar": true,
-              "expr": "sum(increase(controller_git_request{controller=\"SnapshotEnvironmentBinding\", operation=\"GetCommitIDFromRepo\", tokenName=\"token10\"}[1h])) by (operation)",
-              "hide": false,
-              "interval": "",
-              "legendFormat": "ASEB_GetCommitIDFromRepo",
-              "refId": "A"
-            },
-            {
-              "exemplar": true,
               "expr": "sum(increase(controller_git_request{controller=\"Component\", operation=\"GetCommitIDFromRepo\", tokenName=\"token10\"}[1h])) by (operation)",
               "hide": false,
               "interval": "",
@@ -5481,14 +5314,6 @@
               "interval": "",
               "legendFormat": "Comp_CloneGenerateAndPush",
               "refId": "C"
-            },
-            {
-              "exemplar": true,
-              "expr": "sum(increase(controller_git_request{controller=\"SnapshotEnvironmentBinding\", operation=\"GenerateOverlaysAndPush\", tokenName=\"token10\"}[1h])) by (operation)",
-              "hide": false,
-              "interval": "",
-              "legendFormat": "ASEB_GenerateOverlaysAndPush",
-              "refId": "D"
             },
             {
               "exemplar": true,
@@ -5588,14 +5413,6 @@
           "targets": [
             {
               "exemplar": true,
-              "expr": "sum(increase(controller_git_request{controller=\"SnapshotEnvironmentBinding\", operation=\"GetCommitIDFromRepo\", tokenName=\"token1\"}[5m])) by (operation)",
-              "hide": false,
-              "interval": "",
-              "legendFormat": "ASEB_GetCommitIDFromRepo",
-              "refId": "A"
-            },
-            {
-              "exemplar": true,
               "expr": "sum(increase(controller_git_request{controller=\"Component\", operation=\"GetCommitIDFromRepo\", tokenName=\"token1\"}[5m])) by (operation)",
               "hide": false,
               "interval": "",
@@ -5609,14 +5426,6 @@
               "interval": "",
               "legendFormat": "Comp_CloneGenerateAndPush",
               "refId": "C"
-            },
-            {
-              "exemplar": true,
-              "expr": "sum(increase(controller_git_request{controller=\"SnapshotEnvironmentBinding\", operation=\"GenerateOverlaysAndPush\", tokenName=\"token1\"}[5m])) by (operation)",
-              "hide": false,
-              "interval": "",
-              "legendFormat": "ASEB_GenerateOverlaysAndPush",
-              "refId": "D"
             },
             {
               "exemplar": true,
@@ -5701,14 +5510,6 @@
           "targets": [
             {
               "exemplar": true,
-              "expr": "sum(increase(controller_git_request{controller=\"SnapshotEnvironmentBinding\", operation=\"GetCommitIDFromRepo\", tokenName=\"token2\"}[5m])) by (operation)",
-              "hide": false,
-              "interval": "",
-              "legendFormat": "ASEB_GetCommitIDFromRepo",
-              "refId": "A"
-            },
-            {
-              "exemplar": true,
               "expr": "sum(increase(controller_git_request{controller=\"Component\", operation=\"GetCommitIDFromRepo\", tokenName=\"token2\"}[5m])) by (operation)",
               "hide": false,
               "interval": "",
@@ -5722,14 +5523,6 @@
               "interval": "",
               "legendFormat": "Comp_CloneGenerateAndPush",
               "refId": "C"
-            },
-            {
-              "exemplar": true,
-              "expr": "sum(increase(controller_git_request{controller=\"SnapshotEnvironmentBinding\", operation=\"GenerateOverlaysAndPush\", tokenName=\"token2\"}[5m])) by (operation)",
-              "hide": false,
-              "interval": "",
-              "legendFormat": "ASEB_GenerateOverlaysAndPush",
-              "refId": "D"
             },
             {
               "exemplar": true,
@@ -5814,14 +5607,6 @@
           "targets": [
             {
               "exemplar": true,
-              "expr": "sum(increase(controller_git_request{controller=\"SnapshotEnvironmentBinding\", operation=\"GetCommitIDFromRepo\", tokenName=\"token3\"}[5m])) by (operation)",
-              "hide": false,
-              "interval": "",
-              "legendFormat": "ASEB_GetCommitIDFromRepo",
-              "refId": "A"
-            },
-            {
-              "exemplar": true,
               "expr": "sum(increase(controller_git_request{controller=\"Component\", operation=\"GetCommitIDFromRepo\", tokenName=\"token3\"}[5m])) by (operation)",
               "hide": false,
               "interval": "",
@@ -5835,14 +5620,6 @@
               "interval": "",
               "legendFormat": "Comp_CloneGenerateAndPush",
               "refId": "C"
-            },
-            {
-              "exemplar": true,
-              "expr": "sum(increase(controller_git_request{controller=\"SnapshotEnvironmentBinding\",operation=\"GenerateOverlaysAndPush\", tokenName=\"token3\"}[5m])) by (operation)",
-              "hide": false,
-              "interval": "",
-              "legendFormat": "ASEB_GenerateOverlaysAndPush",
-              "refId": "D"
             },
             {
               "exemplar": true,
@@ -5927,14 +5704,6 @@
           "targets": [
             {
               "exemplar": true,
-              "expr": "sum(increase(controller_git_request{controller=\"SnapshotEnvironmentBinding\", operation=\"GetCommitIDFromRepo\", tokenName=\"token4\"}[5m])) by (operation)",
-              "hide": false,
-              "interval": "",
-              "legendFormat": "ASEB_GetCommitIDFromRepo",
-              "refId": "A"
-            },
-            {
-              "exemplar": true,
               "expr": "sum(increase(controller_git_request{controller=\"Component\", operation=\"GetCommitIDFromRepo\", tokenName=\"token4\"}[5m])) by (operation)",
               "hide": false,
               "interval": "",
@@ -5948,14 +5717,6 @@
               "interval": "",
               "legendFormat": "Comp_CloneGenerateAndPush",
               "refId": "C"
-            },
-            {
-              "exemplar": true,
-              "expr": "sum(increase(controller_git_request{controller=\"SnapshotEnvironmentBinding\",operation=\"GenerateOverlaysAndPush\", tokenName=\"token4\"}[5m])) by (operation)",
-              "hide": false,
-              "interval": "",
-              "legendFormat": "ASEB_GenerateOverlaysAndPush",
-              "refId": "D"
             },
             {
               "exemplar": true,
@@ -6040,14 +5801,6 @@
           "targets": [
             {
               "exemplar": true,
-              "expr": "sum(increase(controller_git_request{controller=\"SnapshotEnvironmentBinding\", operation=\"GetCommitIDFromRepo\", tokenName=\"token5\"}[5m])) by (operation)",
-              "hide": false,
-              "interval": "",
-              "legendFormat": "ASEB_GetCommitIDFromRepo",
-              "refId": "A"
-            },
-            {
-              "exemplar": true,
               "expr": "sum(increase(controller_git_request{controller=\"Component\", operation=\"GetCommitIDFromRepo\", tokenName=\"token5\"}[5m])) by (operation)",
               "hide": false,
               "interval": "",
@@ -6061,14 +5814,6 @@
               "interval": "",
               "legendFormat": "Comp_CloneGenerateAndPush",
               "refId": "C"
-            },
-            {
-              "exemplar": true,
-              "expr": "sum(increase(controller_git_request{controller=\"SnapshotEnvironmentBinding\", operation=\"GenerateOverlaysAndPush\", tokenName=\"token5\"}[5m])) by (operation)",
-              "hide": false,
-              "interval": "",
-              "legendFormat": "ASEB_GenerateOverlaysAndPush",
-              "refId": "D"
             },
             {
               "exemplar": true,
@@ -6153,14 +5898,6 @@
           "targets": [
             {
               "exemplar": true,
-              "expr": "sum(increase(controller_git_request{controller=\"SnapshotEnvironmentBinding\", operation=\"GetCommitIDFromRepo\", tokenName=\"token6\"}[5m])) by (operation)",
-              "hide": false,
-              "interval": "",
-              "legendFormat": "ASEB_GetCommitIDFromRepo",
-              "refId": "A"
-            },
-            {
-              "exemplar": true,
               "expr": "sum(increase(controller_git_request{controller=\"Component\", operation=\"GetCommitIDFromRepo\", tokenName=\"token6\"}[5m])) by (operation)",
               "hide": false,
               "interval": "",
@@ -6174,14 +5911,6 @@
               "interval": "",
               "legendFormat": "Comp_CloneGenerateAndPush",
               "refId": "C"
-            },
-            {
-              "exemplar": true,
-              "expr": "sum(increase(controller_git_request{controller=\"SnapshotEnvironmentBinding\", operation=\"GenerateOverlaysAndPush\", tokenName=\"token6\"}[5m])) by (operation)",
-              "hide": false,
-              "interval": "",
-              "legendFormat": "ASEB_GenerateOverlaysAndPush",
-              "refId": "D"
             },
             {
               "exemplar": true,
@@ -6266,14 +5995,6 @@
           "targets": [
             {
               "exemplar": true,
-              "expr": "sum(increase(controller_git_request{controller=\"SnapshotEnvironmentBinding\", operation=\"GetCommitIDFromRepo\", tokenName=\"token7\"}[5m])) by (operation)",
-              "hide": false,
-              "interval": "",
-              "legendFormat": "ASEB_GetCommitIDFromRepo",
-              "refId": "A"
-            },
-            {
-              "exemplar": true,
               "expr": "sum(increase(controller_git_request{controller=\"Component\", operation=\"GetCommitIDFromRepo\", tokenName=\"token7\"}[5m])) by (operation)",
               "hide": false,
               "interval": "",
@@ -6287,14 +6008,6 @@
               "interval": "",
               "legendFormat": "Comp_CloneGenerateAndPush",
               "refId": "C"
-            },
-            {
-              "exemplar": true,
-              "expr": "sum(increase(controller_git_request{controller=\"SnapshotEnvironmentBinding\", operation=\"GenerateOverlaysAndPush\", tokenName=\"token7\"}[5m])) by (operation)",
-              "hide": false,
-              "interval": "",
-              "legendFormat": "ASEB_GenerateOverlaysAndPush",
-              "refId": "D"
             },
             {
               "exemplar": true,
@@ -6379,14 +6092,6 @@
           "targets": [
             {
               "exemplar": true,
-              "expr": "sum(increase(controller_git_request{controller=\"SnapshotEnvironmentBinding\", operation=\"GetCommitIDFromRepo\", tokenName=\"token8\"}[5m])) by (operation)",
-              "hide": false,
-              "interval": "",
-              "legendFormat": "ASEB_GetCommitIDFromRepo",
-              "refId": "A"
-            },
-            {
-              "exemplar": true,
               "expr": "sum(increase(controller_git_request{controller=\"Component\", operation=\"GetCommitIDFromRepo\", tokenName=\"token8\"}[5m])) by (operation)",
               "hide": false,
               "interval": "",
@@ -6400,14 +6105,6 @@
               "interval": "",
               "legendFormat": "Comp_CloneGenerateAndPush",
               "refId": "C"
-            },
-            {
-              "exemplar": true,
-              "expr": "sum(increase(controller_git_request{controller=\"SnapshotEnvironmentBinding\", operation=\"GenerateOverlaysAndPush\", tokenName=\"token8\"}[5m])) by (operation)",
-              "hide": false,
-              "interval": "",
-              "legendFormat": "ASEB_GenerateOverlaysAndPush",
-              "refId": "D"
             },
             {
               "exemplar": true,
@@ -6492,14 +6189,6 @@
           "targets": [
             {
               "exemplar": true,
-              "expr": "sum(increase(controller_git_request{controller=\"SnapshotEnvironmentBinding\", operation=\"GetCommitIDFromRepo\", tokenName=\"token9\"}[5m])) by (operation)",
-              "hide": false,
-              "interval": "",
-              "legendFormat": "ASEB_GetCommitIDFromRepo",
-              "refId": "A"
-            },
-            {
-              "exemplar": true,
               "expr": "sum(increase(controller_git_request{controller=\"Component\", operation=\"GetCommitIDFromRepo\", tokenName=\"token9\"}[5m])) by (operation)",
               "hide": false,
               "interval": "",
@@ -6513,14 +6202,6 @@
               "interval": "",
               "legendFormat": "Comp_CloneGenerateAndPush",
               "refId": "C"
-            },
-            {
-              "exemplar": true,
-              "expr": "sum(increase(controller_git_request{controller=\"SnapshotEnvironmentBinding\", operation=\"GenerateOverlaysAndPush\", tokenName=\"token9\"}[5m])) by (operation)",
-              "hide": false,
-              "interval": "",
-              "legendFormat": "ASEB_GenerateOverlaysAndPush",
-              "refId": "D"
             },
             {
               "exemplar": true,
@@ -6605,14 +6286,6 @@
           "targets": [
             {
               "exemplar": true,
-              "expr": "sum(increase(controller_git_request{controller=\"SnapshotEnvironmentBinding\", operation=\"GetCommitIDFromRepo\", tokenName=\"token10\"}[5m])) by (operation)",
-              "hide": false,
-              "interval": "",
-              "legendFormat": "ASEB_GetCommitIDFromRepo",
-              "refId": "A"
-            },
-            {
-              "exemplar": true,
               "expr": "sum(increase(controller_git_request{controller=\"Component\", operation=\"GetCommitIDFromRepo\", tokenName=\"token10\"}[5m])) by (operation)",
               "hide": false,
               "interval": "",
@@ -6626,14 +6299,6 @@
               "interval": "",
               "legendFormat": "Comp_CloneGenerateAndPush",
               "refId": "C"
-            },
-            {
-              "exemplar": true,
-              "expr": "sum(increase(controller_git_request{controller=\"SnapshotEnvironmentBinding\", operation=\"GenerateOverlaysAndPush\", tokenName=\"token10\"}[5m])) by (operation)",
-              "hide": false,
-              "interval": "",
-              "legendFormat": "ASEB_GenerateOverlaysAndPush",
-              "refId": "D"
             },
             {
               "exemplar": true,
