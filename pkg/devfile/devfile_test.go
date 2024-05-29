@@ -24,7 +24,7 @@ import (
 	data "github.com/devfile/library/v2/pkg/devfile/parser/data"
 	v2 "github.com/devfile/library/v2/pkg/devfile/parser/data/v2"
 	"github.com/devfile/library/v2/pkg/devfile/parser/data/v2/common"
-	appstudiov1alpha1 "github.com/redhat-appstudio/application-api/api/v1alpha1"
+	appstudiov1alpha1 "github.com/konflux-ci/application-api/api/v1alpha1"
 	"github.com/stretchr/testify/assert"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"sigs.k8s.io/yaml"

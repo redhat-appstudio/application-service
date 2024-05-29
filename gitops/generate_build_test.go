@@ -20,8 +20,8 @@ import (
 	"strings"
 	"testing"
 
+	appstudiov1alpha1 "github.com/konflux-ci/application-api/api/v1alpha1"
 	pacv1alpha1 "github.com/openshift-pipelines/pipelines-as-code/pkg/apis/pipelinesascode/v1alpha1"
-	appstudiov1alpha1 "github.com/redhat-appstudio/application-api/api/v1alpha1"
 	gitopsprepare "github.com/redhat-appstudio/application-service/gitops/prepare"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
