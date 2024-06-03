@@ -27,6 +27,7 @@ import (
 
 	"github.com/go-logr/logr"
 	k8sErrors "k8s.io/apimachinery/pkg/api/errors"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/validation"
@@ -54,10 +55,52 @@ func (w *ComponentWebhook) Register(mgr ctrl.Manager, log *logr.Logger) error {
 
 // EDIT THIS FILE!  THIS IS SCAFFOLDING FOR YOU TO OWN!
 
-// +kubebuilder:webhook:path=/mutate-appstudio-redhat-com-v1alpha1-component,mutating=true,failurePolicy=fail,sideEffects=None,groups=appstudio.redhat.com,resources=components,verbs=create;update,versions=v1alpha1,name=mcomponent.kb.io,admissionReviewVersions=v1
+// +kubebuilder:webhook:path=/mutate-appstudio-redhat-com-v1alpha1-component,mutating=true,failurePolicy=fail,sideEffects=None,groups=appstudio.redhat.com,resources=components;components/status,verbs=create;update,versions=v1alpha1,name=mcomponent.kb.io,admissionReviewVersions=v1
 
 // Default implements webhook.Defaulter so a webhook will be registered for the type
 func (r *ComponentWebhook) Default(ctx context.Context, obj runtime.Object) error {
+	component := obj.(*appstudiov1alpha1.Component)
+	compName := component.Name
+	componentlog := r.log.WithValues("controllerKind", "Component").WithValues("name", compName).WithValues("namespace", component.Namespace)
+
+	if len(component.OwnerReferences) == 0 && component.DeletionTimestamp.IsZero() {
+		// Get the Application CR
+		// Use the background context to ensure the operator's kubeconfig is used
+		hasApplication := appstudiov1alpha1.Application{}
+		err := r.client.Get(context.Background(), types.NamespacedName{Name: component.Spec.Application, Namespace: component.Namespace}, &hasApplication)
+		if err != nil {
+			// Don't block if the Application doesn't exist yet - this will retrigger whenever the resource is modified
+			err = fmt.Errorf("unable to get the Application %s for Component %s, ignoring for now", component.Spec.Application, compName)
+			componentlog.Error(err, "skip setting owner reference on component")
+		} else {
+			// Update the Component's owner ref's - retry on conflict
+			err = retry.RetryOnConflict(retry.DefaultRetry, func() error {
+				var curComp appstudiov1alpha1.Component
+				// Get the Component to update using the operator's kubeconfig so that there aren't any permissions issues setting the owner reference
+				// Use the background context to ensure the operator's kubeconfig is used
+				err := r.client.Get(context.Background(), types.NamespacedName{Name: compName, Namespace: component.Namespace}, &curComp)
+				if err != nil {
+					componentlog.Error(err, "unable to get current component, so skip setting owner reference")
+					return nil
+				}
+
+				ownerReference := metav1.OwnerReference{
+					APIVersion: hasApplication.APIVersion,
+					Kind:       hasApplication.Kind,
+					Name:       hasApplication.Name,
+					UID:        hasApplication.UID,
+				}
+				curComp.SetOwnerReferences(append(curComp.GetOwnerReferences(), ownerReference))
+				err = r.client.Update(ctx, &curComp)
+				return err
+			})
+			if err != nil {
+				componentlog.Error(err, "error setting owner-references")
+			}
+
+		}
+	}
+
 	return nil
 }
 

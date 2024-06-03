@@ -35,6 +35,93 @@ import (
 	"k8s.io/client-go/kubernetes/scheme"
 )
 
+func TestComponentDefaultingWebhook(t *testing.T) {
+
+	fakeClient := setUpComponents(t)
+
+	app := appstudiov1alpha1.Application{
+		ObjectMeta: v1.ObjectMeta{
+			Name:      "application1",
+			Namespace: "default",
+		},
+		TypeMeta: v1.TypeMeta{
+			APIVersion: "appstudio.redhat.com/v1alpha1",
+			Kind:       "Component",
+		},
+		Spec: appstudiov1alpha1.ApplicationSpec{
+			DisplayName: "app",
+			Description: "Description",
+		},
+	}
+	err := fakeClient.Create(context.Background(), &app)
+	require.NoError(t, err)
+
+	tests := []struct {
+		name   string
+		client client.Client
+		comp   appstudiov1alpha1.Component
+	}{
+		{
+			name:   "component has owner ref set",
+			client: fakeClient,
+			comp: appstudiov1alpha1.Component{
+				ObjectMeta: v1.ObjectMeta{
+					Name:      "1-test-component-owner-ref",
+					Namespace: "default",
+				},
+				Spec: appstudiov1alpha1.ComponentSpec{
+					ComponentName: "component1",
+					Application:   "application1",
+				},
+			},
+		},
+		{
+			name:   "application not found",
+			client: fakeClient,
+			comp: appstudiov1alpha1.Component{
+				ObjectMeta: v1.ObjectMeta{
+					Name:      "1-test-component-not-found",
+					Namespace: "default",
+				},
+				Spec: appstudiov1alpha1.ComponentSpec{
+					ComponentName: "component1",
+					Application:   "application-not-found",
+				},
+			},
+		},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			err := test.client.Create(context.Background(), &test.comp)
+			assert.Nil(t, err)
+			compWebhook := ComponentWebhook{
+				client: test.client,
+				log: zap.New(zap.UseFlagOptions(&zap.Options{
+					Development: true,
+					TimeEncoder: zapcore.ISO8601TimeEncoder,
+				})),
+			}
+			err = compWebhook.Default(context.Background(), &test.comp)
+
+			// Defaulting webhook should not return an error
+			assert.Nil(t, err)
+
+			// Ensure that the component had its owner reference set correctly
+			// Get the updated component
+			var updatedComp appstudiov1alpha1.Component
+			test.client.Get(context.Background(), types.NamespacedName{Namespace: "default", Name: test.comp.Name}, &updatedComp)
+
+			if len(updatedComp.OwnerReferences) != 1 && test.name != "application not found" {
+				t.Error("expected component to have owner reference set")
+			} else if test.name != "application not found" {
+				if updatedComp.OwnerReferences[0].Name != "application1" {
+					t.Errorf("expected component to have owner reference set to application %s, got %s", "application1", test.comp.OwnerReferences[0].Name)
+				}
+			}
+		})
+	}
+}
+
 func TestComponentCreateValidatingWebhook(t *testing.T) {
 
 	fakeClient := setUpComponents(t)
