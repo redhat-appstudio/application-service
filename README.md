@@ -6,7 +6,7 @@
 
 A Kubernetes operator to create, manage and control the lifecycle of applications and components.
 
-This repository is closely associated with the [application-api](https://github.com/redhat-appstudio/application-api/) repository, which contains the Kubernetes CRD definitions for the application-service specific resources - `Application`, `Component` and `ComponentDetectionQuery`.
+This repository is closely associated with the [application-api](https://github.com/konflux-ci/application-api/) repository, which contains the Kubernetes CRD definitions for the application-service specific resources - `Application`, `Component` and `ComponentDetectionQuery`.
 
 ## Documentation
 

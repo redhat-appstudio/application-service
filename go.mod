@@ -4,11 +4,11 @@ go 1.19
 
 require (
 	github.com/go-logr/logr v1.4.1
+	github.com/konflux-ci/application-api v0.0.0-20240527211352-be061932d497
 	github.com/konflux-ci/operator-toolkit v0.0.0-20240402130556-ef6dcbeca69d
 	github.com/onsi/ginkgo v1.16.5
 	github.com/onsi/gomega v1.27.10
 	github.com/openshift/api v0.0.0-20220912161038-458ad9ca9ca5
-	github.com/redhat-appstudio/application-api v0.0.0-20231016183051-2dde965fce17
 	github.com/stretchr/testify v1.8.4
 	go.uber.org/zap v1.27.0
 	k8s.io/api v0.26.10

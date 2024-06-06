@@ -22,7 +22,7 @@ import (
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 
-	appstudiov1alpha1 "github.com/redhat-appstudio/application-api/api/v1alpha1"
+	appstudiov1alpha1 "github.com/konflux-ci/application-api/api/v1alpha1"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	//+kubebuilder:scaffold:imports

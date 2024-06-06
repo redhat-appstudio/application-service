@@ -1,4 +1,4 @@
-# API type definition is in https://github.com/redhat-appstudio/application-api/tree/main/api/v1alpha1
+# API type definition is in https://github.com/konflux-ci/application-api/tree/main/api/v1alpha1
 apiVersion: appstudio.redhat.com/v1alpha1
 kind: Snapshot
 metadata:
