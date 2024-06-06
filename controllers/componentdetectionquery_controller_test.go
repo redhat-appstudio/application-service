@@ -26,9 +26,9 @@ import (
 	"github.com/prometheus/client_golang/prometheus/testutil"
 	"github.com/redhat-appstudio/application-service/pkg/metrics"
 
+	appstudiov1alpha1 "github.com/konflux-ci/application-api/api/v1alpha1"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
-	appstudiov1alpha1 "github.com/redhat-appstudio/application-api/api/v1alpha1"
 
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"

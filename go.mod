@@ -10,6 +10,7 @@ require (
 	github.com/gofri/go-github-ratelimit v1.0.3-0.20230428184158-a500e14de53f
 	github.com/google/go-github/v59 v59.0.0
 	github.com/hashicorp/go-multierror v1.1.1
+	github.com/konflux-ci/application-api v0.0.0-20240527211352-be061932d497
 	github.com/konflux-ci/operator-toolkit v0.0.0-20240402130556-ef6dcbeca69d
 	github.com/migueleliasweb/go-github-mock v0.0.23
 	github.com/onsi/ginkgo v1.16.5
@@ -18,7 +19,6 @@ require (
 	github.com/openshift/api v0.0.0-20220912161038-458ad9ca9ca5
 	github.com/pact-foundation/pact-go/v2 v2.0.0-beta.23
 	github.com/prometheus/client_golang v1.17.0
-	github.com/redhat-appstudio/application-api v0.0.0-20240326104708-c647c0bdcda5
 	github.com/redhat-appstudio/application-service/cdq-analysis v0.0.0
 	github.com/redhat-appstudio/service-provider-integration-operator v0.2023.22-0.20230713080056-eae17aa8c172
 	github.com/redhat-developer/gitops-generator v0.0.0-20231030195824-c48f5bf6bf21

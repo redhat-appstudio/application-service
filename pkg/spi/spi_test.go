@@ -19,7 +19,7 @@ import (
 	"context"
 	"testing"
 
-	"github.com/redhat-appstudio/application-api/api/v1alpha1"
+	"github.com/konflux-ci/application-api/api/v1alpha1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 

@@ -25,7 +25,7 @@ import (
 	"github.com/devfile/library/v2/pkg/devfile/parser/data/v2/common"
 	cdqanalysis "github.com/redhat-appstudio/application-service/cdq-analysis/pkg"
 
-	appstudiov1alpha1 "github.com/redhat-appstudio/application-api/api/v1alpha1"
+	appstudiov1alpha1 "github.com/konflux-ci/application-api/api/v1alpha1"
 
 	routev1 "github.com/openshift/api/route/v1"
 	appsv1 "k8s.io/api/apps/v1"

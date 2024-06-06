@@ -47,7 +47,7 @@ ENVIRONMENT ?= ""
 ENABLE_WEBHOOKS ?= true
 ENABLE_WEBHOOK_HTTP2 ?=false
 
-APPLICATION_API_CRD = https://raw.githubusercontent.com/redhat-appstudio/application-api/main/manifests/application-api-customresourcedefinitions.yaml
+APPLICATION_API_CRD = https://raw.githubusercontent.com/konflux-ci/application-api/main/manifests/application-api-customresourcedefinitions.yaml
 
 # ENVTEST_K8S_VERSION refers to the version of kubebuilder assets to be downloaded by envtest binary.
 ENVTEST_K8S_VERSION = 1.22
