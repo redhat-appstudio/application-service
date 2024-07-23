@@ -18,7 +18,7 @@ COPY pkg pkg/
 # Build
 RUN CGO_ENABLED=0 GOOS=linux go build -a -o manager main.go
 
-FROM registry.access.redhat.com/ubi8/ubi-minimal:8.9
+FROM registry.access.redhat.com/ubi8/ubi-minimal:8.10-1018
 RUN microdnf update --setopt=install_weak_deps=0 -y && microdnf install git
 COPY entrypoint.sh /usr/local/bin/entrypoint.sh
 RUN chmod +x /usr/local/bin/entrypoint.sh
