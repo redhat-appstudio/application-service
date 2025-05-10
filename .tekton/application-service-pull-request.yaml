@@ -31,7 +31,7 @@ spec:
   - name: revision
     value: '{{revision}}'
   - name: build-source-image
-    value: 'true'
+    value: "true"
   pipelineSpec:
     finally:
     - name: show-sbom
@@ -373,7 +373,8 @@ spec:
     - name: workspace
     - name: git-auth
       optional: true
-  taskRunTemplate: {}
+  taskRunTemplate:
+    serviceAccountName: build-pipeline-application-service
   workspaces:
   - name: workspace
     volumeClaimTemplate:
