@@ -116,8 +116,8 @@ github.com/json-iterator/go v1.1.12 h1:PV8peI4a0ysnczrg+LtxykD8LfKY9ML6u2jnxaEnr
 github.com/json-iterator/go v1.1.12/go.mod h1:e30LSqwooZae/UwlEbR2852Gd8hjQvJoHmT4TnhNGBo=
 github.com/kisielk/errcheck v1.5.0/go.mod h1:pFxgyoBC7bSaBwPgfKdkLd5X25qrDl4LWUI2bnpBCr8=
 github.com/kisielk/gotool v1.0.0/go.mod h1:XhKaO+MFFWcvkIS/tQcRk01m1F5IRFswLeQ+oQHNcck=
-github.com/konflux-ci/application-api v0.0.0-20240812090716-e7eb2ecfb409 h1:hAhhcfc/EXW9eKS827PmyYuhk+Y4KkVOsT53Uo9OzCU=
-github.com/konflux-ci/application-api v0.0.0-20240812090716-e7eb2ecfb409/go.mod h1:948Z+a1IbfRT0RtoHzWWSN9YEucSbMJTHaMhz7dVICc=
+github.com/konflux-ci/application-api v0.0.0-20250324201748-5a9670bf7679 h1:mtLA7dQ9iIncxYoOLgty2B1l1cucnp/tsbxQaKn9Myw=
+github.com/konflux-ci/application-api v0.0.0-20250324201748-5a9670bf7679/go.mod h1:948Z+a1IbfRT0RtoHzWWSN9YEucSbMJTHaMhz7dVICc=
 github.com/konflux-ci/operator-toolkit v0.0.0-20240402130556-ef6dcbeca69d h1:z7j3mglNoXvIrw5Vz/Ul+izoITRaqYURPIWrFoEyHgI=
 github.com/konflux-ci/operator-toolkit v0.0.0-20240402130556-ef6dcbeca69d/go.mod h1:AcChx7FjpYSIkDvQgaUKyauuF0PXm3ivB5MqZSC9Eis=
 github.com/kr/pretty v0.1.0/go.mod h1:dAy3ld7l9f0ibDNOQOHHMYYIIbhfbHSm3C4ZsoJORNo=

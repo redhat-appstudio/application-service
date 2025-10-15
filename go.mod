@@ -4,7 +4,7 @@ go 1.21
 
 require (
 	github.com/go-logr/logr v1.4.1
-	github.com/konflux-ci/application-api v0.0.0-20240812090716-e7eb2ecfb409
+	github.com/konflux-ci/application-api v0.0.0-20250324201748-5a9670bf7679
 	github.com/konflux-ci/operator-toolkit v0.0.0-20240402130556-ef6dcbeca69d
 	github.com/onsi/ginkgo v1.16.5
 	github.com/onsi/gomega v1.27.10
