@@ -90,7 +90,14 @@ func (r *ComponentWebhook) Default(ctx context.Context, obj runtime.Object) erro
 					Name:       hasApplication.Name,
 					UID:        hasApplication.UID,
 				}
+
+				if isArgoCDManaged(&curComp, &hasApplication) {
+					componentlog.Info("component is managed by ArgoCD, skipping owner reference setting")
+					return nil
+				}
+
 				curComp.SetOwnerReferences(append(curComp.GetOwnerReferences(), ownerReference))
+
 				err = r.client.Update(ctx, &curComp)
 				return err
 			})
@@ -299,4 +306,44 @@ func (r *ComponentWebhook) validateBuildNudgesRefGraph(ctx context.Context, nudg
 	}
 
 	return nil
+}
+
+// isArgoCDManaged checks if a component or its Application is managed by ArgoCD
+// by looking for ArgoCD tracking annotations or labels
+func isArgoCDManaged(component *appstudiov1alpha1.Component, application *appstudiov1alpha1.Application) bool {
+
+	// use a constant for the ArgoCD tracking ID key
+	const argocdtrackingId = "argocd.argoproj.io/tracking-id"
+
+	// Check component annotations
+	if component.Annotations != nil {
+		if _, exists := component.Annotations[argocdtrackingId]; exists {
+			return true
+		}
+	}
+
+	// Check component labels
+	if component.Labels != nil {
+		if _, exists := component.Labels[argocdtrackingId]; exists {
+			return true
+		}
+	}
+
+	// Check Application annotations (to avoid race conditions)
+	if application != nil {
+		if application.Annotations != nil {
+			if _, exists := application.Annotations[argocdtrackingId]; exists {
+				return true
+			}
+		}
+
+		// Check Application labels
+		if application.Labels != nil {
+			if _, exists := application.Labels[argocdtrackingId]; exists {
+				return true
+			}
+		}
+	}
+
+	return false
 }

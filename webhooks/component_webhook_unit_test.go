@@ -734,6 +734,160 @@ func TestUpdateNudgedComponentStatus(t *testing.T) {
 	}
 }
 
+func TestIsArgoCDManaged(t *testing.T) {
+	// reusable application for tests with no ArgoCD tracking
+	normalApplication := &appstudiov1alpha1.Application{
+		ObjectMeta: v1.ObjectMeta{
+			Name:      "application1",
+			Namespace: "default",
+		},
+	}
+
+	t.Run("should return true when component has ArgoCD annotation", func(t *testing.T) {
+		component := &appstudiov1alpha1.Component{
+			ObjectMeta: v1.ObjectMeta{
+				Name:      "component1",
+				Namespace: "default",
+				Annotations: map[string]string{
+					"argocd.argoproj.io/tracking-id": "123",
+				},
+			},
+		}
+		result := isArgoCDManaged(component, normalApplication)
+
+		if !result {
+			t.Errorf("TestIsArgoCDManaged(): should return true when component has ArgoCD annotation, got false")
+		}
+	})
+
+	t.Run("should return true when component has ArgoCD label", func(t *testing.T) {
+		component := &appstudiov1alpha1.Component{
+			ObjectMeta: v1.ObjectMeta{
+				Name:      "component1",
+				Namespace: "default",
+				Labels: map[string]string{
+					"argocd.argoproj.io/tracking-id": "123",
+				},
+			},
+		}
+
+		result := isArgoCDManaged(component, normalApplication)
+
+		if !result {
+			t.Errorf("TestIsArgoCDManaged(): should return true when component has ArgoCD label, got false")
+		}
+	})
+
+	t.Run("should return true when application has ArgoCD annotation", func(t *testing.T) {
+		// Component without ArgoCD tracking
+		component := &appstudiov1alpha1.Component{
+			ObjectMeta: v1.ObjectMeta{
+				Name:      "component1",
+				Namespace: "default",
+				// Component has no ArgoCD tracking - looks normal
+			},
+		}
+
+		// Application HAS ArgoCD annotation
+		application := &appstudiov1alpha1.Application{
+			ObjectMeta: v1.ObjectMeta{
+				Name:      "application1",
+				Namespace: "default",
+				Annotations: map[string]string{
+					"argocd.argoproj.io/tracking-id": "123",
+				},
+			},
+		}
+
+		result := isArgoCDManaged(component, application)
+
+		if !result {
+			t.Errorf("TestIsArgoCDManaged(): should return true when application has ArgoCD annotation, got false")
+		}
+	})
+
+	t.Run("should return true when application has ArgoCD label", func(t *testing.T) {
+		component := &appstudiov1alpha1.Component{
+			ObjectMeta: v1.ObjectMeta{
+				Name:      "component1",
+				Namespace: "default",
+				// Component has no ArgoCD tracking
+			},
+		}
+
+		// Application HAS ArgoCD label (not annotation)
+		application := &appstudiov1alpha1.Application{
+			ObjectMeta: v1.ObjectMeta{
+				Name:      "application1",
+				Namespace: "default",
+				Labels: map[string]string{
+					"argocd.argoproj.io/tracking-id": "123",
+				},
+			},
+		}
+
+		result := isArgoCDManaged(component, application)
+
+		if !result {
+			t.Errorf("TestIsArgoCDManaged(): should return true when application has ArgoCD label, got false")
+		}
+	})
+
+	t.Run("should return false when component and application both have no ArgoCD tracking", func(t *testing.T) {
+		component := &appstudiov1alpha1.Component{
+			ObjectMeta: v1.ObjectMeta{
+				Name:      "component1",
+				Namespace: "default",
+				// No annotations, no labels - completely normal component
+			},
+		}
+
+		result := isArgoCDManaged(component, normalApplication)
+
+		if result {
+			t.Errorf("TestIsArgoCDManaged(): should return false when neither has ArgoCD tracking, got true")
+		}
+	})
+
+	t.Run("should return false when component has no ArgoCD and application is nil", func(t *testing.T) {
+		component := &appstudiov1alpha1.Component{
+			ObjectMeta: v1.ObjectMeta{
+				Name:      "component1",
+				Namespace: "default",
+				// Component has no ArgoCD tracking
+			},
+		}
+
+		// Call with nil application - should not panic and should return false
+		result := isArgoCDManaged(component, nil)
+
+		if result {
+			t.Errorf("TestIsArgoCDManaged(): should return false when component has no ArgoCD and application is nil, got true")
+		}
+	})
+
+	t.Run("should return true when component has ArgoCD annotation even with nil application", func(t *testing.T) {
+		component := &appstudiov1alpha1.Component{
+			ObjectMeta: v1.ObjectMeta{
+				Name:      "component1",
+				Namespace: "default",
+				// Component HAS ArgoCD annotation
+				Annotations: map[string]string{
+					"argocd.argoproj.io/tracking-id": "123",
+				},
+			},
+		}
+
+		// Even with nil application, should return true because component has annotation
+		result := isArgoCDManaged(component, nil)
+
+		if !result {
+			t.Errorf("TestIsArgoCDManaged(): should return true when component has ArgoCD annotation even with nil application, got false")
+		}
+	})
+
+}
+
 // setUpComponentsForFakeErrorClient creates a fake controller-runtime Kube client with components to test error scenarios
 func setUpComponentsForFakeErrorClient(t *testing.T) *FakeClient {
 	fakeErrorClient := NewFakeErrorClient(t)
