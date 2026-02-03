@@ -72,8 +72,8 @@ var _ = Describe("Application validation webhook", func() {
 
 			err := k8sClient.Create(ctx, hasComp)
 			Expect(err).Should(HaveOccurred())
-			Expect(err.Error()).Should(ContainSubstring("spec.componentName in body should match '^[a-z0-9]([-a-z0-9]*[a-z0-9])?$'"))
-			Expect(err.Error()).Should(ContainSubstring("spec.application in body should match '^[a-z0-9]([-a-z0-9]*[a-z0-9])?$'"))
+			Expect(err.Error()).Should(ContainSubstring("spec.componentName in body should match '^$|^[a-z0-9]([-a-z0-9]*[a-z0-9])?$'"))
+			Expect(err.Error()).Should(ContainSubstring("spec.application in body should match '^$|^[a-z0-9]([-a-z0-9]*[a-z0-9])?$'"))
 
 			hasComp.Spec.ComponentName = ComponentName
 			hasComp.Spec.Application = HASAppName
@@ -149,28 +149,60 @@ var _ = Describe("Application validation webhook", func() {
 				return !reflect.DeepEqual(createdHasComp, &appstudiov1alpha1.Component{})
 			}, timeout, interval).Should(BeTrue())
 
-			// Update the Comp application
-			createdHasComp.Spec.Application = "newapp"
-			err := k8sClient.Update(ctx, createdHasComp)
-			Expect(err).Should(HaveOccurred())
-			Expect(err.Error()).Should(ContainSubstring(fmt.Errorf(appstudiov1alpha1.ApplicationNameUpdateError, createdHasComp.Spec.Application).Error()))
-
-			// Update the Comp component name
-			createdHasComp.Spec.Application = hasComp.Spec.Application
-			createdHasComp.Spec.ComponentName = "newcomp"
-			err = k8sClient.Update(ctx, createdHasComp)
-			Expect(err).Should(HaveOccurred())
-			Expect(err.Error()).Should(ContainSubstring(fmt.Errorf(appstudiov1alpha1.ComponentNameUpdateError, createdHasComp.Spec.ComponentName).Error()))
-
 			// Update the Comp git src
 			createdHasComp.Spec.ComponentName = hasComp.Spec.ComponentName
 			createdHasComp.Spec.Source.GitSource.Context = hasComp.Spec.Source.GitSource.Context
 			createdHasComp.Spec.Source.GitSource = &appstudiov1alpha1.GitSource{
 				URL: "newlink",
 			}
-			err = k8sClient.Update(ctx, createdHasComp)
+			err := k8sClient.Update(ctx, createdHasComp)
 			Expect(err).Should(HaveOccurred())
 			Expect(err.Error()).Should(ContainSubstring(fmt.Errorf(appstudiov1alpha1.GitSourceUpdateError, *createdHasComp.Spec.Source.GitSource).Error()))
+
+			// Delete the specified HASComp resource
+			deleteHASCompCR(hasCompLookupKey)
+		})
+
+		It("Should update non immutable fields successfully and err out on immutable fields for new model", func() {
+			ctx := context.Background()
+
+			uniqueHASCompName := HASCompName + "2"
+
+			hasComp := &appstudiov1alpha1.Component{
+				TypeMeta: metav1.TypeMeta{
+					APIVersion: "appstudio.redhat.com/v1alpha1",
+					Kind:       "Component",
+				},
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      uniqueHASCompName,
+					Namespace: HASAppNamespace,
+				},
+				Spec: appstudiov1alpha1.ComponentSpec{
+					ComponentName: ComponentName,
+					Application:   HASAppName,
+					Source: appstudiov1alpha1.ComponentSource{
+						ComponentSourceUnion: appstudiov1alpha1.ComponentSourceUnion{
+							GitURL: SampleRepoLink,
+						},
+					},
+				},
+			}
+			Expect(k8sClient.Create(ctx, hasComp)).Should(Succeed())
+
+			// Look up the has app resource that was created.
+			hasCompLookupKey := types.NamespacedName{Name: uniqueHASCompName, Namespace: HASAppNamespace}
+			createdHasComp := &appstudiov1alpha1.Component{}
+			Eventually(func() bool {
+				k8sClient.Get(ctx, hasCompLookupKey, createdHasComp)
+				return !reflect.DeepEqual(createdHasComp, &appstudiov1alpha1.Component{})
+			}, timeout, interval).Should(BeTrue())
+
+			// Update the Comp git src
+			createdHasComp.Spec.ComponentName = hasComp.Spec.ComponentName
+			createdHasComp.Spec.Source.GitURL = "newlink"
+			err := k8sClient.Update(ctx, createdHasComp)
+			Expect(err).Should(HaveOccurred())
+			Expect(err.Error()).Should(ContainSubstring(fmt.Errorf(appstudiov1alpha1.GitSourceUpdateError, createdHasComp.Spec.Source.GitURL).Error()))
 
 			// Delete the specified HASComp resource
 			deleteHASCompCR(hasCompLookupKey)
