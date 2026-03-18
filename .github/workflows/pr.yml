@@ -12,14 +12,14 @@ jobs:
       OPERATOR_SDK_VERSION: v1.14.0
       PR_CHECK: true
     steps:
-      - name: Set up Go 1.x
-        uses: actions/setup-go@v2
-        with:
-          go-version: 1.21
       - name: Check out code into the Go module directory
-        uses: actions/checkout@v2
+        uses: actions/checkout@v4
         with:
           fetch-depth: 0
+      - name: Set up Go 1.x
+        uses: actions/setup-go@v3
+        with:
+          go-version-file: './go.mod'
       - name: Cache Operator SDK ${{ env.OPERATOR_SDK_VERSION }}
         uses: actions/cache@v3
         id: cache-operator-sdk
@@ -87,12 +87,6 @@ jobs:
           fi
       - name: Run Go Tests
         run: |
-          # Temporarily adding a pact-go installation. 
-          # It should be gone once https://issues.redhat.com/browse/HAC-4879 is solved
-          go get github.com/pact-foundation/pact-go/v2@2.x.x
-          go install github.com/pact-foundation/pact-go/v2@2.x.x
-          sudo /home/runner/go/bin/pact-go -l DEBUG install 
-
           make test
       - name: Check if Manager Kustomize has the right image
         run: |
@@ -102,7 +96,7 @@ jobs:
         uses: codecov/codecov-action@v2.1.0
       - name: Run Gosec Security Scanner
         run: |
-          go install github.com/securego/gosec/v2/cmd/gosec@v2.19.0
+          go install github.com/securego/gosec/v2/cmd/gosec@v2.24.7
           make gosec
           if [[ $? != 0 ]]
           then
@@ -123,7 +117,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Check out code into the Go module directory
-        uses: actions/checkout@v2
+        uses: actions/checkout@v4
         with:
           fetch-depth: 0
       - name: Check if dockerimage build is working
@@ -131,7 +125,7 @@ jobs:
   kube-linter:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - name: Create ./.kube-linter/ for deployment files
         shell: bash
         run: mkdir -p ./.kube-linter/ && touch .kube-linter/manifests.yaml

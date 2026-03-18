@@ -1,7 +1,7 @@
 # Build the manager binary
-FROM registry.access.redhat.com/ubi9/go-toolset:1.20.10 as builder
+FROM registry.access.redhat.com/ubi9/go-toolset:1.24.6-1762230058 AS builder
 
-WORKDIR /workspace
+WORKDIR /opt/app-root/src
 # Copy the Go Modules manifests
 COPY go.mod go.mod
 COPY go.sum go.sum
@@ -32,7 +32,7 @@ ENV ENABLE_WEBHOOK_HTTP2=${ENABLE_WEBHOOK_HTTP2}
 
 # Set the Git config for the AppData bot
 WORKDIR /
-COPY --from=builder /workspace/manager .
+COPY --from=builder /opt/app-root/src/manager .
 
 COPY appdata.gitconfig /.gitconfig
 RUN chgrp -R 0 /.gitconfig && chmod -R g=u /.gitconfig
