@@ -3,7 +3,7 @@ module github.com/redhat-appstudio/application-service
 go 1.24
 
 require (
-	github.com/go-logr/logr v1.4.1
+	github.com/go-logr/logr v1.4.3
 	github.com/konflux-ci/application-api v0.0.0-20260312190025-5154ad273e17
 	github.com/konflux-ci/operator-toolkit v0.0.0-20240402130556-ef6dcbeca69d
 	github.com/onsi/ginkgo v1.16.5
