@@ -21,7 +21,7 @@ jobs:
         with:
           go-version-file: './go.mod'
       - name: Cache Operator SDK ${{ env.OPERATOR_SDK_VERSION }}
-        uses: actions/cache@v3
+        uses: actions/cache@v5
         id: cache-operator-sdk
         with:
           path: ~/cache
@@ -39,7 +39,7 @@ jobs:
           echo "$HOME/bin" >> $GITHUB_PATH
       - name: Cache go modules
         id: cache-mod
-        uses: actions/cache@v3
+        uses: actions/cache@v5
         with:
           path: ~/go/pkg/mod
           key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
