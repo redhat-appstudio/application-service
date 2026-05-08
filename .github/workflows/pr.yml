@@ -13,7 +13,7 @@ jobs:
       PR_CHECK: true
     steps:
       - name: Check out code into the Go module directory
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           fetch-depth: 0
       - name: Set up Go 1.x
@@ -117,7 +117,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Check out code into the Go module directory
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           fetch-depth: 0
       - name: Check if dockerimage build is working
@@ -125,7 +125,7 @@ jobs:
   kube-linter:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - name: Create ./.kube-linter/ for deployment files
         shell: bash
         run: mkdir -p ./.kube-linter/ && touch .kube-linter/manifests.yaml

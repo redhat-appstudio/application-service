@@ -9,7 +9,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout application-service source code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
       - name: Docker meta
         id: meta
         uses: docker/metadata-action@v4
