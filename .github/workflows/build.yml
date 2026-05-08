@@ -31,7 +31,7 @@ jobs:
           registry: quay.io
           repository: redhat-appstudio/application-service
       - name: Docker Build & Push - application-service Operator Image
-        uses: docker/build-push-action@v3
+        uses: docker/build-push-action@v7
         with:
           dockerfile: Dockerfile
           platforms: linux/amd64,linux/ppc64le
