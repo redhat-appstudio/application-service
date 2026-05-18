@@ -26,4 +26,4 @@ jobs:
           go mod download
           make test
       - name: Codecov
-        uses: codecov/codecov-action@v3
+        uses: codecov/codecov-action@v6

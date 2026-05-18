@@ -93,7 +93,7 @@ jobs:
           ./check-manager-kustomize.sh
           exit $?
       - name: Upload coverage to Codecov
-        uses: codecov/codecov-action@v2.1.0
+        uses: codecov/codecov-action@v6.0.1
       - name: Run Gosec Security Scanner
         run: |
           go install github.com/securego/gosec/v2/cmd/gosec@v2.24.7
@@ -111,7 +111,7 @@ jobs:
           sarif_file: gosec.sarif
 
       - name: Upload coverage to Codecov
-        uses: codecov/codecov-action@v2.1.0
+        uses: codecov/codecov-action@v6.0.1
   docker:
     name: Check docker build
     runs-on: ubuntu-latest
