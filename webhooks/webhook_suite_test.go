@@ -62,7 +62,7 @@ var _ = BeforeSuite(func() {
 	ctx, cancel = context.WithCancel(context.TODO())
 
 	By("bootstrapping test environment")
-	applicationAPIDepVersion := "v0.0.0-20260312190025-5154ad273e17"
+	applicationAPIDepVersion := "v0.0.0-20260529131129-a9594acdc104"
 	testEnv = &envtest.Environment{
 		CRDDirectoryPaths:     []string{filepath.Join(build.Default.GOPATH, "pkg", "mod", "github.com", "konflux-ci", "application-api@"+applicationAPIDepVersion, "manifests")},
 		ErrorIfCRDPathMissing: true,
