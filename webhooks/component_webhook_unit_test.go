@@ -188,6 +188,25 @@ func TestComponentCreateValidatingWebhook(t *testing.T) {
 			},
 		},
 		{
+			name:   "component needs to have one source specified, new GitURL field",
+			client: fakeClient,
+			err:    appstudiov1alpha1.MissingGitOrImageSource,
+			newComp: appstudiov1alpha1.Component{
+				ObjectMeta: v1.ObjectMeta{
+					Name: "test-component",
+				},
+				Spec: appstudiov1alpha1.ComponentSpec{
+					ComponentName: "component1",
+					Application:   "application1",
+					Source: appstudiov1alpha1.ComponentSource{
+						ComponentSourceUnion: appstudiov1alpha1.ComponentSourceUnion{
+							GitURL: "",
+						},
+					},
+				},
+			},
+		},
+		{
 			name:   "valid component with invalid git scheme src",
 			client: fakeClient,
 			err:    "invalid URI for request" + appstudiov1alpha1.InvalidSchemeGitSourceURL,
@@ -209,8 +228,9 @@ func TestComponentCreateValidatingWebhook(t *testing.T) {
 			},
 		},
 		{
-			name:   "valid component with container image",
+			name:   "invalid component without git source",
 			client: fakeClient,
+			err:    appstudiov1alpha1.MissingGitOrImageSource,
 			newComp: appstudiov1alpha1.Component{
 				ObjectMeta: v1.ObjectMeta{
 					Name: "test-component",
@@ -219,6 +239,44 @@ func TestComponentCreateValidatingWebhook(t *testing.T) {
 					ComponentName:  "component1",
 					Application:    "application1",
 					ContainerImage: "image",
+				},
+			},
+		},
+		{
+			name:   "valid component with git source",
+			client: fakeClient,
+			newComp: appstudiov1alpha1.Component{
+				ObjectMeta: v1.ObjectMeta{
+					Name: "test-component",
+				},
+				Spec: appstudiov1alpha1.ComponentSpec{
+					ComponentName: "component1",
+					Application:   "application1",
+					Source: appstudiov1alpha1.ComponentSource{
+						ComponentSourceUnion: appstudiov1alpha1.ComponentSourceUnion{
+							GitSource: &appstudiov1alpha1.GitSource{
+								URL: "http://link",
+							},
+						},
+					},
+				},
+			},
+		},
+		{
+			name:   "valid component with git source, new GitURL field",
+			client: fakeClient,
+			newComp: appstudiov1alpha1.Component{
+				ObjectMeta: v1.ObjectMeta{
+					Name: "test-component",
+				},
+				Spec: appstudiov1alpha1.ComponentSpec{
+					ComponentName: "component1",
+					Application:   "application1",
+					Source: appstudiov1alpha1.ComponentSource{
+						ComponentSourceUnion: appstudiov1alpha1.ComponentSourceUnion{
+							GitURL: "http://link",
+						},
+					},
 				},
 			},
 		},
@@ -237,6 +295,13 @@ func TestComponentCreateValidatingWebhook(t *testing.T) {
 					ContainerImage: "image",
 					BuildNudgesRef: []string{
 						"alternating-error-comp",
+					},
+					Source: appstudiov1alpha1.ComponentSource{
+						ComponentSourceUnion: appstudiov1alpha1.ComponentSourceUnion{
+							GitSource: &appstudiov1alpha1.GitSource{
+								URL: "http://link",
+							},
+						},
 					},
 				},
 			},
@@ -290,27 +355,6 @@ func TestComponentUpdateValidatingWebhook(t *testing.T) {
 		updateComp appstudiov1alpha1.Component
 		err        string
 	}{
-		{
-			name:   "component name cannot be changed",
-			client: fakeClient,
-			err:    fmt.Errorf(appstudiov1alpha1.ComponentNameUpdateError, "component1").Error(),
-			updateComp: appstudiov1alpha1.Component{
-				Spec: appstudiov1alpha1.ComponentSpec{
-					ComponentName: "component1",
-				},
-			},
-		},
-		{
-			name:   "application name cannot be changed",
-			client: fakeClient,
-			err:    fmt.Errorf(appstudiov1alpha1.ApplicationNameUpdateError, "application1").Error(),
-			updateComp: appstudiov1alpha1.Component{
-				Spec: appstudiov1alpha1.ComponentSpec{
-					ComponentName: "component",
-					Application:   "application1",
-				},
-			},
-		},
 		{
 			name:   "git src url cannot be changed",
 			client: fakeClient,

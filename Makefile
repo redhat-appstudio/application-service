@@ -50,7 +50,7 @@ ENABLE_WEBHOOK_HTTP2 ?=false
 APPLICATION_API_CRD = https://raw.githubusercontent.com/konflux-ci/application-api/main/manifests/application-api-customresourcedefinitions.yaml
 
 # ENVTEST_K8S_VERSION refers to the version of kubebuilder assets to be downloaded by envtest binary.
-ENVTEST_K8S_VERSION = 1.22
+ENVTEST_K8S_VERSION = 1.28
 
 # Get the currently used golang install path (in GOPATH/bin, unless GOBIN is set)
 ifeq (,$(shell go env GOBIN))
@@ -137,7 +137,7 @@ vet: ## Run go vet against code.
 .PHONY: gosec
 gosec:
 	# Run this command to install gosec, if not installed:
-	# go install github.com/securego/gosec/v2/cmd/gosec@v2.19.0
+	# go install github.com/securego/gosec/v2/cmd/gosec@v2.24.7
 	gosec -no-fail -fmt=sarif -out=gosec.sarif  ./...
 	
 lint:
@@ -194,7 +194,7 @@ undeploy: ## Undeploy controller from the K8s cluster specified in ~/.kube/confi
 
 CONTROLLER_GEN = $(shell pwd)/bin/controller-gen
 controller-gen: ## Download controller-gen locally if necessary.
-	$(call go-get-tool,$(CONTROLLER_GEN),sigs.k8s.io/controller-tools/cmd/controller-gen@v0.10.0)
+	$(call go-get-tool,$(CONTROLLER_GEN),sigs.k8s.io/controller-tools/cmd/controller-gen@v0.16.3)
 
 KUSTOMIZE = $(shell pwd)/bin/kustomize
 kustomize: ## Download kustomize locally if necessary.
@@ -202,7 +202,7 @@ kustomize: ## Download kustomize locally if necessary.
 
 ENVTEST = $(shell pwd)/bin/setup-envtest
 envtest: ## Download envtest-setup locally if necessary.
-	$(call go-get-tool,$(ENVTEST),sigs.k8s.io/controller-runtime/tools/setup-envtest@395cfc7486e652d19fe1b544a436f9852ba26e4f)
+	$(call go-get-tool,$(ENVTEST),sigs.k8s.io/controller-runtime/tools/setup-envtest@release-0.19)
 
 DLV = $(shell pwd)/bin/dlv
 dlv:

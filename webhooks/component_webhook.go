@@ -67,7 +67,7 @@ func (r *ComponentWebhook) Default(ctx context.Context, obj runtime.Object) erro
 		// Get the Application CR
 		// Use the background context to ensure the operator's kubeconfig is used
 		hasApplication := appstudiov1alpha1.Application{}
-		err := r.client.Get(context.Background(), types.NamespacedName{Name: component.Spec.Application, Namespace: component.Namespace}, &hasApplication)
+		err := r.client.Get(ctx, types.NamespacedName{Name: component.Spec.Application, Namespace: component.Namespace}, &hasApplication)
 		if err != nil {
 			// Don't block if the Application doesn't exist yet - this will retrigger whenever the resource is modified
 			err = fmt.Errorf("unable to get the Application %s for Component %s, ignoring for now", component.Spec.Application, compName)
@@ -78,7 +78,7 @@ func (r *ComponentWebhook) Default(ctx context.Context, obj runtime.Object) erro
 				var curComp appstudiov1alpha1.Component
 				// Get the Component to update using the operator's kubeconfig so that there aren't any permissions issues setting the owner reference
 				// Use the background context to ensure the operator's kubeconfig is used
-				err := r.client.Get(context.Background(), types.NamespacedName{Name: compName, Namespace: component.Namespace}, &curComp)
+				err := r.client.Get(ctx, types.NamespacedName{Name: compName, Namespace: component.Namespace}, &curComp)
 				if err != nil {
 					componentlog.Error(err, "unable to get current component, so skip setting owner reference")
 					return nil
@@ -175,10 +175,13 @@ func (r *ComponentWebhook) ValidateCreate(ctx context.Context, obj runtime.Objec
 
 	if comp.Spec.Source.GitSource != nil && comp.Spec.Source.GitSource.URL != "" {
 		if _, err := url.ParseRequestURI(comp.Spec.Source.GitSource.URL); err != nil {
-			return fmt.Errorf(err.Error() + appstudiov1alpha1.InvalidSchemeGitSourceURL)
+			return fmt.Errorf("%s%s", err.Error(), appstudiov1alpha1.InvalidSchemeGitSourceURL)
 		}
 		sourceSpecified = true
-	} else if comp.Spec.ContainerImage != "" {
+	} else if comp.Spec.Source.GitURL != "" {
+		if _, err := url.ParseRequestURI(comp.Spec.Source.GitURL); err != nil {
+			return fmt.Errorf("%s%s", err.Error(), appstudiov1alpha1.InvalidSchemeGitSourceURL)
+		}
 		sourceSpecified = true
 	}
 
@@ -208,16 +211,11 @@ func (r *ComponentWebhook) ValidateUpdate(ctx context.Context, oldObj, newObj ru
 	componentlog := r.log.WithValues("controllerKind", "Component").WithValues("name", newComp.Name).WithValues("namespace", newComp.Namespace)
 	componentlog.Info("validating the update request")
 
-	if newComp.Spec.ComponentName != oldComp.Spec.ComponentName {
-		return fmt.Errorf(appstudiov1alpha1.ComponentNameUpdateError, newComp.Spec.ComponentName)
-	}
-
-	if newComp.Spec.Application != oldComp.Spec.Application {
-		return fmt.Errorf(appstudiov1alpha1.ApplicationNameUpdateError, newComp.Spec.Application)
-	}
-
 	if newComp.Spec.Source.GitSource != nil && oldComp.Spec.Source.GitSource != nil && (newComp.Spec.Source.GitSource.URL != oldComp.Spec.Source.GitSource.URL) {
 		return fmt.Errorf(appstudiov1alpha1.GitSourceUpdateError, *(newComp.Spec.Source.GitSource))
+	}
+	if (newComp.Spec.Source.GitURL != "" && oldComp.Spec.Source.GitURL != "") && (newComp.Spec.Source.GitURL != oldComp.Spec.Source.GitURL) {
+		return fmt.Errorf(appstudiov1alpha1.GitSourceUpdateError, newComp.Spec.Source.GitURL)
 	}
 	if len(newComp.Spec.BuildNudgesRef) != 0 {
 		err := r.validateBuildNudgesRefGraph(ctx, newComp.Spec.BuildNudgesRef, newComp.Namespace, newComp.Name)
