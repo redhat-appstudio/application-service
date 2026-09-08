@@ -1,6 +1,6 @@
 module github.com/redhat-appstudio/application-service
 
-go 1.24
+go 1.27
 
 require (
 	github.com/go-logr/logr v1.4.1
