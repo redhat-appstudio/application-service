@@ -21,7 +21,7 @@ import (
 	"fmt"
 	"reflect"
 
-	. "github.com/onsi/ginkgo"
+	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 
 	appstudiov1alpha1 "github.com/konflux-ci/application-api/api/v1alpha1"
